@@ -1,0 +1,11 @@
+package: github.com/appscode/kad
+import:
+- package: github.com/appscode/go
+- package: github.com/appscode/log
+- package: github.com/appscode/pat
+- package: github.com/jpillora/go-ogle-analytics
+- package: github.com/prometheus/client_golang
+  version: v0.8.0
+- package: github.com/spf13/cobra
+- package: github.com/spf13/pflag
+  version: v1.0.0
