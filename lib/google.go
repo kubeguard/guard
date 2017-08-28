@@ -12,7 +12,7 @@ import (
 	auth "k8s.io/client-go/pkg/apis/authentication/v1beta1"
 )
 
-func checkGoogle(w http.ResponseWriter, name, token string) {
+func checkGoogle(name, token string) (auth.TokenReview, int) {
 	ctx := context.Background()
 	client := oauth2.NewClient(ctx, oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
@@ -20,13 +20,11 @@ func checkGoogle(w http.ResponseWriter, name, token string) {
 
 	authSvc, err := gauth.New(client)
 	if err != nil {
-		Error(w, fmt.Sprintf("Failed to create oauth2/v1 api client. Reason: %v.", err), http.StatusUnauthorized)
-		return
+		return Error(fmt.Sprintf("Failed to create oauth2/v1 api client. Reason: %v.", err)), http.StatusUnauthorized
 	}
 	r1, err := authSvc.Userinfo.Get().Do()
 	if err != nil {
-		Error(w, fmt.Sprintf("Failed to load user info. Reason: %v.", err), http.StatusUnauthorized)
-		return
+		return Error(fmt.Sprintf("Failed to load user info. Reason: %v.", err)), http.StatusUnauthorized
 	}
 
 	data := auth.TokenReview{}
@@ -39,8 +37,7 @@ func checkGoogle(w http.ResponseWriter, name, token string) {
 
 	svc, err := gdir.New(client)
 	if err != nil {
-		Error(w, fmt.Sprintf("Failed to create admin/directory/v1 client. Reason: %v.", err), http.StatusUnauthorized)
-		return
+		return Error(fmt.Sprintf("Failed to create admin/directory/v1 client. Reason: %v.", err)), http.StatusUnauthorized
 	}
 
 	groups := []string{}
@@ -48,8 +45,7 @@ func checkGoogle(w http.ResponseWriter, name, token string) {
 	for {
 		r2, err := svc.Groups.List().UserKey(r1.Email).PageToken(pageToken).Do()
 		if err != nil {
-			Error(w, fmt.Sprintf("Failed to load user's groups. Reason: %v.", err), http.StatusUnauthorized)
-			return
+			return Error(fmt.Sprintf("Failed to load user's groups. Reason: %v.", err)), http.StatusUnauthorized
 		}
 		for _, group := range r2.Groups {
 			if strings.HasSuffix(group.Email, "@"+name) {
@@ -62,5 +58,5 @@ func checkGoogle(w http.ResponseWriter, name, token string) {
 		pageToken = r2.NextPageToken
 	}
 	data.Status.User.Groups = groups
-	Write(w, data)
+	return data, http.StatusOK
 }

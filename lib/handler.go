@@ -12,7 +12,7 @@ func Authenticate(w http.ResponseWriter, req *http.Request) {
 	crt := req.TLS.PeerCertificates[0]
 
 	if len(crt.Subject.Organization) == 0 {
-		Error(w, "Client certificate is missing organization", http.StatusBadRequest)
+		Write(w, Error("Client certificate is missing organization"), http.StatusBadRequest)
 		return
 	}
 	org := crt.Subject.Organization[0]
@@ -20,17 +20,19 @@ func Authenticate(w http.ResponseWriter, req *http.Request) {
 	data := auth.TokenReview{}
 	err := json.NewDecoder(req.Body).Decode(&data)
 	if err != nil {
-		Error(w, "Failed to parse request. Reason: "+err.Error(), http.StatusBadRequest)
+		Write(w, Error("Failed to parse request. Reason: "+err.Error()), http.StatusBadRequest)
 		return
 	}
 	switch strings.ToLower(org) {
 	case "github":
-		checkGithub(w, crt.Subject.CommonName, data.Spec.Token)
+		resp, code := checkGithub(crt.Subject.CommonName, data.Spec.Token)
+		Write(w, resp, code)
 		return
 	case "google":
-		checkGoogle(w, crt.Subject.CommonName, data.Spec.Token)
+		resp, code := checkGoogle(crt.Subject.CommonName, data.Spec.Token)
+		Write(w, resp, code)
 		return
 	}
-	Error(w, "Client is using unknown organization "+org, http.StatusBadRequest)
+	Write(w, Error("Client is using unknown organization "+org), http.StatusBadRequest)
 	return
 }

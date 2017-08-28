@@ -11,7 +11,7 @@ import (
 	auth "k8s.io/client-go/pkg/apis/authentication/v1beta1"
 )
 
-func checkGithub(w http.ResponseWriter, name, token string) {
+func checkGithub(name, token string) (auth.TokenReview, int) {
 	ctx := context.Background()
 	client := github.NewClient(oauth2.NewClient(ctx, oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
@@ -19,8 +19,7 @@ func checkGithub(w http.ResponseWriter, name, token string) {
 
 	user, _, err := client.Users.Get(ctx, "")
 	if err != nil {
-		Error(w, fmt.Sprintf("Failed to load user's Github profile. Reason: %v.", err), http.StatusUnauthorized)
-		return
+		return Error(fmt.Sprintf("Failed to load user's Github profile. Reason: %v.", err)), http.StatusUnauthorized
 	}
 	data := auth.TokenReview{}
 	data.Status = auth.TokenReviewStatus{
@@ -35,8 +34,7 @@ func checkGithub(w http.ResponseWriter, name, token string) {
 	for {
 		teams, _, err := client.Organizations.ListUserTeams(ctx, &github.ListOptions{Page: page})
 		if err != nil {
-			Error(w, fmt.Sprintf("Failed to load user's teams. Reason: %v.", err), http.StatusUnauthorized)
-			return
+			return Error(fmt.Sprintf("Failed to load user's teams. Reason: %v.", err)), http.StatusUnauthorized
 		}
 		for _, team := range teams {
 			if team.Organization.GetLogin() == name {
@@ -46,5 +44,5 @@ func checkGithub(w http.ResponseWriter, name, token string) {
 		page++
 	}
 	data.Status.User.Groups = groups
-	Write(w, data)
+	return data, http.StatusOK
 }
