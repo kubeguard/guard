@@ -22,6 +22,7 @@ Guard by AppsCode - Kubernetes AuthN Daemon
 ```
 
 ### SEE ALSO
+* [guard get](guard_get.md)	 - Get PKI
 * [guard init](guard_init.md)	 - Init PKI
 * [guard run](guard_run.md)	 - Run server
 * [guard version](guard_version.md)	 - Prints binary version number.

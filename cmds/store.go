@@ -96,3 +96,16 @@ func (s *CertStore) Read(name string) (*x509.Certificate, *rsa.PrivateKey, error
 	}
 	return crt[0], key.(*rsa.PrivateKey), nil
 }
+
+func (s *CertStore) ReadBytes(name string) ([]byte, []byte, error) {
+	crtBytes, err := ioutil.ReadFile(s.CertFile(name))
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to read certificate `%s`.Reason: %v.", s.CertFile(name), err)
+	}
+
+	keyBytes, err := ioutil.ReadFile(s.KeyFile(name))
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to read private key `%s`.Reason: %v.", s.KeyFile(name), err)
+	}
+	return crtBytes, keyBytes, nil
+}

@@ -1,15 +1,22 @@
 package cmds
 
 import (
+	"fmt"
+
 	"github.com/appscode/guard/lib"
 	"github.com/appscode/log"
 	"github.com/spf13/cobra"
 )
 
+const (
+	webPort = 9844
+	opsPort = 56790
+)
+
 func NewCmdRun() *cobra.Command {
 	srv := lib.Server{
-		WebAddress: ":9844",
-		OpsAddress: ":56790",
+		WebAddress: fmt.Sprintf(":%d", webPort),
+		OpsAddress: fmt.Sprintf(":%d", opsPort),
 	}
 	cmd := &cobra.Command{
 		Use:               "run",

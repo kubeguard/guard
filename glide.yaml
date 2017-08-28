@@ -13,6 +13,8 @@ import:
   version: v1.0.0
 - package: golang.org/x/oauth2
 - package: google.golang.org/api
+- package: github.com/gogo/protobuf/proto
+  version: c0656edd0d9eab7c66d1eb0c568f9039345796f7
 - package: k8s.io/apimachinery
   version: 1fd2e63a9a370677308a42f24fd40c86438afddf
 - package: k8s.io/client-go
