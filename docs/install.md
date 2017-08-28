@@ -104,7 +104,7 @@ To use Github authentication, you can use your personal access token with permis
 ```
 $ guard get token -o github
 ```
-![github-token](/docs/docs/images/github-token.png)
+![github-token](/docs/images/github-token.png)
 
 
 To use Google authentication, you need a token with the following OAuth scopes:
@@ -114,4 +114,16 @@ To use Google authentication, you need a token with the following OAuth scopes:
 You can use the following command to issue a token:
 ```
 $ guard get token -o google
+```
+This will run a local HTTP server to issue a token with appropriate OAuth scopes.
+
+
+## Configure kubectl
+
+```console
+$ kubectl config set-cluster NAME [--server=server] [--certificate-authority=path/to/certificate/authority] [--insecure-skip-tls-verify=true]
+$ kubectl config set-credentials NAME [--token=bearer_token] [--auth-provider=provider_name] [--auth-provider-arg=key=value]
+$ kubectl config set-context NAME [--cluster=cluster_nickname] [--user=user_nickname] [--namespace=namespace]
+$ kubectl config use-context CONTEXT_NAME
+$ kubectl config view
 ```
