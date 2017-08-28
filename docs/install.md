@@ -104,7 +104,7 @@ To use Github authentication, you can use your personal access token with permis
 ```
 $ guard get token -o github
 ```
-![github-token](/docs/docs/images/github-token.png)
+![github-token](/docs/images/github-token.png)
 
 
 To use Google authentication, you need a token with the following OAuth scopes:
