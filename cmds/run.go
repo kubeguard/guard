@@ -1,12 +1,13 @@
 package cmds
 
 import (
-	"github.com/appscode/kad/server"
+	"github.com/appscode/kad/lib"
+	"github.com/appscode/log"
 	"github.com/spf13/cobra"
 )
 
 func NewCmdRun() *cobra.Command {
-	srv := hostfacts.Server{
+	srv := lib.Server{
 		WebAddress: ":9844",
 		OpsAddress: ":56790",
 	}
@@ -15,6 +16,9 @@ func NewCmdRun() *cobra.Command {
 		Short:             "Run server",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
+			if !srv.UseTLS() {
+				log.Fatalln("Kad server must use SSL.")
+			}
 			srv.ListenAndServe()
 		},
 	}

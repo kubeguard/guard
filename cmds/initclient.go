@@ -31,11 +31,11 @@ func NewCmdInitClient() *cobra.Command {
 				Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 			}
 
-			org = strings.ToUpper(org)
+			org = strings.ToLower(org)
 			switch org {
-			case "GITHUB":
+			case "github":
 				cfg.Organization = []string{"Github"}
-			case "GOOGLE":
+			case "google":
 				cfg.Organization = []string{"Google"}
 			case "":
 				log.Fatalln("Missing organization name. Set flag -o Google|Github.")
