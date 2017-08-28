@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	gaTrackingCode = ""
+	gaTrackingCode = "UA-62096468-20"
 )
 
 func NewRootCmd(version string) *cobra.Command {

@@ -42,6 +42,7 @@ func NewCmdInitCA() *cobra.Command {
 			if err != nil {
 				log.Fatalf("Failed to init ca. Reason: %v.", err)
 			}
+			term.Successln("Wrote ca certificates in ", store.Location())
 		},
 	}
 	return cmd
