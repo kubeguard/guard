@@ -74,6 +74,7 @@ func (s Server) ListenAndServe() {
 	tlsConfig.BuildNameToCertificate()
 
 	m := pat.New()
+	m.Post("/apis/authentication.k8s.io/v1beta1/tokenreviews", http.HandlerFunc(Authenticate))
 	srv := &http.Server{
 		Addr:         s.WebAddress,
 		ReadTimeout:  5 * time.Second,
