@@ -57,6 +57,7 @@ func NewCmdInitServer() *cobra.Command {
 			if err != nil {
 				log.Fatalf("Failed to init server certificate pair. Reason: %v.", err)
 			}
+			term.Successln("Wrote server certificates in ", store.Location())
 		},
 	}
 

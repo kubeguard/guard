@@ -67,7 +67,7 @@ func (s *CertStore) KeyFile(name string) string {
 }
 
 func (s *CertStore) Write(name string, crt *x509.Certificate, key *rsa.PrivateKey) error {
-	if err := ioutil.WriteFile(s.CertFile(name), cert.EncodeCertPEM(crt), 0755); err != nil {
+	if err := ioutil.WriteFile(s.CertFile(name), cert.EncodeCertPEM(crt), 0644); err != nil {
 		return fmt.Errorf("Failed to write `%s`. Reason. %v.", s.CertFile(name), err)
 	}
 	if err := ioutil.WriteFile(s.KeyFile(name), cert.EncodePrivateKeyPEM(key), 0600); err != nil {
