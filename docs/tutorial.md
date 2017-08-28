@@ -68,3 +68,8 @@ You can use the following command to issue a token:
 $ guard get token -o google
 ```
 This will run a local HTTP server to issue a token with appropriate OAuth2 scopes. Guard uses the token found in `TokenReview` request object to read user's profile information and list of Google Groups this user is member of. In the `TokenReview` response, `status.user.username` is set to user's Google email, `status.user.groups` is set to email of Google groups under the domain found in client cert of which this user is a member of.
+
+
+## Next Steps
+- Learn how to install Guard [here](/docs/install.md).
+- Want to hack on Guard? Check our [contribution guidelines](/CONTRIBUTING.md).
