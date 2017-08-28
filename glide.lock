@@ -1,6 +1,13 @@
-hash: e4c13b5f911631fe032b1ec62d7c8a673a6f25d870f296248ad25cccd42f5718
-updated: 2017-08-27T20:38:48.339465019-07:00
+hash: e411cc8488690d7523b55ec7c6762104d011a8fecc6d0d6c68ca4b33754c68ad
+updated: 2017-08-28T06:05:47.57141384-07:00
 imports:
+- name: bitbucket.org/ww/goautoneg
+  version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
+- name: cloud.google.com/go
+  version: 3b1ae45394a234c385be014e9a488f2bb6eef821
+  subpackages:
+  - compute/metadata
+  - internal
 - name: github.com/appscode/errors
   version: 748883e321a9f99fe901bd2663c7af3fcae43ea4
 - name: github.com/appscode/go
@@ -8,6 +15,8 @@ imports:
   subpackages:
   - env
   - runtime
+  - strings
+  - types
   - version
 - name: github.com/appscode/go-term
   version: d0c677f2d84034b1357d3f69ffd29c5fb81f662f
@@ -25,6 +34,15 @@ imports:
   version: 71acacd42f85e5e82f70a55327789582a5200a90
   subpackages:
   - md2man
+- name: github.com/davecgh/go-spew
+  version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
+  subpackages:
+  - spew
+- name: github.com/docker/distribution
+  version: cd27f179f2c10c5d300e6d09025b538c475b0d51
+  subpackages:
+  - digest
+  - reference
 - name: github.com/emicklei/go-restful
   version: ff4f55a206334ef123e4f79bbf348980da81ca46
   subpackages:
@@ -33,6 +51,8 @@ imports:
   version: 751773369052141c013c6e827a71e8f35c07879c
 - name: github.com/fatih/color
   version: 9aae6aaa22315390f03959adca2c4d395b02fcef
+- name: github.com/ghodss/yaml
+  version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
 - name: github.com/go-openapi/jsonpointer
   version: 46af16f9f7b149af66e5d1bd010e3574dc06de98
 - name: github.com/go-openapi/jsonreference
@@ -63,7 +83,7 @@ imports:
 - name: github.com/google/gofuzz
   version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
 - name: github.com/howeyc/gopass
-  version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
+  version: 3ca23474a7c7203e0a0a070fd33508f6efdb9b3d
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/jpillora/go-ogle-analytics
@@ -92,10 +112,9 @@ imports:
   subpackages:
   - go
 - name: github.com/prometheus/common
-  version: 61f87aac8082fa8c3c5655c7608d7478d46ac2ad
+  version: ffe929a3f4c4faeaa10f2b9535c2b1be3ad15650
   subpackages:
   - expfmt
-  - internal/bitbucket.org/ww/goautoneg
   - model
 - name: github.com/prometheus/procfs
   version: 454a56f35412459b5e684fd5ec0f9211b94f002a
@@ -107,6 +126,10 @@ imports:
   version: 300106c228d52c8941d4b3de6054a6062a86dda3
 - name: github.com/shurcooL/sanitized_anchor_name
   version: 10ef21a441db47d8b13ebcc5fd2310f636973c77
+- name: github.com/skratchdot/open-golang
+  version: 75fb7ed4208cf72d323d7d02fd1a5964a7a9073c
+  subpackages:
+  - open
 - name: github.com/spf13/cobra
   version: 2df9a531813370438a4d79bfc33e21f58063ed87
   subpackages:
@@ -133,7 +156,10 @@ imports:
 - name: golang.org/x/oauth2
   version: a6bd8cefa1811bd24b86f8902872e4e8225f74c4
   subpackages:
+  - google
   - internal
+  - jws
+  - jwt
 - name: golang.org/x/sys
   version: 8f0908ab3b2457e2e15403d3697c9ef5cb4b57a9
   subpackages:
@@ -152,7 +178,7 @@ imports:
   - unicode/norm
   - width
 - name: google.golang.org/api
-  version: 55146ba61254fdb1c26d65ff3c04bc1611ad73fb
+  version: 7940d22908577b9021e0931c99b3a1d7a12e0d0e
   subpackages:
   - admin/directory/v1
   - gensupport
@@ -160,12 +186,14 @@ imports:
   - googleapi/internal/uritemplates
   - oauth2/v1
 - name: google.golang.org/appengine
-  version: 4f7eeb5305a4ba1966344836ba4af9996b7b4e05
+  version: 12d5545dc1cfa6047a286d5e853841b6471f4c19
   subpackages:
   - internal
+  - internal/app_identity
   - internal/base
   - internal/datastore
   - internal/log
+  - internal/modules
   - internal/remote_api
   - internal/urlfetch
   - urlfetch
@@ -176,31 +204,59 @@ imports:
 - name: k8s.io/apimachinery
   version: 1fd2e63a9a370677308a42f24fd40c86438afddf
   subpackages:
+  - pkg/api/equality
+  - pkg/api/meta
   - pkg/api/resource
+  - pkg/apimachinery
+  - pkg/apimachinery/announced
+  - pkg/apimachinery/registered
   - pkg/apis/meta/v1
+  - pkg/apis/meta/v1/unstructured
+  - pkg/apis/meta/v1alpha1
   - pkg/conversion
   - pkg/conversion/queryparams
+  - pkg/conversion/unstructured
   - pkg/fields
   - pkg/labels
   - pkg/openapi
   - pkg/runtime
   - pkg/runtime/schema
+  - pkg/runtime/serializer
+  - pkg/runtime/serializer/json
+  - pkg/runtime/serializer/protobuf
+  - pkg/runtime/serializer/recognizer
+  - pkg/runtime/serializer/versioning
   - pkg/selection
   - pkg/types
+  - pkg/util/diff
   - pkg/util/errors
+  - pkg/util/framer
   - pkg/util/intstr
+  - pkg/util/json
   - pkg/util/net
+  - pkg/util/rand
   - pkg/util/runtime
   - pkg/util/sets
   - pkg/util/validation
+  - pkg/util/validation/field
   - pkg/util/wait
+  - pkg/util/yaml
   - pkg/watch
   - third_party/forked/golang/reflect
 - name: k8s.io/client-go
   version: d92e8497f71b7b4e0494e5bd204b48d34bd6f254
   subpackages:
+  - pkg/api
+  - pkg/api/v1
+  - pkg/apis/apps
+  - pkg/apis/apps/v1beta1
   - pkg/apis/authentication
   - pkg/apis/authentication/v1beta1
+  - pkg/apis/extensions
+  - pkg/util
+  - pkg/util/parsers
+  - tools/clientcmd/api
+  - tools/clientcmd/api/v1
   - util/cert
   - util/homedir
 testImports: []

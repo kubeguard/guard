@@ -1,6 +1,7 @@
 #!/bin/bash
 set -x
 
+kubectl delete secret -l app=guard -n kube-system
 kubectl delete deployment -l app=guard -n kube-system
 kubectl delete service -l app=guard -n kube-system
 
