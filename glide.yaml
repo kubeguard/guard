@@ -9,3 +9,7 @@ import:
 - package: github.com/spf13/cobra
 - package: github.com/spf13/pflag
   version: v1.0.0
+- package: k8s.io/apimachinery
+  version: 1fd2e63a9a370677308a42f24fd40c86438afddf
+- package: k8s.io/client-go
+  version: 4.0.0

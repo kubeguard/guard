@@ -19,8 +19,7 @@ type Server struct {
 	CertFile   string
 	KeyFile    string
 
-	OpsAddress      string
-	EnableAnalytics bool
+	OpsAddress string
 }
 
 func (s Server) ListenAndServe() {
