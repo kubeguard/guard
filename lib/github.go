@@ -22,7 +22,7 @@ func checkGithub(w http.ResponseWriter, name, token string) {
 		Error(w, fmt.Sprintf("Failed to load user's Github profile. Reason: %v.", err), http.StatusUnauthorized)
 		return
 	}
-	data := NewTokenReview()
+	data := auth.TokenReview{}
 	data.Status = auth.TokenReviewStatus{
 		User: auth.UserInfo{
 			Username: user.GetLogin(),

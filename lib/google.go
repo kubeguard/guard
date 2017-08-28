@@ -29,7 +29,7 @@ func checkGoogle(w http.ResponseWriter, name, token string) {
 		return
 	}
 
-	data := NewTokenReview()
+	data := auth.TokenReview{}
 	data.Status = auth.TokenReviewStatus{
 		User: auth.UserInfo{
 			Username: r1.Email,

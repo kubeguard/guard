@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	auth "k8s.io/client-go/pkg/apis/authentication/v1beta1"
 )
 
 func Authenticate(w http.ResponseWriter, req *http.Request) {
@@ -15,7 +17,7 @@ func Authenticate(w http.ResponseWriter, req *http.Request) {
 	}
 	org := crt.Subject.Organization[0]
 
-	data := NewTokenReview()
+	data := auth.TokenReview{}
 	err := json.NewDecoder(req.Body).Decode(&data)
 	if err != nil {
 		Error(w, "Failed to parse request. Reason: "+err.Error(), http.StatusBadRequest)
