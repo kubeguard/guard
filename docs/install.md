@@ -71,7 +71,7 @@ $ kubectl apply -f docs/examples/installer.yaml
 ```
 
 ## Configure Kubernetes API Server
-To use webhook authentication, you need to set `--authentication-token-webhook-config-file` flag of your Kubernetes api server to a kubeconfig file describing how to access the Guard webhook service. You can use the follow command to generate a sample kubeconfig file.
+To use webhook authentication, you need to set `--authentication-token-webhook-config-file` flag of your Kubernetes api server to a [kubeconfig file](https://kubernetes.io/docs/admin/authentication/#webhook-token-authentication) describing how to access the Guard webhook service. You can use the following command to generate a sample `kubeconfig` file.
 
 ```console
 # print auth token webhook config file. Change the server address to your guard server address.
@@ -115,7 +115,7 @@ You can use the following command to issue a token:
 ```
 $ guard get token -o google
 ```
-This will run a local HTTP server to issue a token with appropriate OAuth scopes.
+This will run a local HTTP server to issue a token with appropriate OAuth2 scopes.
 
 
 ## Configure kubectl

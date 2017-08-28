@@ -9,6 +9,9 @@ Kubernetes 1.6+
 ## Installation
 To install Guard, please follow the guide [here](/docs/install.md).
 
+## Using Guard
+Want to learn how to use Guard? Please start [here](/docs/tutorial.md).
+
 ## Contribution guidelines
 Want to help improve Guard? Please start [here](/CONTRIBUTING.md).
 
