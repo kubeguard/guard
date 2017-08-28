@@ -8,19 +8,16 @@ import (
 	auth "k8s.io/client-go/pkg/apis/authentication/v1beta1"
 )
 
-func NewTokenReview() auth.TokenReview {
-	return auth.TokenReview{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "authentication.k8s.io/v1beta1",
-			Kind:       "TokenReview",
-		},
-	}
-}
+const apiVersion = "authentication.k8s.io/v1beta1"
 
 func Write(w http.ResponseWriter, data auth.TokenReview) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("x-content-type-options", "nosniff")
 	w.WriteHeader(http.StatusOK)
+	data.TypeMeta = metav1.TypeMeta{
+		APIVersion: apiVersion,
+		Kind:       "TokenReview",
+	}
 	data.Status.Authenticated = true
 	json.NewEncoder(w).Encode(data)
 }
@@ -34,7 +31,7 @@ func Error(w http.ResponseWriter, error string, code int) {
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(auth.TokenReview{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "authentication.k8s.io/v1beta1",
+			APIVersion: apiVersion,
 			Kind:       "TokenReview",
 		},
 		Status: auth.TokenReviewStatus{
