@@ -54,7 +54,7 @@ func NewCmdInitClient() *cobra.Command {
 			}
 
 			if !store.PairExists("ca") {
-				log.Fatalf("CA certificates not found in %s. Run `kad init ca`", store.Location())
+				log.Fatalf("CA certificates not found in %s. Run `guard init ca`", store.Location())
 			}
 			caCert, caKey, err := store.Read("ca")
 			if err != nil {

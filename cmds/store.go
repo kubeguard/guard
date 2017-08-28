@@ -20,7 +20,7 @@ type CertStore struct {
 }
 
 func NewCertStore() (*CertStore, error) {
-	dir := filepath.Join(homedir.HomeDir(), ".kad", "pki")
+	dir := filepath.Join(homedir.HomeDir(), ".guard", "pki")
 	err := os.MkdirAll(dir, 0755)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create dir `%s`. Reason: %v.", dir, err)

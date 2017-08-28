@@ -2,7 +2,7 @@
 Description=Provide host facts
 
 [Service]
-ExecStart=/usr/bin/kad --addr=:443
+ExecStart=/usr/bin/guard --addr=:443
 Restart=always
 RestartSec=5
 

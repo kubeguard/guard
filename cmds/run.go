@@ -1,7 +1,7 @@
 package cmds
 
 import (
-	"github.com/appscode/kad/lib"
+	"github.com/appscode/guard/lib"
 	"github.com/appscode/log"
 	"github.com/spf13/cobra"
 )
@@ -17,7 +17,7 @@ func NewCmdRun() *cobra.Command {
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if !srv.UseTLS() {
-				log.Fatalln("Kad server must use SSL.")
+				log.Fatalln("Guard server must use SSL.")
 			}
 			srv.ListenAndServe()
 		},

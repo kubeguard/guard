@@ -1,29 +1,32 @@
-## kad init server
+## guard run
 
-Generate server certificate pair
+Run server
 
 ### Synopsis
 
 
-Generate server certificate pair
+Run server
 
 ```
-kad init server [flags]
+guard run [flags]
 ```
 
 ### Options
 
 ```
-      --domains stringSlice   Alternative Domain names
-  -h, --help                  help for server
-      --ips ipSlice           Alternative IP addresses (default [127.0.0.1])
+      --ca-cert-file string   File containing CA certificate
+      --cert-file string      File container server TLS certificate
+  -h, --help                  help for run
+      --key-file string       File containing server TLS private key
+      --ops-addr string       Address to listen on for web interface and telemetry. (default ":56790")
+      --web-address string    Http server address (default ":9844")
 ```
 
 ### Options inherited from parent commands
 
 ```
       --alsologtostderr                  log to standard error as well as files
-      --analytics                        Send analytical events to Google Kad (default true)
+      --analytics                        Send analytical events to Google Guard (default true)
       --log_backtrace_at traceLocation   when logging hits line file:N, emit a stack trace (default :0)
       --log_dir string                   If non-empty, write log files in this directory
       --logtostderr                      log to standard error instead of files
@@ -33,5 +36,5 @@ kad init server [flags]
 ```
 
 ### SEE ALSO
-* [kad init](kad_init.md)	 - Init PKI
+* [guard](guard.md)	 - Guard by AppsCode - Kubernetes AuthN Daemon
 

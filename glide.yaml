@@ -1,14 +1,18 @@
-package: github.com/appscode/kad
+package: github.com/appscode/guard
 import:
+- package: github.com/appscode/go-term
 - package: github.com/appscode/go
 - package: github.com/appscode/log
 - package: github.com/appscode/pat
+- package: github.com/google/go-github
 - package: github.com/jpillora/go-ogle-analytics
 - package: github.com/prometheus/client_golang
   version: v0.8.0
 - package: github.com/spf13/cobra
 - package: github.com/spf13/pflag
   version: v1.0.0
+- package: golang.org/x/oauth2
+- package: google.golang.org/api
 - package: k8s.io/apimachinery
   version: 1fd2e63a9a370677308a42f24fd40c86438afddf
 - package: k8s.io/client-go

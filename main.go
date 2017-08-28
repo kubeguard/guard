@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/appscode/kad/cmds"
+	"github.com/appscode/guard/cmds"
 	logs "github.com/appscode/log/golog"
 )
 

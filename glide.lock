@@ -1,5 +1,5 @@
-hash: 7dd68cce28bd15a9bcf154559599be129a32accfb89e255004ee3aa1f2b074bb
-updated: 2017-08-27T20:17:47.123305576-07:00
+hash: e4c13b5f911631fe032b1ec62d7c8a673a6f25d870f296248ad25cccd42f5718
+updated: 2017-08-27T20:38:48.339465019-07:00
 imports:
 - name: github.com/appscode/errors
   version: 748883e321a9f99fe901bd2663c7af3fcae43ea4
@@ -133,10 +133,7 @@ imports:
 - name: golang.org/x/oauth2
   version: a6bd8cefa1811bd24b86f8902872e4e8225f74c4
   subpackages:
-  - google
   - internal
-  - jws
-  - jwt
 - name: golang.org/x/sys
   version: 8f0908ab3b2457e2e15403d3697c9ef5cb4b57a9
   subpackages:

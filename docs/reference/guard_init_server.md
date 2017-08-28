@@ -1,27 +1,29 @@
-## kad init ca
+## guard init server
 
-Init CA
+Generate server certificate pair
 
 ### Synopsis
 
 
-Init CA
+Generate server certificate pair
 
 ```
-kad init ca [flags]
+guard init server [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for ca
+      --domains stringSlice   Alternative Domain names
+  -h, --help                  help for server
+      --ips ipSlice           Alternative IP addresses (default [127.0.0.1])
 ```
 
 ### Options inherited from parent commands
 
 ```
       --alsologtostderr                  log to standard error as well as files
-      --analytics                        Send analytical events to Google Kad (default true)
+      --analytics                        Send analytical events to Google Guard (default true)
       --log_backtrace_at traceLocation   when logging hits line file:N, emit a stack trace (default :0)
       --log_dir string                   If non-empty, write log files in this directory
       --logtostderr                      log to standard error instead of files
@@ -31,5 +33,5 @@ kad init ca [flags]
 ```
 
 ### SEE ALSO
-* [kad init](kad_init.md)	 - Init PKI
+* [guard init](guard_init.md)	 - Init PKI
 

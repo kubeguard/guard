@@ -8,28 +8,28 @@ GOPATH=$(go env GOPATH)
 SRC=$GOPATH/src
 BIN=$GOPATH/bin
 ROOT=$GOPATH
-REPO_ROOT=$GOPATH/src/github.com/appscode/kad
+REPO_ROOT=$GOPATH/src/github.com/appscode/guard
 
 source "$REPO_ROOT/hack/libbuild/common/lib.sh"
 source "$REPO_ROOT/hack/libbuild/common/public_image.sh"
 
 APPSCODE_ENV=${APPSCODE_ENV:-dev}
-IMG=kad
+IMG=guard
 
-DIST=$GOPATH/src/github.com/appscode/kad/dist
+DIST=$GOPATH/src/github.com/appscode/guard/dist
 mkdir -p $DIST
 if [ -f "$DIST/.tag" ]; then
 	export $(cat $DIST/.tag | xargs)
 fi
 
 clean() {
-    pushd $GOPATH/src/github.com/appscode/kad/hack/docker
-    rm kad Dockerfile
+    pushd $GOPATH/src/github.com/appscode/guard/hack/docker
+    rm guard Dockerfile
     popd
 }
 
 build_binary() {
-    pushd $GOPATH/src/github.com/appscode/kad
+    pushd $GOPATH/src/github.com/appscode/guard
     ./hack/builddeps.sh
     ./hack/make.py build
     detect_tag $DIST/.tag
@@ -37,9 +37,9 @@ build_binary() {
 }
 
 build_docker() {
-    pushd $GOPATH/src/github.com/appscode/kad/hack/docker
-    cp $DIST/kad/kad-alpine-amd64 kad
-    chmod 755 kad
+    pushd $GOPATH/src/github.com/appscode/guard/hack/docker
+    cp $DIST/guard/guard-alpine-amd64 guard
+    chmod 755 guard
 
     cat >Dockerfile <<EOL
 FROM alpine
@@ -47,15 +47,15 @@ FROM alpine
 RUN set -x \
   && apk add --update --no-cache ca-certificates
 
-COPY kad /usr/bin/kad
+COPY guard /usr/bin/guard
 
 USER nobody:nobody
-ENTRYPOINT ["kad"]
+ENTRYPOINT ["guard"]
 EOL
     local cmd="docker build -t appscode/$IMG:$TAG ."
     echo $cmd; $cmd
 
-    rm kad Dockerfile
+    rm guard Dockerfile
     popd
 }
 

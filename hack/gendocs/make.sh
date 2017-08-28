@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 
-pushd $GOPATH/src/github.com/appscode/kad/hack/gendocs
+pushd $GOPATH/src/github.com/appscode/guard/hack/gendocs
 go run main.go
 popd

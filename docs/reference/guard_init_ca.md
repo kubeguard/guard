@@ -1,27 +1,27 @@
-## kad version
+## guard init ca
 
-Prints binary version number.
+Init CA
 
 ### Synopsis
 
 
-Prints binary version number.
+Init CA
 
 ```
-kad version [flags]
+guard init ca [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for version
+  -h, --help   help for ca
 ```
 
 ### Options inherited from parent commands
 
 ```
       --alsologtostderr                  log to standard error as well as files
-      --analytics                        Send analytical events to Google Kad (default true)
+      --analytics                        Send analytical events to Google Guard (default true)
       --log_backtrace_at traceLocation   when logging hits line file:N, emit a stack trace (default :0)
       --log_dir string                   If non-empty, write log files in this directory
       --logtostderr                      log to standard error instead of files
@@ -31,5 +31,5 @@ kad version [flags]
 ```
 
 ### SEE ALSO
-* [kad](kad.md)	 - Kad by AppsCode - Kubernetes AuthN Daemon
+* [guard init](guard_init.md)	 - Init PKI
 

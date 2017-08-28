@@ -1,23 +1,18 @@
-## kad init
+## guard
 
-Init PKI
+Guard by AppsCode - Kubernetes AuthN Daemon
 
 ### Synopsis
 
 
-Init PKI
+Guard by AppsCode - Kubernetes AuthN Daemon
 
 ### Options
 
 ```
-  -h, --help   help for init
-```
-
-### Options inherited from parent commands
-
-```
       --alsologtostderr                  log to standard error as well as files
-      --analytics                        Send analytical events to Google Kad (default true)
+      --analytics                        Send analytical events to Google Guard (default true)
+  -h, --help                             help for guard
       --log_backtrace_at traceLocation   when logging hits line file:N, emit a stack trace (default :0)
       --log_dir string                   If non-empty, write log files in this directory
       --logtostderr                      log to standard error instead of files
@@ -27,8 +22,7 @@ Init PKI
 ```
 
 ### SEE ALSO
-* [kad](kad.md)	 - Kad by AppsCode - Kubernetes AuthN Daemon
-* [kad init ca](kad_init_ca.md)	 - Init CA
-* [kad init client](kad_init_client.md)	 - Generate client certificate pair
-* [kad init server](kad_init_server.md)	 - Generate server certificate pair
+* [guard init](guard_init.md)	 - Init PKI
+* [guard run](guard_run.md)	 - Run server
+* [guard version](guard_version.md)	 - Prints binary version number.
 

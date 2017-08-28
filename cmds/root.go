@@ -20,8 +20,8 @@ func NewRootCmd(version string) *cobra.Command {
 		enableAnalytics = true
 	)
 	cmd := &cobra.Command{
-		Use:               "kad [command]",
-		Short:             `Kad by AppsCode - Kubernetes AuthN Daemon`,
+		Use:               "guard [command]",
+		Short:             `Guard by AppsCode - Kubernetes AuthN Daemon`,
 		DisableAutoGenTag: true,
 		PersistentPreRun: func(c *cobra.Command, args []string) {
 			c.Flags().VisitAll(func(flag *pflag.Flag) {
@@ -38,7 +38,7 @@ func NewRootCmd(version string) *cobra.Command {
 	cmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
 	// ref: https://github.com/kubernetes/kubernetes/issues/17162#issuecomment-225596212
 	flag.CommandLine.Parse([]string{})
-	cmd.PersistentFlags().BoolVar(&enableAnalytics, "analytics", enableAnalytics, "Send analytical events to Google Kad")
+	cmd.PersistentFlags().BoolVar(&enableAnalytics, "analytics", enableAnalytics, "Send analytical events to Google Guard")
 
 	cmd.AddCommand(NewCmdInit())
 	cmd.AddCommand(NewCmdRun())

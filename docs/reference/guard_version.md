@@ -1,18 +1,27 @@
-## kad
+## guard version
 
-Kad by AppsCode - Kubernetes AuthN Daemon
+Prints binary version number.
 
 ### Synopsis
 
 
-Kad by AppsCode - Kubernetes AuthN Daemon
+Prints binary version number.
+
+```
+guard version [flags]
+```
 
 ### Options
 
 ```
+  -h, --help   help for version
+```
+
+### Options inherited from parent commands
+
+```
       --alsologtostderr                  log to standard error as well as files
-      --analytics                        Send analytical events to Google Kad (default true)
-  -h, --help                             help for kad
+      --analytics                        Send analytical events to Google Guard (default true)
       --log_backtrace_at traceLocation   when logging hits line file:N, emit a stack trace (default :0)
       --log_dir string                   If non-empty, write log files in this directory
       --logtostderr                      log to standard error instead of files
@@ -22,7 +31,5 @@ Kad by AppsCode - Kubernetes AuthN Daemon
 ```
 
 ### SEE ALSO
-* [kad init](kad_init.md)	 - Init PKI
-* [kad run](kad_run.md)	 - Run server
-* [kad version](kad_version.md)	 - Prints binary version number.
+* [guard](guard.md)	 - Guard by AppsCode - Kubernetes AuthN Daemon
 

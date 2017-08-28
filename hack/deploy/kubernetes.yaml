@@ -1,19 +1,19 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: kad
+  name: guard
   labels:
-    app: kad
+    app: guard
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        app: kad
+        app: guard
     spec:
       containers:
-        - image: appscode/kad:canary
-          name: kad
+        - image: appscode/guard:canary
+          name: guard
           ports:
             - containerPort: 9844
               name: web
@@ -22,13 +22,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: kad
+  name: guard
   labels:
-    app: kad
+    app: guard
 spec:
   ports:
   - port: 9844
     protocol: TCP
     targetPort: web
   selector:
-    app: kad
+    app: guard
