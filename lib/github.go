@@ -44,5 +44,6 @@ func checkGithub(name, token string) (auth.TokenReview, int) {
 		page++
 	}
 	data.Status.User.Groups = groups
+	data.Status.Authenticated = true
 	return data, http.StatusOK
 }

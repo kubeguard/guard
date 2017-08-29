@@ -21,7 +21,6 @@ func Write(w http.ResponseWriter, data auth.TokenReview, code int) {
 		APIVersion: apiVersion,
 		Kind:       "TokenReview",
 	}
-	data.Status.Authenticated = true
 	json.NewEncoder(w).Encode(data)
 }
 
