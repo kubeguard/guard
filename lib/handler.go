@@ -2,7 +2,6 @@ package lib
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -24,9 +23,6 @@ func Authenticate(w http.ResponseWriter, req *http.Request) {
 		Write(w, Error("Failed to parse request. Reason: "+err.Error()), http.StatusBadRequest)
 		return
 	}
-
-	pb, _ := json.Marshal(data)
-	fmt.Println(string(pb))
 
 	switch strings.ToLower(org) {
 	case "github":
