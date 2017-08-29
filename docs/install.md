@@ -2,7 +2,7 @@
 
 # Installation Guide
 
-Guard binary works as a cli and server. In cli mode, you can use guard to generate various configuration to easily deploy guard server.
+Guard binary works as a cli and server. In cli mode, you can use `guard` to generate various configuration to easily deploy Guard server. Guard server uses TLS client auth to secure the communication channel between Kubernetes api server and Guard server. You can run Guard server external to a Kubernetes cluster. This document shows you how to `self-host` Guard server in a Kubernetes cluster. To that end, we run Guard server using a predefined Service ClusterIP `10.96.10.96` and port `9844`. This ClusterIP is chosen so that it falls in the default --service-cidr range for [Kubeadm](https://kubernetes.io/docs/admin/kubeadm/). If the service CIDR range for your cluster is different, please pick an appropriate ClusterIP.
 
 ## Install Guard as CLI
 Download pre-built binaries from [appscode/guard Github releases](https://github.com/appscode/guard/releases) and put the binary to some directory in your `PATH`. To install on Linux 64-bit and MacOS 64-bit you can run the following commands:
@@ -62,7 +62,7 @@ total 32
 As you can see, Guard stores the generated certificates in `.guard` subdirectory of home directory of user executing these commands. Guard can use either a Github organization or a Google Apps domain (now G Suite) to authenticate users for a Kubernetes cluster. A Kubernetes cluster can use one of these organization to authenticate users. But you can configure a single Guard server to perform authentication for multiple clusters, where each cluster uses a different auth provider.
 
 ## Deploy Guard server
-Now deploy Guard server so that your Kubernetes api server can access it. You can self-host Guard server in a Kubernetes cluster. Use the command below to generate YAMLs for your particular setup. Then use `kubectl apply -f` to install Guard server.
+Now deploy Guard server so that your Kubernetes api server can access it. Use the command below to generate YAMLs for your particular setup. Then use `kubectl apply -f` to install Guard server.
 
 ```console
 # generate Kubernetes YAMLs for deploying guard server
