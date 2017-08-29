@@ -7,6 +7,7 @@ import (
 
 	auth "k8s.io/client-go/pkg/apis/authentication/v1beta1"
 	"fmt"
+	"github.com/tamalsaha/go-oneliners"
 )
 
 func Authenticate(w http.ResponseWriter, req *http.Request) {
@@ -30,6 +31,7 @@ func Authenticate(w http.ResponseWriter, req *http.Request) {
 
 	switch strings.ToLower(org) {
 	case "github":
+		oneliners.FILE()
 		resp, code := checkGithub(crt.Subject.CommonName, data.Spec.Token)
 		Write(w, resp, code)
 		return
