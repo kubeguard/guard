@@ -67,7 +67,7 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 					{
 						Name: "guard-server",
 						Cluster: cli.Cluster{
-							Server: "http(s)://>guard-server-host:port>/apis/authentication.k8s.io/v1beta1/tokenreviews",
+							Server: "http(s)://<guard-server-host:port>/apis/authentication.k8s.io/v1beta1/tokenreviews",
 							CertificateAuthorityData: caCert,
 						},
 					},
