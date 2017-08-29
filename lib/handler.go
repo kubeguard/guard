@@ -2,12 +2,12 @@ package lib
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
-	auth "k8s.io/client-go/pkg/apis/authentication/v1beta1"
-	"fmt"
 	"github.com/tamalsaha/go-oneliners"
+	auth "k8s.io/client-go/pkg/apis/authentication/v1beta1"
 )
 
 func Authenticate(w http.ResponseWriter, req *http.Request) {

@@ -3,6 +3,8 @@ package cmds
 import (
 	"bytes"
 	"fmt"
+	"net"
+	"strconv"
 
 	stringz "github.com/appscode/go/strings"
 	"github.com/appscode/go/types"
@@ -17,12 +19,21 @@ import (
 )
 
 func NewCmdInstaller() *cobra.Command {
-	var namespace string
+	var namespace, addr string
 	cmd := &cobra.Command{
 		Use:               "installer",
 		Short:             "Prints Kubernetes objects for deploying guard server",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
+			_, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				log.Fatalf("Guard server address is invalid. Reason: %v.", err)
+			}
+			_, err = strconv.Atoi(port)
+			if err != nil {
+				log.Fatalf("Guard server port is invalid. Reason: %v.", err)
+			}
+
 			store, err := NewCertStore()
 			if err != nil {
 				log.Fatalf("Failed to create certificate store. Reason: %v.", err)
@@ -56,7 +67,7 @@ func NewCmdInstaller() *cobra.Command {
 			}
 			buf.Write(depBytes)
 			buf.WriteString("---\n")
-			svcBytes, err := yaml.Marshal(createService(namespace))
+			svcBytes, err := yaml.Marshal(createService(namespace, addr))
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -67,6 +78,7 @@ func NewCmdInstaller() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&namespace, "namespace", "n", "kube-system", "Name of Kubernetes namespace used to run guard server.")
+	cmd.Flags().StringVar(&addr, "addr", "10.96.10.96:9844", "Address (host:port) of guard server.")
 	return cmd
 }
 
@@ -159,7 +171,9 @@ func createDeployment(namespace string) apps.Deployment {
 	}
 }
 
-func createService(namespace string) apiv1.Service {
+func createService(namespace, addr string) apiv1.Service {
+	host, port, _ := net.SplitHostPort(addr)
+	svcPort, _ := strconv.Atoi(port)
 	return apiv1.Service{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
@@ -171,11 +185,12 @@ func createService(namespace string) apiv1.Service {
 			Labels:    labels,
 		},
 		Spec: apiv1.ServiceSpec{
-			Type: apiv1.ServiceTypeClusterIP,
+			Type:      apiv1.ServiceTypeClusterIP,
+			ClusterIP: host,
 			Ports: []apiv1.ServicePort{
 				{
 					Name:       "web",
-					Port:       webPort,
+					Port:       int32(svcPort),
 					Protocol:   apiv1.ProtocolTCP,
 					TargetPort: intstr.FromString("web"),
 				},

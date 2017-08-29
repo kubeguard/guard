@@ -12,7 +12,7 @@ import (
 )
 
 func NewCmdGetWebhookConfig() *cobra.Command {
-	var org string
+	var org, addr string
 	cmd := &cobra.Command{
 		Use:               "webhook-config",
 		Short:             "Prints authentication token webhook config file",
@@ -67,7 +67,7 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 					{
 						Name: "guard-server",
 						Cluster: cli.Cluster{
-							Server: "http(s)://<guard-server-host:port>/apis/authentication.k8s.io/v1beta1/tokenreviews",
+							Server: fmt.Sprintf("https://%s/apis/authentication.k8s.io/v1beta1/tokenreviews", addr),
 							CertificateAuthorityData: caCert,
 						},
 					},
@@ -101,5 +101,6 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&org, "organization", "o", org, "Name of Organization (Github or Google).")
+	cmd.Flags().StringVar(&addr, "addr", "10.96.10.96:9844", "Address (host:port) of guard server.")
 	return cmd
 }
