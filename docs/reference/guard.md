@@ -1,11 +1,11 @@
 ## guard
 
-Guard by AppsCode - Kubernetes AuthN Daemon
+Guard by AppsCode - Kubernetes Authentication WebHook Server
 
 ### Synopsis
 
 
-Guard by AppsCode - Kubernetes AuthN Daemon
+Guard by AppsCode - Kubernetes Authentication WebHook Server
 
 ### Options
 

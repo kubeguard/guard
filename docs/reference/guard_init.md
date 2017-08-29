@@ -27,7 +27,7 @@ Init PKI
 ```
 
 ### SEE ALSO
-* [guard](guard.md)	 - Guard by AppsCode - Kubernetes AuthN Daemon
+* [guard](guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
 * [guard init ca](guard_init_ca.md)	 - Init CA
 * [guard init client](guard_init_client.md)	 - Generate client certificate pair
 * [guard init server](guard_init_server.md)	 - Generate server certificate pair

@@ -27,7 +27,7 @@ Get PKI
 ```
 
 ### SEE ALSO
-* [guard](guard.md)	 - Guard by AppsCode - Kubernetes AuthN Daemon
+* [guard](guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
 * [guard get installer](guard_get_installer.md)	 - Prints Kubernetes objects for deploying guard server
 * [guard get token](guard_get_token.md)	 - Get tokens for Github or Google
 * [guard get webhook-config](guard_get_webhook-config.md)	 - Prints authentication token webhook config file

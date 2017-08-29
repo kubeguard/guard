@@ -21,7 +21,7 @@ func NewRootCmd(version string) *cobra.Command {
 	)
 	cmd := &cobra.Command{
 		Use:               "guard [command]",
-		Short:             `Guard by AppsCode - Kubernetes AuthN Daemon`,
+		Short:             `Guard by AppsCode - Kubernetes Authentication WebHook Server`,
 		DisableAutoGenTag: true,
 		PersistentPreRun: func(c *cobra.Command, args []string) {
 			c.Flags().VisitAll(func(flag *pflag.Flag) {

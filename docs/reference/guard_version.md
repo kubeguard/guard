@@ -31,5 +31,5 @@ guard version [flags]
 ```
 
 ### SEE ALSO
-* [guard](guard.md)	 - Guard by AppsCode - Kubernetes AuthN Daemon
+* [guard](guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
 
