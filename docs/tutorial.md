@@ -69,6 +69,26 @@ $ guard get token -o google
 ```
 This will run a local HTTP server to issue a token with appropriate OAuth2 scopes. Guard uses the token found in `TokenReview` request object to read user's profile information and list of Google Groups this user is member of. In the `TokenReview` response, `status.user.username` is set to user's Google email, `status.user.groups` is set to email of Google groups under the domain found in client cert of which this user is a member of.
 
+## RBAC Roles
+
+Kubernetes 1.6+ comes with a set of pre-defines user-facing roles. You can create ClusterRoleBindings or RoleBindings to grant permissions to your Github teams or Google groups. Say, you have a Github team called `ops`. You want to make the members of this Github team administrator for your clusters. You can do that using the following command:
+```console
+echo "
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: ops-team
+subjects:
+- kind: Group
+  name: ops
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+" | kubectl apply -f -
+```
+
 
 ## Next Steps
 - Learn how to install Guard [here](/docs/install.md).
