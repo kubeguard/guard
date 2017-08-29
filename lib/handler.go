@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/tamalsaha/go-oneliners"
 	auth "k8s.io/client-go/pkg/apis/authentication/v1beta1"
 )
 

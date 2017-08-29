@@ -66,8 +66,8 @@ Now deploy Guard server so that your Kubernetes api server can access it. You ca
 
 ```console
 # generate Kubernetes YAMLs for deploying guard server
-$ guard get installer > docs/examples/installer.yaml
-$ kubectl apply -f docs/examples/installer.yaml
+$ guard get installer > installer.yaml
+$ kubectl apply -f installer.yaml
 ```
 
 ## Configure Kubernetes API Server

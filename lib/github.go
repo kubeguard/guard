@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/google/go-github/github"
-	"github.com/tamalsaha/go-oneliners"
 	"golang.org/x/oauth2"
 	auth "k8s.io/client-go/pkg/apis/authentication/v1beta1"
 )
