@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	auth "k8s.io/client-go/pkg/apis/authentication/v1beta1"
+	"fmt"
 )
 
 func Authenticate(w http.ResponseWriter, req *http.Request) {
@@ -23,6 +24,10 @@ func Authenticate(w http.ResponseWriter, req *http.Request) {
 		Write(w, Error("Failed to parse request. Reason: "+err.Error()), http.StatusBadRequest)
 		return
 	}
+
+	pb, _ := json.Marshal(data)
+	fmt.Println(string(pb))
+
 	switch strings.ToLower(org) {
 	case "github":
 		resp, code := checkGithub(crt.Subject.CommonName, data.Spec.Token)
