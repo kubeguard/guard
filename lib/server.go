@@ -24,7 +24,7 @@ type Server struct {
 }
 
 func (s Server) UseTLS() bool {
-	return s.CACertFile == "" && s.CertFile == "" && s.KeyFile == ""
+	return s.CACertFile != "" && s.CertFile != "" && s.KeyFile != ""
 }
 
 func (s Server) ListenAndServe() {
