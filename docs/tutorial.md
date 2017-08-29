@@ -71,7 +71,8 @@ This will run a local HTTP server to issue a token with appropriate OAuth2 scope
 
 ## RBAC Roles
 
-Kubernetes 1.6+ comes with a set of pre-defines user-facing roles. You can create ClusterRoleBindings or RoleBindings to grant permissions to your Github teams or Google groups. Say, you have a Github team called `ops`. You want to make the members of this Github team administrator for your clusters. You can do that using the following command:
+Kubernetes 1.6+ comes with a set of pre-defined set of [user-facing roles](https://kubernetes.io/docs/admin/authorization/rbac/#user-facing-roles). You can create `ClusterRoleBinding`s or `RoleBinding`s to grant permissions to your Github teams or Google groups. Say, you have a Github team called `ops`. You want to make the members of this Github team admin of a cluster. You can do that using the following command:
+
 ```console
 echo "
 kind: ClusterRoleBinding
