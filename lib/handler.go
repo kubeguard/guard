@@ -31,7 +31,6 @@ func Authenticate(w http.ResponseWriter, req *http.Request) {
 
 	switch strings.ToLower(org) {
 	case "github":
-		oneliners.FILE()
 		resp, code := checkGithub(crt.Subject.CommonName, data.Spec.Token)
 		Write(w, resp, code)
 		return

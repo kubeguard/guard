@@ -13,14 +13,12 @@ import (
 )
 
 func checkGithub(name, token string) (auth.TokenReview, int) {
-	oneliners.FILE()
 	ctx := context.Background()
 	client := github.NewClient(oauth2.NewClient(ctx, oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
 	)))
 
 	user, _, err := client.Users.Get(ctx, "")
-	oneliners.FILE(user, err)
 	if err != nil {
 		return Error(fmt.Sprintf("Failed to load user's Github profile. Reason: %v.", err)), http.StatusUnauthorized
 	}
@@ -37,7 +35,6 @@ func checkGithub(name, token string) (auth.TokenReview, int) {
 	pageSize := 25
 	for {
 		teams, _, err := client.Organizations.ListUserTeams(ctx, &github.ListOptions{Page: page, PerPage: pageSize})
-		oneliners.FILE(teams, err)
 		if err != nil {
 			return Error(fmt.Sprintf("Failed to load user's teams. Reason: %v.", err)), http.StatusUnauthorized
 		}
@@ -52,6 +49,5 @@ func checkGithub(name, token string) (auth.TokenReview, int) {
 		page++
 	}
 	data.Status.User.Groups = groups
-	oneliners.FILE(data)
 	return data, http.StatusOK
 }
