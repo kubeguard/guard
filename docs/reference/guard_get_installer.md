@@ -14,6 +14,7 @@ guard get installer [flags]
 ### Options
 
 ```
+      --addr string        Address (host:port) of guard server. (default "10.96.10.96:9844")
   -h, --help               help for installer
   -n, --namespace string   Name of Kubernetes namespace used to run guard server. (default "kube-system")
 ```
