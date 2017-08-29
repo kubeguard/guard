@@ -1,6 +1,6 @@
-# Tutorials
+# Tutorial
 
-Guard server requires TLS client certificate for authentication. This certificate is also used to identify whether to use Github or Google to check for user authentication. The `CommonName` and `Organization` fields in the client cert are used for this purpose.
+Guard is a [Kubernetes Webhook Authentication](https://kubernetes.io/docs/admin/authentication/#webhook-token-authentication) server. Guard server requires TLS client certificate for authentication. This certificate is also used to identify whether to use Github or Google to check for user authentication. The `CommonName` and `Organization` fields in the client cert are used for this purpose.
 
 ## Github Authenticator
 TO use Github, you need a client cert with `CommonName` set to Github organization name and `Organization` set to `Github`. To ease this process, use the Guard cli to issue a client cert/key pair.
