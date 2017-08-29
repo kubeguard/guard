@@ -31,8 +31,9 @@ func checkGithub(name, token string) (auth.TokenReview, int) {
 
 	groups := []string{}
 	page := 1
+	pageSize := 25
 	for {
-		teams, _, err := client.Organizations.ListUserTeams(ctx, &github.ListOptions{Page: page})
+		teams, _, err := client.Organizations.ListUserTeams(ctx, &github.ListOptions{Page: page, PerPage: pageSize})
 		if err != nil {
 			return Error(fmt.Sprintf("Failed to load user's teams. Reason: %v.", err)), http.StatusUnauthorized
 		}
@@ -41,8 +42,12 @@ func checkGithub(name, token string) (auth.TokenReview, int) {
 				groups = append(groups, team.GetName())
 			}
 		}
+		if len(teams) < pageSize {
+			break
+		}
 		page++
 	}
 	data.Status.User.Groups = groups
+	data.Status.Authenticated = true
 	return data, http.StatusOK
 }

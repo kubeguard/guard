@@ -1,5 +1,5 @@
 hash: e411cc8488690d7523b55ec7c6762104d011a8fecc6d0d6c68ca4b33754c68ad
-updated: 2017-08-28T06:05:47.57141384-07:00
+updated: 2017-08-29T07:03:10.640848992-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -11,7 +11,7 @@ imports:
 - name: github.com/appscode/errors
   version: 748883e321a9f99fe901bd2663c7af3fcae43ea4
 - name: github.com/appscode/go
-  version: 45732d59b2277b9c7ffdc41d2d5c07a899a20a70
+  version: a6256fcfa308eb6aa22fe292930fec3dba84ba6a
   subpackages:
   - env
   - runtime
@@ -52,7 +52,7 @@ imports:
 - name: github.com/fatih/color
   version: 9aae6aaa22315390f03959adca2c4d395b02fcef
 - name: github.com/ghodss/yaml
-  version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
+  version: 0ca9ea5df5451ffdf184b4428c902747c2c11cd7
 - name: github.com/go-openapi/jsonpointer
   version: 46af16f9f7b149af66e5d1bd010e3574dc06de98
 - name: github.com/go-openapi/jsonreference
@@ -73,7 +73,7 @@ imports:
   subpackages:
   - proto
 - name: github.com/google/go-github
-  version: d3b18a99b5c5056e1828984d62b2fb4cf6349073
+  version: 5f3187e17912ee2e3fbe2fa5bdada9d577d25e83
   subpackages:
   - github
 - name: github.com/google/go-querystring
@@ -83,7 +83,7 @@ imports:
 - name: github.com/google/gofuzz
   version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
 - name: github.com/howeyc/gopass
-  version: 3ca23474a7c7203e0a0a070fd33508f6efdb9b3d
+  version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/jpillora/go-ogle-analytics
@@ -136,6 +136,8 @@ imports:
   - doc
 - name: github.com/spf13/pflag
   version: e57e3eeb33f795204c1ca35f56c44f83227c6e66
+- name: github.com/tamalsaha/go-oneliners
+  version: 4ca214c0460d9077e49e3ef394785f92408f7699
 - name: github.com/ugorji/go
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
@@ -178,7 +180,7 @@ imports:
   - unicode/norm
   - width
 - name: google.golang.org/api
-  version: 7940d22908577b9021e0931c99b3a1d7a12e0d0e
+  version: 55146ba61254fdb1c26d65ff3c04bc1611ad73fb
   subpackages:
   - admin/directory/v1
   - gensupport

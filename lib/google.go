@@ -58,5 +58,6 @@ func checkGoogle(name, token string) (auth.TokenReview, int) {
 		pageToken = r2.NextPageToken
 	}
 	data.Status.User.Groups = groups
+	data.Status.Authenticated = true
 	return data, http.StatusOK
 }

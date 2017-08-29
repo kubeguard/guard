@@ -23,6 +23,7 @@ func Authenticate(w http.ResponseWriter, req *http.Request) {
 		Write(w, Error("Failed to parse request. Reason: "+err.Error()), http.StatusBadRequest)
 		return
 	}
+
 	switch strings.ToLower(org) {
 	case "github":
 		resp, code := checkGithub(crt.Subject.CommonName, data.Spec.Token)
