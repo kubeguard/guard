@@ -43,11 +43,16 @@ libbuild.BIN_MATRIX = {
         'type': 'go',
         'go_version': True,
         'distro': {
-            'alpine': ['amd64']
+            'alpine': ['amd64'],
+            'darwin': ['amd64'],
+            'linux': ['amd64'],
         }
     }
 }
-
+if libbuild.ENV not in ['prod']:
+    libbuild.BIN_MATRIX['guard']['distro'] = {
+        'alpine': ['amd64']
+    }
 libbuild.BUCKET_MATRIX = {
     'prod': 'gs://appscode-cdn',
     'dev': 'gs://appscode-dev'
