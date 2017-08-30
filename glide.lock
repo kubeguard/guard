@@ -1,5 +1,5 @@
 hash: e411cc8488690d7523b55ec7c6762104d011a8fecc6d0d6c68ca4b33754c68ad
-updated: 2017-08-29T19:49:45.941389132-07:00
+updated: 2017-08-29T21:37:36.966766813-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -13,7 +13,9 @@ imports:
 - name: github.com/appscode/go
   version: d1fbd14e5c6e78557c12f6d2c9c282b3c0d0c612
   subpackages:
+  - context
   - env
+  - log
   - runtime
   - strings
   - types

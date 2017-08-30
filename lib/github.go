@@ -19,7 +19,7 @@ func checkGithub(name, token string) (auth.TokenReview, int) {
 
 	user, _, err := client.Users.Get(ctx, "")
 	if err != nil {
-		return Error(fmt.Sprintf("Failed to load user's Github profile. Reason: %v.", err)), http.StatusUnauthorized
+		return Error(fmt.Sprintf("Failed to load user's Github profile for Org %s. Reason: %v.", name, err)), http.StatusUnauthorized
 	}
 	data := auth.TokenReview{}
 	data.Status = auth.TokenReviewStatus{
@@ -35,7 +35,7 @@ func checkGithub(name, token string) (auth.TokenReview, int) {
 	for {
 		teams, _, err := client.Organizations.ListUserTeams(ctx, &github.ListOptions{Page: page, PerPage: pageSize})
 		if err != nil {
-			return Error(fmt.Sprintf("Failed to load user's teams. Reason: %v.", err)), http.StatusUnauthorized
+			return Error(fmt.Sprintf("Failed to load user's teams for Org %s. Reason: %v.", name, err)), http.StatusUnauthorized
 		}
 		for _, team := range teams {
 			if team.Organization.GetLogin() == name {
