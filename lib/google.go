@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/appscode/go/log"
 	"golang.org/x/oauth2"
 	gdir "google.golang.org/api/admin/directory/v1"
 	gauth "google.golang.org/api/oauth2/v1"
@@ -20,11 +21,13 @@ func checkGoogle(name, token string) (auth.TokenReview, int) {
 
 	authSvc, err := gauth.New(client)
 	if err != nil {
-		return Error(fmt.Sprintf("Failed to create oauth2/v1 api client. Reason: %v.", err)), http.StatusUnauthorized
+		return Error(fmt.Sprintf("Failed to create oauth2/v1 api client for domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
 	}
 	r1, err := authSvc.Userinfo.Get().Do()
 	if err != nil {
-		return Error(fmt.Sprintf("Failed to load user info. Reason: %v.", err)), http.StatusUnauthorized
+		msg := fmt.Sprintf("Failed to load user info for domain %s. Reason: %v.", name, err)
+		log.Errorln(msg)
+		return Error(msg), http.StatusUnauthorized
 	}
 
 	data := auth.TokenReview{}
@@ -37,7 +40,7 @@ func checkGoogle(name, token string) (auth.TokenReview, int) {
 
 	svc, err := gdir.New(client)
 	if err != nil {
-		return Error(fmt.Sprintf("Failed to create admin/directory/v1 client. Reason: %v.", err)), http.StatusUnauthorized
+		return Error(fmt.Sprintf("Failed to create admin/directory/v1 client for domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
 	}
 
 	groups := []string{}
@@ -45,7 +48,7 @@ func checkGoogle(name, token string) (auth.TokenReview, int) {
 	for {
 		r2, err := svc.Groups.List().UserKey(r1.Email).PageToken(pageToken).Do()
 		if err != nil {
-			return Error(fmt.Sprintf("Failed to load user's groups. Reason: %v.", err)), http.StatusUnauthorized
+			return Error(fmt.Sprintf("Failed to load user's groups for domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
 		}
 		for _, group := range r2.Groups {
 			if strings.HasSuffix(group.Email, "@"+name) {

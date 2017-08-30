@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/appscode/go/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	auth "k8s.io/client-go/pkg/apis/authentication/v1beta1"
 )
@@ -25,7 +26,8 @@ func Write(w http.ResponseWriter, data auth.TokenReview, code int) {
 }
 
 // Error returns a `TokenReview` response with the specified error message.
-func Error(error string) auth.TokenReview {
+func Error(err string) auth.TokenReview {
+	log.Errorln(err)
 	return auth.TokenReview{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: apiVersion,
@@ -33,7 +35,7 @@ func Error(error string) auth.TokenReview {
 		},
 		Status: auth.TokenReviewStatus{
 			Authenticated: false,
-			Error:         error,
+			Error:         err,
 		},
 	}
 }
