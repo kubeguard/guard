@@ -20,14 +20,15 @@ func NewRootCmd(version string) *cobra.Command {
 		enableAnalytics = true
 	)
 	cmd := &cobra.Command{
-		Use:               "guard [command]",
-		Short:             `Guard by AppsCode - Kubernetes Authentication WebHook Server`,
-		DisableAutoGenTag: true,
+		Use:                "guard [command]",
+		Short:              `Guard by AppsCode - Kubernetes Authentication WebHook Server`,
+		DisableAutoGenTag:  true,
+		DisableFlagParsing: true,
 		PersistentPreRun: func(c *cobra.Command, args []string) {
 			c.Flags().VisitAll(func(flag *pflag.Flag) {
 				log.Printf("FLAG: --%s=%q", flag.Name, flag.Value)
 			})
-			if enableAnalytics && gaTrackingCode != "" && version != "" {
+			if enableAnalytics && gaTrackingCode != "" {
 				if client, err := ga.NewClient(gaTrackingCode); err == nil {
 					parts := strings.Split(c.CommandPath(), " ")
 					client.Send(ga.NewEvent(parts[0], strings.Join(parts[1:], "/")).Label(version))
