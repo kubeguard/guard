@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/appscode/go/log"
 	"golang.org/x/oauth2"
 	gdir "google.golang.org/api/admin/directory/v1"
 	gauth "google.golang.org/api/oauth2/v1"
@@ -25,9 +24,10 @@ func checkGoogle(name, token string) (auth.TokenReview, int) {
 	}
 	r1, err := authSvc.Userinfo.Get().Do()
 	if err != nil {
-		msg := fmt.Sprintf("Failed to load user info for domain %s. Reason: %v.", name, err)
-		log.Errorln(msg)
-		return Error(msg), http.StatusUnauthorized
+		return Error(fmt.Sprintf("Failed to load user info for domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
+	}
+	if !strings.HasSuffix(r1.Email, "@"+name) {
+		return Error(fmt.Sprintf("User is not a member of domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
 	}
 
 	data := auth.TokenReview{}
