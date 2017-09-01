@@ -17,15 +17,15 @@ func checkGithub(name, token string) (auth.TokenReview, int) {
 		&oauth2.Token{AccessToken: token},
 	)))
 
-	user, _, err := client.Users.Get(ctx, "")
+	mem, _, err := client.Organizations.GetOrgMembership(ctx, "", name)
 	if err != nil {
-		return Error(fmt.Sprintf("Failed to load user's Github profile for Org %s. Reason: %v.", name, err)), http.StatusUnauthorized
+		return Error(fmt.Sprintf("Failed to check user's membership in Org %s. Reason: %v.", name, err)), http.StatusUnauthorized
 	}
 	data := auth.TokenReview{}
 	data.Status = auth.TokenReviewStatus{
 		User: auth.UserInfo{
-			Username: user.GetLogin(),
-			UID:      strconv.Itoa(user.GetID()),
+			Username: mem.User.GetLogin(),
+			UID:      strconv.Itoa(mem.User.GetID()),
 		},
 	}
 
