@@ -16,7 +16,7 @@ func Authenticate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	org := crt.Subject.Organization[0]
-	log.Infoln("Received token review request for %s@%s", crt.Subject.CommonName, org)
+	log.Infof("Received token review request for %s@%s", crt.Subject.CommonName, org)
 
 	data := auth.TokenReview{}
 	err := json.NewDecoder(req.Body).Decode(&data)
