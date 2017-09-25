@@ -9,12 +9,12 @@ Download pre-built binaries from [appscode/guard Github releases](https://github
 
 ```console
 # Linux amd 64-bit:
-wget -O guard https://github.com/appscode/guard/releases/download/0.1.0-rc.3/guard-linux-amd64 \
+wget -O guard https://github.com/appscode/guard/releases/download/0.1.0-rc.4/guard-linux-amd64 \
   && chmod +x guard \
   && sudo mv guard /usr/local/bin/
 
 # Mac 64-bit
-wget -O guard https://github.com/appscode/guard/releases/download/0.1.0-rc.3/guard-darwin-amd64 \
+wget -O guard https://github.com/appscode/guard/releases/download/0.1.0-rc.4/guard-darwin-amd64 \
   && chmod +x guard \
   && sudo mv guard /usr/local/bin/
 ```
