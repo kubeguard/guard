@@ -3,6 +3,7 @@ package cmds
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/appscode/go-term"
 	"github.com/appscode/log"
@@ -12,7 +13,7 @@ import (
 )
 
 var (
-	rootDir = homedir.HomeDir()
+	rootDir = filepath.Join(homedir.HomeDir(), ".guard")
 )
 
 func NewCmdInitCA() *cobra.Command {
