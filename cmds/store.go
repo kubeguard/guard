@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"k8s.io/client-go/util/cert"
-	"k8s.io/client-go/util/homedir"
 )
 
 type CertStore struct {
@@ -19,8 +18,8 @@ type CertStore struct {
 	Expiry time.Duration
 }
 
-func NewCertStore() (*CertStore, error) {
-	dir := filepath.Join(homedir.HomeDir(), ".guard", "pki")
+func NewCertStore(rootDir string) (*CertStore, error) {
+	dir := filepath.Join(rootDir, ".guard", "pki")
 	err := os.MkdirAll(dir, 0755)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create dir `%s`. Reason: %v.", dir, err)

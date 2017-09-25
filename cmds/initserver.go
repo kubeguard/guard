@@ -27,7 +27,7 @@ func NewCmdInitServer() *cobra.Command {
 				Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 			}
 
-			store, err := NewCertStore()
+			store, err := NewCertStore(rootDir)
 			if err != nil {
 				log.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}
@@ -61,6 +61,7 @@ func NewCmdInitServer() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringVar(&rootDir, "pki-dir", rootDir, "Path to directory where pki files are stored.")
 	cmd.Flags().IPSliceVar(&sans.IPs, "ips", sans.IPs, "Alternative IP addresses")
 	cmd.Flags().StringSliceVar(&sans.DNSNames, "domains", sans.DNSNames, "Alternative Domain names")
 	return cmd

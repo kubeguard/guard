@@ -17,6 +17,7 @@ guard get webhook-config [flags]
       --addr string           Address (host:port) of guard server. (default "10.96.10.96:9844")
   -h, --help                  help for webhook-config
   -o, --organization string   Name of Organization (Github or Google).
+      --pki-dir string        Path to directory where pki files are stored. (default user's home directory)
 ```
 
 ### Options inherited from parent commands

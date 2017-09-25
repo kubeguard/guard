@@ -14,7 +14,8 @@ guard init ca [flags]
 ### Options
 
 ```
-  -h, --help   help for ca
+  -h, --help             help for ca
+      --pki-dir string   Path to directory where pki files are stored. (default user's home directory)
 ```
 
 ### Options inherited from parent commands
