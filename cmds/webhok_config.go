@@ -40,7 +40,7 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 				log.Fatalf("Unknown organization %s.", org)
 			}
 
-			store, err := NewCertStore()
+			store, err := NewCertStore(rootDir)
 			if err != nil {
 				log.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}
@@ -100,6 +100,7 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringVar(&rootDir, "pki-dir", rootDir, "Path to directory where pki files are stored.")
 	cmd.Flags().StringVarP(&org, "organization", "o", org, "Name of Organization (Github or Google).")
 	cmd.Flags().StringVar(&addr, "addr", "10.96.10.96:9844", "Address (host:port) of guard server.")
 	return cmd

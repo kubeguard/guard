@@ -34,7 +34,7 @@ func NewCmdInstaller() *cobra.Command {
 				log.Fatalf("Guard server port is invalid. Reason: %v.", err)
 			}
 
-			store, err := NewCertStore()
+			store, err := NewCertStore(rootDir)
 			if err != nil {
 				log.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}
@@ -77,6 +77,7 @@ func NewCmdInstaller() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringVar(&rootDir, "pki-dir", rootDir, "Path to directory where pki files are stored.")
 	cmd.Flags().StringVarP(&namespace, "namespace", "n", "kube-system", "Name of Kubernetes namespace used to run guard server.")
 	cmd.Flags().StringVar(&addr, "addr", "10.96.10.96:9844", "Address (host:port) of guard server.")
 	return cmd

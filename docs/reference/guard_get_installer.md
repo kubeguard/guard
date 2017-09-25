@@ -17,6 +17,7 @@ guard get installer [flags]
       --addr string        Address (host:port) of guard server. (default "10.96.10.96:9844")
   -h, --help               help for installer
   -n, --namespace string   Name of Kubernetes namespace used to run guard server. (default "kube-system")
+      --pki-dir string     Path to directory where pki files are stored. (default user's home directory)
 ```
 
 ### Options inherited from parent commands

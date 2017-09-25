@@ -59,7 +59,7 @@ total 32
 -rw------- 1 tamal tamal 1675 Aug 28 07:12 server.key
 ```
 
-As you can see, Guard stores the generated certificates in `.guard` subdirectory of home directory of user executing these commands. Guard can use either a Github organization or a Google Apps domain (now G Suite) to authenticate users for a Kubernetes cluster. A Kubernetes cluster can use one of these organization to authenticate users. But you can configure a single Guard server to perform authentication for multiple clusters, where each cluster uses a different auth provider.
+As you can see, Guard stores the generated certificates in `.guard` subdirectory of home directory of user executing these commands. You can change the location by passing the path to a different directory using [`--pki-dir`](https://github.com/appscode/guard/pull/25) flag. Guard can use either a Github organization or a Google Apps domain (now G Suite) to authenticate users for a Kubernetes cluster. A Kubernetes cluster can use one of these organization to authenticate users. But you can configure a single Guard server to perform authentication for multiple clusters, where each cluster uses a different auth provider.
 
 ## Deploy Guard server
 Now deploy Guard server so that your Kubernetes api server can access it. Use the command below to generate YAMLs for your particular setup. Then use `kubectl apply -f` to install Guard server.

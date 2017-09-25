@@ -8,6 +8,11 @@ import (
 	"github.com/appscode/log"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/util/cert"
+	"k8s.io/client-go/util/homedir"
+)
+
+var (
+	rootDir = homedir.HomeDir()
 )
 
 func NewCmdInitCA() *cobra.Command {
@@ -20,7 +25,7 @@ func NewCmdInitCA() *cobra.Command {
 				CommonName: "ca",
 			}
 
-			store, err := NewCertStore()
+			store, err := NewCertStore(rootDir)
 			if err != nil {
 				log.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}
@@ -45,5 +50,7 @@ func NewCmdInitCA() *cobra.Command {
 			term.Successln("Wrote ca certificates in ", store.Location())
 		},
 	}
+
+	cmd.Flags().StringVar(&rootDir, "pki-dir", rootDir, "Path to directory where pki files are stored.")
 	return cmd
 }
