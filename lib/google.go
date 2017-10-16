@@ -9,7 +9,7 @@ import (
 	"golang.org/x/oauth2"
 	gdir "google.golang.org/api/admin/directory/v1"
 	gauth "google.golang.org/api/oauth2/v1"
-	auth "k8s.io/client-go/pkg/apis/authentication/v1beta1"
+	auth "k8s.io/api/authentication/v1beta1"
 )
 
 func checkGoogle(name, token string) (auth.TokenReview, int) {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
-	auth "k8s.io/client-go/pkg/apis/authentication/v1beta1"
+	auth "k8s.io/api/authentication/v1beta1"
 )
 
 func checkGithub(name, token string) (auth.TokenReview, int) {

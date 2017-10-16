@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/appscode/go/log"
+	auth "k8s.io/api/authentication/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	auth "k8s.io/client-go/pkg/apis/authentication/v1beta1"
 )
 
 const apiVersion = "authentication.k8s.io/v1beta1"
