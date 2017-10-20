@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/appscode/go/log"
-	auth "k8s.io/client-go/pkg/apis/authentication/v1beta1"
+	auth "k8s.io/api/authentication/v1beta1"
 )
 
 func Authenticate(w http.ResponseWriter, req *http.Request) {
