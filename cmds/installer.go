@@ -13,7 +13,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	apps "k8s.io/api/apps/v1beta1"
-	apiv1 "k8s.io/api/core/v1"
+	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -87,8 +87,8 @@ var labels = map[string]string{
 	"app": "guard",
 }
 
-func createSecret(namespace string, cert, key, caCert []byte) apiv1.Secret {
-	return apiv1.Secret{
+func createSecret(namespace string, cert, key, caCert []byte) core.Secret {
+	return core.Secret{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
 			Kind:       "Secret",
@@ -119,12 +119,12 @@ func createDeployment(namespace string) apps.Deployment {
 		},
 		Spec: apps.DeploymentSpec{
 			Replicas: types.Int32P(1),
-			Template: apiv1.PodTemplateSpec{
+			Template: core.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
 				},
-				Spec: apiv1.PodSpec{
-					Containers: []apiv1.Container{
+				Spec: core.PodSpec{
+					Containers: []core.Container{
 						{
 							Name:  "guard",
 							Image: fmt.Sprintf("appscode/guard:%v", stringz.Val(v.Version.Version, "canary")),
@@ -135,19 +135,19 @@ func createDeployment(namespace string) apps.Deployment {
 								"--cert-file=/srv/guard/pki/tls.crt",
 								"--key-file=/srv/guard/pki/tls.key",
 							},
-							Ports: []apiv1.ContainerPort{
+							Ports: []core.ContainerPort{
 								{
 									Name:          "web",
-									Protocol:      apiv1.ProtocolTCP,
+									Protocol:      core.ProtocolTCP,
 									ContainerPort: webPort,
 								},
 								{
 									Name:          "ops",
-									Protocol:      apiv1.ProtocolTCP,
+									Protocol:      core.ProtocolTCP,
 									ContainerPort: opsPort,
 								},
 							},
-							VolumeMounts: []apiv1.VolumeMount{
+							VolumeMounts: []core.VolumeMount{
 								{
 									Name:      "guard-pki",
 									MountPath: "/srv/guard/pki",
@@ -155,11 +155,11 @@ func createDeployment(namespace string) apps.Deployment {
 							},
 						},
 					},
-					Volumes: []apiv1.Volume{
+					Volumes: []core.Volume{
 						{
 							Name: "guard-pki",
-							VolumeSource: apiv1.VolumeSource{
-								Secret: &apiv1.SecretVolumeSource{
+							VolumeSource: core.VolumeSource{
+								Secret: &core.SecretVolumeSource{
 									SecretName:  "guard-pki",
 									DefaultMode: types.Int32P(0555),
 								},
@@ -172,10 +172,10 @@ func createDeployment(namespace string) apps.Deployment {
 	}
 }
 
-func createService(namespace, addr string) apiv1.Service {
+func createService(namespace, addr string) core.Service {
 	host, port, _ := net.SplitHostPort(addr)
 	svcPort, _ := strconv.Atoi(port)
-	return apiv1.Service{
+	return core.Service{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
 			Kind:       "Service",
@@ -185,14 +185,14 @@ func createService(namespace, addr string) apiv1.Service {
 			Namespace: namespace,
 			Labels:    labels,
 		},
-		Spec: apiv1.ServiceSpec{
-			Type:      apiv1.ServiceTypeClusterIP,
+		Spec: core.ServiceSpec{
+			Type:      core.ServiceTypeClusterIP,
 			ClusterIP: host,
-			Ports: []apiv1.ServicePort{
+			Ports: []core.ServicePort{
 				{
 					Name:       "web",
 					Port:       int32(svcPort),
-					Protocol:   apiv1.ProtocolTCP,
+					Protocol:   core.ProtocolTCP,
 					TargetPort: intstr.FromString("web"),
 				},
 			},

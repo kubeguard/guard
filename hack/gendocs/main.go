@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-
-	"github.com/appscode/guard/cmds"
 	"github.com/appscode/go/runtime"
+	"github.com/appscode/guard/cmds"
 	"github.com/spf13/cobra/doc"
 )
 
