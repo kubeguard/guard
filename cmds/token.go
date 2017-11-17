@@ -2,10 +2,12 @@ package cmds
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
 
+	term "github.com/appscode/go-term"
 	"github.com/appscode/log"
 	"github.com/skratchdot/open-golang/open"
 	"github.com/spf13/cobra"
@@ -32,6 +34,8 @@ func NewCmdGetToken() *cobra.Command {
 			case "google":
 				getGoogleToken()
 				return
+			case "appscode":
+				getAppscodeToken()
 			case "":
 				log.Fatalln("Missing organization name. Set flag -o Google|Github.")
 			default:
@@ -95,4 +99,11 @@ func handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("x-content-type-options", "nosniff")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(token)
+}
+
+func getAppscodeToken() error {
+	teamId := term.Read("Team Id:")
+	endpoint := fmt.Sprintf("https://%v.appscode.com", teamId)
+	err := open.Start(strings.Join([]string{endpoint, "conduit", "login"}, "/"))
+	return err
 }
