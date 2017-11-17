@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	term "github.com/appscode/go-term"
-	"github.com/appscode/log"
+	"github.com/appscode/go/log"
+	term "github.com/appscode/go/term"
 	"github.com/skratchdot/open-golang/open"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"

@@ -9,8 +9,8 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	"github.com/appscode/go/log"
 	v "github.com/appscode/go/version"
-	"github.com/appscode/log"
 	"github.com/appscode/pat"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )

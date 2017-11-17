@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/appscode/log"
+	"github.com/appscode/go/log"
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	cli "k8s.io/client-go/tools/clientcmd/api/v1"

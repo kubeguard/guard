@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/appscode/go-term"
-	"github.com/appscode/log"
+	"github.com/appscode/go/log"
+	"github.com/appscode/go/term"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/util/cert"
 )

@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
+	logs "github.com/appscode/go/log/golog"
 	"github.com/appscode/guard/cmds"
-	logs "github.com/appscode/log/golog"
 )
 
 func main() {
