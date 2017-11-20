@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package internal contains support packages for oauth2 package.
 package internal
 
 import (
@@ -17,10 +18,9 @@ import (
 	"time"
 
 	"golang.org/x/net/context"
-	"golang.org/x/net/context/ctxhttp"
 )
 
-// Token represents the credentials used to authorize
+// Token represents the crendentials used to authorize
 // the requests to access protected resources on the OAuth 2.0
 // provider's backend.
 //
@@ -105,7 +105,6 @@ var brokenAuthHeaderProviders = []string{
 	"https://graph.facebook.com", // see https://github.com/golang/oauth2/issues/214
 	"https://login.microsoftonline.com/",
 	"https://login.salesforce.com/",
-	"https://login.windows.net",
 	"https://oauth.sandbox.trainingpeaks.com/",
 	"https://oauth.trainingpeaks.com/",
 	"https://oauth.vk.com/",
@@ -121,13 +120,11 @@ var brokenAuthHeaderProviders = []string{
 	"https://www.wunderlist.com/oauth/",
 	"https://api.patreon.com/",
 	"https://sandbox.codeswholesale.com/oauth/token",
-	"https://api.sipgate.com/v1/authorization/oauth",
 }
 
 // brokenAuthHeaderDomains lists broken providers that issue dynamic endpoints.
 var brokenAuthHeaderDomains = []string{
 	".force.com",
-	".myshopify.com",
 	".okta.com",
 	".oktapreview.com",
 }
@@ -187,9 +184,9 @@ func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string,
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if !bustedAuth {
-		req.SetBasicAuth(url.QueryEscape(clientID), url.QueryEscape(clientSecret))
+		req.SetBasicAuth(clientID, clientSecret)
 	}
-	r, err := ctxhttp.Do(ctx, hc, req)
+	r, err := hc.Do(req)
 	if err != nil {
 		return nil, err
 	}
