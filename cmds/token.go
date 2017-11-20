@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/appscode/appctl/pkg/config"
 	"github.com/appscode/go/log"
 	term "github.com/appscode/go/term"
+	"github.com/appscode/guard/lib"
 	"github.com/howeyc/gopass"
 	"github.com/skratchdot/open-golang/open"
 	"github.com/spf13/cobra"
@@ -115,11 +115,11 @@ func getAppscodeToken() error {
 	}
 
 	token := string(tokenBytes)
-	client := &config.ConduitClient{
+	client := &lib.ConduitClient{
 		Url:   strings.Join([]string{endpoint, "api", "user.whoami"}, "/"),
 		Token: token,
 	}
-	result := &config.WhoAmIResponse{}
+	result := &lib.WhoAmIResponse{}
 	err = client.Call().Into(result)
 	if err != nil {
 		term.Fatalln("Failed to validate token", err)
