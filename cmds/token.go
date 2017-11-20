@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/appscode/log"
+	"github.com/appscode/go/log"
 	"github.com/skratchdot/open-golang/open"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"

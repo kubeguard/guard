@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/appscode/errors"
 	"github.com/appscode/go/env"
+	"github.com/appscode/go/errors"
 	"github.com/fatih/color"
 )
 

@@ -1,8 +1,6 @@
 package: github.com/appscode/guard
 import:
-- package: github.com/appscode/go-term
 - package: github.com/appscode/go
-- package: github.com/appscode/log
 - package: github.com/appscode/pat
 - package: github.com/ghodss/yaml
   version: v1.0.0
@@ -20,8 +18,16 @@ import:
 - package: github.com/gogo/protobuf/proto
   version: c0656edd0d9eab7c66d1eb0c568f9039345796f7
 - package: k8s.io/api
-  version: fe29995db37613b9c5b2a647544cf627bfa8d299
+  version: release-1.8
 - package: k8s.io/apimachinery
-  version: 019ae5ada31de202164b118aee88ee2d14075c31
+  repo: https://github.com/tamalsaha/apimachinery.git
+  version: release-1.8
+  vcs: git
 - package: k8s.io/client-go
-  version: v5.0.0
+  version: kubernetes-1.8.3-beta.0
+- package: k8s.io/apiextensions-apiserver
+  version: release-1.8
+- package: k8s.io/kubernetes
+  repo: https://github.com/appscode/kubernetes.git
+  version: v1.8.3
+  vcs: git

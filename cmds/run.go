@@ -3,8 +3,8 @@ package cmds
 import (
 	"fmt"
 
+	"github.com/appscode/go/log"
 	"github.com/appscode/guard/lib"
-	"github.com/appscode/log"
 	"github.com/spf13/cobra"
 )
 
