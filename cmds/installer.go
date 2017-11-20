@@ -6,10 +6,10 @@ import (
 	"net"
 	"strconv"
 
+	"github.com/appscode/go/log"
 	stringz "github.com/appscode/go/strings"
 	"github.com/appscode/go/types"
 	v "github.com/appscode/go/version"
-	"github.com/appscode/log"
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	apps "k8s.io/api/apps/v1beta1"
