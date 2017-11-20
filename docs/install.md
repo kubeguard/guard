@@ -128,7 +128,7 @@ $ guard get token -o appscode
 ```
 ![guard-appscode](/docs/images/guard-appscode.png)
 
-After this run you have to provide your team id to get your token.
+After this run you have to provide your team id to get your token and paste it to verify.
 
 With this team id a browser page will open containing token information.
 ![appscode-token](/docs/images/appscode-token.png)
