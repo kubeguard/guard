@@ -47,8 +47,13 @@ Wrote client certificates in  /home/tamal/.guard/pki
 $ guard init client appscode.com -o google
 Wrote client certificates in  /home/tamal/.guard/pki
 
+$ guard init client qacode -o appscode
+Wrote client certificates in  /home/tamal/.guard/pki
+
 $ ls -l /home/tamal/.guard/pki
 total 32
+-rwxr-xr-- 1 tamal tamal 1054 Aug 28 07:42 qacode@appscode.crt
+-rw------- 1 tamal tamal 1679 Aug 28 07:42 qacode@appscode.key
 -rwxr-xr-- 1 tamal tamal 1054 Aug 28 07:42 appscode.com@google.crt
 -rw------- 1 tamal tamal 1679 Aug 28 07:42 appscode.com@google.key
 -rwxr-xr-- 1 tamal tamal 1050 Aug 28 07:12 appscode@github.crt
@@ -116,6 +121,17 @@ You can use the following command to issue a token:
 $ guard get token -o google
 ```
 This will run a local HTTP server to issue a token with appropriate OAuth2 scopes.
+
+You can use the following command to issue a token from your appscode organization.
+```
+$ guard get token -o appscode
+```
+![guard-appscode](/docs/images/guard-appscode.png)
+
+After this run you have to provide your team id to get your token.
+
+With this team id a browser page will open containing token information.
+![appscode-token](/docs/images/appscode-token.png)
 
 
 ## Configure kubectl

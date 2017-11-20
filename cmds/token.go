@@ -103,7 +103,7 @@ func handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
 
 func getAppscodeToken() error {
 	teamId := term.Read("Team Id:")
-	endpoint := fmt.Sprintf("https://%v.appscode.com", teamId)
+	endpoint := fmt.Sprintf("https://%v.appscode.io", teamId)
 	err := open.Start(strings.Join([]string{endpoint, "conduit", "login"}, "/"))
 	return err
 }

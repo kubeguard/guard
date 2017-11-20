@@ -34,6 +34,8 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 				cfg.Organization = []string{"Github"}
 			case "google":
 				cfg.Organization = []string{"Google"}
+			case "appscode":
+				cfg.Organization = []string{"Appscode"}
 			case "":
 				log.Fatalln("Missing organization name. Set flag -o Google|Github.")
 			default:
