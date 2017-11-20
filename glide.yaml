@@ -1,5 +1,9 @@
 package: github.com/appscode/guard
 import:
+- package: github.com/appscode/api
+  version: master
+- package: github.com/appscode/client
+  version: master
 - package: github.com/appscode/go
 - package: github.com/appscode/pat
 - package: github.com/ghodss/yaml
@@ -8,15 +12,19 @@ import:
 - package: github.com/jpillora/go-ogle-analytics
 - package: github.com/prometheus/client_golang
   version: v0.8.0
+- package: github.com/prometheus/common
+  version: 3233b24a36715a2fe36d162260457857a56d672d
+- package: github.com/sirupsen/logrus
+  version: v1.0.3
 - package: github.com/skratchdot/open-golang
 - package: github.com/spf13/cobra
+  version: v0.0.1
 - package: github.com/spf13/pflag
   version: v1.0.0
 - package: golang.org/x/net
 - package: golang.org/x/oauth2
 - package: google.golang.org/api
-- package: github.com/gogo/protobuf/proto
-  version: c0656edd0d9eab7c66d1eb0c568f9039345796f7
+  version: 98825bb0065da4054e5da6db34f5fc598e50bc24
 - package: k8s.io/api
   version: release-1.8
 - package: k8s.io/apimachinery
@@ -25,9 +33,11 @@ import:
   vcs: git
 - package: k8s.io/client-go
   version: kubernetes-1.8.3-beta.0
-- package: k8s.io/apiextensions-apiserver
-  version: release-1.8
-- package: k8s.io/kubernetes
-  repo: https://github.com/appscode/kubernetes.git
-  version: v1.8.3
+- package: github.com/golang/protobuf
+  version: 6e4cc92cc905d5f4a73041c1b8228ea08f4c6147
+- package: google.golang.org/grpc
+  version: v1.3.0
+- package: github.com/grpc-ecosystem/grpc-gateway
+  repo: https://github.com/appscode/grpc-gateway.git
   vcs: git
+  version: v1.2.2-ac
