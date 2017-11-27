@@ -1,3 +1,14 @@
+---
+title: Guard Init
+menu:
+  product_guard_0.1.0-rc.4:
+    identifier: guard-init
+    name: Guard Init
+    parent: reference
+product_name: guard
+left_menu: product_guard_0.1.0-rc.4
+section_menu_id: reference
+---
 ## guard init
 
 Init PKI
@@ -27,8 +38,8 @@ Init PKI
 ```
 
 ### SEE ALSO
-* [guard](guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
-* [guard init ca](guard_init_ca.md)	 - Init CA
-* [guard init client](guard_init_client.md)	 - Generate client certificate pair
-* [guard init server](guard_init_server.md)	 - Generate server certificate pair
+* [guard](/docs/reference/guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
+* [guard init ca](/docs/reference/guard_init_ca.md)	 - Init CA
+* [guard init client](/docs/reference/guard_init_client.md)	 - Generate client certificate pair
+* [guard init server](/docs/reference/guard_init_server.md)	 - Generate server certificate pair
 

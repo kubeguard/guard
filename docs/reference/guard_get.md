@@ -1,3 +1,14 @@
+---
+title: Guard Get
+menu:
+  product_guard_0.1.0-rc.4:
+    identifier: guard-get
+    name: Guard Get
+    parent: reference
+product_name: guard
+left_menu: product_guard_0.1.0-rc.4
+section_menu_id: reference
+---
 ## guard get
 
 Get PKI
@@ -27,8 +38,8 @@ Get PKI
 ```
 
 ### SEE ALSO
-* [guard](guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
-* [guard get installer](guard_get_installer.md)	 - Prints Kubernetes objects for deploying guard server
-* [guard get token](guard_get_token.md)	 - Get tokens for Github or Google
-* [guard get webhook-config](guard_get_webhook-config.md)	 - Prints authentication token webhook config file
+* [guard](/docs/reference/guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
+* [guard get installer](/docs/reference/guard_get_installer.md)	 - Prints Kubernetes objects for deploying guard server
+* [guard get token](/docs/reference/guard_get_token.md)	 - Get tokens for Github or Google
+* [guard get webhook-config](/docs/reference/guard_get_webhook-config.md)	 - Prints authentication token webhook config file
 

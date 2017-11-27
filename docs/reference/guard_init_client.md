@@ -1,3 +1,14 @@
+---
+title: Guard Init Client
+menu:
+  product_guard_0.1.0-rc.4:
+    identifier: guard-init-client
+    name: Guard Init Client
+    parent: reference
+product_name: guard
+left_menu: product_guard_0.1.0-rc.4
+section_menu_id: reference
+---
 ## guard init client
 
 Generate client certificate pair
@@ -33,5 +44,5 @@ guard init client [flags]
 ```
 
 ### SEE ALSO
-* [guard init](guard_init.md)	 - Init PKI
+* [guard init](/docs/reference/guard_init.md)	 - Init PKI
 

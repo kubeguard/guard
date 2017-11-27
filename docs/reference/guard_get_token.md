@@ -1,3 +1,14 @@
+---
+title: Guard Get Token
+menu:
+  product_guard_0.1.0-rc.4:
+    identifier: guard-get-token
+    name: Guard Get Token
+    parent: reference
+product_name: guard
+left_menu: product_guard_0.1.0-rc.4
+section_menu_id: reference
+---
 ## guard get token
 
 Get tokens for Github or Google
@@ -32,5 +43,5 @@ guard get token [flags]
 ```
 
 ### SEE ALSO
-* [guard get](guard_get.md)	 - Get PKI
+* [guard get](/docs/reference/guard_get.md)	 - Get PKI
 

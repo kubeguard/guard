@@ -1,3 +1,14 @@
+---
+title: Guard Get Webhook-Config
+menu:
+  product_guard_0.1.0-rc.4:
+    identifier: guard-get-webhook-config
+    name: Guard Get Webhook-Config
+    parent: reference
+product_name: guard
+left_menu: product_guard_0.1.0-rc.4
+section_menu_id: reference
+---
 ## guard get webhook-config
 
 Prints authentication token webhook config file
@@ -17,7 +28,7 @@ guard get webhook-config [flags]
       --addr string           Address (host:port) of guard server. (default "10.96.10.96:9844")
   -h, --help                  help for webhook-config
   -o, --organization string   Name of Organization (Github or Google).
-      --pki-dir string        Path to directory where pki files are stored. (default "~/.guard")
+      --pki-dir string        Path to directory where pki files are stored. (default "/home/tamal/.guard")
 ```
 
 ### Options inherited from parent commands
@@ -34,5 +45,5 @@ guard get webhook-config [flags]
 ```
 
 ### SEE ALSO
-* [guard get](guard_get.md)	 - Get PKI
+* [guard get](/docs/reference/guard_get.md)	 - Get PKI
 

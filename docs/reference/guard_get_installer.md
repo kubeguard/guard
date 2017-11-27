@@ -1,3 +1,14 @@
+---
+title: Guard Get Installer
+menu:
+  product_guard_0.1.0-rc.4:
+    identifier: guard-get-installer
+    name: Guard Get Installer
+    parent: reference
+product_name: guard
+left_menu: product_guard_0.1.0-rc.4
+section_menu_id: reference
+---
 ## guard get installer
 
 Prints Kubernetes objects for deploying guard server
@@ -34,5 +45,5 @@ guard get installer [flags]
 ```
 
 ### SEE ALSO
-* [guard get](guard_get.md)	 - Get PKI
+* [guard get](/docs/reference/guard_get.md)	 - Get PKI
 
