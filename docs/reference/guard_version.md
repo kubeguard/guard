@@ -1,3 +1,14 @@
+---
+title: Guard Version
+menu:
+  product_guard_0.1.0-rc.4:
+    identifier: guard-version
+    name: Guard Version
+    parent: reference
+product_name: guard
+left_menu: product_guard_0.1.0-rc.4
+section_menu_id: reference
+---
 ## guard version
 
 Prints binary version number.
@@ -31,5 +42,5 @@ guard version [flags]
 ```
 
 ### SEE ALSO
-* [guard](guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
+* [guard](/docs/reference/guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
 

@@ -1,3 +1,14 @@
+---
+title: Guard Init Server
+menu:
+  product_guard_0.1.0-rc.4:
+    identifier: guard-init-server
+    name: Guard Init Server
+    parent: reference
+product_name: guard
+left_menu: product_guard_0.1.0-rc.4
+section_menu_id: reference
+---
 ## guard init server
 
 Generate server certificate pair
@@ -34,5 +45,5 @@ guard init server [flags]
 ```
 
 ### SEE ALSO
-* [guard init](guard_init.md)	 - Init PKI
+* [guard init](/docs/reference/guard_init.md)	 - Init PKI
 

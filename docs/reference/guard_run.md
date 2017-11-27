@@ -1,3 +1,14 @@
+---
+title: Guard Run
+menu:
+  product_guard_0.1.0-rc.4:
+    identifier: guard-run
+    name: Guard Run
+    parent: reference
+product_name: guard
+left_menu: product_guard_0.1.0-rc.4
+section_menu_id: reference
+---
 ## guard run
 
 Run server
@@ -36,5 +47,5 @@ guard run [flags]
 ```
 
 ### SEE ALSO
-* [guard](guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
+* [guard](/docs/reference/guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
 

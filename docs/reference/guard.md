@@ -1,3 +1,19 @@
+---
+title: Guard
+menu:
+  product_guard_0.1.0-rc.4:
+    identifier: guard
+    name: Guard
+    parent: reference
+    weight: 0
+
+product_name: guard
+left_menu: product_guard_0.1.0-rc.4
+section_menu_id: reference
+aliases:
+  - products/guard/0.1.0-rc.4/reference/
+
+---
 ## guard
 
 Guard by AppsCode - Kubernetes Authentication WebHook Server
@@ -22,8 +38,8 @@ Guard by AppsCode - Kubernetes Authentication WebHook Server
 ```
 
 ### SEE ALSO
-* [guard get](guard_get.md)	 - Get PKI
-* [guard init](guard_init.md)	 - Init PKI
-* [guard run](guard_run.md)	 - Run server
-* [guard version](guard_version.md)	 - Prints binary version number.
+* [guard get](/docs/reference/guard_get.md)	 - Get PKI
+* [guard init](/docs/reference/guard_init.md)	 - Init PKI
+* [guard run](/docs/reference/guard_run.md)	 - Run server
+* [guard version](/docs/reference/guard_version.md)	 - Prints binary version number.
 
