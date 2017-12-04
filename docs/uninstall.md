@@ -1,3 +1,20 @@
+---
+title: Uninstall
+description: Guard Uninstall
+menu:
+  product_guard_0.1.1:
+    identifier: uninstall-guard
+    name: Uninstall
+    parent: getting-started
+    weight: 35
+product_name: guard
+menu_name: product_guard_0.1.1
+section_menu_id: getting-started
+url: /products/guard/0.1.1/getting-started/uninstall/
+aliases:
+  - /products/guard/0.1.1/uninstall/
+---
+
 # Uninstall Guard
 Please follow the steps below to uninstall Guard:
 
