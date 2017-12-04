@@ -10,7 +10,7 @@ menu:
 product_name: guard
 menu_name: product_guard_0.1.1
 section_menu_id: getting-started
-url: /products/guard/0.1.1/getting-started/overview/
+url: /products/guard/0.1.1/getting-started/
 aliases:
   - /products/guard/0.1.1/
   - /products/guard/0.1.1/README/
