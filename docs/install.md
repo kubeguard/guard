@@ -1,3 +1,20 @@
+---
+title: Install
+description: Guard Install
+menu:
+  product_guard_0.1.0-rc.4:
+    identifier: install-guard
+    name: Install
+    parent: getting-started
+    weight: 30
+product_name: guard
+menu_name: product_guard_0.1.0-rc.4
+section_menu_id: getting-started
+url: /products/guard/0.1.0-rc.4/getting-started/install/
+aliases:
+  - /products/guard/0.1.0-rc.4/install/
+---
+
 > New to Guard? Please start [here](/docs/tutorial.md).
 
 # Installation Guide
