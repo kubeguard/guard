@@ -2,17 +2,17 @@
 title: Tutorial
 description: Tutorial
 menu:
-  product_guard_0.1.1:
+  product_guard_0.1.0-rc.4:
     identifier: guard-tutorial
     name: Tutorial
     parent: getting-started
     weight: 40
 product_name: guard
-menu_name: product_guard_0.1.1
+menu_name: product_guard_0.1.0-rc.4
 section_menu_id: getting-started
-url: /products/guard/0.1.1/getting-started/tutorial/
+url: /products/guard/0.1.0-rc.4/getting-started/tutorial/
 aliases:
-  - /products/guard/0.1.1/tutorial/
+  - /products/guard/0.1.0-rc.4/tutorial/
 ---
 # Tutorial
 
