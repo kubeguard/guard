@@ -5,11 +5,7 @@ import (
 
 	"github.com/appscode/go/log"
 	"github.com/appscode/guard/lib"
-	"github.com/appscode/kutil/meta"
-	"github.com/appscode/kutil/tools/analytics"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 const (
@@ -30,16 +26,6 @@ func NewCmdRun() *cobra.Command {
 			if !srv.UseTLS() {
 				log.Fatalln("Guard server must use SSL.")
 			}
-
-			if meta.PossiblyInCluster() {
-				config, err := rest.InClusterConfig()
-				if err != nil {
-					log.Fatalln(err)
-				}
-				kubeClient := kubernetes.NewForConfigOrDie(config)
-				sendAnalytics(cmd, analytics.ClientID(kubeClient.CoreV1().Nodes()))
-			}
-
 			srv.ListenAndServe()
 		},
 	}
