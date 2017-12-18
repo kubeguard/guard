@@ -14,12 +14,17 @@ import (
 	"github.com/spf13/cobra"
 	apps "k8s.io/api/apps/v1beta1"
 	core "k8s.io/api/core/v1"
+	rbac "k8s.io/api/rbac/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func NewCmdInstaller() *cobra.Command {
-	var namespace, addr string
+	var (
+		namespace  string
+		addr       string
+		enableRBAC bool
+	)
 	cmd := &cobra.Command{
 		Use:               "installer",
 		Short:             "Prints Kubernetes objects for deploying guard server",
@@ -55,17 +60,42 @@ func NewCmdInstaller() *cobra.Command {
 			}
 
 			var buf bytes.Buffer
+			if enableRBAC {
+				saBytes, err := yaml.Marshal(createServiceAccount(namespace))
+				if err != nil {
+					log.Fatalln(err)
+				}
+				buf.Write(saBytes)
+
+				buf.WriteString("---\n")
+				roleBytes, err := yaml.Marshal(createRole(namespace))
+				if err != nil {
+					log.Fatalln(err)
+				}
+				buf.Write(roleBytes)
+
+				buf.WriteString("---\n")
+				rbBytes, err := yaml.Marshal(createRoleBinding(namespace))
+				if err != nil {
+					log.Fatalln(err)
+				}
+				buf.Write(rbBytes)
+			}
+
+			buf.WriteString("---\n")
 			secBytes, err := yaml.Marshal(createSecret(namespace, serverCert, serverKey, caCert))
 			if err != nil {
 				log.Fatalln(err)
 			}
 			buf.Write(secBytes)
+
 			buf.WriteString("---\n")
-			depBytes, err := yaml.Marshal(createDeployment(namespace))
+			depBytes, err := yaml.Marshal(createDeployment(namespace, enableRBAC))
 			if err != nil {
 				log.Fatalln(err)
 			}
 			buf.Write(depBytes)
+
 			buf.WriteString("---\n")
 			svcBytes, err := yaml.Marshal(createService(namespace, addr))
 			if err != nil {
@@ -80,6 +110,7 @@ func NewCmdInstaller() *cobra.Command {
 	cmd.Flags().StringVar(&rootDir, "pki-dir", rootDir, "Path to directory where pki files are stored.")
 	cmd.Flags().StringVarP(&namespace, "namespace", "n", "kube-system", "Name of Kubernetes namespace used to run guard server.")
 	cmd.Flags().StringVar(&addr, "addr", "10.96.10.96:9844", "Address (host:port) of guard server.")
+	cmd.Flags().BoolVar(&enableRBAC, "rbac", enableRBAC, "If true, uses RBAC with operator and database objects")
 	return cmd
 }
 
@@ -90,7 +121,7 @@ var labels = map[string]string{
 func createSecret(namespace string, cert, key, caCert []byte) core.Secret {
 	return core.Secret{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
+			APIVersion: core.SchemeGroupVersion.String(),
 			Kind:       "Secret",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -106,10 +137,10 @@ func createSecret(namespace string, cert, key, caCert []byte) core.Secret {
 	}
 }
 
-func createDeployment(namespace string) apps.Deployment {
-	return apps.Deployment{
+func createDeployment(namespace string, enableRBAC bool) apps.Deployment {
+	d := apps.Deployment{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "apps/v1beta1",
+			APIVersion: apps.SchemeGroupVersion.String(),
 			Kind:       "Deployment",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -170,6 +201,10 @@ func createDeployment(namespace string) apps.Deployment {
 			},
 		},
 	}
+	if enableRBAC {
+		d.Spec.Template.Spec.ServiceAccountName = "guard"
+	}
+	return d
 }
 
 func createService(namespace, addr string) core.Service {
@@ -177,7 +212,7 @@ func createService(namespace, addr string) core.Service {
 	svcPort, _ := strconv.Atoi(port)
 	return core.Service{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
+			APIVersion: core.SchemeGroupVersion.String(),
 			Kind:       "Service",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -197,6 +232,67 @@ func createService(namespace, addr string) core.Service {
 				},
 			},
 			Selector: labels,
+		},
+	}
+}
+
+func createServiceAccount(namespace string) core.ServiceAccount {
+	return core.ServiceAccount{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: core.SchemeGroupVersion.String(),
+			Kind:       "ServiceAccount",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "guard",
+			Namespace: namespace,
+			Labels:    labels,
+		},
+	}
+}
+
+func createRole(namespace string) rbac.Role {
+	return rbac.Role{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: rbac.SchemeGroupVersion.String(),
+			Kind:       "Role",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "guard",
+			Namespace: namespace,
+			Labels:    labels,
+		},
+		Rules: []rbac.PolicyRule{
+			{
+				APIGroups: []string{core.GroupName},
+				Resources: []string{"nodes"},
+				Verbs:     []string{"list"},
+			},
+		},
+	}
+}
+
+func createRoleBinding(namespace string) rbac.RoleBinding {
+	return rbac.RoleBinding{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: rbac.SchemeGroupVersion.String(),
+			Kind:       "RoleBinding",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "guard",
+			Namespace: namespace,
+			Labels:    labels,
+		},
+		RoleRef: rbac.RoleRef{
+			APIGroup: rbac.GroupName,
+			Kind:     "Role",
+			Name:     "guard",
+		},
+		Subjects: []rbac.Subject{
+			{
+				Kind:      rbac.ServiceAccountKind,
+				Name:      "guard",
+				Namespace: namespace,
+			},
 		},
 	}
 }

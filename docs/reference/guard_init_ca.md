@@ -6,7 +6,7 @@ menu:
     name: Guard Init Ca
     parent: reference
 product_name: guard
-left_menu: product_guard_0.1.0-rc.4
+menu_name: product_guard_0.1.0-rc.4
 section_menu_id: reference
 ---
 ## guard init ca
@@ -26,7 +26,7 @@ guard init ca [flags]
 
 ```
   -h, --help             help for ca
-      --pki-dir string   Path to directory where pki files are stored. (default "~/.guard")
+      --pki-dir string   Path to directory where pki files are stored. (default "/home/tamal/.guard")
 ```
 
 ### Options inherited from parent commands

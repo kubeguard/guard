@@ -6,7 +6,7 @@ menu:
     name: Guard Get Installer
     parent: reference
 product_name: guard
-left_menu: product_guard_0.1.0-rc.4
+menu_name: product_guard_0.1.0-rc.4
 section_menu_id: reference
 ---
 ## guard get installer
@@ -28,7 +28,8 @@ guard get installer [flags]
       --addr string        Address (host:port) of guard server. (default "10.96.10.96:9844")
   -h, --help               help for installer
   -n, --namespace string   Name of Kubernetes namespace used to run guard server. (default "kube-system")
-      --pki-dir string     Path to directory where pki files are stored. (default "~/.guard")
+      --pki-dir string     Path to directory where pki files are stored. (default "/home/tamal/.guard")
+      --rbac               If true, uses RBAC with operator and database objects
 ```
 
 ### Options inherited from parent commands
