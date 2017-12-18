@@ -40,6 +40,8 @@ It has these top-level messages:
 	ClusterDeleteResponse
 	ClusterApplyRequest
 	ClusterMetadataRequest
+	ClusterClientConfigRequest
+	ClusterClientConfigResponse
 	ClusterMetadataResponse
 	NodeGroupListRequest
 	NodeGroupListResponse
