@@ -1,19 +1,14 @@
-hash: 4e0ef94bce7b4f789d681988fd141f1e9b2e5d221505e32bee113a0a67dad2f6
-updated: 2017-11-19T21:23:40.787204227-08:00
+hash: d97a3bfcb29da02a3b7d0cbdb877c95d81571c74ae65f4f6dcc240eab55a2043
+updated: 2017-12-18T04:54:59.870462404-05:00
 imports:
-- name: cloud.google.com/go
-  version: 3b1ae45394a234c385be014e9a488f2bb6eef821
-  subpackages:
-  - compute/metadata
-  - internal
-- name: github.com/appscode/api
-  version: 8da2a4d326ce313d6864b33b8684d92504aacd65
+- name: appscode.com/api
+  version: a56420597a48de606681c5a4a102acaacc95d148
+  repo: https://bitbucket.org/appscode/api.git
   subpackages:
   - attic/v1beta1
   - auth/v1beta1
-  - certificate/v1beta1
   - ci/v1beta1
-  - cluster/v1alpha1
+  - cloud/v1alpha1
   - dtypes
   - health
   - kubernetes/v1beta1
@@ -21,13 +16,19 @@ imports:
   - namespace/v1beta1
   - operation/v1beta1
   - version
-- name: github.com/appscode/client
-  version: 8d18d78a30bcbc882700ee1d7ef599f2e2dacbd0
+- name: appscode.com/client-go
+  version: 626850f4c3b63bd3429a071505d0145690c9afe2
+  repo: https://bitbucket.org/appscode/client-go.git
   subpackages:
   - credential
   - util
+- name: cloud.google.com/go
+  version: 3b1ae45394a234c385be014e9a488f2bb6eef821
+  subpackages:
+  - compute/metadata
+  - internal
 - name: github.com/appscode/go
-  version: 1cd97c853ad364376f9c792106deb0bfd197bca0
+  version: cb650d0b1a3c04a86595cf2a31fa704dbf1bc42a
   subpackages:
   - context
   - env
@@ -41,16 +42,12 @@ imports:
   - version
 - name: github.com/appscode/pat
   version: 48ff78925b7955367d8a048fc2b5cec8efadf8d3
-- name: github.com/appscode/pharmer
-  version: 2366785b37f1d3f37aa887813cb5c42fdfa31b51
-  subpackages:
-  - apis/v1alpha1
 - name: github.com/beorn7/perks
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
   - quantile
 - name: github.com/cpuguy83/go-md2man
-  version: 1d903dcb749992f3741d744c0f8376b4bd7eb3e1
+  version: 71acacd42f85e5e82f70a55327789582a5200a90
   subpackages:
   - md2man
 - name: github.com/emicklei/go-restful
@@ -60,7 +57,7 @@ imports:
 - name: github.com/facebookgo/stack
   version: 751773369052141c013c6e827a71e8f35c07879c
 - name: github.com/fatih/color
-  version: 9131ab34cf20d2f6d83fdc67168a5430d1c7dc23
+  version: 570b54cabe6b8eb0bc2dfce68d964677d63b5260
 - name: github.com/ghodss/yaml
   version: 0ca9ea5df5451ffdf184b4428c902747c2c11cd7
 - name: github.com/go-openapi/jsonpointer
@@ -87,7 +84,7 @@ imports:
   - ptypes/any
   - ptypes/struct
 - name: github.com/google/go-github
-  version: 471e67c93cdd36a5f7c9bba5d6d11665ba12147d
+  version: fbfee053c26dab3772adfc7799d995eed379133e
   subpackages:
   - github
 - name: github.com/google/go-querystring
@@ -97,7 +94,7 @@ imports:
 - name: github.com/google/gofuzz
   version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
 - name: github.com/google/uuid
-  version: 8c31c18f31ede9fc8eae72290a7e7a8064e9b3e3
+  version: dec09d789f3dba190787f8b4454c7d3c936fed9e
 - name: github.com/grpc-ecosystem/grpc-gateway
   version: 42a2d1c4991e79a4a8318984e5c81031b21f3c76
   repo: https://github.com/appscode/grpc-gateway.git
@@ -107,6 +104,10 @@ imports:
   - runtime/internal
   - third_party/appscodeapis/appscode/api
   - utilities
+- name: github.com/hashicorp/go-version
+  version: ac737305c16432f4c660c6fc68cdcda4b5a0b5ae
+  repo: https://github.com/appscode/go-version.git
+  vcs: git
 - name: github.com/howeyc/gopass
   version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/inconshreveable/mousetrap
@@ -129,6 +130,10 @@ imports:
   version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
   subpackages:
   - pbutil
+- name: github.com/pharmer/pharmer
+  version: cfb56ef4afab2210bd66ffb98412b1f74c269987
+  subpackages:
+  - apis/v1alpha1
 - name: github.com/prometheus/client_golang
   version: c5b7fccd204277076155f10851dad72b76a49317
   subpackages:
@@ -224,7 +229,7 @@ imports:
   - googleapi/internal/uritemplates
   - oauth2/v1
 - name: google.golang.org/appengine
-  version: 9d8544a6b2c7df9cff240fcf92d7b2f59bc13416
+  version: 5bee14b453b4c71be47ec1781b0fa61c2ea182db
   subpackages:
   - internal
   - internal/app_identity
@@ -236,7 +241,7 @@ imports:
   - internal/urlfetch
   - urlfetch
 - name: google.golang.org/genproto
-  version: 11c7f9e547da6db876260ce49ea7536985904c9b
+  version: 09f6ed296fc66555a25fe4ce95173148778dfa85
   subpackages:
   - googleapis/api/annotations
   - googleapis/rpc/status
@@ -259,7 +264,7 @@ imports:
 - name: gopkg.in/inf.v0
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/yaml.v2
-  version: 287cf08546ab5e7e37d55a84f7ed3fd1db036de5
+  version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
 - name: k8s.io/api
   version: 4df58c811fe2e65feb879227b2b245e4dc26e7ad
   subpackages:
