@@ -1,14 +1,21 @@
 package: github.com/appscode/guard
 import:
-- package: github.com/appscode/api
+- package: appscode.com/api
+  repo: https://bitbucket.org/appscode/api.git
   version: master
-- package: github.com/appscode/client
+- package: appscode.com/client-go
+  repo: https://bitbucket.org/appscode/client-go.git
   version: master
 - package: github.com/appscode/go
+  version: master
 - package: github.com/appscode/pat
 - package: github.com/ghodss/yaml
   version: v1.0.0
 - package: github.com/google/go-github
+- package: github.com/hashicorp/go-version
+  repo: https://github.com/appscode/go-version.git
+  vcs: git
+  version: master
 - package: github.com/jpillora/go-ogle-analytics
 - package: github.com/prometheus/client_golang
   version: v0.8.0
@@ -26,7 +33,7 @@ import:
 - package: google.golang.org/api
   version: 98825bb0065da4054e5da6db34f5fc598e50bc24
 - package: k8s.io/api
-  version: release-1.8
+  version: kubernetes-1.8.3
 - package: k8s.io/apimachinery
   repo: https://github.com/tamalsaha/apimachinery.git
   version: release-1.8

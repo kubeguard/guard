@@ -9,9 +9,9 @@ import (
 	"net/url"
 	"strings"
 
-	api "github.com/appscode/api/auth/v1beta1"
-	"github.com/appscode/api/dtypes"
-	appscode "github.com/appscode/client"
+	api "appscode.com/api/auth/v1beta1"
+	"appscode.com/api/dtypes"
+	"appscode.com/client-go"
 	_env "github.com/appscode/go/env"
 	auth "k8s.io/api/authentication/v1beta1"
 )
@@ -42,24 +42,24 @@ type ConduitClient struct {
 
 func checkAppscode(name, token string) (auth.TokenReview, int) {
 	ctx := context.Background()
-	options := appscode.NewOption(_env.ProdApiServer)
-	options.UserAgent("appscode/guard")
+	options := client.NewOption(_env.ProdApiServer)
+	options.UserAgent("c/guard")
 	/*namespace := strings.Split(name, ".")
 	if len(namespace) != 3 {
 		return Error(fmt.Sprintf("Failed to detect namespace from domain: %v", name)), http.StatusUnauthorized
 	}*/
 	options = options.BearerAuth(name, token)
-	client, err := appscode.New(options)
+	c, err := client.New(options)
 	if err != nil {
-		return Error(fmt.Sprintf("Failed to create oauth2/v1 api client for domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
+		return Error(fmt.Sprintf("Failed to create oauth2/v1 api c for domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
 	}
 
-	user, err := client.Authentication().Conduit().WhoAmI(ctx, &dtypes.VoidRequest{})
+	user, err := c.Authentication().Conduit().WhoAmI(ctx, &dtypes.VoidRequest{})
 	if err != nil {
-		return Error(fmt.Sprintf("Failed to load user info for domain %s.appscode.com. Reason: %v.", name, err)), http.StatusUnauthorized
+		return Error(fmt.Sprintf("Failed to load user info for domain %s.c.com. Reason: %v.", name, err)), http.StatusUnauthorized
 	}
 
-	projects, err := client.Authentication().Project().List(ctx, &api.ProjectListRequest{
+	projects, err := c.Authentication().Project().List(ctx, &api.ProjectListRequest{
 		WithMember: false,
 		Members:    []string{user.User.Phid},
 	})
@@ -74,7 +74,7 @@ func checkAppscode(name, token string) (auth.TokenReview, int) {
 		},
 	}
 
-	groups := []string{}
+	var groups []string
 	for _, project := range projects.Projects {
 		groups = append(groups, project.Name)
 	}
