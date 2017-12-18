@@ -1,5 +1,5 @@
 hash: d97a3bfcb29da02a3b7d0cbdb877c95d81571c74ae65f4f6dcc240eab55a2043
-updated: 2017-12-18T14:47:38.431799872-05:00
+updated: 2017-12-18T15:25:28.071103075-05:00
 imports:
 - name: appscode.com/api
   version: 24f1e574670d06f58116ad5df30c5cc803f7b4fd
@@ -43,7 +43,7 @@ imports:
   - types
   - version
 - name: github.com/appscode/kutil
-  version: 4d48d2cfab8ea01cd3b58a8f494734725f60acda
+  version: 582273a0791d4d99ab1345d9e4867bec460aaf5a
   subpackages:
   - meta
   - tools/analytics
@@ -214,7 +214,7 @@ imports:
 - name: github.com/xeipuuv/gojsonschema
   version: 93e72a773fade158921402d6a24c819b48aba29d
 - name: golang.org/x/crypto
-  version: 84e98f45760e87786b7f24603b8166a6fa09811d
+  version: 81e90905daefcd6fd217b62423c0908922eadb30
   subpackages:
   - ssh/terminal
 - name: golang.org/x/net
@@ -239,6 +239,7 @@ imports:
   version: 7ddbeae9ae08c6a06a59597f0c9edbc5ff2444ce
   subpackages:
   - unix
+  - windows
 - name: golang.org/x/text
   version: b19bf474d317b857955b12035d2c5acb57ce8b01
   subpackages:
