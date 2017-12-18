@@ -299,6 +299,33 @@ func request_Clusters_Apply_0(ctx context.Context, marshaler runtime.Marshaler, 
 
 }
 
+func request_Clusters_ClientConfig_0(ctx context.Context, marshaler runtime.Marshaler, client ClustersClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq ClusterClientConfigRequest
+	var metadata runtime.ServerMetadata
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["name"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "name")
+	}
+
+	protoReq.Name, err = runtime.String(val)
+
+	if err != nil {
+		return nil, metadata, err
+	}
+
+	msg, err := client.ClientConfig(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
 func request_Clusters_Metadata_0(ctx context.Context, marshaler runtime.Marshaler, client ClustersClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ClusterMetadataRequest
 	var metadata runtime.ServerMetadata
@@ -472,10 +499,6 @@ func request_NodeGroups_Update_0(ctx context.Context, marshaler runtime.Marshale
 
 }
 
-var (
-	filter_NodeGroups_Delete_0 = &utilities.DoubleArray{Encoding: map[string]int{"clusterName": 0, "name": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
-)
-
 func request_NodeGroups_Delete_0(ctx context.Context, marshaler runtime.Marshaler, client NodeGroupsClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq NodeGroupDeleteRequest
 	var metadata runtime.ServerMetadata
@@ -507,10 +530,6 @@ func request_NodeGroups_Delete_0(ctx context.Context, marshaler runtime.Marshale
 
 	if err != nil {
 		return nil, metadata, err
-	}
-
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_NodeGroups_Delete_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.Delete(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -959,6 +978,35 @@ func RegisterClustersHandler(ctx context.Context, mux *runtime.ServeMux, conn *g
 
 	})
 
+	mux.Handle("GET", pattern_Clusters_ClientConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		if cn, ok := w.(http.CloseNotifier); ok {
+			go func(done <-chan struct{}, closed <-chan bool) {
+				select {
+				case <-done:
+				case <-closed:
+					cancel()
+				}
+			}(ctx.Done(), cn.CloseNotify())
+		}
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_Clusters_ClientConfig_0(rctx, inboundMarshaler, client, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_Clusters_ClientConfig_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
 	mux.Handle("GET", pattern_Clusters_Metadata_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
@@ -1004,6 +1052,8 @@ var (
 
 	pattern_Clusters_Apply_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 2, 7, 2, 8}, []string{"_appscode", "api", "cloud", "v1alpha1", "clusters", "name", "actions", "apply", "json"}, ""))
 
+	pattern_Clusters_ClientConfig_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 2, 7}, []string{"_appscode", "api", "cloud", "v1alpha1", "clusters", "name", "client-config", "json"}, ""))
+
 	pattern_Clusters_Metadata_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 2, 7}, []string{"_appscode", "api", "cloud", "v1alpha1", "clusters", "uid", "metadata", "json"}, ""))
 )
 
@@ -1019,6 +1069,8 @@ var (
 	forward_Clusters_Delete_0 = runtime.ForwardResponseMessage
 
 	forward_Clusters_Apply_0 = runtime.ForwardResponseMessage
+
+	forward_Clusters_ClientConfig_0 = runtime.ForwardResponseMessage
 
 	forward_Clusters_Metadata_0 = runtime.ForwardResponseMessage
 )

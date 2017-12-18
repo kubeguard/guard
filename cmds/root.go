@@ -5,7 +5,9 @@ import (
 	"log"
 	"strings"
 
+	"github.com/appscode/go/analytics"
 	v "github.com/appscode/go/version"
+	"github.com/appscode/kutil/meta"
 	"github.com/jpillora/go-ogle-analytics"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -15,10 +17,11 @@ const (
 	gaTrackingCode = "UA-62096468-20"
 )
 
+var (
+	enableAnalytics = true
+)
+
 func NewRootCmd(version string) *cobra.Command {
-	var (
-		enableAnalytics = true
-	)
 	cmd := &cobra.Command{
 		Use:                "guard [command]",
 		Short:              `Guard by AppsCode - Kubernetes Authentication WebHook Server`,
@@ -28,11 +31,8 @@ func NewRootCmd(version string) *cobra.Command {
 			c.Flags().VisitAll(func(flag *pflag.Flag) {
 				log.Printf("FLAG: --%s=%q", flag.Name, flag.Value)
 			})
-			if enableAnalytics && gaTrackingCode != "" {
-				if client, err := ga.NewClient(gaTrackingCode); err == nil {
-					parts := strings.Split(c.CommandPath(), " ")
-					client.Send(ga.NewEvent(parts[0], strings.Join(parts[1:], "/")).Label(version))
-				}
+			if !meta.PossiblyInCluster() {
+				sendAnalytics(c, analytics.ClientID())
 			}
 		},
 	}
@@ -46,4 +46,14 @@ func NewRootCmd(version string) *cobra.Command {
 	cmd.AddCommand(NewCmdRun())
 	cmd.AddCommand(v.NewCmdVersion())
 	return cmd
+}
+
+func sendAnalytics(c *cobra.Command, clientID string) {
+	if enableAnalytics && gaTrackingCode != "" {
+		if client, err := ga.NewClient(gaTrackingCode); err == nil {
+			client.ClientID(clientID)
+			parts := strings.Split(c.CommandPath(), " ")
+			client.Send(ga.NewEvent(parts[0], strings.Join(parts[1:], "/")).Label(v.Version.Version))
+		}
+	}
 }
