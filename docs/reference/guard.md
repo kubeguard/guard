@@ -8,7 +8,7 @@ menu:
     weight: 0
 
 product_name: guard
-left_menu: product_guard_0.1.0-rc.4
+menu_name: product_guard_0.1.0-rc.4
 section_menu_id: reference
 aliases:
   - products/guard/0.1.0-rc.4/reference/
