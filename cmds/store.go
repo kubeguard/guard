@@ -22,7 +22,7 @@ func NewCertStore(rootDir string) (*CertStore, error) {
 	dir := filepath.Join(rootDir, "pki")
 	err := os.MkdirAll(dir, 0755)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create dir `%s`. Reason: %v.", dir, err)
+		return nil, fmt.Errorf("failed to create dir `%s`. Reason: %v", dir, err)
 	}
 	return &CertStore{dir: dir}, nil
 }
@@ -67,10 +67,10 @@ func (s *CertStore) KeyFile(name string) string {
 
 func (s *CertStore) Write(name string, crt *x509.Certificate, key *rsa.PrivateKey) error {
 	if err := ioutil.WriteFile(s.CertFile(name), cert.EncodeCertPEM(crt), 0644); err != nil {
-		return fmt.Errorf("Failed to write `%s`. Reason. %v.", s.CertFile(name), err)
+		return fmt.Errorf("failed to write `%s`. Reason: %v", s.CertFile(name), err)
 	}
 	if err := ioutil.WriteFile(s.KeyFile(name), cert.EncodePrivateKeyPEM(key), 0600); err != nil {
-		return fmt.Errorf("Failed to write `%s`. Reason. %v.", s.KeyFile(name), err)
+		return fmt.Errorf("failed to write `%s`. Reason: %v", s.KeyFile(name), err)
 	}
 	return nil
 }
@@ -78,20 +78,20 @@ func (s *CertStore) Write(name string, crt *x509.Certificate, key *rsa.PrivateKe
 func (s *CertStore) Read(name string) (*x509.Certificate, *rsa.PrivateKey, error) {
 	crtBytes, err := ioutil.ReadFile(s.CertFile(name))
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to read certificate `%s`.Reason: %v.", s.CertFile(name), err)
+		return nil, nil, fmt.Errorf("failed to read certificate `%s`.Reason: %v", s.CertFile(name), err)
 	}
 	crt, err := cert.ParseCertsPEM(crtBytes)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to parse certificate `%s`.Reason: %v.", s.CertFile(name), err)
+		return nil, nil, fmt.Errorf("failed to parse certificate `%s`.Reason: %v", s.CertFile(name), err)
 	}
 
 	keyBytes, err := ioutil.ReadFile(s.KeyFile(name))
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to read private key `%s`.Reason: %v.", s.KeyFile(name), err)
+		return nil, nil, fmt.Errorf("failed to read private key `%s`.Reason: %v", s.KeyFile(name), err)
 	}
 	key, err := cert.ParsePrivateKeyPEM(keyBytes)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to parse private key `%s`.Reason: %v.", s.KeyFile(name), err)
+		return nil, nil, fmt.Errorf("failed to parse private key `%s`.Reason: %v", s.KeyFile(name), err)
 	}
 	return crt[0], key.(*rsa.PrivateKey), nil
 }
@@ -99,12 +99,12 @@ func (s *CertStore) Read(name string) (*x509.Certificate, *rsa.PrivateKey, error
 func (s *CertStore) ReadBytes(name string) ([]byte, []byte, error) {
 	crtBytes, err := ioutil.ReadFile(s.CertFile(name))
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to read certificate `%s`.Reason: %v.", s.CertFile(name), err)
+		return nil, nil, fmt.Errorf("failed to read certificate `%s`.Reason: %v", s.CertFile(name), err)
 	}
 
 	keyBytes, err := ioutil.ReadFile(s.KeyFile(name))
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to read private key `%s`.Reason: %v.", s.KeyFile(name), err)
+		return nil, nil, fmt.Errorf("failed to read private key `%s`.Reason: %v", s.KeyFile(name), err)
 	}
 	return crtBytes, keyBytes, nil
 }
