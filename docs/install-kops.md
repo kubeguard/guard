@@ -27,11 +27,8 @@ to find it in most cases: Just find out your nonMasqueradeCIDR through `kops edi
 <cluster_name>` and then add x.x.10.96 to this range e.g. if it is 100.64.0.0 use 100.64.10.96.
 
 If this does not work for some unknown reason, you have to describe one of your kube-api-server pods
-in kube-system namespace and find out ```service-cluster-ip-range```. In this range you can take any
-ip which is not already assign. You can show all ips through this command
-
-```kubectl get svc --all-namespaces|grep ClusterIP |awk '{print
-$4}'|sort```
+in kube-system namespace and find out ```service-cluster-ip-range```. In this range you can use any
+ip which is not already assigned. You can show all ips through this command: ```kubectl get svc --all-namespaces|grep ClusterIP |awk \'{print $4}\'|sort```
 
 ```
 $ guard init server --ips=100.64.10.96
