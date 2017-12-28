@@ -57,7 +57,7 @@ spec:
 ```
 
 After you saved your config, you have to exchange your k8s master nodes. If you have a three
-master node cluster, i recommend that you exchange one server with command: `kops rolling-update
+master HA cluster, i recommend that you exchange one server with command: `kops rolling-update
 cluster <cluster_name> --instance-group master-eu-west-1a--yes`. Now theoretically every third
 request could work after your master node is online again. If the node does not join your cluster
 or things do not work, ssh to this master node and verify kubernetes api server logs in `/var/log/`.
