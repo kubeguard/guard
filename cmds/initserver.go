@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 
 	"github.com/appscode/go/log"
 	"github.com/appscode/go/term"
+	"github.com/appscode/kutil/tools/certstore"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/util/cert"
 )
@@ -27,33 +30,25 @@ func NewCmdInitServer() *cobra.Command {
 				Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 			}
 
-			store, err := NewCertStore(rootDir)
+			store, err := certstore.NewCertStore(afero.NewOsFs(), filepath.Join(rootDir, "pki"), cfg.Organization...)
 			if err != nil {
 				log.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}
-			if store.IsExists(store.Filename(cfg)) {
+			if store.IsExists(filename(cfg)) {
 				if !term.Ask(fmt.Sprintf("Server certificate found at %s. Do you want to overwrite?", store.Location()), false) {
 					os.Exit(1)
 				}
 			}
 
-			if !store.PairExists("ca") {
-				log.Fatalf("CA certificates not found in %s. Run `guard init ca`", store.Location())
-			}
-			caCert, caKey, err := store.Read("ca")
-			if err != nil {
+			if err = store.LoadCA(); err != nil {
 				log.Fatalf("Failed to load ca certificate. Reason: %v.", err)
 			}
 
-			key, err := cert.NewPrivateKey()
+			crt, key, err := store.NewServerCertPair(cfg.CommonName, cfg.AltNames)
 			if err != nil {
-				log.Fatalf("Failed to generate private key. Reason: %v.", err)
+				log.Fatalf("Failed to generate certificate pair. Reason: %v.", err)
 			}
-			cert, err := cert.NewSignedCert(cfg, key, caCert, caKey)
-			if err != nil {
-				log.Fatalf("Failed to generate server certificate. Reason: %v.", err)
-			}
-			err = store.Write(store.Filename(cfg), cert, key)
+			err = store.WriteBytes(filename(cfg), crt, key)
 			if err != nil {
 				log.Fatalf("Failed to init server certificate pair. Reason: %v.", err)
 			}

@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"path/filepath"
 	"strconv"
 
 	"github.com/appscode/go/log"
 	stringz "github.com/appscode/go/strings"
 	"github.com/appscode/go/types"
 	v "github.com/appscode/go/version"
+	"github.com/appscode/kutil/tools/certstore"
 	"github.com/ghodss/yaml"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	apps "k8s.io/api/apps/v1beta1"
 	core "k8s.io/api/core/v1"
@@ -39,7 +42,7 @@ func NewCmdInstaller() *cobra.Command {
 				log.Fatalf("Guard server port is invalid. Reason: %v.", err)
 			}
 
-			store, err := NewCertStore(rootDir)
+			store, err := certstore.NewCertStore(afero.NewOsFs(), filepath.Join(rootDir, "pki"))
 			if err != nil {
 				log.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}

@@ -39,7 +39,9 @@ import:
   version: release-1.8
   vcs: git
 - package: k8s.io/client-go
-  version: kubernetes-1.8.3-beta.0
+  version: kubernetes-1.8.3
+- package: github.com/appscode/kutil
+  version: release-5.0
 - package: github.com/golang/protobuf
   version: 6e4cc92cc905d5f4a73041c1b8228ea08f4c6147
 - package: google.golang.org/grpc

@@ -7,8 +7,9 @@ import (
 
 	"github.com/appscode/go/log"
 	"github.com/appscode/go/term"
+	"github.com/appscode/kutil/tools/certstore"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/homedir"
 )
 
@@ -22,11 +23,7 @@ func NewCmdInitCA() *cobra.Command {
 		Short:             "Init CA",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			cfg := cert.Config{
-				CommonName: "ca",
-			}
-
-			store, err := NewCertStore(rootDir)
+			store, err := certstore.NewCertStore(afero.NewOsFs(), filepath.Join(rootDir, "pki"))
 			if err != nil {
 				log.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}
@@ -36,15 +33,7 @@ func NewCmdInitCA() *cobra.Command {
 				}
 			}
 
-			key, err := cert.NewPrivateKey()
-			if err != nil {
-				log.Fatalf("Failed to generate private key. Reason: %v.", err)
-			}
-			cert, err := cert.NewSelfSignedCACert(cfg, key)
-			if err != nil {
-				log.Fatalf("Failed to generate self-signed certificate. Reason: %v.", err)
-			}
-			err = store.Write(store.Filename(cfg), cert, key)
+			err = store.NewCA()
 			if err != nil {
 				log.Fatalf("Failed to init ca. Reason: %v.", err)
 			}

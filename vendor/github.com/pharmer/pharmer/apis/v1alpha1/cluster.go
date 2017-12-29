@@ -188,18 +188,16 @@ type ClusterSpec struct {
 	API                        API               `json:"api" protobuf:"bytes,2,opt,name=api"`
 	Networking                 Networking        `json:"networking" protobuf:"bytes,3,opt,name=networking"`
 	KubernetesVersion          string            `json:"kubernetesVersion,omitempty" protobuf:"bytes,4,opt,name=kubernetesVersion"`
-	KubeletVersion             string            `json:"kubeletVersion,omitempty" protobuf:"bytes,5,opt,name=kubeletVersion"`
-	KubeadmVersion             string            `json:"kubeadmVersion,omitempty" protobuf:"bytes,6,opt,name=kubeadmVersion"`
-	Locked                     bool              `json:"locked,omitempty" protobuf:"varint,7,opt,name=locked"`
-	CACertName                 string            `json:"caCertName,omitempty" protobuf:"bytes,8,opt,name=caCertName"`
-	FrontProxyCACertName       string            `json:"frontProxyCACertName,omitempty" protobuf:"bytes,9,opt,name=frontProxyCACertName"`
-	CredentialName             string            `json:"credentialName,omitempty" protobuf:"bytes,10,opt,name=credentialName"`
-	KubeletExtraArgs           map[string]string `json:"kubeletExtraArgs,omitempty" protobuf:"bytes,11,rep,name=kubeletExtraArgs"`
-	APIServerExtraArgs         map[string]string `json:"apiServerExtraArgs,omitempty" protobuf:"bytes,12,rep,name=apiServerExtraArgs"`
-	ControllerManagerExtraArgs map[string]string `json:"controllerManagerExtraArgs,omitempty" protobuf:"bytes,13,rep,name=controllerManagerExtraArgs"`
-	SchedulerExtraArgs         map[string]string `json:"schedulerExtraArgs,omitempty" protobuf:"bytes,14,rep,name=schedulerExtraArgs"`
-	AuthorizationModes         []string          `json:"authorizationModes,omitempty" protobuf:"bytes,15,rep,name=authorizationModes"`
-	APIServerCertSANs          []string          `json:"apiServerCertSANs,omitempty" protobuf:"bytes,16,rep,name=apiServerCertSANs"`
+	Locked                     bool              `json:"locked,omitempty" protobuf:"varint,5,opt,name=locked"`
+	CACertName                 string            `json:"caCertName,omitempty" protobuf:"bytes,6,opt,name=caCertName"`
+	FrontProxyCACertName       string            `json:"frontProxyCACertName,omitempty" protobuf:"bytes,7,opt,name=frontProxyCACertName"`
+	CredentialName             string            `json:"credentialName,omitempty" protobuf:"bytes,8,opt,name=credentialName"`
+	KubeletExtraArgs           map[string]string `json:"kubeletExtraArgs,omitempty" protobuf:"bytes,9,rep,name=kubeletExtraArgs"`
+	APIServerExtraArgs         map[string]string `json:"apiServerExtraArgs,omitempty" protobuf:"bytes,10,rep,name=apiServerExtraArgs"`
+	ControllerManagerExtraArgs map[string]string `json:"controllerManagerExtraArgs,omitempty" protobuf:"bytes,11,rep,name=controllerManagerExtraArgs"`
+	SchedulerExtraArgs         map[string]string `json:"schedulerExtraArgs,omitempty" protobuf:"bytes,12,rep,name=schedulerExtraArgs"`
+	AuthorizationModes         []string          `json:"authorizationModes,omitempty" protobuf:"bytes,13,rep,name=authorizationModes"`
+	APIServerCertSANs          []string          `json:"apiServerCertSANs,omitempty" protobuf:"bytes,14,rep,name=apiServerCertSANs"`
 
 	// Deprecated
 	MasterInternalIP string `json:"-"`
