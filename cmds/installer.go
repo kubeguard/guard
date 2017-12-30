@@ -65,6 +65,16 @@ func NewCmdInstaller() *cobra.Command {
 
 			var buf bytes.Buffer
 			var data []byte
+
+			if namespace != "kube-system" && namespace != core.NamespaceDefault {
+				data, err = meta.MarshalToYAML(createNamespace(namespace), core.SchemeGroupVersion)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				buf.Write(data)
+				buf.WriteString("---\n")
+			}
+
 			if enableRBAC {
 				data, err = meta.MarshalToYAML(createServiceAccount(namespace), core.SchemeGroupVersion)
 				if err != nil {
@@ -121,6 +131,15 @@ func NewCmdInstaller() *cobra.Command {
 
 var labels = map[string]string{
 	"app": "guard",
+}
+
+func createNamespace(namespace string) runtime.Object {
+	return &core.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   namespace,
+			Labels: labels,
+		},
+	}
 }
 
 func createSecret(namespace string, cert, key, caCert []byte) runtime.Object {
