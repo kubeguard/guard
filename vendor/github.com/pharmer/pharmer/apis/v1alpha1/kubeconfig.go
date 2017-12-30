@@ -70,6 +70,7 @@ func Convert_KubeConfig_To_Config(in *KubeConfig) *clientcmdapi.Config {
 		},
 		Clusters: map[string]*clientcmdapi.Cluster{
 			in.Cluster.Name: {
+				Server: in.Cluster.Server,
 				CertificateAuthorityData: append([]byte(nil), in.Cluster.CertificateAuthorityData...),
 			},
 		},

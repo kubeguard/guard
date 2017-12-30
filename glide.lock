@@ -1,8 +1,8 @@
-hash: d97a3bfcb29da02a3b7d0cbdb877c95d81571c74ae65f4f6dcc240eab55a2043
-updated: 2017-12-18T15:25:28.071103075-05:00
+hash: 88b17db8a63b3a32a09c1d327fb2e7dd647e532f4a50f99a5f12773d74a20afa
+updated: 2017-12-30T13:02:17.182124887-05:00
 imports:
 - name: appscode.com/api
-  version: 24f1e574670d06f58116ad5df30c5cc803f7b4fd
+  version: b073e26f0109898426e0b4978ef973fc15bf0b5c
   repo: https://bitbucket.org/appscode/api.git
   subpackages:
   - attic/v1beta1
@@ -17,7 +17,7 @@ imports:
   - operation/v1beta1
   - version
 - name: appscode.com/client-go
-  version: af5b87b02f1614e04a40552a4e8acf6eb6cfb132
+  version: 4a9a82142a4dafcb345099ee9eebc7965e8dbadb
   repo: https://bitbucket.org/appscode/client-go.git
   subpackages:
   - credential
@@ -28,7 +28,7 @@ imports:
   - compute/metadata
   - internal
 - name: github.com/appscode/go
-  version: cb650d0b1a3c04a86595cf2a31fa704dbf1bc42a
+  version: f08cee5a2aa53a1ab6d30e4ae11e381d1b265f81
   subpackages:
   - analytics
   - context
@@ -37,16 +37,19 @@ imports:
   - homedir
   - log
   - log/golog
+  - net
   - runtime
+  - sets
   - strings
   - term
   - types
   - version
 - name: github.com/appscode/kutil
-  version: 582273a0791d4d99ab1345d9e4867bec460aaf5a
+  version: a506fd42d3c4d688675c639c9c14c27b79275e73
   subpackages:
   - meta
   - tools/analytics
+  - tools/certstore
 - name: github.com/appscode/pat
   version: 48ff78925b7955367d8a048fc2b5cec8efadf8d3
 - name: github.com/beorn7/perks
@@ -70,7 +73,7 @@ imports:
 - name: github.com/facebookgo/stack
   version: 751773369052141c013c6e827a71e8f35c07879c
 - name: github.com/fatih/color
-  version: 570b54cabe6b8eb0bc2dfce68d964677d63b5260
+  version: 9aae6aaa22315390f03959adca2c4d395b02fcef
 - name: github.com/ghodss/yaml
   version: 0ca9ea5df5451ffdf184b4428c902747c2c11cd7
 - name: github.com/go-openapi/jsonpointer
@@ -101,8 +104,15 @@ imports:
   - ptypes/timestamp
 - name: github.com/google/btree
   version: 7d79101e329e5a3adf994758c578dab82b90c017
+- name: github.com/google/go-cmp
+  version: 97a1ff3c48253a51c601f6e4420181273b6ca0ea
+  subpackages:
+  - cmp
+  - cmp/internal/diff
+  - cmp/internal/function
+  - cmp/internal/value
 - name: github.com/google/go-github
-  version: fbfee053c26dab3772adfc7799d995eed379133e
+  version: fc3c57184028a80ff3979d912cdaf5f08887f98a
   subpackages:
   - github
 - name: github.com/google/go-querystring
@@ -154,10 +164,8 @@ imports:
   - jwriter
 - name: github.com/mattn/go-colorable
   version: 5411d3eea5978e6cdc258b30de592b60df6aba96
-  repo: https://github.com/mattn/go-colorable
 - name: github.com/mattn/go-isatty
   version: 57fdcb988a5c543893cc61bce354a6e24ab70022
-  repo: https://github.com/mattn/go-isatty
 - name: github.com/matttproud/golang_protobuf_extensions
   version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
   subpackages:
@@ -165,7 +173,7 @@ imports:
 - name: github.com/peterbourgon/diskv
   version: 5f041e8faa004a95c88a202771f4cc3e991971e6
 - name: github.com/pharmer/pharmer
-  version: 830e7e33e8d9f0b3b62a47203bdbdc1bec07e285
+  version: faf07305ebc7af102d2d957c1624fa0601c9ac4b
   subpackages:
   - apis/v1alpha1
 - name: github.com/prometheus/client_golang
@@ -201,6 +209,10 @@ imports:
   version: 75fb7ed4208cf72d323d7d02fd1a5964a7a9073c
   subpackages:
   - open
+- name: github.com/spf13/afero
+  version: 57afd63c68602b63ed976de00dd066ccb3c319db
+  subpackages:
+  - mem
 - name: github.com/spf13/cobra
   version: 7b2c5ac9fc04fc5efafb60700713d4fa609b777b
   subpackages:
@@ -275,7 +287,7 @@ imports:
   - internal/urlfetch
   - urlfetch
 - name: google.golang.org/genproto
-  version: 09f6ed296fc66555a25fe4ce95173148778dfa85
+  version: a8101f21cf983e773d0c1133ebc5424792003214
   subpackages:
   - googleapis/api/annotations
   - googleapis/rpc/status
@@ -370,7 +382,7 @@ imports:
   - pkg/watch
   - third_party/forked/golang/reflect
 - name: k8s.io/client-go
-  version: 60bf397d7966ab2285d3ba7701ead2cc376111d4
+  version: 7656f45ccb3db63d177f734a9e5f6a116f08ad4f
   subpackages:
   - discovery
   - kubernetes
