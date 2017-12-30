@@ -11,14 +11,15 @@ import (
 	stringz "github.com/appscode/go/strings"
 	"github.com/appscode/go/types"
 	v "github.com/appscode/go/version"
+	"github.com/appscode/kutil/meta"
 	"github.com/appscode/kutil/tools/certstore"
-	"github.com/ghodss/yaml"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	apps "k8s.io/api/apps/v1beta1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -63,48 +64,49 @@ func NewCmdInstaller() *cobra.Command {
 			}
 
 			var buf bytes.Buffer
+			var data []byte
 			if enableRBAC {
-				saBytes, err := yaml.Marshal(createServiceAccount(namespace))
+				data, err = meta.MarshalToYAML(createServiceAccount(namespace), core.SchemeGroupVersion)
 				if err != nil {
 					log.Fatalln(err)
 				}
-				buf.Write(saBytes)
-
+				buf.Write(data)
 				buf.WriteString("---\n")
-				roleBytes, err := yaml.Marshal(createRole(namespace))
+
+				data, err = meta.MarshalToYAML(createRole(namespace), rbac.SchemeGroupVersion)
 				if err != nil {
 					log.Fatalln(err)
 				}
-				buf.Write(roleBytes)
-
+				buf.Write(data)
 				buf.WriteString("---\n")
-				rbBytes, err := yaml.Marshal(createRoleBinding(namespace))
+
+				data, err = meta.MarshalToYAML(createRoleBinding(namespace), rbac.SchemeGroupVersion)
 				if err != nil {
 					log.Fatalln(err)
 				}
-				buf.Write(rbBytes)
+				buf.Write(data)
+				buf.WriteString("---\n")
 			}
 
-			buf.WriteString("---\n")
-			secBytes, err := yaml.Marshal(createSecret(namespace, serverCert, serverKey, caCert))
+			data, err = meta.MarshalToYAML(createSecret(namespace, serverCert, serverKey, caCert), core.SchemeGroupVersion)
 			if err != nil {
 				log.Fatalln(err)
 			}
-			buf.Write(secBytes)
-
+			buf.Write(data)
 			buf.WriteString("---\n")
-			depBytes, err := yaml.Marshal(createDeployment(namespace, enableRBAC))
+
+			data, err = meta.MarshalToYAML(createDeployment(namespace, enableRBAC), apps.SchemeGroupVersion)
 			if err != nil {
 				log.Fatalln(err)
 			}
-			buf.Write(depBytes)
-
+			buf.Write(data)
 			buf.WriteString("---\n")
-			svcBytes, err := yaml.Marshal(createService(namespace, addr))
+
+			data, err = meta.MarshalToYAML(createService(namespace, addr), core.SchemeGroupVersion)
 			if err != nil {
 				log.Fatalln(err)
 			}
-			buf.Write(svcBytes)
+			buf.Write(data)
 
 			fmt.Println(buf.String())
 		},
@@ -121,12 +123,8 @@ var labels = map[string]string{
 	"app": "guard",
 }
 
-func createSecret(namespace string, cert, key, caCert []byte) core.Secret {
-	return core.Secret{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: core.SchemeGroupVersion.String(),
-			Kind:       "Secret",
-		},
+func createSecret(namespace string, cert, key, caCert []byte) runtime.Object {
+	return &core.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "guard-pki",
 			Namespace: namespace,
@@ -140,12 +138,8 @@ func createSecret(namespace string, cert, key, caCert []byte) core.Secret {
 	}
 }
 
-func createDeployment(namespace string, enableRBAC bool) apps.Deployment {
+func createDeployment(namespace string, enableRBAC bool) runtime.Object {
 	d := apps.Deployment{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: apps.SchemeGroupVersion.String(),
-			Kind:       "Deployment",
-		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "guard",
 			Namespace: namespace,
@@ -207,17 +201,13 @@ func createDeployment(namespace string, enableRBAC bool) apps.Deployment {
 	if enableRBAC {
 		d.Spec.Template.Spec.ServiceAccountName = "guard"
 	}
-	return d
+	return &d
 }
 
-func createService(namespace, addr string) core.Service {
+func createService(namespace, addr string) runtime.Object {
 	host, port, _ := net.SplitHostPort(addr)
 	svcPort, _ := strconv.Atoi(port)
-	return core.Service{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: core.SchemeGroupVersion.String(),
-			Kind:       "Service",
-		},
+	return &core.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "guard",
 			Namespace: namespace,
@@ -239,12 +229,8 @@ func createService(namespace, addr string) core.Service {
 	}
 }
 
-func createServiceAccount(namespace string) core.ServiceAccount {
-	return core.ServiceAccount{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: core.SchemeGroupVersion.String(),
-			Kind:       "ServiceAccount",
-		},
+func createServiceAccount(namespace string) runtime.Object {
+	return &core.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "guard",
 			Namespace: namespace,
@@ -253,12 +239,8 @@ func createServiceAccount(namespace string) core.ServiceAccount {
 	}
 }
 
-func createRole(namespace string) rbac.Role {
-	return rbac.Role{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: rbac.SchemeGroupVersion.String(),
-			Kind:       "Role",
-		},
+func createRole(namespace string) runtime.Object {
+	return &rbac.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "guard",
 			Namespace: namespace,
@@ -274,12 +256,8 @@ func createRole(namespace string) rbac.Role {
 	}
 }
 
-func createRoleBinding(namespace string) rbac.RoleBinding {
-	return rbac.RoleBinding{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: rbac.SchemeGroupVersion.String(),
-			Kind:       "RoleBinding",
-		},
+func createRoleBinding(namespace string) runtime.Object {
+	return &rbac.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "guard",
 			Namespace: namespace,
