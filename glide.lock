@@ -1,5 +1,5 @@
-hash: 88b17db8a63b3a32a09c1d327fb2e7dd647e532f4a50f99a5f12773d74a20afa
-updated: 2017-12-30T13:02:17.182124887-05:00
+hash: 5169b5c810ff1ddb26bc1c2e6249d21938f6abc29228e0f840119ee5313b6df6
+updated: 2017-12-30T14:18:18.500184006-05:00
 imports:
 - name: appscode.com/api
   version: b073e26f0109898426e0b4978ef973fc15bf0b5c
@@ -148,6 +148,8 @@ imports:
   vcs: git
 - name: github.com/howeyc/gopass
   version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
+- name: github.com/imdario/mergo
+  version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/jpillora/go-ogle-analytics
@@ -414,7 +416,10 @@ imports:
   - pkg/version
   - rest
   - rest/watch
+  - tools/auth
+  - tools/clientcmd
   - tools/clientcmd/api
+  - tools/clientcmd/api/latest
   - tools/clientcmd/api/v1
   - tools/metrics
   - tools/reference

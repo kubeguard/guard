@@ -50,3 +50,5 @@ import:
   repo: https://github.com/appscode/grpc-gateway.git
   vcs: git
   version: v1.2.2-ac
+- package: github.com/imdario/mergo
+  version: 6633656539c1639d9d78127b7d47c622b5d7b6dc

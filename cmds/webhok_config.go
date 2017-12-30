@@ -7,10 +7,10 @@ import (
 
 	"github.com/appscode/go/log"
 	"github.com/appscode/kutil/tools/certstore"
-	"github.com/ghodss/yaml"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
-	cli "k8s.io/client-go/tools/clientcmd/api/v1"
+	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/util/cert"
 )
 
@@ -65,43 +65,34 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 				log.Fatalf("Failed to load ca certificate. Reason: %v.", err)
 			}
 
-			kubeconfig := cli.Config{
+			config := clientcmdapi.Config{
 				Kind:       "Config",
 				APIVersion: "v1",
-				Clusters: []cli.NamedCluster{
-					{
-						Name: "guard-server",
-						Cluster: cli.Cluster{
-							Server: fmt.Sprintf("https://%s/apis/authentication.k8s.io/v1beta1/tokenreviews", addr),
-							CertificateAuthorityData: caCert,
-						},
+				Clusters: map[string]*clientcmdapi.Cluster{
+					"guard-server": {
+						Server: fmt.Sprintf("https://%s/apis/authentication.k8s.io/v1beta1/tokenreviews", addr),
+						CertificateAuthorityData: caCert,
 					},
 				},
-				AuthInfos: []cli.NamedAuthInfo{
-					{
-						Name: filename(cfg),
-						AuthInfo: cli.AuthInfo{
-							ClientCertificateData: clientCert,
-							ClientKeyData:         clientKey,
-						},
+				AuthInfos: map[string]*clientcmdapi.AuthInfo{
+					filename(cfg): {
+						ClientCertificateData: clientCert,
+						ClientKeyData:         clientKey,
 					},
 				},
-				Contexts: []cli.NamedContext{
-					{
-						Name: "webhook",
-						Context: cli.Context{
-							Cluster:  "guard-server",
-							AuthInfo: filename(cfg),
-						},
+				Contexts: map[string]*clientcmdapi.Context{
+					"webhook": {
+						Cluster:  "guard-server",
+						AuthInfo: filename(cfg),
 					},
 				},
 				CurrentContext: "webhook",
 			}
-			bytes, err := yaml.Marshal(kubeconfig)
+			data, err := clientcmd.Write(config)
 			if err != nil {
 				log.Fatalln(err)
 			}
-			fmt.Println(string(bytes))
+			fmt.Println(string(data))
 		},
 	}
 
