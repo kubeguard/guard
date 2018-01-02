@@ -62,7 +62,7 @@ func NewCmdInitClient() *cobra.Command {
 				log.Fatalf("Failed to load ca certificate. Reason: %v.", err)
 			}
 
-			crt, key, err := store.NewServerCertPair(cfg.CommonName, cfg.AltNames)
+			crt, key, err := store.NewClientCertPair(cfg.CommonName, cfg.Organization...)
 			if err != nil {
 				log.Fatalf("Failed to generate certificate pair. Reason: %v.", err)
 			}
