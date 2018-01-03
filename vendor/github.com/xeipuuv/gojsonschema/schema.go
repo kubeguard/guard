@@ -27,10 +27,10 @@
 package gojsonschema
 
 import (
-	//	"encoding/json"
 	"errors"
 	"reflect"
 	"regexp"
+	"text/template"
 
 	"github.com/xeipuuv/gojsonreference"
 )
@@ -39,10 +39,53 @@ var (
 	// Locale is the default locale to use
 	// Library users can overwrite with their own implementation
 	Locale locale = DefaultLocale{}
+
+	// ErrorTemplateFuncs allows you to define custom template funcs for use in localization.
+	ErrorTemplateFuncs template.FuncMap
 )
 
 func NewSchema(l JSONLoader) (*Schema, error) {
-	return l.loadSchema()
+	ref, err := l.JsonReference()
+	if err != nil {
+		return nil, err
+	}
+
+	d := Schema{}
+	d.pool = newSchemaPool(l.LoaderFactory())
+	d.documentReference = ref
+	d.referencePool = newSchemaReferencePool()
+
+	var spd *schemaPoolDocument
+	var doc interface{}
+	if ref.String() != "" {
+		// Get document from schema pool
+		spd, err = d.pool.GetDocument(d.documentReference)
+		if err != nil {
+			return nil, err
+		}
+		doc = spd.Document
+
+		// Deal with fragment pointers
+		jsonPointer := ref.GetPointer()
+		doc, _, err = jsonPointer.Get(doc)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// Load JSON directly
+		doc, err = l.LoadJSON()
+		if err != nil {
+			return nil, err
+		}
+	}
+	d.pool.SetStandaloneDocument(doc)
+
+	err = d.parse(doc)
+	if err != nil {
+		return nil, err
+	}
+
+	return &d, nil
 }
 
 type Schema struct {
@@ -71,19 +114,54 @@ func (d *Schema) parseSchema(documentNode interface{}, currentSchema *subSchema)
 
 	if !isKind(documentNode, reflect.Map) {
 		return errors.New(formatErrorDescription(
-			Locale.InvalidType(),
+			Locale.ParseError(),
 			ErrorDetails{
-				"expected": TYPE_OBJECT,
-				"given":    STRING_SCHEMA,
+				"expected": STRING_SCHEMA,
 			},
 		))
+	}
+	if currentSchema.parent == nil {
+		currentSchema.ref = &d.documentReference
+		currentSchema.id = &d.documentReference
+	}
+
+	if currentSchema.id == nil && currentSchema.parent != nil {
+		currentSchema.id = currentSchema.parent.id
 	}
 
 	m := documentNode.(map[string]interface{})
 
-	if currentSchema == d.rootSchema {
-		currentSchema.ref = &d.documentReference
+	// id
+	if existsMapKey(m, KEY_ID) && !isKind(m[KEY_ID], reflect.String) {
+		return errors.New(formatErrorDescription(
+			Locale.InvalidType(),
+			ErrorDetails{
+				"expected": TYPE_STRING,
+				"given":    KEY_ID,
+			},
+		))
 	}
+	if k, ok := m[KEY_ID].(string); ok {
+		jsonReference, err := gojsonreference.NewJsonReference(k)
+		if err != nil {
+			return err
+		}
+		if currentSchema == d.rootSchema {
+			currentSchema.id = &jsonReference
+		} else {
+			ref, err := currentSchema.parent.id.Inherits(jsonReference)
+			if err != nil {
+				return err
+			}
+			currentSchema.id = ref
+		}
+	}
+
+	// Add schema to document cache. The same id is passed down to subsequent
+	// subschemas, but as only the first and top one is used it will always reference
+	// the correct schema. Doing it once here prevents having
+	// to do this same step at every corner case.
+	d.referencePool.Add(currentSchema.id.String(), currentSchema)
 
 	// $subSchema
 	if existsMapKey(m, KEY_SCHEMA) {
@@ -116,14 +194,25 @@ func (d *Schema) parseSchema(documentNode interface{}, currentSchema *subSchema)
 	}
 	if k, ok := m[KEY_REF].(string); ok {
 
-		if sch, ok := d.referencePool.Get(currentSchema.ref.String() + k); ok {
+		jsonReference, err := gojsonreference.NewJsonReference(k)
+		if err != nil {
+			return err
+		}
 
-			currentSchema.refSchema = sch
-
+		if jsonReference.HasFullUrl {
+			currentSchema.ref = &jsonReference
 		} else {
+			inheritedReference, err := currentSchema.id.Inherits(jsonReference)
+			if err != nil {
+				return err
+			}
+			currentSchema.ref = inheritedReference
+		}
+		if sch, ok := d.referencePool.Get(currentSchema.ref.String()); ok {
+			currentSchema.refSchema = sch
+		} else {
+			err := d.parseReference(documentNode, currentSchema)
 
-			var err error
-			err = d.parseReference(documentNode, currentSchema, k)
 			if err != nil {
 				return err
 			}
@@ -138,11 +227,23 @@ func (d *Schema) parseSchema(documentNode interface{}, currentSchema *subSchema)
 			currentSchema.definitions = make(map[string]*subSchema)
 			for dk, dv := range m[KEY_DEFINITIONS].(map[string]interface{}) {
 				if isKind(dv, reflect.Map) {
-					newSchema := &subSchema{property: KEY_DEFINITIONS, parent: currentSchema, ref: currentSchema.ref}
-					currentSchema.definitions[dk] = newSchema
-					err := d.parseSchema(dv, newSchema)
+
+					ref, err := gojsonreference.NewJsonReference("#/" + KEY_DEFINITIONS + "/" + dk)
 					if err != nil {
-						return errors.New(err.Error())
+						return err
+					}
+
+					newSchemaID, err := currentSchema.id.Inherits(ref)
+					if err != nil {
+						return err
+					}
+					newSchema := &subSchema{property: KEY_DEFINITIONS, parent: currentSchema, id: newSchemaID}
+					currentSchema.definitions[dk] = newSchema
+
+					err = d.parseSchema(dv, newSchema)
+
+					if err != nil {
+						return err
 					}
 				} else {
 					return errors.New(formatErrorDescription(
@@ -164,20 +265,6 @@ func (d *Schema) parseSchema(documentNode interface{}, currentSchema *subSchema)
 			))
 		}
 
-	}
-
-	// id
-	if existsMapKey(m, KEY_ID) && !isKind(m[KEY_ID], reflect.String) {
-		return errors.New(formatErrorDescription(
-			Locale.InvalidType(),
-			ErrorDetails{
-				"expected": TYPE_STRING,
-				"given":    KEY_ID,
-			},
-		))
-	}
-	if k, ok := m[KEY_ID].(string); ok {
-		currentSchema.id = &k
 	}
 
 	// title
@@ -538,11 +625,6 @@ func (d *Schema) parseSchema(documentNode interface{}, currentSchema *subSchema)
 		formatString, ok := m[KEY_FORMAT].(string)
 		if ok && FormatCheckers.Has(formatString) {
 			currentSchema.format = formatString
-		} else {
-			return errors.New(formatErrorDescription(
-				Locale.MustBeValidFormat(),
-				ErrorDetails{"key": KEY_FORMAT, "given": m[KEY_FORMAT]},
-			))
 		}
 	}
 
@@ -755,48 +837,32 @@ func (d *Schema) parseSchema(documentNode interface{}, currentSchema *subSchema)
 	return nil
 }
 
-func (d *Schema) parseReference(documentNode interface{}, currentSchema *subSchema, reference string) (e error) {
-
-	var err error
-
-	jsonReference, err := gojsonreference.NewJsonReference(reference)
-	if err != nil {
-		return err
-	}
-
+func (d *Schema) parseReference(documentNode interface{}, currentSchema *subSchema) error {
+	var (
+		refdDocumentNode interface{}
+		dsp              *schemaPoolDocument
+		err              error
+	)
+	jsonPointer := currentSchema.ref.GetPointer()
 	standaloneDocument := d.pool.GetStandaloneDocument()
 
-	if jsonReference.HasFullUrl {
-		currentSchema.ref = &jsonReference
-	} else {
-		inheritedReference, err := currentSchema.ref.Inherits(jsonReference)
-		if err != nil {
-			return err
-		}
-		currentSchema.ref = inheritedReference
-	}
+	newSchema := &subSchema{property: KEY_REF, parent: currentSchema, ref: currentSchema.ref}
 
-	jsonPointer := currentSchema.ref.GetPointer()
-
-	var refdDocumentNode interface{}
-
-	if standaloneDocument != nil {
-
-		var err error
+	if currentSchema.ref.HasFragmentOnly {
 		refdDocumentNode, _, err = jsonPointer.Get(standaloneDocument)
 		if err != nil {
 			return err
 		}
 
 	} else {
-
-		var err error
-		dsp, err := d.pool.GetDocument(*currentSchema.ref)
+		dsp, err = d.pool.GetDocument(*currentSchema.ref)
 		if err != nil {
 			return err
 		}
+		newSchema.id = currentSchema.ref
 
 		refdDocumentNode, _, err = jsonPointer.Get(dsp.Document)
+
 		if err != nil {
 			return err
 		}
@@ -812,9 +878,6 @@ func (d *Schema) parseReference(documentNode interface{}, currentSchema *subSche
 
 	// returns the loaded referenced subSchema for the caller to update its current subSchema
 	newSchemaDocument := refdDocumentNode.(map[string]interface{})
-
-	newSchema := &subSchema{property: KEY_REF, parent: currentSchema, ref: currentSchema.ref}
-	d.referencePool.Add(currentSchema.ref.String()+reference, newSchema)
 
 	err = d.parseSchema(newSchemaDocument, newSchema)
 	if err != nil {

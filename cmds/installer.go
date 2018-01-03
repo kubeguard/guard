@@ -67,7 +67,7 @@ func NewCmdInstaller() *cobra.Command {
 			var data []byte
 
 			if namespace != "kube-system" && namespace != core.NamespaceDefault {
-				data, err = meta.MarshalToYAML(createNamespace(namespace), core.SchemeGroupVersion)
+				data, err = meta.MarshalToYAML(newNamespace(namespace), core.SchemeGroupVersion)
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -76,21 +76,21 @@ func NewCmdInstaller() *cobra.Command {
 			}
 
 			if enableRBAC {
-				data, err = meta.MarshalToYAML(createServiceAccount(namespace), core.SchemeGroupVersion)
+				data, err = meta.MarshalToYAML(newServiceAccount(namespace), core.SchemeGroupVersion)
 				if err != nil {
 					log.Fatalln(err)
 				}
 				buf.Write(data)
 				buf.WriteString("---\n")
 
-				data, err = meta.MarshalToYAML(createRole(namespace), rbac.SchemeGroupVersion)
+				data, err = meta.MarshalToYAML(newClusterRole(namespace), rbac.SchemeGroupVersion)
 				if err != nil {
 					log.Fatalln(err)
 				}
 				buf.Write(data)
 				buf.WriteString("---\n")
 
-				data, err = meta.MarshalToYAML(createRoleBinding(namespace), rbac.SchemeGroupVersion)
+				data, err = meta.MarshalToYAML(newClusterRoleBinding(namespace), rbac.SchemeGroupVersion)
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -98,21 +98,21 @@ func NewCmdInstaller() *cobra.Command {
 				buf.WriteString("---\n")
 			}
 
-			data, err = meta.MarshalToYAML(createSecret(namespace, serverCert, serverKey, caCert), core.SchemeGroupVersion)
+			data, err = meta.MarshalToYAML(newSecret(namespace, serverCert, serverKey, caCert), core.SchemeGroupVersion)
 			if err != nil {
 				log.Fatalln(err)
 			}
 			buf.Write(data)
 			buf.WriteString("---\n")
 
-			data, err = meta.MarshalToYAML(createDeployment(namespace, enableRBAC), apps.SchemeGroupVersion)
+			data, err = meta.MarshalToYAML(newDeployment(namespace, enableRBAC), apps.SchemeGroupVersion)
 			if err != nil {
 				log.Fatalln(err)
 			}
 			buf.Write(data)
 			buf.WriteString("---\n")
 
-			data, err = meta.MarshalToYAML(createService(namespace, addr), core.SchemeGroupVersion)
+			data, err = meta.MarshalToYAML(newService(namespace, addr), core.SchemeGroupVersion)
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -133,7 +133,7 @@ var labels = map[string]string{
 	"app": "guard",
 }
 
-func createNamespace(namespace string) runtime.Object {
+func newNamespace(namespace string) runtime.Object {
 	return &core.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   namespace,
@@ -142,7 +142,7 @@ func createNamespace(namespace string) runtime.Object {
 	}
 }
 
-func createSecret(namespace string, cert, key, caCert []byte) runtime.Object {
+func newSecret(namespace string, cert, key, caCert []byte) runtime.Object {
 	return &core.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "guard-pki",
@@ -157,7 +157,7 @@ func createSecret(namespace string, cert, key, caCert []byte) runtime.Object {
 	}
 }
 
-func createDeployment(namespace string, enableRBAC bool) runtime.Object {
+func newDeployment(namespace string, enableRBAC bool) runtime.Object {
 	d := apps.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "guard",
@@ -178,9 +178,9 @@ func createDeployment(namespace string, enableRBAC bool) runtime.Object {
 							Args: []string{
 								"run",
 								"--v=3",
-								"--ca-cert-file=/srv/guard/pki/ca.crt",
-								"--cert-file=/srv/guard/pki/tls.crt",
-								"--key-file=/srv/guard/pki/tls.key",
+								"--ca-cert-file=/etc/guard/pki/ca.crt",
+								"--cert-file=/etc/guard/pki/tls.crt",
+								"--key-file=/etc/guard/pki/tls.key",
 							},
 							Ports: []core.ContainerPort{
 								{
@@ -197,7 +197,7 @@ func createDeployment(namespace string, enableRBAC bool) runtime.Object {
 							VolumeMounts: []core.VolumeMount{
 								{
 									Name:      "guard-pki",
-									MountPath: "/srv/guard/pki",
+									MountPath: "/etc/guard/pki",
 								},
 							},
 						},
@@ -223,7 +223,7 @@ func createDeployment(namespace string, enableRBAC bool) runtime.Object {
 	return &d
 }
 
-func createService(namespace, addr string) runtime.Object {
+func newService(namespace, addr string) runtime.Object {
 	host, port, _ := net.SplitHostPort(addr)
 	svcPort, _ := strconv.Atoi(port)
 	return &core.Service{
@@ -248,7 +248,7 @@ func createService(namespace, addr string) runtime.Object {
 	}
 }
 
-func createServiceAccount(namespace string) runtime.Object {
+func newServiceAccount(namespace string) runtime.Object {
 	return &core.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "guard",
@@ -258,8 +258,8 @@ func createServiceAccount(namespace string) runtime.Object {
 	}
 }
 
-func createRole(namespace string) runtime.Object {
-	return &rbac.Role{
+func newClusterRole(namespace string) runtime.Object {
+	return &rbac.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "guard",
 			Namespace: namespace,
@@ -275,8 +275,8 @@ func createRole(namespace string) runtime.Object {
 	}
 }
 
-func createRoleBinding(namespace string) runtime.Object {
-	return &rbac.RoleBinding{
+func newClusterRoleBinding(namespace string) runtime.Object {
+	return &rbac.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "guard",
 			Namespace: namespace,
@@ -284,7 +284,7 @@ func createRoleBinding(namespace string) runtime.Object {
 		},
 		RoleRef: rbac.RoleRef{
 			APIGroup: rbac.GroupName,
-			Kind:     "Role",
+			Kind:     "ClusterRole",
 			Name:     "guard",
 		},
 		Subjects: []rbac.Subject{
