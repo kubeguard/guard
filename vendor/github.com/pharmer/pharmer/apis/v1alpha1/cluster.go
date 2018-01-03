@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hashicorp/go-version"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha1"
@@ -340,4 +341,18 @@ func (c *Cluster) APIServerAddress() string {
 		}
 	}
 	return ""
+}
+
+func (c Cluster) IsMinorVersion(in string) bool {
+	v, err := version.NewVersion(c.Spec.KubernetesVersion)
+	if err != nil {
+		return false
+	}
+	minor := v.ToMutator().ResetMetadata().ResetPrerelease().ResetPatch().String()
+
+	inVer, err := version.NewVersion(in)
+	if err != nil {
+		return false
+	}
+	return inVer.String() == minor
 }
