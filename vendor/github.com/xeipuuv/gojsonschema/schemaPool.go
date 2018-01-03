@@ -39,13 +39,15 @@ type schemaPoolDocument struct {
 type schemaPool struct {
 	schemaPoolDocuments map[string]*schemaPoolDocument
 	standaloneDocument  interface{}
+	jsonLoaderFactory   JSONLoaderFactory
 }
 
-func newSchemaPool() *schemaPool {
+func newSchemaPool(f JSONLoaderFactory) *schemaPool {
 
 	p := &schemaPool{}
 	p.schemaPoolDocuments = make(map[string]*schemaPoolDocument)
 	p.standaloneDocument = nil
+	p.jsonLoaderFactory = f
 
 	return p
 }
@@ -60,11 +62,15 @@ func (p *schemaPool) GetStandaloneDocument() (document interface{}) {
 
 func (p *schemaPool) GetDocument(reference gojsonreference.JsonReference) (*schemaPoolDocument, error) {
 
+	var (
+		spd *schemaPoolDocument
+		ok  bool
+		err error
+	)
+
 	if internalLogEnabled {
 		internalLog("Get Document ( %s )", reference.String())
 	}
-
-	var err error
 
 	// It is not possible to load anything that is not canonical...
 	if !reference.IsCanonical() {
@@ -73,28 +79,18 @@ func (p *schemaPool) GetDocument(reference gojsonreference.JsonReference) (*sche
 			ErrorDetails{"reference": reference},
 		))
 	}
-
 	refToUrl := reference
 	refToUrl.GetUrl().Fragment = ""
 
-	var spd *schemaPoolDocument
-
-	// Try to find the requested document in the pool
-	for k := range p.schemaPoolDocuments {
-		if k == refToUrl.String() {
-			spd = p.schemaPoolDocuments[k]
-		}
-	}
-
-	if spd != nil {
+	if spd, ok = p.schemaPoolDocuments[refToUrl.String()]; ok {
 		if internalLogEnabled {
 			internalLog(" From pool")
 		}
 		return spd, nil
 	}
 
-	jsonReferenceLoader := NewReferenceLoader(reference.String())
-	document, err := jsonReferenceLoader.loadJSON()
+	jsonReferenceLoader := p.jsonLoaderFactory.New(reference.String())
+	document, err := jsonReferenceLoader.LoadJSON()
 	if err != nil {
 		return nil, err
 	}

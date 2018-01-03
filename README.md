@@ -7,21 +7,21 @@
 Kubernetes 1.6+
 
 ## Installation
-To install Guard, please follow the guide [here](/docs/install.md).
+To install Guard, please follow the guide [here](https://appscode.com/products/guard/0.1.0-rc.4/setup/install/).
 
 ## Using Guard
-Want to learn how to use Guard? Please start [here](/docs/tutorial.md).
+Want to learn how to use Guard? Please start [here](https://appscode.com/products/guard/0.1.0-rc.4/).
 
 ## Contribution guidelines
-Want to help improve Guard? Please start [here](/CONTRIBUTING.md).
+Want to help improve Guard? Please start [here](https://appscode.com/products/guard/0.1.0-rc.4/welcome/contributing/).
 
 ---
 
-**The guard server collects anonymous usage statistics to help us learn how the software is being used and how we can improve it. To disable stats collection, run the operator with the flag** `--analytics=false`.
+**Guard binaries collects anonymous usage statistics to help us learn how the software is being used and how we can improve it. To disable stats collection, run the operator with the flag** `--analytics=false`.
 
 ---
 
 ## Support
-If you have any questions, you can reach out to us.
-* [Slack](https://slack.appscode.com)
-* [Twitter](https://twitter.com/AppsCodeHQ)
+We use Slack for public discussions. To chit chat with us or the rest of the community, join us in the [AppsCode Slack team](https://appscode.slack.com/messages/C8M8HANQ0/details/) channel `#guard`. To sign up, use our [Slack inviter](https://slack.appscode.com/).
+
+If you have found a bug with Searchlight or want to request for new features, please [file an issue](https://github.com/appscode/guard/issues/new).
