@@ -5,22 +5,21 @@ menu:
   product_guard_0.1.0-rc.4:
     identifier: uninstall-guard
     name: Uninstall
-    parent: getting-started
-    weight: 35
+    parent: setup
+    weight: 20
 product_name: guard
 menu_name: product_guard_0.1.0-rc.4
-section_menu_id: getting-started
-url: /products/guard/0.1.0-rc.4/getting-started/uninstall/
-aliases:
-  - /products/guard/0.1.0-rc.4/uninstall/
+section_menu_id: setup
 ---
 
 # Uninstall Guard
 Please follow the steps below to uninstall Guard:
 
-1. Delete the various objects created for Guard operator.
+- Delete the various objects created for Guard operator.
+
 ```console
-$ ./hack/deploy/uninstall.sh
+$ curl -fsSL https://raw.githubusercontent.com/appscode/guard/0.1.0-rc.4/hack/deploy/uninstall.sh | bash
+
 + kubectl delete deployment -l app=guard -n kube-system
 deployment "guard" deleted
 + kubectl delete service -l app=guard -n kube-system
@@ -33,7 +32,8 @@ No resources found
 No resources found
 ```
 
-2. Now, wait several seconds for Guard to stop running. To confirm that Guard operator pod(s) have stopped running, run:
+- Now, wait several seconds for Guard to stop running. To confirm that Guard operator pod(s) have stopped running, run:
+
 ```console
 $ kubectl get pods --all-namespaces -l app=guard
 ```

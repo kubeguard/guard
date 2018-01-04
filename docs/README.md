@@ -1,45 +1,42 @@
 ---
-title: Overview | Guard
-description: Overview of Guard
+title: Welcome | Guard
+description: Welcome to Guard
 menu:
   product_guard_0.1.0-rc.4:
-    identifier: overview-guard
-    name: Overview
-    parent: getting-started
-    weight: 20
+    identifier: readme-guard
+    name: Readme
+    parent: welcome
+    weight: -1
 product_name: guard
 menu_name: product_guard_0.1.0-rc.4
-section_menu_id: getting-started
-url: /products/guard/0.1.0-rc.4/getting-started/
+section_menu_id: welcome
+url: /products/guard/0.1.0-rc.4/welcome/
 aliases:
   - /products/guard/0.1.0-rc.4/
   - /products/guard/0.1.0-rc.4/README/
 ---
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/appscode/guard)](https://goreportcard.com/report/github.com/appscode/guard)
-
 # Guard
- Guard by AppsCode is a [Kubernetes Webhook Authentication](https://kubernetes.io/docs/admin/authentication/#webhook-token-authentication) server. Using guard, you can log into your Kubernetes cluster using your Github or Google authentication token. Guard also sets authenticated user's groups to his Github teams or Google groups. This allows cluster administrator to setup RBAC rules based on membership in Github teams or Google groups.
 
-## Supported Versions
-Kubernetes 1.6+
+Guard by AppsCode is a [Kubernetes Webhook Authentication](https://kubernetes.io/docs/admin/authentication/#webhook-token-authentication) server. Using guard, you can log into your Kubernetes cluster using your Github or Google authentication token. Guard also sets authenticated user's groups to his Github teams or Google groups. This allows cluster administrator to setup RBAC rules based on membership in Github teams or Google groups.
 
-## Installation
-To install Guard, please follow the guide [here](/docs/install.md).
+From here you can learn all about Guard's architecture and how to deploy and use Guard.
 
-## Using Guard
-Want to learn how to use Guard? Please start [here](/docs/tutorial.md).
+- [Concepts](/docs/concepts/). Concepts explain some significant aspect of Guard. This is where you can learn about what Guard does and how it does it.
 
-## Contribution guidelines
-Want to help improve Guard? Please start [here](/CONTRIBUTING.md).
+- [Setup](/docs/setup/). Setup contains instructions for installing
+  the Guard in various cloud providers.
+
+- [Guides](/docs/guides/). Guides show you how to perform tasks with Guard.
+
+- [Reference](/docs/reference/). Detailed exhaustive lists of
+command-line options, configuration options, API definitions, and procedures.
+
+We're always looking for help improving our documentation, so please don't hesitate to [file an issue](https://github.com/appscode/guard/issues/new) if you see some problem. Or better yet, submit your own [contributions](/docs/CONTRIBUTING.md) to help
+make our docs better.
 
 ---
 
-**The guard server collects anonymous usage statistics to help us learn how the software is being used and how we can improve it. To disable stats collection, run the operator with the flag** `--analytics=false`.
+**Guard binaries collects anonymous usage statistics to help us learn how the software is being used and how we can improve it. To disable stats collection, run the operator with the flag** `--analytics=false`.
 
 ---
-
-## Support
-If you have any questions, you can reach out to us.
-* [Slack](https://slack.appscode.com)
-* [Twitter](https://twitter.com/AppsCodeHQ)

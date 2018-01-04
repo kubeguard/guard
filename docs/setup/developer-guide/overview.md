@@ -3,17 +3,16 @@ title: Overview | Developer Guide
 description: Developer Guide Overview
 menu:
   product_guard_0.1.0-rc.4:
-    identifier: developer-guide-readme
+    identifier: overview-developer-guide
     name: Overview
     parent: developer-guide
     weight: 15
 product_name: guard
 menu_name: product_guard_0.1.0-rc.4
-section_menu_id: developer-guide
-url: /products/guard/0.1.0-rc.4/developer-guide/
-aliases:
-  - /products/guard/0.1.0-rc.4/developer-guide/README/
+section_menu_id: setup
 ---
+
+> New to Guard? Please start [here](/docs/concepts/README.md).
 
 ## Development Guide
 This document is intended to be the canonical source of truth for things like supported toolchain versions for building Guard.
@@ -46,7 +45,8 @@ $ ./hack/builddeps.sh
 ```
 
 #### Build Binary
-```
+
+```console
 $ ./hack/make.py
 $ guard version
 ```
@@ -54,12 +54,13 @@ $ guard version
 #### Dependency management
 Guard uses [Glide](https://github.com/Masterminds/glide) to manage dependencies. Dependencies are already checked in the `vendor` folder.
 If you want to update/add dependencies, run:
+
 ```console
 $ glide slow
 ```
 
 #### Build Docker images
-To build and push your custom Docker image, follow the steps below. To release a new version of Guard, please follow the [release guide](/docs/developer-guide/release.md).
+To build and push your custom Docker image, follow the steps below. To release a new version of Guard, please follow the [release guide](/docs/setup/developer-guide/release.md).
 
 ```console
 # Build Docker image
@@ -73,6 +74,7 @@ $ docker push <image>:<tag>
 ```
 
 #### Generate CLI Reference Docs
+
 ```console
 $ ./hack/gendocs/make.sh
 ```
