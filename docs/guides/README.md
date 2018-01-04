@@ -18,3 +18,8 @@ aliases:
 # Guides
 
 Guides show you how to perform tasks with Guard.
+
+- Authenticators
+  - [Github](/docs/guides/authenticator/github.md). Explains how to use Github authenticator.
+  - [Google](/docs/guides/authenticator/google.md). Explains how to use Google authenticator.
+- [RBAC Roles](/docs/guides/rbac.md). Documents how to configure RBAC roles for user groups.
