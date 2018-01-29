@@ -844,17 +844,11 @@ func init() {
         "frontProxyCACertName": {
           "type": "string"
         },
-        "kubeadmVersion": {
-          "type": "string"
-        },
         "kubeletExtraArgs": {
           "additionalProperties": {
             "type": "string"
           },
           "type": "object"
-        },
-        "kubeletVersion": {
-          "type": "string"
         },
         "kubernetesVersion": {
           "type": "string"
@@ -2585,17 +2579,11 @@ func init() {
         "frontProxyCACertName": {
           "type": "string"
         },
-        "kubeadmVersion": {
-          "type": "string"
-        },
         "kubeletExtraArgs": {
           "additionalProperties": {
             "type": "string"
           },
           "type": "object"
-        },
-        "kubeletVersion": {
-          "type": "string"
         },
         "kubernetesVersion": {
           "type": "string"

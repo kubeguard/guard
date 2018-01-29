@@ -338,6 +338,9 @@ func init() {
     "cluster": {
       "type": "string"
     },
+    "fieldSelector": {
+      "type": "string"
+    },
     "include_metrics": {
       "type": "boolean"
     },

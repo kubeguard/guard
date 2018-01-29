@@ -18,23 +18,29 @@ package kubeadm
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubeletconfigv1alpha1 "k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig/v1alpha1"
+	kubeproxyconfigv1alpha1 "k8s.io/kubernetes/pkg/proxy/apis/kubeproxyconfig/v1alpha1"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// MasterConfiguration contains a list of elements which make up master's
+// configuration object.
 type MasterConfiguration struct {
 	metav1.TypeMeta
 
-	API                API
-	Etcd               Etcd
-	Networking         Networking
-	KubernetesVersion  string
-	CloudProvider      string
-	NodeName           string
-	AuthorizationModes []string
+	API                  API
+	KubeProxy            KubeProxy
+	Etcd                 Etcd
+	KubeletConfiguration KubeletConfiguration
+	Networking           Networking
+	KubernetesVersion    string
+	CloudProvider        string
+	NodeName             string
+	AuthorizationModes   []string
 
 	Token    string
-	TokenTTL metav1.Duration
+	TokenTTL *metav1.Duration
 
 	APIServerExtraArgs         map[string]string
 	ControllerManagerExtraArgs map[string]string
@@ -63,6 +69,7 @@ type MasterConfiguration struct {
 	FeatureGates map[string]bool
 }
 
+// API struct contains elements of API server address.
 type API struct {
 	// AdvertiseAddress sets the address for the API server to advertise.
 	AdvertiseAddress string
@@ -70,18 +77,21 @@ type API struct {
 	BindPort int32
 }
 
+// TokenDiscovery contains elements needed for token discovery
 type TokenDiscovery struct {
 	ID        string
 	Secret    string
 	Addresses []string
 }
 
+// Networking contains elements describing cluster's networking configuration
 type Networking struct {
 	ServiceSubnet string
 	PodSubnet     string
 	DNSDomain     string
 }
 
+// Etcd contains elements describing Etcd configuration
 type Etcd struct {
 	Endpoints []string
 	CAFile    string
@@ -90,11 +100,26 @@ type Etcd struct {
 	DataDir   string
 	ExtraArgs map[string]string
 	// Image specifies which container image to use for running etcd. If empty, automatically populated by kubeadm using the image repository and default etcd version
-	Image string
+	Image      string
+	SelfHosted *SelfHostedEtcd
+}
+
+// SelfHostedEtcd describes options required to configure self-hosted etcd
+type SelfHostedEtcd struct {
+	// CertificatesDir represents the directory where all etcd TLS assets are stored. By default this is
+	// a dir names "etcd" in the main CertificatesDir value.
+	CertificatesDir string
+	// ClusterServiceName is the name of the service that load balances the etcd cluster
+	ClusterServiceName string
+	// EtcdVersion is the version of etcd running in the cluster.
+	EtcdVersion string
+	// OperatorVersion is the version of the etcd-operator to use.
+	OperatorVersion string
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// NodeConfiguration contains elements describing a particular node
 type NodeConfiguration struct {
 	metav1.TypeMeta
 
@@ -121,6 +146,14 @@ type NodeConfiguration struct {
 	// without CA verification via DiscoveryTokenCACertHashes. This can weaken
 	// the security of kubeadm since other nodes can impersonate the master.
 	DiscoveryTokenUnsafeSkipCAVerification bool
+
+	// FeatureGates enabled by the user
+	FeatureGates map[string]bool
+}
+
+// KubeletConfiguration contains elements describing initial remote configuration of kubelet
+type KubeletConfiguration struct {
+	BaseConfig *kubeletconfigv1alpha1.KubeletConfiguration
 }
 
 // GetControlPlaneImageRepository returns name of image repository
@@ -141,4 +174,9 @@ type HostPathMount struct {
 	Name      string
 	HostPath  string
 	MountPath string
+}
+
+// KubeProxy contains elements describing the proxy configuration
+type KubeProxy struct {
+	Config *kubeproxyconfigv1alpha1.KubeProxyConfiguration
 }

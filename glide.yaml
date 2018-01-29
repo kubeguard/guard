@@ -33,15 +33,13 @@ import:
 - package: google.golang.org/api
   version: 98825bb0065da4054e5da6db34f5fc598e50bc24
 - package: k8s.io/api
-  version: kubernetes-1.8.3
+  version: kubernetes-1.9.0
 - package: k8s.io/apimachinery
-  repo: https://github.com/tamalsaha/apimachinery.git
-  version: release-1.8
-  vcs: git
+  version: kubernetes-1.9.0
 - package: k8s.io/client-go
-  version: kubernetes-1.8.3
+  version: v6.0.0
 - package: github.com/appscode/kutil
-  version: release-5.0
+  version: release-6.0
 - package: github.com/golang/protobuf
   version: 6e4cc92cc905d5f4a73041c1b8228ea08f4c6147
 - package: google.golang.org/grpc
