@@ -15,7 +15,6 @@ Prints authentication token webhook config file
 
 ### Synopsis
 
-
 Prints authentication token webhook config file
 
 ```
@@ -27,7 +26,7 @@ guard get webhook-config [flags]
 ```
       --addr string           Address (host:port) of guard server. (default "10.96.10.96:9844")
   -h, --help                  help for webhook-config
-  -o, --organization string   Name of Organization (Github or Google).
+  -o, --organization string   Name of Organization (Github/Gitlab/Google).
       --pki-dir string        Path to directory where pki files are stored. (default "/home/tamal/.guard")
 ```
 
@@ -45,5 +44,6 @@ guard get webhook-config [flags]
 ```
 
 ### SEE ALSO
+
 * [guard get](/docs/reference/guard_get.md)	 - Get PKI
 

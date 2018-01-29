@@ -9,6 +9,7 @@ import (
 
 	"github.com/appscode/go/log"
 	"github.com/appscode/go/term"
+	"github.com/appscode/guard/lib"
 	"github.com/appscode/kutil/tools/certstore"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -22,6 +23,14 @@ func NewCmdInitClient() *cobra.Command {
 		Short:             "Generate client certificate pair",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
+			//for gitlab client name not required
+			if strings.ToLower(org) == "gitlab" {
+				//if client name is not provided,then use the 'gitlab' as common name
+				//otherwise use the client name
+				if len(args) == 0 {
+					args = []string{"gitlab"}
+				}
+			}
 			if len(args) == 0 {
 				log.Fatalln("Missing client name.")
 			}
@@ -42,6 +51,8 @@ func NewCmdInitClient() *cobra.Command {
 				cfg.Organization = []string{"Google"}
 			case "appscode":
 				cfg.Organization = []string{"Appscode"}
+			case "gitlab":
+				cfg.Organization = []string{"Gitlab"}
 			case "":
 				log.Fatalln("Missing organization name. Set flag -o Google|Github.")
 			default:
@@ -75,6 +86,6 @@ func NewCmdInitClient() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&rootDir, "pki-dir", rootDir, "Path to directory where pki files are stored.")
-	cmd.Flags().StringVarP(&org, "organization", "o", org, "Name of Organization (Github or Google).")
+	cmd.Flags().StringVarP(&org, "organization", "o", org, fmt.Sprintf("Name of Organization (%v).", lib.SupportedOrgPrintForm()))
 	return cmd
 }

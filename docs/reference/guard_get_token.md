@@ -11,12 +11,11 @@ section_menu_id: reference
 ---
 ## guard get token
 
-Get tokens for Github or Google
+Get tokens for Github/Gitlab/Google
 
 ### Synopsis
 
-
-Get tokens for Github or Google
+Get tokens for Github/Gitlab/Google
 
 ```
 guard get token [flags]
@@ -26,7 +25,7 @@ guard get token [flags]
 
 ```
   -h, --help                  help for token
-  -o, --organization string   Name of Organization (Github or Google).
+  -o, --organization string   Name of Organization (Github/Gitlab/Google).
 ```
 
 ### Options inherited from parent commands
@@ -43,5 +42,6 @@ guard get token [flags]
 ```
 
 ### SEE ALSO
+
 * [guard get](/docs/reference/guard_get.md)	 - Get PKI
 

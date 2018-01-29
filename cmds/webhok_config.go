@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/appscode/go/log"
+	"github.com/appscode/guard/lib"
 	"github.com/appscode/kutil/tools/certstore"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -21,6 +22,14 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 		Short:             "Prints authentication token webhook config file",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
+			//for gitlab client name not required
+			if strings.ToLower(org) == "gitlab" {
+				//if client name is not provided,then use the 'gitlab' as common name
+				//otherwise use the client name
+				if len(args) == 0 {
+					args = []string{"gitlab"}
+				}
+			}
 			if len(args) == 0 {
 				log.Fatalln("Missing client name.")
 			}
@@ -39,6 +48,8 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 				cfg.Organization = []string{"Google"}
 			case "appscode":
 				cfg.Organization = []string{"Appscode"}
+			case "gitlab":
+				cfg.Organization = []string{"Gitlab"}
 			case "":
 				log.Fatalln("Missing organization name. Set flag -o Google|Github.")
 			default:
@@ -97,7 +108,7 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&rootDir, "pki-dir", rootDir, "Path to directory where pki files are stored.")
-	cmd.Flags().StringVarP(&org, "organization", "o", org, "Name of Organization (Github or Google).")
+	cmd.Flags().StringVarP(&org, "organization", "o", org, fmt.Sprintf("Name of Organization (%v).", lib.SupportedOrgPrintForm()))
 	cmd.Flags().StringVar(&addr, "addr", "10.96.10.96:9844", "Address (host:port) of guard server.")
 	return cmd
 }

@@ -15,7 +15,6 @@ Init CA
 
 ### Synopsis
 
-
 Init CA
 
 ```
@@ -43,5 +42,6 @@ guard init ca [flags]
 ```
 
 ### SEE ALSO
+
 * [guard init](/docs/reference/guard_init.md)	 - Init PKI
 

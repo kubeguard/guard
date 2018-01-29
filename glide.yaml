@@ -8,14 +8,12 @@ import:
   version: master
 - package: github.com/appscode/go
   version: master
+- package: github.com/appscode/kutil
+  version: release-6.0
 - package: github.com/appscode/pat
-- package: github.com/ghodss/yaml
-  version: v1.0.0
 - package: github.com/google/go-github
-- package: github.com/hashicorp/go-version
-  repo: https://github.com/appscode/go-version.git
-  vcs: git
-  version: master
+  version: v15.0.0
+- package: github.com/howeyc/gopass
 - package: github.com/jpillora/go-ogle-analytics
 - package: github.com/prometheus/client_golang
   version: v0.8.0
@@ -24,10 +22,14 @@ import:
 - package: github.com/sirupsen/logrus
   version: v1.0.3
 - package: github.com/skratchdot/open-golang
+- package: github.com/spf13/afero
+  version: v1.0.2
 - package: github.com/spf13/cobra
-  version: v0.0.1
+  version: master
 - package: github.com/spf13/pflag
   version: v1.0.0
+- package: github.com/xanzy/go-gitlab
+  version: v0.8.0
 - package: golang.org/x/net
 - package: golang.org/x/oauth2
 - package: google.golang.org/api
@@ -38,8 +40,6 @@ import:
   version: kubernetes-1.9.0
 - package: k8s.io/client-go
   version: v6.0.0
-- package: github.com/appscode/kutil
-  version: release-6.0
 - package: github.com/golang/protobuf
   version: 6e4cc92cc905d5f4a73041c1b8228ea08f4c6147
 - package: google.golang.org/grpc
@@ -50,3 +50,5 @@ import:
   version: v1.3.1-ac
 - package: github.com/imdario/mergo
   version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
+- package: github.com/pkg/errors
+  version: v0.8.0

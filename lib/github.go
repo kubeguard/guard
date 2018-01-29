@@ -20,15 +20,15 @@ func checkGithub(name, token string) (auth.TokenReview, int) {
 	if err != nil {
 		return Error(fmt.Sprintf("Failed to check user's membership in Org %s. Reason: %v.", name, err)), http.StatusUnauthorized
 	}
-	data := auth.TokenReview{}
-	data.Status = auth.TokenReviewStatus{
+	resp := auth.TokenReview{}
+	resp.Status = auth.TokenReviewStatus{
 		User: auth.UserInfo{
 			Username: mem.User.GetLogin(),
 			UID:      fmt.Sprintf("%d", mem.User.GetID()),
 		},
 	}
 
-	groups := []string{}
+	var groups []string
 	page := 1
 	pageSize := 25
 	for {
@@ -46,7 +46,7 @@ func checkGithub(name, token string) (auth.TokenReview, int) {
 		}
 		page++
 	}
-	data.Status.User.Groups = groups
-	data.Status.Authenticated = true
-	return data, http.StatusOK
+	resp.Status.User.Groups = groups
+	resp.Status.Authenticated = true
+	return resp, http.StatusOK
 }

@@ -15,7 +15,6 @@ Generate server certificate pair
 
 ### Synopsis
 
-
 Generate server certificate pair
 
 ```
@@ -45,5 +44,6 @@ guard init server [flags]
 ```
 
 ### SEE ALSO
+
 * [guard init](/docs/reference/guard_init.md)	 - Init PKI
 

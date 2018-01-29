@@ -1,5 +1,5 @@
-hash: bf9d91f5f93f8dfb1f9123682bd1fb9f5dbc4e0fa1833bc62e38fa9e24a52055
-updated: 2018-02-16T18:33:32.059056479-08:00
+hash: 68f99c405a89aa1a82d56f2011103e952e39c725471f120369f0ded743de55f1
+updated: 2018-02-16T18:39:13.430142451-08:00
 imports:
 - name: appscode.com/api
   version: 94c2d00055f491d55e8ffbd8ccdc1ff53144fe25
@@ -220,11 +220,13 @@ imports:
   subpackages:
   - mem
 - name: github.com/spf13/cobra
-  version: 7b2c5ac9fc04fc5efafb60700713d4fa609b777b
+  version: be77323fc05148ef091e83b3866c0d47c8e74a8b
   subpackages:
   - doc
 - name: github.com/spf13/pflag
   version: e57e3eeb33f795204c1ca35f56c44f83227c6e66
+- name: github.com/xanzy/go-gitlab
+  version: b3618c7c81a14bc59d49e181d9ce7dbab91f148c
 - name: github.com/xeipuuv/gojsonpointer
   version: e0fe6f68307607d540ed8eac07a342c33fa1b54a
 - name: github.com/xeipuuv/gojsonreference

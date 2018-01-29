@@ -30,8 +30,8 @@ func checkGoogle(name, token string) (auth.TokenReview, int) {
 		return Error(fmt.Sprintf("User is not a member of domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
 	}
 
-	data := auth.TokenReview{}
-	data.Status = auth.TokenReviewStatus{
+	resp := auth.TokenReview{}
+	resp.Status = auth.TokenReviewStatus{
 		User: auth.UserInfo{
 			Username: r1.Email,
 			UID:      r1.Id,
@@ -43,7 +43,7 @@ func checkGoogle(name, token string) (auth.TokenReview, int) {
 		return Error(fmt.Sprintf("Failed to create admin/directory/v1 client for domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
 	}
 
-	groups := []string{}
+	var groups []string
 	var pageToken string
 	for {
 		r2, err := svc.Groups.List().UserKey(r1.Email).PageToken(pageToken).Do()
@@ -60,7 +60,7 @@ func checkGoogle(name, token string) (auth.TokenReview, int) {
 		}
 		pageToken = r2.NextPageToken
 	}
-	data.Status.User.Groups = groups
-	data.Status.Authenticated = true
-	return data, http.StatusOK
+	resp.Status.User.Groups = groups
+	resp.Status.Authenticated = true
+	return resp, http.StatusOK
 }

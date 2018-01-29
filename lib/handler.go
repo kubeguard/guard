@@ -38,6 +38,10 @@ func Authenticate(w http.ResponseWriter, req *http.Request) {
 		resp, code := checkAppscode(crt.Subject.CommonName, data.Spec.Token)
 		Write(w, resp, code)
 		return
+	case "gitlab":
+		resp, code := checkGitLab(data.Spec.Token)
+		Write(w, resp, code)
+		return
 	}
 	Write(w, Error("Client is using unknown organization "+org), http.StatusBadRequest)
 	return
