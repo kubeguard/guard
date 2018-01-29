@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
@@ -25,7 +24,7 @@ func checkGithub(name, token string) (auth.TokenReview, int) {
 	data.Status = auth.TokenReviewStatus{
 		User: auth.UserInfo{
 			Username: mem.User.GetLogin(),
-			UID:      strconv.Itoa(mem.User.GetID()),
+			UID:      fmt.Sprintf("%d", mem.User.GetID()),
 		},
 	}
 
