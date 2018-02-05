@@ -16,11 +16,12 @@ import (
 )
 
 type Server struct {
-	WebAddress string
-	CACertFile string
-	CertFile   string
-	KeyFile    string
-	OpsAddress string
+	WebAddress    string
+	CACertFile    string
+	CertFile      string
+	KeyFile       string
+	OpsAddress    string
+	TokenAuthFile string
 }
 
 func (s Server) UseTLS() bool {
@@ -49,6 +50,8 @@ func (s Server) ListenAndServe() {
 		 - http://www.bite-code.com/2015/06/25/tls-mutual-auth-in-golang/
 		 - http://www.hydrogen18.com/blog/your-own-pki-tls-golang.html
 	*/
+	tokenAuthCsvFile = s.TokenAuthFile
+
 	caCert, err := ioutil.ReadFile(s.CACertFile)
 	if err != nil {
 		log.Fatal(err)

@@ -15,7 +15,6 @@ Prints Kubernetes objects for deploying guard server
 
 ### Synopsis
 
-
 Prints Kubernetes objects for deploying guard server
 
 ```
@@ -25,11 +24,12 @@ guard get installer [flags]
 ### Options
 
 ```
-      --addr string        Address (host:port) of guard server. (default "10.96.10.96:9844")
-  -h, --help               help for installer
-  -n, --namespace string   Name of Kubernetes namespace used to run guard server. (default "kube-system")
-      --pki-dir string     Path to directory where pki files are stored. (default "$HOME/.guard")
-      --rbac               If true, uses RBAC with operator and database objects
+      --addr string              Address (host:port) of guard server. (default "10.96.10.96:9844")
+  -h, --help                     help for installer
+  -n, --namespace string         Name of Kubernetes namespace used to run guard server. (default "kube-system")
+      --pki-dir string           Path to directory where pki files are stored. (default "$HOME/.guard")
+      --rbac                     If true, uses RBAC with operator and database objects
+      --token-auth-file string   Path to the token file
 ```
 
 ### Options inherited from parent commands
@@ -46,5 +46,6 @@ guard get installer [flags]
 ```
 
 ### SEE ALSO
+
 * [guard get](/docs/reference/guard_get.md)	 - Get PKI
 

@@ -25,6 +25,14 @@ func Authenticate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if tokenAuthCsvFile != "" {
+		resp, code := checkTokenAuth(data.Spec.Token)
+		if resp.Status.Authenticated {
+			Write(w, resp, code)
+			return
+		}
+	}
+
 	switch strings.ToLower(org) {
 	case "github":
 		resp, code := checkGithub(crt.Subject.CommonName, data.Spec.Token)
