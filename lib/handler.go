@@ -50,6 +50,13 @@ func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		resp, code := checkGitLab(data.Spec.Token)
 		Write(w, resp, code)
 		return
+	case "azure":
+		if s.Azure.ClientID == "" || s.Azure.ClientSecret == "" || s.Azure.TenantID == "" {
+			Write(w, Error("Missing azure client-id or client-secret or tenant-id"), http.StatusBadRequest)
+		}
+		resp, code := s.Azure.checkAzure(data.Spec.Token)
+		Write(w, resp, code)
+		return
 	}
 	Write(w, Error("Client is using unknown organization "+org), http.StatusBadRequest)
 	return

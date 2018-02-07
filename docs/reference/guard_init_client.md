@@ -26,7 +26,7 @@ guard init client [flags]
 ```
   -h, --help                  help for client
   -o, --organization string   Name of Organization (Github/Gitlab/Google).
-      --pki-dir string        Path to directory where pki files are stored. (default "/home/tamal/.guard")
+      --pki-dir string        Path to directory where pki files are stored. (default "$HOME/.guard")
 ```
 
 ### Options inherited from parent commands

@@ -1,5 +1,5 @@
-hash: 68f99c405a89aa1a82d56f2011103e952e39c725471f120369f0ded743de55f1
-updated: 2018-02-16T21:25:19.324778445-08:00
+hash: cdf664aebbaa88e92553e8d48866e46fd3838562807783ac14150495f03e8096
+updated: 2018-02-16T21:52:08.263083294-08:00
 imports:
 - name: appscode.com/api
   version: 94c2d00055f491d55e8ffbd8ccdc1ff53144fe25
@@ -56,6 +56,8 @@ imports:
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
   - quantile
+- name: github.com/coreos/go-oidc
+  version: a93f71fdfe73d2c0f5413c0565eea0af6523a6df
 - name: github.com/cpuguy83/go-md2man
   version: 71acacd42f85e5e82f70a55327789582a5200a90
   subpackages:
@@ -182,6 +184,10 @@ imports:
   - apis/v1alpha1
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
+- name: github.com/pquerna/cachecontrol
+  version: 0dec1b30a0215bb68605dfc568e8855066c9202d
+  subpackages:
+  - cacheobject
 - name: github.com/prometheus/client_golang
   version: c5b7fccd204277076155f10851dad72b76a49317
   subpackages:
@@ -244,8 +250,10 @@ imports:
 - name: github.com/yudai/golcs
   version: d1c525dea8ce39ea9a783d33cf08932305373f2c
 - name: golang.org/x/crypto
-  version: 84e98f45760e87786b7f24603b8166a6fa09811d
+  version: 81e90905daefcd6fd217b62423c0908922eadb30
   subpackages:
+  - ed25519
+  - ed25519/internal/edwards25519
   - ssh/terminal
 - name: golang.org/x/net
   version: 1c05540f6879653db88113bc4a2b70aec4bd491f
@@ -269,6 +277,7 @@ imports:
   version: 95c6576299259db960f6c5b9b69ea52422860fce
   subpackages:
   - unix
+  - windows
 - name: golang.org/x/text
   version: b19bf474d317b857955b12035d2c5acb57ce8b01
   subpackages:
@@ -334,6 +343,11 @@ imports:
   - transport
 - name: gopkg.in/inf.v0
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
+- name: gopkg.in/square/go-jose.v2
+  version: f8f38de21b4dcd69d0413faf231983f5fd6634b1
+  subpackages:
+  - cipher
+  - json
 - name: gopkg.in/yaml.v2
   version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
 - name: k8s.io/api
