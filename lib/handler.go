@@ -57,6 +57,10 @@ func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		resp, code := s.checkAzure(data.Spec.Token)
 		Write(w, resp, code)
 		return
+	case "ldap":
+		resp, code := s.Ldap.checkLdap(data.Spec.Token)
+		Write(w, resp, code)
+		return
 	}
 	Write(w, Error("Client is using unknown organization "+org), http.StatusBadRequest)
 	return

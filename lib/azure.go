@@ -8,6 +8,7 @@ import (
 	"github.com/appscode/go/log"
 	"github.com/appscode/guard/lib/graph"
 	oidc "github.com/coreos/go-oidc"
+	"github.com/spf13/pflag"
 	auth "k8s.io/api/authentication/v1beta1"
 )
 
@@ -40,6 +41,12 @@ type AzureOpts struct {
 	ClientID     string
 	ClientSecret string
 	TenantID     string
+}
+
+func (s *AzureOpts) AddFlags(fs *pflag.FlagSet) {
+	fs.StringVar(&s.ClientID, "azure.client-id", s.ClientID, "MS Graph application client ID to use")
+	fs.StringVar(&s.ClientSecret, "azure.client-secret", s.ClientSecret, "MS Graph application client secret to use")
+	fs.StringVar(&s.TenantID, "azure.tenant-id", s.TenantID, "MS Graph application tenant id to use")
 }
 
 func (s Server) checkAzure(token string) (auth.TokenReview, int) {

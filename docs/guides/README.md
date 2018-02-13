@@ -25,4 +25,5 @@ Guides show you how to perform tasks with Guard.
   - [Google](/docs/guides/authenticator/google.md). Explains how to use Google authenticator.
   - [Static Token File](/docs/guides/authenticator/static_token_file.md). Explains how to authenticate using static token file.
   - [Azure](/docs/guides/authenticator/azure.md). Explains how to use Azure authenticator.
+  - [LDAP](/docs/guides/authenticator/ldap.md). Explains how to use LDAP authenticator.
 - [RBAC Roles](/docs/guides/rbac.md). Documents how to configure RBAC roles for user groups.

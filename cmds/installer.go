@@ -31,6 +31,7 @@ type options struct {
 	enableRBAC    bool
 	tokenAuthFile string
 	Azure         lib.AzureOpts
+	Ldap          lib.LdapOpts
 }
 
 func NewCmdInstaller() *cobra.Command {
@@ -129,7 +130,6 @@ func NewCmdInstaller() *cobra.Command {
 			}
 
 			data, err = meta.MarshalToYAML(newDeployment(opts), apps.SchemeGroupVersion)
-
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -151,9 +151,8 @@ func NewCmdInstaller() *cobra.Command {
 	cmd.Flags().StringVar(&opts.addr, "addr", "10.96.10.96:9844", "Address (host:port) of guard server.")
 	cmd.Flags().BoolVar(&opts.enableRBAC, "rbac", opts.enableRBAC, "If true, uses RBAC with operator and database objects")
 	cmd.Flags().StringVar(&opts.tokenAuthFile, "token-auth-file", "", "Path to the token file")
-	cmd.Flags().StringVar(&opts.Azure.ClientID, "azure.client-id", opts.Azure.ClientID, "MS Graph application client ID to use")
-	cmd.Flags().StringVar(&opts.Azure.ClientSecret, "azure.client-secret", opts.Azure.ClientSecret, "MS Graph application client secret to use")
-	cmd.Flags().StringVar(&opts.Azure.TenantID, "azure.tenant-id", opts.Azure.TenantID, "MS Graph application tenant id to use")
+	opts.Azure.AddFlags(cmd.Flags())
+	opts.Ldap.AddFlags(cmd.Flags())
 	return cmd
 }
 
@@ -278,6 +277,50 @@ func newDeployment(opts options) runtime.Object {
 	}
 	if opts.Azure.TenantID != "" {
 		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--azure-tenant-id=%s", opts.Azure.TenantID))
+	}
+
+	//Add server flags
+	if opts.Ldap.ServerAddress != "" {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-server-address=%s", opts.Ldap.ServerAddress))
+	}
+	if opts.Ldap.ServerPort != "" {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-server-port=%s", opts.Ldap.ServerPort))
+	}
+	if opts.Ldap.BindDN != "" {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-bind-dn=%s", opts.Ldap.BindDN))
+	}
+	if opts.Ldap.BindPassword != "" {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-bind-password=%s", opts.Ldap.BindPassword))
+	}
+	if opts.Ldap.UserSearchDN != "" {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-user-search-dn=%s", opts.Ldap.UserSearchDN))
+	}
+	if opts.Ldap.UserSearchFilter != "" {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-user-search-filter=%s", opts.Ldap.UserSearchFilter))
+	}
+	if opts.Ldap.UserSearchFilter != "" {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-user-attribute=%s", opts.Ldap.UserAttribute))
+	}
+	if opts.Ldap.GroupSearchDN != "" {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-group-search-dn=%s", opts.Ldap.GroupSearchDN))
+	}
+	if opts.Ldap.GroupSearchFilter != "" {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-group-search-filter=%s", opts.Ldap.GroupSearchFilter))
+	}
+	if opts.Ldap.GroupMemberAttribute != "" {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-group-member-attribute=%s", opts.Ldap.GroupMemberAttribute))
+	}
+	if opts.Ldap.GroupNameAttribute != "" {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-group-name-attribute=%s", opts.Ldap.GroupNameAttribute))
+	}
+	if opts.Ldap.SkipTLSVerification {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-skip-tls-verification"))
+	}
+	if opts.Ldap.IsSecureLDAP {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-is-secure-ldap"))
+	}
+	if opts.Ldap.StartTLS {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-start-tls"))
 	}
 
 	return &d

@@ -24,16 +24,30 @@ guard run [flags]
 ### Options
 
 ```
-      --azure.client-id string       MS Graph application client ID to use
-      --azure.client-secret string   MS Graph application client secret to use
-      --azure.tenant-id string       MS Graph application tenant id to use
-      --ca-cert-file string          File containing CA certificate
-      --cert-file string             File container server TLS certificate
-  -h, --help                         help for run
-      --key-file string              File containing server TLS private key
-      --ops-addr string              Address to listen on for web interface and telemetry. (default ":56790")
-      --token-auth-file string       To enable static token authentication
-      --web-address string           Http server address (default ":9844")
+      --azure.client-id string               MS Graph application client ID to use
+      --azure.client-secret string           MS Graph application client secret to use
+      --azure.tenant-id string               MS Graph application tenant id to use
+      --ca-cert-file string                  File containing CA certificate
+      --cert-file string                     File container server TLS certificate
+  -h, --help                                 help for run
+      --key-file string                      File containing server TLS private key
+      --ldap.bind-dn string                  The connector uses this DN in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
+      --ldap.bind-password string            The connector uses this password in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
+      --ldap.group-member-attribute string   Ldap group member attribute (default "member")
+      --ldap.group-name-attribute string     Ldap group name attribute (default "cn")
+      --ldap.group-search-dn string          BaseDN to start the search group
+      --ldap.group-search-filter string      Filter to apply when searching the groups that user is member of (default "(objectClass=groupOfNames)")
+      --ldap.is-secure-ldap                  Secure LDAP (LDAPS)
+      --ldap.server-address string           Host or IP of the LDAP server
+      --ldap.server-port string              LDAP server port (default "389")
+      --ldap.skip-tls-verification           Skip LDAP server TLS verification, default : false
+      --ldap.start-tls                       Start tls connection
+      --ldap.user-attribute string           Ldap username attribute (default "uid")
+      --ldap.user-search-dn string           BaseDN to start the search user
+      --ldap.user-search-filter string       Filter to apply when searching user (default "(objectClass=person)")
+      --ops-addr string                      Address to listen on for web interface and telemetry. (default ":56790")
+      --token-auth-file string               To enable static token authentication
+      --web-address string                   Http server address (default ":9844")
 ```
 
 ### Options inherited from parent commands

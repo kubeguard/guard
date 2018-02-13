@@ -75,6 +75,10 @@ Wrote client certificates in  /home/tamal/.guard/pki
 $ guard init client -o azure
 Wrote client certificates in  /home/tamal/.guard/pki
 
+# generate client certificate pair for LDAP
+$ guard init client appscode -o ldap
+Wrote client certificates in  /home/tamal/.guard/pki
+
 $ ls -l /home/tamal/.guard/pki
 total 32
 -rwxr-xr-- 1 tamal tamal 1054 Aug 28 07:42 qacode@appscode.crt
@@ -87,6 +91,8 @@ total 32
 -rw------- 1 tamal tamal 1675 Aug 28 07:12 gitlab@gitlab.key
 -rwxr-xr-- 1 tamal tamal 1050 Aug 28 07:12 azure@azure.crt
 -rw------- 1 tamal tamal 1675 Aug 28 07:12 azure@azure.key
+-rwxr-xr-- 1 tamal tamal 1050 Aug 28 07:12 ldap@ldap.crt
+-rw------- 1 tamal tamal 1675 Aug 28 07:12 ldap@ldap.key
 -rwxr-xr-- 1 tamal tamal 1005 Aug 28 07:12 ca.crt
 -rw------- 1 tamal tamal 1675 Aug 28 07:12 ca.key
 -rwxr-xr-- 1 tamal tamal 1046 Aug 28 07:12 server.crt

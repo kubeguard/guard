@@ -1,5 +1,5 @@
-hash: cdf664aebbaa88e92553e8d48866e46fd3838562807783ac14150495f03e8096
-updated: 2018-02-16T21:52:08.263083294-08:00
+hash: a7f43256633ca59df8ebe031a678c5164cdd77bb77c5e56d4be773bfda015688
+updated: 2018-02-16T22:31:13.622430412-08:00
 imports:
 - name: appscode.com/api
   version: 94c2d00055f491d55e8ffbd8ccdc1ff53144fe25
@@ -78,6 +78,8 @@ imports:
   version: c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9
 - name: github.com/ghodss/yaml
   version: 0ca9ea5df5451ffdf184b4428c902747c2c11cd7
+- name: github.com/go-ldap/ldap
+  version: bb7a9ca6e4fbc2129e3db588a34bc970ffe811a9
 - name: github.com/go-openapi/jsonpointer
   version: 46af16f9f7b149af66e5d1bd010e3574dc06de98
 - name: github.com/go-openapi/jsonreference
@@ -341,6 +343,8 @@ imports:
   - status
   - tap
   - transport
+- name: gopkg.in/asn1-ber.v1
+  version: 379148ca0225df7a432012b8df0355c2a2063ac0
 - name: gopkg.in/inf.v0
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/square/go-jose.v2

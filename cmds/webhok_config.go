@@ -22,21 +22,17 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 		Short:             "Prints authentication token webhook config file",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			//for gitlab client name not required
-			if strings.ToLower(org) == "gitlab" {
-				//if client name is not provided,then use the 'gitlab' as common name
-				//otherwise use the client name
-				if len(args) == 0 {
-					args = []string{"gitlab"}
+			org = strings.ToLower(org)
+			if len(args) == 0 {
+				switch org {
+				// for gitlab/azure/ldap client name not required
+				case "gitlab", "azure", "ldap":
+					args = []string{org}
 				}
 			}
+
 			if len(args) == 0 {
-				if strings.ToLower(org) == "azure" {
-					//azure common name not required, so default common name used
-					args = []string{"azure"}
-				} else {
-					log.Fatalln("Missing client name.")
-				}
+				log.Fatalln("Missing client name.")
 			}
 			if len(args) > 1 {
 				log.Fatalln("Multiple client name found.")
@@ -45,7 +41,6 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 			cfg := cert.Config{
 				CommonName: args[0],
 			}
-			org = strings.ToLower(org)
 			switch org {
 			case "github":
 				cfg.Organization = []string{"Github"}
@@ -57,6 +52,8 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 				cfg.Organization = []string{"Gitlab"}
 			case "azure":
 				cfg.Organization = []string{"Azure"}
+			case "ldap":
+				cfg.Organization = []string{"Ldap"}
 			case "":
 				log.Fatalln("Missing organization name. Set flag -o Google|Github.")
 			default:
