@@ -23,15 +23,14 @@ import (
 */
 
 const (
-	azureIssuerURL     string = "https://sts.windows.net/"
-	azureUsernameClaim string = "upn"
-	azureGroupClaim    string = "groups"
+	azureIssuerURL     = "https://sts.windows.net/"
+	azureUsernameClaim = "upn"
+	azureGroupClaim    = "groups"
 )
 
 var (
 	// ErrorClaimNotFound indicates the given key was not found in the claims
 	ErrorClaimNotFound = fmt.Errorf("claim not found")
-	ErrorInvalidToken  = fmt.Errorf("invalid token")
 )
 
 // claims represents a map of claims provided with a JWT
