@@ -40,7 +40,7 @@ type options struct {
 
 func NewCmdInstaller() *cobra.Command {
 	opts := options{
-		namespace:       "kube-system",
+		namespace:       metav1.NamespaceSystem,
 		addr:            "10.96.10.96:443",
 		privateRegistry: "appscode",
 		runOnMaster:     true,
@@ -82,7 +82,7 @@ func NewCmdInstaller() *cobra.Command {
 			var buf bytes.Buffer
 			var data []byte
 
-			if opts.namespace != "kube-system" && opts.namespace != core.NamespaceDefault {
+			if opts.namespace != metav1.NamespaceSystem && opts.namespace != metav1.NamespaceDefault {
 				data, err = meta.MarshalToYAML(newNamespace(opts.namespace), core.SchemeGroupVersion)
 				if err != nil {
 					log.Fatalln(err)
