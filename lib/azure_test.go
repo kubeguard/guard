@@ -31,7 +31,13 @@ func TestGraph(t *testing.T) {
 
 func TestCheckAzure(t *testing.T) {
 	cred := tGetCred()
-	resp, status := checkAzure(cred.ClientID, cred.ClientSecret, cred.TenantID, id_token)
+	opts := AzureOptions{
+		ClientID:     cred.ClientID,
+		ClientSecret: cred.ClientSecret,
+		TenantID:     cred.TenantID,
+	}
+	s := Server{Azure: opts}
+	resp, status := s.checkAzure(id_token)
 	if status != 200 {
 		t.Error(resp.Status.Error)
 	}

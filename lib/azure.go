@@ -37,13 +37,13 @@ var (
 // claims represents a map of claims provided with a JWT
 type claims map[string]interface{}
 
-type AzureOpts struct {
+type AzureOptions struct {
 	ClientID     string
 	ClientSecret string
 	TenantID     string
 }
 
-func (s *AzureOpts) AddFlags(fs *pflag.FlagSet) {
+func (s *AzureOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.ClientID, "azure.client-id", s.ClientID, "MS Graph application client ID to use")
 	fs.StringVar(&s.ClientSecret, "azure.client-secret", s.ClientSecret, "MS Graph application client secret to use")
 	fs.StringVar(&s.TenantID, "azure.tenant-id", s.TenantID, "MS Graph application tenant id to use")
