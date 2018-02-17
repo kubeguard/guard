@@ -15,7 +15,6 @@ Run server
 
 ### Synopsis
 
-
 Run server
 
 ```
@@ -47,5 +46,6 @@ guard run [flags]
 ```
 
 ### SEE ALSO
+
 * [guard](/docs/reference/guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
 

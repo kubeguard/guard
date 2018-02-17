@@ -20,7 +20,6 @@ Guard by AppsCode - Kubernetes Authentication WebHook Server
 
 ### Synopsis
 
-
 Guard by AppsCode - Kubernetes Authentication WebHook Server
 
 ### Options
@@ -38,6 +37,7 @@ Guard by AppsCode - Kubernetes Authentication WebHook Server
 ```
 
 ### SEE ALSO
+
 * [guard get](/docs/reference/guard_get.md)	 - Get PKI
 * [guard init](/docs/reference/guard_init.md)	 - Init PKI
 * [guard run](/docs/reference/guard_run.md)	 - Run server

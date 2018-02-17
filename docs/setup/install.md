@@ -67,6 +67,10 @@ Wrote client certificates in  /home/tamal/.guard/pki
 $ guard init client qacode -o appscode
 Wrote client certificates in  /home/tamal/.guard/pki
 
+# generate client certificate pair for Gitlab
+$ guard init client -o gitlab
+Wrote client certificates in  /home/tamal/.guard/pki
+
 $ ls -l /home/tamal/.guard/pki
 total 32
 -rwxr-xr-- 1 tamal tamal 1054 Aug 28 07:42 qacode@appscode.crt
@@ -75,6 +79,8 @@ total 32
 -rw------- 1 tamal tamal 1679 Aug 28 07:42 appscode.com@google.key
 -rwxr-xr-- 1 tamal tamal 1050 Aug 28 07:12 appscode@github.crt
 -rw------- 1 tamal tamal 1675 Aug 28 07:12 appscode@github.key
+-rwxr-xr-- 1 tamal tamal 1050 Aug 28 07:12 gitlab@gitlab.crt
+-rw------- 1 tamal tamal 1675 Aug 28 07:12 gitlab@gitlab.key
 -rwxr-xr-- 1 tamal tamal 1005 Aug 28 07:12 ca.crt
 -rw------- 1 tamal tamal 1675 Aug 28 07:12 ca.key
 -rwxr-xr-- 1 tamal tamal 1046 Aug 28 07:12 server.crt
@@ -127,6 +133,13 @@ To use Github authentication, you can use your personal access token with permis
 $ guard get token -o github
 ```
 ![github-token](/docs/images/github-token.png)
+
+
+To use Gitlab authentication, you can use your personal access token with scope `api`. You can use the following command to issue a token:
+```
+$ guard get token -o gitlab
+```
+![gitlab-token](/docs/images/gitlab-token.png)
 
 
 To use Google authentication, you need a token with the following OAuth scopes:

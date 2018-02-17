@@ -15,7 +15,6 @@ Generate client certificate pair
 
 ### Synopsis
 
-
 Generate client certificate pair
 
 ```
@@ -26,7 +25,7 @@ guard init client [flags]
 
 ```
   -h, --help                  help for client
-  -o, --organization string   Name of Organization (Github or Google).
+  -o, --organization string   Name of Organization (Github/Gitlab/Google).
       --pki-dir string        Path to directory where pki files are stored. (default "/home/tamal/.guard")
 ```
 
@@ -44,5 +43,6 @@ guard init client [flags]
 ```
 
 ### SEE ALSO
+
 * [guard init](/docs/reference/guard_init.md)	 - Init PKI
 

@@ -15,7 +15,6 @@ Prints binary version number.
 
 ### Synopsis
 
-
 Prints binary version number.
 
 ```
@@ -42,5 +41,6 @@ guard version [flags]
 ```
 
 ### SEE ALSO
+
 * [guard](/docs/reference/guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
 

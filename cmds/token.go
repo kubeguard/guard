@@ -23,7 +23,7 @@ func NewCmdGetToken() *cobra.Command {
 	var org string
 	cmd := &cobra.Command{
 		Use:               "token",
-		Short:             "Get tokens for Github or Google",
+		Short:             fmt.Sprintf("Get tokens for %v", lib.SupportedOrgPrintForm()),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			org = strings.ToLower(org)
@@ -31,6 +31,11 @@ func NewCmdGetToken() *cobra.Command {
 			case "github":
 				codeURurl := "https://github.com/settings/tokens/new"
 				log.Infoln("Github url for personal access tokens:", codeURurl)
+				open.Start(codeURurl)
+				return
+			case "gitlab":
+				codeURurl := "https://gitlab.com/profile/personal_access_tokens"
+				log.Infoln("Gitlab url for personal access tokens:", codeURurl)
 				open.Start(codeURurl)
 				return
 			case "google":
@@ -46,7 +51,7 @@ func NewCmdGetToken() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&org, "organization", "o", org, "Name of Organization (Github or Google).")
+	cmd.Flags().StringVarP(&org, "organization", "o", org, fmt.Sprintf("Name of Organization (%v).", lib.SupportedOrgPrintForm()))
 	return cmd
 }
 
