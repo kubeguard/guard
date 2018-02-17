@@ -49,6 +49,22 @@ func (s *AzureOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.TenantID, "azure.tenant-id", s.TenantID, "MS Graph application tenant id to use")
 }
 
+func (s AzureOptions) ToArgs() []string {
+	var args []string
+
+	if s.ClientID != "" {
+		args = append(args, fmt.Sprintf("--azure.client-id=%s", s.ClientID))
+	}
+	if s.ClientSecret != "" {
+		args = append(args, fmt.Sprintf("--azure.client-secret=%s", s.ClientSecret))
+	}
+	if s.TenantID != "" {
+		args = append(args, fmt.Sprintf("--azure.tenant-id=%s", s.TenantID))
+	}
+
+	return args
+}
+
 func (s Server) checkAzure(token string) (auth.TokenReview, int) {
 	ctx := context.Background()
 	provider, err := oidc.NewProvider(ctx, azureIssuerURL+s.Azure.TenantID+"/")

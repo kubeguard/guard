@@ -30,8 +30,9 @@ type options struct {
 	addr          string
 	enableRBAC    bool
 	tokenAuthFile string
+	Google        lib.GoogleOptions
 	Azure         lib.AzureOptions
-	Ldap          lib.LDAPOptions
+	LDAP          lib.LDAPOptions
 }
 
 func NewCmdInstaller() *cobra.Command {
@@ -112,16 +113,27 @@ func NewCmdInstaller() *cobra.Command {
 			buf.Write(data)
 			buf.WriteString("---\n")
 
+			secretData := map[string][]byte{}
 			if opts.tokenAuthFile != "" {
 				_, err := lib.LoadTokenFile(opts.tokenAuthFile)
 				if err != nil {
 					log.Fatalln(err)
 				}
-				tokenData, err := ioutil.ReadFile(opts.tokenAuthFile)
+				tokens, err := ioutil.ReadFile(opts.tokenAuthFile)
 				if err != nil {
 					log.Fatalln(err)
 				}
-				data, err = meta.MarshalToYAML(newSecretForTokenAuth(opts.namespace, tokenData), core.SchemeGroupVersion)
+				secretData["token.csv"] = tokens
+			}
+			if opts.Google.ServiceAccountJsonFile != "" {
+				sa, err := ioutil.ReadFile(opts.tokenAuthFile)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				secretData["sa.json"] = sa
+			}
+			if len(secretData) > 0 {
+				data, err = meta.MarshalToYAML(newSecretForTokenAuth(opts.namespace, secretData), core.SchemeGroupVersion)
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -151,8 +163,9 @@ func NewCmdInstaller() *cobra.Command {
 	cmd.Flags().StringVar(&opts.addr, "addr", "10.96.10.96:9844", "Address (host:port) of guard server.")
 	cmd.Flags().BoolVar(&opts.enableRBAC, "rbac", opts.enableRBAC, "If true, uses RBAC with operator and database objects")
 	cmd.Flags().StringVar(&opts.tokenAuthFile, "token-auth-file", "", "Path to the token file")
+	opts.Google.AddFlags(cmd.Flags())
 	opts.Azure.AddFlags(cmd.Flags())
-	opts.Ldap.AddFlags(cmd.Flags())
+	opts.LDAP.AddFlags(cmd.Flags())
 	return cmd
 }
 
@@ -248,19 +261,18 @@ func newDeployment(opts options) runtime.Object {
 		d.Spec.Template.Spec.ServiceAccountName = "guard"
 	}
 
-	if opts.tokenAuthFile != "" {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, "--token-auth-file=/etc/guard/auth/token.csv")
+	if opts.tokenAuthFile != "" || opts.Google.ServiceAccountJsonFile != "" {
 		volMount := core.VolumeMount{
-			Name:      "guard-token-auth",
+			Name:      "guard-auth",
 			MountPath: "/etc/guard/auth",
 		}
 		d.Spec.Template.Spec.Containers[0].VolumeMounts = append(d.Spec.Template.Spec.Containers[0].VolumeMounts, volMount)
 
 		vol := core.Volume{
-			Name: "guard-token-auth",
+			Name: "guard-auth",
 			VolumeSource: core.VolumeSource{
 				Secret: &core.SecretVolumeSource{
-					SecretName:  "guard-token-auth",
+					SecretName:  "guard-auth",
 					DefaultMode: types.Int32P(0555),
 				},
 			},
@@ -268,60 +280,12 @@ func newDeployment(opts options) runtime.Object {
 		d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
 	}
 
-	//Add server flags
-	if opts.Azure.ClientID != "" {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--azure-client-id=%s", opts.Azure.ClientID))
+	if opts.tokenAuthFile != "" {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, "--token-auth-file=/etc/guard/auth/token.csv")
 	}
-	if opts.Azure.ClientSecret != "" {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--azure-client-secret=%s", opts.Azure.ClientSecret))
-	}
-	if opts.Azure.TenantID != "" {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--azure-tenant-id=%s", opts.Azure.TenantID))
-	}
-
-	//Add server flags
-	if opts.Ldap.ServerAddress != "" {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-server-address=%s", opts.Ldap.ServerAddress))
-	}
-	if opts.Ldap.ServerPort != "" {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-server-port=%s", opts.Ldap.ServerPort))
-	}
-	if opts.Ldap.BindDN != "" {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-bind-dn=%s", opts.Ldap.BindDN))
-	}
-	if opts.Ldap.BindPassword != "" {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-bind-password=%s", opts.Ldap.BindPassword))
-	}
-	if opts.Ldap.UserSearchDN != "" {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-user-search-dn=%s", opts.Ldap.UserSearchDN))
-	}
-	if opts.Ldap.UserSearchFilter != "" {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-user-search-filter=%s", opts.Ldap.UserSearchFilter))
-	}
-	if opts.Ldap.UserSearchFilter != "" {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-user-attribute=%s", opts.Ldap.UserAttribute))
-	}
-	if opts.Ldap.GroupSearchDN != "" {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-group-search-dn=%s", opts.Ldap.GroupSearchDN))
-	}
-	if opts.Ldap.GroupSearchFilter != "" {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-group-search-filter=%s", opts.Ldap.GroupSearchFilter))
-	}
-	if opts.Ldap.GroupMemberAttribute != "" {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-group-member-attribute=%s", opts.Ldap.GroupMemberAttribute))
-	}
-	if opts.Ldap.GroupNameAttribute != "" {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-group-name-attribute=%s", opts.Ldap.GroupNameAttribute))
-	}
-	if opts.Ldap.SkipTLSVerification {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-skip-tls-verification"))
-	}
-	if opts.Ldap.IsSecureLDAP {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-is-secure-ldap"))
-	}
-	if opts.Ldap.StartTLS {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--ldap-start-tls"))
-	}
+	d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, opts.Google.ToArgs()...)
+	d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, opts.Azure.ToArgs()...)
+	d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, opts.LDAP.ToArgs()...)
 
 	return &d
 }
@@ -400,15 +364,13 @@ func newClusterRoleBinding(namespace string) runtime.Object {
 	}
 }
 
-func newSecretForTokenAuth(namespace string, tokenFile []byte) runtime.Object {
+func newSecretForTokenAuth(namespace string, data map[string][]byte) runtime.Object {
 	return &core.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "guard-token-auth",
+			Name:      "guard-auth",
 			Namespace: namespace,
 			Labels:    labels,
 		},
-		Data: map[string][]byte{
-			"token.csv": tokenFile,
-		},
+		Data: data,
 	}
 }
