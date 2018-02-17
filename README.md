@@ -21,6 +21,11 @@ Want to help improve Guard? Please start [here](https://appscode.com/products/gu
 
 ---
 
+## Acknowledgement
+
+- [apprenda-kismatic/kubernetes-ldap](https://github.com/apprenda-kismatic/kubernetes-ldap)
+- [Nike-Inc/harbormaster](https://github.com/Nike-Inc/harbormaster)
+
 ## Support
 We use Slack for public discussions. To chit chat with us or the rest of the community, join us in the [AppsCode Slack team](https://appscode.slack.com/messages/C8M8HANQ0/details/) channel `#guard`. To sign up, use our [Slack inviter](https://slack.appscode.com/).
 
