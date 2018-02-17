@@ -17,24 +17,35 @@ func checkGitLab(token string) (auth.TokenReview, int) {
 		return Error(err.Error()), http.StatusUnauthorized
 	}
 
-	groupList, _, err := client.Groups.ListGroups(nil)
-	if err != nil {
-		return Error(fmt.Sprintf("failed to check informaiton of Group. Reason: %v", err)), http.StatusBadRequest
-	}
-	groups := make([]string, 0, len(groupList))
-	for _, g := range groupList {
-		groups = append(groups, g.Name)
-	}
-
 	resp := auth.TokenReview{}
 	resp.Status = auth.TokenReviewStatus{
 		User: auth.UserInfo{
 			Username: user.Username,
 			UID:      strconv.Itoa(user.ID),
-			Groups:   groups,
 		},
 	}
 
+	var groups []string
+	// https://docs.gitlab.com/ee/api/README.html#pagination
+	page := 1
+	pageSize := 20
+	for {
+		list, _, err := client.Groups.ListGroups(&gitlab.ListGroupsOptions{
+			ListOptions: gitlab.ListOptions{Page: page, PerPage: pageSize},
+		})
+		if err != nil {
+			return Error(fmt.Sprintf("Failed to load groups. Reason: %v", err)), http.StatusBadRequest
+		}
+		for _, g := range list {
+			groups = append(groups, g.Name)
+		}
+		if len(list) < pageSize {
+			break
+		}
+		page++
+	}
+
+	resp.Status.User.Groups = groups
 	resp.Status.Authenticated = true
 	return resp, http.StatusOK
 }
