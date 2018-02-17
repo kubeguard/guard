@@ -9,7 +9,7 @@ import (
 	auth "k8s.io/api/authentication/v1beta1"
 )
 
-func Authenticate(w http.ResponseWriter, req *http.Request) {
+func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	crt := req.TLS.PeerCertificates[0]
 	if len(crt.Subject.Organization) == 0 {
 		Write(w, Error("Client certificate is missing organization"), http.StatusBadRequest)
@@ -25,8 +25,8 @@ func Authenticate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if tokenAuthCsvFile != "" {
-		resp, code := checkTokenAuth(data.Spec.Token)
+	if s.TokenAuthFile != "" {
+		resp, code := s.checkTokenAuth(data.Spec.Token)
 		if resp.Status.Authenticated {
 			Write(w, resp, code)
 			return

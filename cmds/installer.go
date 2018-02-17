@@ -3,6 +3,7 @@ package cmds
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"path/filepath"
 	"strconv"
@@ -108,7 +109,11 @@ func NewCmdInstaller() *cobra.Command {
 			buf.WriteString("---\n")
 
 			if tokenAuthFile != "" {
-				tokenData, err := lib.ReadCvsFile(tokenAuthFile)
+				_, err := lib.LoadTokenFile(tokenAuthFile)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				tokenData, err := ioutil.ReadFile(tokenAuthFile)
 				if err != nil {
 					log.Fatalln(err)
 				}

@@ -52,3 +52,5 @@ import:
   version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
 - package: github.com/pkg/errors
   version: v0.8.0
+- package: github.com/fsnotify/fsnotify
+  version: v1.4.7

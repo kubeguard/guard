@@ -3,106 +3,36 @@ package lib
 import (
 	"bufio"
 	"encoding/csv"
-	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
+	"github.com/pkg/errors"
 	auth "k8s.io/api/authentication/v1beta1"
 )
 
 var (
-	tokenAuthCsvFile string = ""
+	tokenMap = map[string]auth.UserInfo{}
+	lock     sync.RWMutex
 )
 
-type tokenInfo struct {
-	token    string   `json:"token"`
-	userName string   `json:"username"`
-	userID   string   `json:"userid"`
-	groups   []string `json:"groups"`
-}
+func (s Server) checkTokenAuth(token string) (auth.TokenReview, int) {
+	lock.RLock()
+	defer lock.RUnlock()
 
-func checkTokenAuth(token string) (auth.TokenReview, int) {
-	tokenList, err := ParseCsvFile(tokenAuthCsvFile)
-	if err != nil {
-		return Error(fmt.Sprintf("Failed to load data from token auth file. Reason: %v", err)), http.StatusInternalServerError
+	resp := auth.TokenReview{}
+	user, ok := tokenMap[token]
+	if !ok {
+		return Error("Invalid token"), http.StatusUnauthorized
 	}
 
-	data := auth.TokenReview{}
-
-	for _, t := range tokenList {
-		if t.token == token {
-			data.Status = auth.TokenReviewStatus{
-				User: auth.UserInfo{
-					Username: t.userName,
-					UID:      t.userID,
-					Groups:   t.groups,
-				},
-			}
-			data.Status.Authenticated = true
-			return data, http.StatusOK
-		}
+	resp.Status = auth.TokenReviewStatus{
+		User:          user,
+		Authenticated: true,
 	}
-
-	return Error("Invalid token"), http.StatusUnauthorized
-}
-
-func ReadCvsFile(file string) ([]byte, error) {
-	err := ValidateTokenCvsFile(file)
-	if err != nil {
-		return nil, err
-	}
-	data, err := ioutil.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
-}
-
-// https://kubernetes.io/docs/admin/authentication/#static-token-file
-func ParseCsvFile(file string) ([]tokenInfo, error) {
-	err := ValidateTokenCvsFile(file)
-	if err != nil {
-		return nil, err
-	}
-	csvFile, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	reader := csv.NewReader(bufio.NewReader(csvFile))
-	data := []tokenInfo{}
-	for {
-		line, err := reader.Read()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return nil, err
-		}
-		info := tokenInfo{
-			token:    strings.Trim(line[0], " "),
-			userName: strings.Trim(line[1], " "),
-			userID:   strings.Trim(line[2], " "),
-		}
-		if len(line) > 3 {
-			info.groups = ParseGroupFromString(strings.Trim(line[3], " "))
-		}
-		data = append(data, info)
-	}
-	return data, nil
-}
-
-//string format : "group1,group2,group3"
-func ParseGroupFromString(in string) []string {
-	out := []string{}
-	groups := strings.Split(in, ",")
-	for _, g := range groups {
-		if len(g) > 0 {
-			out = append(out, strings.Trim(g, " "))
-		}
-	}
-	return out
+	return resp, http.StatusOK
 }
 
 //https://kubernetes.io/docs/admin/authentication/#static-token-file
@@ -111,43 +41,65 @@ func ParseGroupFromString(in string) []string {
 //  - groups can be empty, others cannot be empty
 //  - token should be unique
 //  - one user can have multiple token
-func ValidateTokenCvsFile(file string) error {
+func LoadTokenFile(file string) (map[string]auth.UserInfo, error) {
 	csvFile, err := os.Open(file)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	defer csvFile.Close()
+
 	reader := csv.NewReader(bufio.NewReader(csvFile))
-	tokenUsed := map[string]bool{}
-	lineCount := 0
+	data := map[string]auth.UserInfo{}
+	lineNum := 0
 	for {
-		line, err := reader.Read()
+		row, err := reader.Read()
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			return err
+			return nil, errors.Wrap(err, "failed to parse token auth file")
 		}
-		lineCount++
-		if len(line) != 4 {
-			return fmt.Errorf("in the token file, line %v has insufficient number of fields", lineCount)
-		}
-		token := strings.Trim(line[0], " ")
-		if len(token) == 0 {
-			return fmt.Errorf("token cannot be empty")
-		}
-		if found := tokenUsed[token]; found {
-			return fmt.Errorf("token must be unique")
-		}
-		tokenUsed[token] = true
+		lineNum++
+		cols := len(row)
 
-		if len(strings.Trim(line[1], " ")) == 0 {
-			return fmt.Errorf("user cannot be empty")
+		if cols < 3 || cols > 4 {
+			return nil, errors.Errorf("line #%d of token auth file is ill formatted", lineNum)
 		}
-		if len(strings.Trim(line[2], " ")) == 0 {
-			return fmt.Errorf("uid cannot be empty")
+
+		token := strings.TrimSpace(row[0])
+		if len(token) == 0 {
+			return nil, errors.Errorf("line #%d of token auth file has empty token", lineNum)
+		}
+		if _, found := data[token]; found {
+			return nil, errors.Errorf("line #%d of token auth file reuses token", lineNum)
+		}
+
+		user := auth.UserInfo{
+			Username: strings.TrimSpace(row[1]),
+			UID:      strings.TrimSpace(row[2]),
+		}
+		if user.Username == "" {
+			return nil, errors.Errorf("line #%d of token auth file has empty user name", lineNum)
+		}
+		if user.UID == "" {
+			return nil, errors.Errorf("line #%d of token auth file has empty uid", lineNum)
+		}
+
+		if cols > 3 {
+			user.Groups = parseGroups(strings.TrimSpace(row[3]))
+		}
+		data[token] = user
+	}
+	return data, nil
+}
+
+//string format : "group1,group2,group3"
+func parseGroups(in string) []string {
+	var out []string
+	groups := strings.Split(in, ",")
+	for _, g := range groups {
+		if len(g) > 0 {
+			out = append(out, strings.TrimSpace(g))
 		}
 	}
-	if lineCount == 0 {
-		return fmt.Errorf("empty token file")
-	}
-	return nil
+	return out
 }
