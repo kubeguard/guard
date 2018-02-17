@@ -143,6 +143,12 @@ type GoogleSpec struct {
 	NodeScopes []string `json:"nodeScopes,omitempty" protobuf:"bytes,3,rep,name=nodeScopes"`
 }
 
+type GKESpec struct {
+	UserName    string `json:"userName,omitempty" protobuf:"bytes,1,opt,name=userName"`
+	Password    string `json:"password,omitempty" protobuf:"bytes,2,opt,name=password"`
+	NetworkName string `json:"networkName,omitempty" protobuf:"bytes,3,opt,name=networkName"`
+}
+
 type AzureSpec struct {
 	InstanceImageVersion string `json:"instanceImageVersion,omitempty" protobuf:"bytes,1,opt,name=instanceImageVersion"`
 	RootPassword         string `json:"rootPassword,omitempty" protobuf:"bytes,2,opt,name=rootPassword"`
@@ -175,6 +181,7 @@ type CloudSpec struct {
 	GCE                  *GoogleSpec `json:"gce,omitempty" protobuf:"bytes,11,opt,name=gce"`
 	Azure                *AzureSpec  `json:"azure,omitempty" protobuf:"bytes,12,opt,name=azure"`
 	Linode               *LinodeSpec `json:"linode,omitempty" protobuf:"bytes,13,opt,name=linode"`
+	GKE                  *GKESpec    `json:"gke,omitempty" protobuf:"bytes,14,opt,name=gke"`
 }
 
 type API struct {
@@ -302,7 +309,12 @@ func (c *Cluster) KubernetesClusterIP() string {
 func (c Cluster) APIServerURL() string {
 	m := map[core.NodeAddressType]string{}
 	for _, addr := range c.Status.APIAddresses {
-		m[addr.Type] = fmt.Sprintf("https://%s:%d", addr.Address, c.Spec.API.BindPort)
+		if c.Spec.API.BindPort == 0 {
+			m[addr.Type] = fmt.Sprintf("https://%s", addr.Address)
+		} else {
+			m[addr.Type] = fmt.Sprintf("https://%s:%d", addr.Address, c.Spec.API.BindPort)
+		}
+
 	}
 	if u, found := m[core.NodeExternalIP]; found {
 		return u

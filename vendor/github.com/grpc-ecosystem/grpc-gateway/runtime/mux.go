@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"fmt"
 	"net/http"
 	"net/textproto"
 	"strings"
@@ -107,7 +108,6 @@ func NewServeMux(opts ...ServeMuxOption) *ServeMux {
 		handlers:               make(map[string][]handler),
 		forwardResponseOptions: make([]func(context.Context, http.ResponseWriter, proto.Message) error, 0),
 		marshalers:             makeMarshalerMIMERegistry(),
-		incomingHeaderMatcher:  DefaultHeaderMatcher,
 	}
 
 	for _, opt := range opts {
@@ -126,6 +126,16 @@ func NewServeMux(opts ...ServeMuxOption) *ServeMux {
 		}
 	}
 
+	if serveMux.incomingHeaderMatcher == nil {
+		serveMux.incomingHeaderMatcher = DefaultHeaderMatcher
+	}
+
+	if serveMux.outgoingHeaderMatcher == nil {
+		serveMux.outgoingHeaderMatcher = func(key string) (string, bool) {
+			return fmt.Sprintf("%s%s", MetadataHeaderPrefix, key), true
+		}
+	}
+
 	return serveMux
 }
 
@@ -136,8 +146,7 @@ func (s *ServeMux) Handle(meth string, pat Pattern, h HandlerFunc) {
 
 // ServeHTTP dispatches the request to the first handler whose pattern matches to r.Method and r.Path.
 func (s *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// TODO: use r.Context for go 1.7+
-	ctx := context.Background()
+	ctx := r.Context()
 
 	path := r.URL.Path
 	if !strings.HasPrefix(path, "/") {

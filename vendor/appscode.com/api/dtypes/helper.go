@@ -3,44 +3,50 @@ package dtypes
 import (
 	"strings"
 
+	"fmt"
+
 	_env "github.com/appscode/go/env"
-	"github.com/appscode/go/errors"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/any"
+	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-func statusErr(c codes.Code, err error) error {
+type stackTracer interface {
+	StackTrace() errors.StackTrace
+}
+
+func statusErr(c codes.Code, ee error) error {
 	// if already a statusError, just return it (ignore c)
-	if gs, ok := status.FromError(err); ok {
+	if gs, ok := status.FromError(ee); ok {
 		return gs.Err()
 	}
-	e := errors.FromErr(err)
-	// if the cause of traceable error is a statusError, just return it (ignore c)
-	if e2 := e.Cause(); e2 != nil {
-		if gs, ok := status.FromError(e2); ok {
-			return gs.Err()
-		}
-	}
+
 	// Well, we got to create a new statusError
 	s := &spb.Status{
 		Code:    int32(c),
-		Message: e.Message(),
+		Message: ee.Error(),
 	}
+
 	var details ErrorDetails
-	if e.Cause() != nil {
-		details.Cause = e.Cause().Error()
+
+	cause := errors.Cause(ee)
+	details.Cause = cause.Error()
+
+	var st errors.StackTrace
+	if err, ok := cause.(stackTracer); ok {
+		st = err.StackTrace()
 	}
-	if !_env.FromHost().IsPublic() && e.Trace() != nil {
+	if !_env.FromHost().IsPublic() && st != nil {
 		details.StackTrace = &ErrorDetails_StackTrace{
-			Frames: strings.Split(e.Trace().String(), "\n"),
+			Frames: strings.Split(fmt.Sprintf("%+v", st), "\n"),
 		}
 	}
-	data, err := proto.Marshal(&details)
-	if err == nil {
+
+	if data, err := proto.Marshal(&details); err == nil {
 		s.Details = []*any.Any{{
 			TypeUrl: proto.MessageName(&details),
 			Value:   data,

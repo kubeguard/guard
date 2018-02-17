@@ -1,6 +1,8 @@
 package version
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func (m *Version) Print() {
 	if m.Name != "" {

@@ -1,8 +1,7 @@
 package v1alpha1
 
 import (
-	"fmt"
-
+	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -82,5 +81,5 @@ func (pc PharmerConfig) GetCredential(name string) (*Credential, error) {
 			return &c, nil
 		}
 	}
-	return nil, fmt.Errorf("Missing credential %s", name)
+	return nil, errors.Errorf("Missing credential %s", name)
 }

@@ -4,11 +4,11 @@ import (
 	"bytes"
 	//"crypto/sha512"
 	//"encoding/base64"
-	"errors"
-	"fmt"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 )
 
 // MissingChecksumError records an error and the operation and file path that caused it.
-var MissingChecksumError = fmt.Errorf("%v key is missing", NodeLabelKey_Checksum)
+var MissingChecksumError = errors.Errorf("%v key is missing", NodeLabelKey_Checksum)
 
 /*
 NodeLabels is used to parse and generate --node-label flag for kubelet.

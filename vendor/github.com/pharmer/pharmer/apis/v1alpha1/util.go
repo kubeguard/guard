@@ -1,6 +1,6 @@
 package v1alpha1
 
-import "errors"
+import "github.com/pkg/errors"
 
 func AssignTypeKind(v interface{}) error {
 	switch u := v.(type) {

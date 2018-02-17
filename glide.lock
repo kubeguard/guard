@@ -1,8 +1,8 @@
-hash: 0791bc80fc6fd4d0641a65de51e18c1480d20d1c88fa26c8e0fb3bc70e81b40e
-updated: 2018-01-28T21:12:28.099448944-08:00
+hash: bf9d91f5f93f8dfb1f9123682bd1fb9f5dbc4e0fa1833bc62e38fa9e24a52055
+updated: 2018-02-16T18:33:32.059056479-08:00
 imports:
 - name: appscode.com/api
-  version: 09f70bd82f93f4b633d7d8246936d1e4b0727d07
+  version: 94c2d00055f491d55e8ffbd8ccdc1ff53144fe25
   repo: https://bitbucket.org/appscode/api.git
   subpackages:
   - attic/v1beta1
@@ -12,12 +12,11 @@ imports:
   - dtypes
   - health
   - kubernetes/v1beta1
-  - mailinglist/v1beta1
   - namespace/v1beta1
   - operation/v1beta1
   - version
 - name: appscode.com/client-go
-  version: 4a9a82142a4dafcb345099ee9eebc7965e8dbadb
+  version: a0e881cd77c294ea369e9bb11a7e5a90f8fd98e5
   repo: https://bitbucket.org/appscode/client-go.git
   subpackages:
   - credential
@@ -28,12 +27,11 @@ imports:
   - compute/metadata
   - internal
 - name: github.com/appscode/go
-  version: 99dbf420807d9459b63d1d0bf702537bb7aa976f
+  version: 8367769380cf93a12b381d957941ddf2a19d0356
   subpackages:
   - analytics
   - context
   - env
-  - errors
   - homedir
   - log
   - log/golog
@@ -45,7 +43,7 @@ imports:
   - types
   - version
 - name: github.com/appscode/kutil
-  version: 60ced7f055b34d512a84f65ca0a7d412ec3d6ef2
+  version: 579ddb8cc946c9e5f09d59863a3c5fe27cdc56f5
   subpackages:
   - meta
   - tools/analytics
@@ -60,14 +58,18 @@ imports:
   version: 71acacd42f85e5e82f70a55327789582a5200a90
   subpackages:
   - md2man
+- name: github.com/davecgh/go-spew
+  version: 782f4967f2dc4564575ca782fe2d04090b5faca8
+  subpackages:
+  - spew
 - name: github.com/emicklei/go-restful
   version: ff4f55a206334ef123e4f79bbf348980da81ca46
   subpackages:
   - log
-- name: github.com/facebookgo/stack
-  version: 751773369052141c013c6e827a71e8f35c07879c
+- name: github.com/evanphx/json-patch
+  version: 944e07253867aacae43c04b2e6a239005443f33a
 - name: github.com/fatih/color
-  version: 9aae6aaa22315390f03959adca2c4d395b02fcef
+  version: 570b54cabe6b8eb0bc2dfce68d964677d63b5260
 - name: github.com/ghodss/yaml
   version: 0ca9ea5df5451ffdf184b4428c902747c2c11cd7
 - name: github.com/go-openapi/jsonpointer
@@ -99,7 +101,7 @@ imports:
 - name: github.com/google/btree
   version: 7d79101e329e5a3adf994758c578dab82b90c017
 - name: github.com/google/go-cmp
-  version: 97aa668b73e764ccdd786bc3ccd2edffe621150e
+  version: 3af367b6b30c263d47e8895973edcca9a49cf029
   subpackages:
   - cmp
   - cmp/internal/diff
@@ -128,7 +130,7 @@ imports:
   subpackages:
   - diskcache
 - name: github.com/grpc-ecosystem/grpc-gateway
-  version: 42a2d1c4991e79a4a8318984e5c81031b21f3c76
+  version: 222f010658cca4619115dfe10279480c6621001e
   repo: https://github.com/appscode/grpc-gateway.git
   vcs: git
   subpackages:
@@ -159,9 +161,11 @@ imports:
   - jlexer
   - jwriter
 - name: github.com/mattn/go-colorable
-  version: 6cc8b475d4682021d75d2cbe2bc481bec4ce98e5
+  version: 5411d3eea5978e6cdc258b30de592b60df6aba96
+  repo: https://github.com/mattn/go-colorable
 - name: github.com/mattn/go-isatty
   version: 57fdcb988a5c543893cc61bce354a6e24ab70022
+  repo: https://github.com/mattn/go-isatty
 - name: github.com/matttproud/golang_protobuf_extensions
   version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
   subpackages:
@@ -169,9 +173,11 @@ imports:
 - name: github.com/peterbourgon/diskv
   version: 5f041e8faa004a95c88a202771f4cc3e991971e6
 - name: github.com/pharmer/pharmer
-  version: b0d885174f9c50de601d3d3ea68a6f72111cfa25
+  version: 1d00e6a8234b956303527d156ef7989423189c16
   subpackages:
   - apis/v1alpha1
+- name: github.com/pkg/errors
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/prometheus/client_golang
   version: c5b7fccd204277076155f10851dad72b76a49317
   subpackages:
@@ -197,6 +203,10 @@ imports:
   version: 5bd2802263f21d8788851d5305584c82a5c75d7e
 - name: github.com/russross/blackfriday
   version: 300106c228d52c8941d4b3de6054a6062a86dda3
+- name: github.com/sergi/go-diff
+  version: 97b2266dfe4bd4ea1b81a463322f04f8b724801e
+  subpackages:
+  - diffmatchpatch
 - name: github.com/shurcooL/sanitized_anchor_name
   version: 10ef21a441db47d8b13ebcc5fd2310f636973c77
 - name: github.com/sirupsen/logrus
@@ -220,9 +230,15 @@ imports:
 - name: github.com/xeipuuv/gojsonreference
   version: e02fc20de94c78484cd5ffb007f8af96be030a45
 - name: github.com/xeipuuv/gojsonschema
-  version: 70e59348c29403c606624cd201e79769d6657db8
+  version: 93e72a773fade158921402d6a24c819b48aba29d
+- name: github.com/yudai/gojsondiff
+  version: 7b1b7adf999dab73a6eb02669c3d82dbb27a3dd6
+  subpackages:
+  - formatter
+- name: github.com/yudai/golcs
+  version: d1c525dea8ce39ea9a783d33cf08932305373f2c
 - name: golang.org/x/crypto
-  version: 81e90905daefcd6fd217b62423c0908922eadb30
+  version: 84e98f45760e87786b7f24603b8166a6fa09811d
   subpackages:
   - ssh/terminal
 - name: golang.org/x/net
@@ -247,7 +263,6 @@ imports:
   version: 95c6576299259db960f6c5b9b69ea52422860fce
   subpackages:
   - unix
-  - windows
 - name: golang.org/x/text
   version: b19bf474d317b857955b12035d2c5acb57ce8b01
   subpackages:
@@ -288,17 +303,25 @@ imports:
   - googleapis/api/annotations
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: d2e1b51f33ff8c5e4a15560ff049d200e83726c5
+  version: 6b51017f791ae1cfbec89c52efdf444b13b550ef
   subpackages:
+  - balancer
+  - balancer/base
+  - balancer/roundrobin
   - codes
+  - connectivity
   - credentials
-  - grpclb/grpc_lb_v1
+  - encoding
+  - grpclb/grpc_lb_v1/messages
   - grpclog
   - internal
   - keepalive
   - metadata
   - naming
   - peer
+  - resolver
+  - resolver/dns
+  - resolver/passthrough
   - stats
   - status
   - tap
@@ -367,18 +390,22 @@ imports:
   - pkg/util/framer
   - pkg/util/intstr
   - pkg/util/json
+  - pkg/util/jsonmergepatch
+  - pkg/util/mergepatch
   - pkg/util/net
   - pkg/util/runtime
   - pkg/util/sets
+  - pkg/util/strategicpatch
   - pkg/util/validation
   - pkg/util/validation/field
   - pkg/util/wait
   - pkg/util/yaml
   - pkg/version
   - pkg/watch
+  - third_party/forked/golang/json
   - third_party/forked/golang/reflect
 - name: k8s.io/apiserver
-  version: ac8d2245af4cbb47d4ee5e0a6088a7e2294eaa2f
+  version: 1270e9f1ad9eaf6127691df90af0836f7e152495
   subpackages:
   - pkg/util/feature
 - name: k8s.io/client-go
@@ -434,6 +461,7 @@ imports:
   version: 39a7bf85c140f972372c2a0d1ee40adbf0c8bfe1
   subpackages:
   - pkg/common
+  - pkg/util/proto
 - name: k8s.io/kubernetes
   version: 925c127ec6b946659ad0fd596fa959be43f0cc05
   subpackages:

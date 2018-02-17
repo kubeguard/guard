@@ -27,7 +27,6 @@ package gojsonschema
 
 import (
 	"encoding/json"
-	"math/big"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -56,7 +55,7 @@ func (v *Schema) Validate(l JSONLoader) (*Result, error) {
 
 	// load document
 
-	root, err := l.LoadJSON()
+	root, err := l.loadJSON()
 	if err != nil {
 		return nil, err
 	}
@@ -375,24 +374,6 @@ func (v *subSchema) validateSchema(currentSubSchema *subSchema, currentNode inte
 		}
 	}
 
-	if currentSubSchema._if != nil {
-		validationResultIf := currentSubSchema._if.subValidateWithContext(currentNode, context)
-		if currentSubSchema._then != nil && validationResultIf.Valid() {
-			validationResultThen := currentSubSchema._then.subValidateWithContext(currentNode, context)
-			if !validationResultThen.Valid() {
-				result.addError(new(ConditionThenError), context, currentNode, ErrorDetails{})
-				result.mergeErrors(validationResultThen)
-			}
-		}
-		if currentSubSchema._else != nil && !validationResultIf.Valid() {
-			validationResultElse := currentSubSchema._else.subValidateWithContext(currentNode, context)
-			if !validationResultElse.Valid() {
-				result.addError(new(ConditionElseError), context, currentNode, ErrorDetails{})
-				result.mergeErrors(validationResultElse)
-			}
-		}
-	}
-
 	result.incrementScore()
 }
 
@@ -431,7 +412,7 @@ func (v *subSchema) validateArray(currentSubSchema *subSchema, value []interface
 		internalLog(" %v", value)
 	}
 
-	nbValues := len(value)
+	nbItems := len(value)
 
 	// TODO explain
 	if currentSubSchema.itemsChildrenIsSingleSchema {
@@ -444,18 +425,15 @@ func (v *subSchema) validateArray(currentSubSchema *subSchema, value []interface
 		if currentSubSchema.itemsChildren != nil && len(currentSubSchema.itemsChildren) > 0 {
 
 			nbItems := len(currentSubSchema.itemsChildren)
+			nbValues := len(value)
 
-			// while we have both schemas and values, check them against each other
-			for i := 0; i != nbItems && i != nbValues; i++ {
-				subContext := newJsonContext(strconv.Itoa(i), context)
-				validationResult := currentSubSchema.itemsChildren[i].subValidateWithContext(value[i], subContext)
-				result.mergeErrors(validationResult)
-			}
-
-			if nbItems < nbValues {
-				// we have less schemas than elements in the instance array,
-				// but that might be ok if "additionalItems" is specified.
-
+			if nbItems == nbValues {
+				for i := 0; i != nbItems; i++ {
+					subContext := newJsonContext(strconv.Itoa(i), context)
+					validationResult := currentSubSchema.itemsChildren[i].subValidateWithContext(value[i], subContext)
+					result.mergeErrors(validationResult)
+				}
+			} else if nbItems < nbValues {
 				switch currentSubSchema.additionalItems.(type) {
 				case bool:
 					if !currentSubSchema.additionalItems.(bool) {
@@ -475,7 +453,7 @@ func (v *subSchema) validateArray(currentSubSchema *subSchema, value []interface
 
 	// minItems & maxItems
 	if currentSubSchema.minItems != nil {
-		if nbValues < int(*currentSubSchema.minItems) {
+		if nbItems < int(*currentSubSchema.minItems) {
 			result.addError(
 				new(ArrayMinItemsError),
 				context,
@@ -485,7 +463,7 @@ func (v *subSchema) validateArray(currentSubSchema *subSchema, value []interface
 		}
 	}
 	if currentSubSchema.maxItems != nil {
-		if nbValues > int(*currentSubSchema.maxItems) {
+		if nbItems > int(*currentSubSchema.maxItems) {
 			result.addError(
 				new(ArrayMaxItemsError),
 				context,
@@ -587,7 +565,7 @@ func (v *subSchema) validateObject(currentSubSchema *subSchema, value map[string
 							result.addError(
 								new(AdditionalPropertyNotAllowedError),
 								context,
-								value[pk],
+								value,
 								ErrorDetails{"property": pk},
 							)
 						}
@@ -598,7 +576,7 @@ func (v *subSchema) validateObject(currentSubSchema *subSchema, value map[string
 							result.addError(
 								new(AdditionalPropertyNotAllowedError),
 								context,
-								value[pk],
+								value,
 								ErrorDetails{"property": pk},
 							)
 						}
@@ -650,7 +628,7 @@ func (v *subSchema) validateObject(currentSubSchema *subSchema, value map[string
 				result.addError(
 					new(InvalidPropertyPatternError),
 					context,
-					value[pk],
+					value,
 					ErrorDetails{
 						"property": pk,
 						"pattern":  currentSubSchema.PatternPropertiesString(),
@@ -778,17 +756,17 @@ func (v *subSchema) validateNumber(currentSubSchema *subSchema, value interface{
 	}
 
 	number := value.(json.Number)
-	float64Value, _ := new(big.Float).SetString(string(number))
+	float64Value, _ := number.Float64()
 
 	// multipleOf:
 	if currentSubSchema.multipleOf != nil {
 
-		if q := new(big.Float).Quo(float64Value, currentSubSchema.multipleOf); !q.IsInt() {
+		if !isFloat64AnInteger(float64Value / *currentSubSchema.multipleOf) {
 			result.addError(
 				new(MultipleOfError),
 				context,
 				resultErrorFormatJsonNumber(number),
-				ErrorDetails{"multiple": currentSubSchema.multipleOf},
+				ErrorDetails{"multiple": *currentSubSchema.multipleOf},
 			)
 		}
 	}
@@ -796,24 +774,24 @@ func (v *subSchema) validateNumber(currentSubSchema *subSchema, value interface{
 	//maximum & exclusiveMaximum:
 	if currentSubSchema.maximum != nil {
 		if currentSubSchema.exclusiveMaximum {
-			if float64Value.Cmp(currentSubSchema.maximum) >= 0 {
+			if float64Value >= *currentSubSchema.maximum {
 				result.addError(
 					new(NumberLTError),
 					context,
 					resultErrorFormatJsonNumber(number),
 					ErrorDetails{
-						"max": currentSubSchema.maximum,
+						"max": resultErrorFormatNumber(*currentSubSchema.maximum),
 					},
 				)
 			}
 		} else {
-			if float64Value.Cmp(currentSubSchema.maximum) == 1 {
+			if float64Value > *currentSubSchema.maximum {
 				result.addError(
 					new(NumberLTEError),
 					context,
 					resultErrorFormatJsonNumber(number),
 					ErrorDetails{
-						"max": currentSubSchema.maximum,
+						"max": resultErrorFormatNumber(*currentSubSchema.maximum),
 					},
 				)
 			}
@@ -823,40 +801,27 @@ func (v *subSchema) validateNumber(currentSubSchema *subSchema, value interface{
 	//minimum & exclusiveMinimum:
 	if currentSubSchema.minimum != nil {
 		if currentSubSchema.exclusiveMinimum {
-			if float64Value.Cmp(currentSubSchema.minimum) <= 0 {
-				// if float64Value <= *currentSubSchema.minimum {
+			if float64Value <= *currentSubSchema.minimum {
 				result.addError(
 					new(NumberGTError),
 					context,
 					resultErrorFormatJsonNumber(number),
 					ErrorDetails{
-						"min": currentSubSchema.minimum,
+						"min": resultErrorFormatNumber(*currentSubSchema.minimum),
 					},
 				)
 			}
 		} else {
-			if float64Value.Cmp(currentSubSchema.minimum) == -1 {
+			if float64Value < *currentSubSchema.minimum {
 				result.addError(
 					new(NumberGTEError),
 					context,
 					resultErrorFormatJsonNumber(number),
 					ErrorDetails{
-						"min": currentSubSchema.minimum,
+						"min": resultErrorFormatNumber(*currentSubSchema.minimum),
 					},
 				)
 			}
-		}
-	}
-
-	// format
-	if currentSubSchema.format != "" {
-		if !FormatCheckers.IsFormat(currentSubSchema.format, float64Value) {
-			result.addError(
-				new(DoesNotMatchFormatError),
-				context,
-				value,
-				ErrorDetails{"format": currentSubSchema.format},
-			)
 		}
 	}
 
