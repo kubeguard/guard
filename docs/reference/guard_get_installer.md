@@ -50,7 +50,7 @@ guard get installer [flags]
       --pki-dir string                       Path to directory where pki files are stored. (default "$HOME/.guard")
       --private-registry string              Private Docker registry (default "appscode")
       --rbac                                 If true, uses RBAC with operator and database objects
-      --run-on-master                        If true, runs Guard server on master instances
+      --run-on-master                        If true, runs Guard server on master instances (default true)
       --token-auth-file string               Path to the token file
 ```
 

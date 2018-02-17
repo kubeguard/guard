@@ -43,6 +43,7 @@ func NewCmdInstaller() *cobra.Command {
 		namespace:       "kube-system",
 		addr:            "10.96.10.96:443",
 		privateRegistry: "appscode",
+		runOnMaster:     true,
 	}
 	cmd := &cobra.Command{
 		Use:               "installer",
