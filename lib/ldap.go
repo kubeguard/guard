@@ -55,6 +55,53 @@ func (s *LDAPOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&s.StartTLS, "ldap.start-tls", false, "Start tls connection")
 }
 
+func (s LDAPOptions) ToArgs() []string {
+	var args []string
+	if s.ServerAddress != "" {
+		args = append(args, fmt.Sprintf("--ldap.server-address=%s", s.ServerAddress))
+	}
+	if s.ServerPort != "" {
+		args = append(args, fmt.Sprintf("--ldap.server-port=%s", s.ServerPort))
+	}
+	if s.BindDN != "" {
+		args = append(args, fmt.Sprintf("--ldap.bind-dn=%s", s.BindDN))
+	}
+	if s.BindPassword != "" {
+		args = append(args, fmt.Sprintf("--ldap.bind-password=%s", s.BindPassword))
+	}
+	if s.UserSearchDN != "" {
+		args = append(args, fmt.Sprintf("--ldap.user-search-dn=%s", s.UserSearchDN))
+	}
+	if s.UserSearchFilter != "" {
+		args = append(args, fmt.Sprintf("--ldap.user-search-filter=%s", s.UserSearchFilter))
+	}
+	if s.UserSearchFilter != "" {
+		args = append(args, fmt.Sprintf("--ldap.user-attribute=%s", s.UserAttribute))
+	}
+	if s.GroupSearchDN != "" {
+		args = append(args, fmt.Sprintf("--ldap.group-search-dn=%s", s.GroupSearchDN))
+	}
+	if s.GroupSearchFilter != "" {
+		args = append(args, fmt.Sprintf("--ldap.group-search-filter=%s", s.GroupSearchFilter))
+	}
+	if s.GroupMemberAttribute != "" {
+		args = append(args, fmt.Sprintf("--ldap.group-member-attribute=%s", s.GroupMemberAttribute))
+	}
+	if s.GroupNameAttribute != "" {
+		args = append(args, fmt.Sprintf("--ldap.group-name-attribute=%s", s.GroupNameAttribute))
+	}
+	if s.SkipTLSVerification {
+		args = append(args, fmt.Sprintf("--ldap.skip-tls-verification"))
+	}
+	if s.IsSecureLDAP {
+		args = append(args, fmt.Sprintf("--ldap.is-secure-ldap"))
+	}
+	if s.StartTLS {
+		args = append(args, fmt.Sprintf("--ldap.start-tls"))
+	}
+	return args
+}
+
 func (s Server) checkLDAP(token string) (auth.TokenReview, int) {
 	username, password, ok := parseEncodedToken(token)
 	if !ok {

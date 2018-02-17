@@ -27,6 +27,7 @@ type Server struct {
 	KeyFile       string
 	OpsAddress    string
 	TokenAuthFile string
+	Google        GoogleOptions
 	Azure         AzureOptions
 	LDAP          LDAPOptions
 }
@@ -39,6 +40,7 @@ func (s *Server) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.OpsAddress, "ops-addr", s.OpsAddress, "Address to listen on for web interface and telemetry.")
 
 	fs.StringVar(&s.TokenAuthFile, "token-auth-file", "", "To enable static token authentication")
+	s.Google.AddFlags(fs)
 	s.Azure.AddFlags(fs)
 	s.LDAP.AddFlags(fs)
 }

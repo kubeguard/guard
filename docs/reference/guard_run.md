@@ -29,6 +29,8 @@ guard run [flags]
       --azure.tenant-id string               MS Graph application tenant id to use
       --ca-cert-file string                  File containing CA certificate
       --cert-file string                     File container server TLS certificate
+      --google.admin-email string            Email of Google Apps administrator
+      --google.sa-json-file string           Path to Google Apps service account json file
   -h, --help                                 help for run
       --key-file string                      File containing server TLS private key
       --ldap.bind-dn string                  The connector uses this DN in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.

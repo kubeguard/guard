@@ -39,7 +39,7 @@ func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		Write(w, resp, code)
 		return
 	case "google":
-		resp, code := checkGoogle(crt.Subject.CommonName, data.Spec.Token)
+		resp, code := s.checkGoogle(crt.Subject.CommonName, data.Spec.Token)
 		Write(w, resp, code)
 		return
 	case "appscode":

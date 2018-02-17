@@ -75,7 +75,7 @@ func getGoogleToken() error {
 		Endpoint:     google.Endpoint,
 		ClientID:     googleOauth2ClientID,
 		ClientSecret: googleOauth2ClientSecret,
-		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/admin.directory.group.readonly"},
+		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
 		RedirectURL:  "http://" + listener.Addr().String(),
 	}
 	// PromptSelectAccount allows a user who has multiple accounts at the authorization server

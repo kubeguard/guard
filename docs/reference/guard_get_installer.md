@@ -28,6 +28,8 @@ guard get installer [flags]
       --azure.client-id string               MS Graph application client ID to use
       --azure.client-secret string           MS Graph application client secret to use
       --azure.tenant-id string               MS Graph application tenant id to use
+      --google.admin-email string            Email of Google Apps administrator
+      --google.sa-json-file string           Path to Google Apps service account json file
   -h, --help                                 help for installer
       --ldap.bind-dn string                  The connector uses this DN in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
       --ldap.bind-password string            The connector uses this password in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
