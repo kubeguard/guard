@@ -27,8 +27,8 @@ type Server struct {
 	KeyFile       string
 	OpsAddress    string
 	TokenAuthFile string
-	Azure         AzureOpts
-	Ldap          LdapOpts
+	Azure         AzureOptions
+	LDAP          LDAPOptions
 }
 
 func (s *Server) AddFlags(fs *pflag.FlagSet) {
@@ -40,7 +40,7 @@ func (s *Server) AddFlags(fs *pflag.FlagSet) {
 
 	fs.StringVar(&s.TokenAuthFile, "token-auth-file", "", "To enable static token authentication")
 	s.Azure.AddFlags(fs)
-	s.Ldap.AddFlags(fs)
+	s.LDAP.AddFlags(fs)
 }
 
 func (s Server) UseTLS() bool {

@@ -4,13 +4,14 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 )
 
 func TestCheckLdap(t *testing.T) {
 	// test 1
 	// disabled anonymous access
-	ld := LdapOpts{
+	opts := LDAPOptions{
 		ServerAddress:        "localhost",
 		ServerPort:           "10389",
 		BindDN:               "uid=admin,ou=system",
@@ -25,7 +26,8 @@ func TestCheckLdap(t *testing.T) {
 		SkipTLSVerification:  true,
 		StartTLS:             true,
 	}
-	resp, status := ld.checkLdap(base64.StdEncoding.EncodeToString([]byte("nahid:12345")))
+	s := Server{LDAP: opts}
+	resp, status := s.checkLDAP(base64.StdEncoding.EncodeToString([]byte("nahid:12345")))
 	if status != http.StatusOK {
 		t.Error(resp.Status.Error)
 	}
@@ -42,7 +44,7 @@ func TestCheckLdap(t *testing.T) {
 		}
 	}
 	if !testFnd || !adminFnd {
-		t.Error("Expected: group list [\"test\",\"guard-test\"], got %v", resp.Status.User.Groups)
+		t.Errorf(`expected: group list ["test","guard-test"], got %s`, strings.Join(resp.Status.User.Groups, ","))
 	}
 	fmt.Print(resp.Status)
 }

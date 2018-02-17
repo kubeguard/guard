@@ -21,7 +21,7 @@ const (
 	DefaultGroupNameAttribute   string = "cn"
 )
 
-type LdapOpts struct {
+type LDAPOptions struct {
 	ServerAddress        string
 	ServerPort           string
 	BindDN               string // The connector uses this DN in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
@@ -38,7 +38,7 @@ type LdapOpts struct {
 	StartTLS             bool // for start tls connection
 }
 
-func (s *LdapOpts) AddFlags(fs *pflag.FlagSet) {
+func (s *LDAPOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.ServerAddress, "ldap.server-address", s.ServerAddress, "Host or IP of the LDAP server")
 	fs.StringVar(&s.ServerPort, "ldap.server-port", "389", "LDAP server port")
 	fs.StringVar(&s.BindDN, "ldap.bind-dn", s.BindDN, "The connector uses this DN in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.")
@@ -55,7 +55,7 @@ func (s *LdapOpts) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&s.StartTLS, "ldap.start-tls", false, "Start tls connection")
 }
 
-func (ld *LdapOpts) checkLdap(token string) (auth.TokenReview, int) {
+func (s Server) checkLDAP(token string) (auth.TokenReview, int) {
 	username, password, ok := parseEncodedToken(token)
 	if !ok {
 		return Error("Invalid basic auth token"), http.StatusUnauthorized
@@ -63,38 +63,38 @@ func (ld *LdapOpts) checkLdap(token string) (auth.TokenReview, int) {
 
 	data := auth.TokenReview{}
 	tlsConfig := &tls.Config{
-		ServerName:         ld.ServerAddress,
-		InsecureSkipVerify: ld.SkipTLSVerification,
+		ServerName:         s.LDAP.ServerAddress,
+		InsecureSkipVerify: s.LDAP.SkipTLSVerification,
 	}
 	var (
 		err  error
 		conn *ldap.Conn
 	)
-	if ld.IsSecureLDAP {
-		conn, err = ldap.DialTLS("tcp", fmt.Sprintf("%s:%s", ld.ServerAddress, ld.ServerPort), tlsConfig)
+	if s.LDAP.IsSecureLDAP {
+		conn, err = ldap.DialTLS("tcp", fmt.Sprintf("%s:%s", s.LDAP.ServerAddress, s.LDAP.ServerPort), tlsConfig)
 	} else {
-		conn, err = ldap.Dial("tcp", fmt.Sprintf("%s:%s", ld.ServerAddress, ld.ServerPort))
+		conn, err = ldap.Dial("tcp", fmt.Sprintf("%s:%s", s.LDAP.ServerAddress, s.LDAP.ServerPort))
 	}
 	if err != nil {
-		return Error(fmt.Sprintf("Unable to create ldap connector for %s:%s", ld.ServerAddress, ld.ServerPort)), http.StatusInternalServerError
+		return Error(fmt.Sprintf("Unable to create ldap connector for %s:%s", s.LDAP.ServerAddress, s.LDAP.ServerPort)), http.StatusInternalServerError
 	}
 	defer conn.Close()
 
-	if ld.StartTLS {
+	if s.LDAP.StartTLS {
 		err = conn.StartTLS(tlsConfig)
 		if err != nil {
 			return Error("Unable to setup TLS connection"), http.StatusInternalServerError
 		}
 	}
 
-	if ld.BindDN != "" && ld.BindPassword != "" {
-		err = conn.Bind(ld.BindDN, ld.BindPassword)
+	if s.LDAP.BindDN != "" && s.LDAP.BindPassword != "" {
+		err = conn.Bind(s.LDAP.BindDN, s.LDAP.BindPassword)
 		if err != nil {
 			return Error(err.Error()), http.StatusUnauthorized
 		}
 	}
 
-	req := ld.newUserSearchRequest(username)
+	req := s.LDAP.newUserSearchRequest(username)
 	res, err := conn.Search(req)
 	if err != nil {
 		return Error(fmt.Sprintf("Error searching for user %s. Reason: %v", username, err)), http.StatusUnauthorized
@@ -115,24 +115,24 @@ func (ld *LdapOpts) checkLdap(token string) (auth.TokenReview, int) {
 	}
 
 	//rebind
-	if ld.BindDN != "" && ld.BindPassword != "" {
-		err = conn.Bind(ld.BindDN, ld.BindPassword)
+	if s.LDAP.BindDN != "" && s.LDAP.BindPassword != "" {
+		err = conn.Bind(s.LDAP.BindDN, s.LDAP.BindPassword)
 		if err != nil {
 			return Error(err.Error()), http.StatusUnauthorized
 		}
 	}
 
 	// user group list
-	req = ld.newGroupSearchRequest(userDN)
+	req = s.LDAP.newGroupSearchRequest(userDN)
 	res, err = conn.Search(req)
 	if err != nil {
 		return Error(fmt.Sprintf("Error searching for user's group for %s : %v", userDN, err)), http.StatusUnauthorized
 	}
-	groups := []string{}
+	var groups []string
 	//default use `cn` as group name
 	for _, en := range res.Entries {
 		for _, g := range en.Attributes {
-			if g.Name == ld.GroupNameAttribute {
+			if g.Name == s.LDAP.GroupNameAttribute {
 				if len(g.Values) == 0 {
 					return Error(fmt.Sprintf("cn not provided for %s", en.DN)), http.StatusUnauthorized
 				} else {
@@ -149,10 +149,10 @@ func (ld *LdapOpts) checkLdap(token string) (auth.TokenReview, int) {
 }
 
 // request to search user
-func (ld *LdapOpts) newUserSearchRequest(username string) *ldap.SearchRequest {
-	userFilter := fmt.Sprintf("(&%s(%s=%s))", ld.UserSearchFilter, ld.UserAttribute, username)
+func (s *LDAPOptions) newUserSearchRequest(username string) *ldap.SearchRequest {
+	userFilter := fmt.Sprintf("(&%s(%s=%s))", s.UserSearchFilter, s.UserAttribute, username)
 	return &ldap.SearchRequest{
-		BaseDN:       ld.UserSearchDN,
+		BaseDN:       s.UserSearchDN,
 		Scope:        ldap.ScopeWholeSubtree,
 		DerefAliases: ldap.NeverDerefAliases,
 		SizeLimit:    2, //limit number of entries in result
@@ -163,17 +163,17 @@ func (ld *LdapOpts) newUserSearchRequest(username string) *ldap.SearchRequest {
 }
 
 // request to get user group list
-func (ld *LdapOpts) newGroupSearchRequest(userDN string) *ldap.SearchRequest {
-	groupFilter := fmt.Sprintf("(&%s(%s=%s))", ld.GroupSearchFilter, ld.GroupMemberAttribute, userDN)
+func (s *LDAPOptions) newGroupSearchRequest(userDN string) *ldap.SearchRequest {
+	groupFilter := fmt.Sprintf("(&%s(%s=%s))", s.GroupSearchFilter, s.GroupMemberAttribute, userDN)
 	return &ldap.SearchRequest{
-		BaseDN:       ld.GroupSearchDN,
+		BaseDN:       s.GroupSearchDN,
 		Scope:        ldap.ScopeWholeSubtree,
 		DerefAliases: ldap.NeverDerefAliases,
 		SizeLimit:    0, //limit number of entries in result, 0 values means no limitations
 		TimeLimit:    10,
 		TypesOnly:    false,
 		Filter:       groupFilter, //filter default format : (&(objectClass=groupOfNames)(member=%s))
-		Attributes:   []string{ld.GroupNameAttribute},
+		Attributes:   []string{s.GroupNameAttribute},
 	}
 }
 

@@ -30,8 +30,8 @@ type options struct {
 	addr          string
 	enableRBAC    bool
 	tokenAuthFile string
-	Azure         lib.AzureOpts
-	Ldap          lib.LdapOpts
+	Azure         lib.AzureOptions
+	Ldap          lib.LDAPOptions
 }
 
 func NewCmdInstaller() *cobra.Command {
