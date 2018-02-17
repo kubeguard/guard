@@ -24,13 +24,16 @@ guard run [flags]
 ### Options
 
 ```
-      --ca-cert-file string      File containing CA certificate
-      --cert-file string         File container server TLS certificate
-  -h, --help                     help for run
-      --key-file string          File containing server TLS private key
-      --ops-addr string          Address to listen on for web interface and telemetry. (default ":56790")
-      --token-auth-file string   To enable static token authentication
-      --web-address string       Http server address (default ":9844")
+      --azure.client-id string       MS Graph application client ID to use
+      --azure.client-secret string   MS Graph application client secret to use
+      --azure.tenant-id string       MS Graph application tenant id to use
+      --ca-cert-file string          File containing CA certificate
+      --cert-file string             File container server TLS certificate
+  -h, --help                         help for run
+      --key-file string              File containing server TLS private key
+      --ops-addr string              Address to listen on for web interface and telemetry. (default ":56790")
+      --token-auth-file string       To enable static token authentication
+      --web-address string           Http server address (default ":9844")
 ```
 
 ### Options inherited from parent commands

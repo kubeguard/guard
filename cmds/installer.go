@@ -25,19 +25,22 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+type options struct {
+	namespace     string
+	addr          string
+	enableRBAC    bool
+	tokenAuthFile string
+	Azure         lib.AzureOpts
+}
+
 func NewCmdInstaller() *cobra.Command {
-	var (
-		namespace     string
-		addr          string
-		enableRBAC    bool
-		tokenAuthFile string
-	)
+	var opts options
 	cmd := &cobra.Command{
 		Use:               "installer",
 		Short:             "Prints Kubernetes objects for deploying guard server",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			_, port, err := net.SplitHostPort(addr)
+			_, port, err := net.SplitHostPort(opts.addr)
 			if err != nil {
 				log.Fatalf("Guard server address is invalid. Reason: %v.", err)
 			}
@@ -69,8 +72,8 @@ func NewCmdInstaller() *cobra.Command {
 			var buf bytes.Buffer
 			var data []byte
 
-			if namespace != "kube-system" && namespace != core.NamespaceDefault {
-				data, err = meta.MarshalToYAML(newNamespace(namespace), core.SchemeGroupVersion)
+			if opts.namespace != "kube-system" && opts.namespace != core.NamespaceDefault {
+				data, err = meta.MarshalToYAML(newNamespace(opts.namespace), core.SchemeGroupVersion)
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -78,22 +81,22 @@ func NewCmdInstaller() *cobra.Command {
 				buf.WriteString("---\n")
 			}
 
-			if enableRBAC {
-				data, err = meta.MarshalToYAML(newServiceAccount(namespace), core.SchemeGroupVersion)
+			if opts.enableRBAC {
+				data, err = meta.MarshalToYAML(newServiceAccount(opts.namespace), core.SchemeGroupVersion)
 				if err != nil {
 					log.Fatalln(err)
 				}
 				buf.Write(data)
 				buf.WriteString("---\n")
 
-				data, err = meta.MarshalToYAML(newClusterRole(namespace), rbac.SchemeGroupVersion)
+				data, err = meta.MarshalToYAML(newClusterRole(opts.namespace), rbac.SchemeGroupVersion)
 				if err != nil {
 					log.Fatalln(err)
 				}
 				buf.Write(data)
 				buf.WriteString("---\n")
 
-				data, err = meta.MarshalToYAML(newClusterRoleBinding(namespace), rbac.SchemeGroupVersion)
+				data, err = meta.MarshalToYAML(newClusterRoleBinding(opts.namespace), rbac.SchemeGroupVersion)
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -101,23 +104,23 @@ func NewCmdInstaller() *cobra.Command {
 				buf.WriteString("---\n")
 			}
 
-			data, err = meta.MarshalToYAML(newSecret(namespace, serverCert, serverKey, caCert), core.SchemeGroupVersion)
+			data, err = meta.MarshalToYAML(newSecret(opts.namespace, serverCert, serverKey, caCert), core.SchemeGroupVersion)
 			if err != nil {
 				log.Fatalln(err)
 			}
 			buf.Write(data)
 			buf.WriteString("---\n")
 
-			if tokenAuthFile != "" {
-				_, err := lib.LoadTokenFile(tokenAuthFile)
+			if opts.tokenAuthFile != "" {
+				_, err := lib.LoadTokenFile(opts.tokenAuthFile)
 				if err != nil {
 					log.Fatalln(err)
 				}
-				tokenData, err := ioutil.ReadFile(tokenAuthFile)
+				tokenData, err := ioutil.ReadFile(opts.tokenAuthFile)
 				if err != nil {
 					log.Fatalln(err)
 				}
-				data, err = meta.MarshalToYAML(newSecretForTokenAuth(namespace, tokenData), core.SchemeGroupVersion)
+				data, err = meta.MarshalToYAML(newSecretForTokenAuth(opts.namespace, tokenData), core.SchemeGroupVersion)
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -125,15 +128,15 @@ func NewCmdInstaller() *cobra.Command {
 				buf.WriteString("---\n")
 			}
 
-			enableTokenAuth := tokenAuthFile != ""
-			data, err = meta.MarshalToYAML(newDeployment(namespace, enableRBAC, enableTokenAuth), apps.SchemeGroupVersion)
+			data, err = meta.MarshalToYAML(newDeployment(opts), apps.SchemeGroupVersion)
+
 			if err != nil {
 				log.Fatalln(err)
 			}
 			buf.Write(data)
 			buf.WriteString("---\n")
 
-			data, err = meta.MarshalToYAML(newService(namespace, addr), core.SchemeGroupVersion)
+			data, err = meta.MarshalToYAML(newService(opts.namespace, opts.addr), core.SchemeGroupVersion)
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -144,10 +147,13 @@ func NewCmdInstaller() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&rootDir, "pki-dir", rootDir, "Path to directory where pki files are stored.")
-	cmd.Flags().StringVarP(&namespace, "namespace", "n", "kube-system", "Name of Kubernetes namespace used to run guard server.")
-	cmd.Flags().StringVar(&addr, "addr", "10.96.10.96:9844", "Address (host:port) of guard server.")
-	cmd.Flags().BoolVar(&enableRBAC, "rbac", enableRBAC, "If true, uses RBAC with operator and database objects")
-	cmd.Flags().StringVar(&tokenAuthFile, "token-auth-file", "", "Path to the token file")
+	cmd.Flags().StringVarP(&opts.namespace, "namespace", "n", "kube-system", "Name of Kubernetes namespace used to run guard server.")
+	cmd.Flags().StringVar(&opts.addr, "addr", "10.96.10.96:9844", "Address (host:port) of guard server.")
+	cmd.Flags().BoolVar(&opts.enableRBAC, "rbac", opts.enableRBAC, "If true, uses RBAC with operator and database objects")
+	cmd.Flags().StringVar(&opts.tokenAuthFile, "token-auth-file", "", "Path to the token file")
+	cmd.Flags().StringVar(&opts.Azure.ClientID, "azure.client-id", opts.Azure.ClientID, "MS Graph application client ID to use")
+	cmd.Flags().StringVar(&opts.Azure.ClientSecret, "azure.client-secret", opts.Azure.ClientSecret, "MS Graph application client secret to use")
+	cmd.Flags().StringVar(&opts.Azure.TenantID, "azure.tenant-id", opts.Azure.TenantID, "MS Graph application tenant id to use")
 	return cmd
 }
 
@@ -179,11 +185,11 @@ func newSecret(namespace string, cert, key, caCert []byte) runtime.Object {
 	}
 }
 
-func newDeployment(namespace string, enableRBAC, enableTokenAuth bool) runtime.Object {
+func newDeployment(opts options) runtime.Object {
 	d := apps.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "guard",
-			Namespace: namespace,
+			Namespace: opts.namespace,
 			Labels:    labels,
 		},
 		Spec: apps.DeploymentSpec{
@@ -239,10 +245,11 @@ func newDeployment(namespace string, enableRBAC, enableTokenAuth bool) runtime.O
 			},
 		},
 	}
-	if enableRBAC {
+	if opts.enableRBAC {
 		d.Spec.Template.Spec.ServiceAccountName = "guard"
 	}
-	if enableTokenAuth {
+
+	if opts.tokenAuthFile != "" {
 		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, "--token-auth-file=/etc/guard/auth/token.csv")
 		volMount := core.VolumeMount{
 			Name:      "guard-token-auth",
@@ -261,6 +268,18 @@ func newDeployment(namespace string, enableRBAC, enableTokenAuth bool) runtime.O
 		}
 		d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
 	}
+
+	//Add server flags
+	if opts.Azure.ClientID != "" {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--azure-client-id=%s", opts.Azure.ClientID))
+	}
+	if opts.Azure.ClientSecret != "" {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--azure-client-secret=%s", opts.Azure.ClientSecret))
+	}
+	if opts.Azure.TenantID != "" {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--azure-tenant-id=%s", opts.Azure.TenantID))
+	}
+
 	return &d
 }
 

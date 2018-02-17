@@ -31,7 +31,12 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 				}
 			}
 			if len(args) == 0 {
-				log.Fatalln("Missing client name.")
+				if strings.ToLower(org) == "azure" {
+					//azure common name not required, so default common name used
+					args = []string{"azure"}
+				} else {
+					log.Fatalln("Missing client name.")
+				}
 			}
 			if len(args) > 1 {
 				log.Fatalln("Multiple client name found.")
@@ -50,6 +55,8 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 				cfg.Organization = []string{"Appscode"}
 			case "gitlab":
 				cfg.Organization = []string{"Gitlab"}
+			case "azure":
+				cfg.Organization = []string{"Azure"}
 			case "":
 				log.Fatalln("Missing organization name. Set flag -o Google|Github.")
 			default:
