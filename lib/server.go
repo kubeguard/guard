@@ -21,11 +21,10 @@ import (
 )
 
 type Server struct {
-	WebAddress    string
+	Address       string
 	CACertFile    string
 	CertFile      string
 	KeyFile       string
-	OpsAddress    string
 	TokenAuthFile string
 	Google        GoogleOptions
 	Azure         AzureOptions
@@ -33,11 +32,10 @@ type Server struct {
 }
 
 func (s *Server) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&s.WebAddress, "web-address", s.WebAddress, "Http server address")
+	fs.StringVar(&s.Address, "addr", s.Address, "Http server address")
 	fs.StringVar(&s.CACertFile, "ca-cert-file", s.CACertFile, "File containing CA certificate")
 	fs.StringVar(&s.CertFile, "cert-file", s.CertFile, "File container server TLS certificate")
 	fs.StringVar(&s.KeyFile, "key-file", s.KeyFile, "File containing server TLS private key")
-	fs.StringVar(&s.OpsAddress, "ops-addr", s.OpsAddress, "Address to listen on for web interface and telemetry.")
 
 	fs.StringVar(&s.TokenAuthFile, "token-auth-file", "", "To enable static token authentication")
 	s.Google.AddFlags(fs)
@@ -50,20 +48,6 @@ func (s Server) UseTLS() bool {
 }
 
 func (s Server) ListenAndServe() {
-	// Run Monitoring Server with both /metric and /debug
-	go func() {
-		if s.OpsAddress != "" {
-			http.Handle("/metrics", promhttp.Handler())
-			http.HandleFunc("/healthz", func(w http.ResponseWriter, req *http.Request) {
-				w.WriteHeader(200)
-				w.Header().Set("Content-Type", "application/json")
-				w.Header().Set("x-content-type-options", "nosniff")
-				json.NewEncoder(w).Encode(v.Version)
-			})
-			log.Errorln("Failed to start monitoring server, cause", http.ListenAndServe(s.OpsAddress, nil))
-		}
-	}()
-
 	if s.TokenAuthFile != "" {
 		var err error
 		tokenMap, err = LoadTokenFile(s.TokenAuthFile)
@@ -123,8 +107,15 @@ func (s Server) ListenAndServe() {
 
 	m := pat.New()
 	m.Post("/apis/authentication.k8s.io/v1beta1/tokenreviews", s)
+	m.Get("/metrics", promhttp.Handler())
+	m.Get("/healthz", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(200)
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("x-content-type-options", "nosniff")
+		json.NewEncoder(w).Encode(v.Version)
+	}))
 	srv := &http.Server{
-		Addr:         s.WebAddress,
+		Addr:         s.Address,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		Handler:      m,

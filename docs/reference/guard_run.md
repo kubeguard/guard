@@ -24,13 +24,14 @@ guard run [flags]
 ### Options
 
 ```
+      --addr string                          Http server address (default ":8443")
       --azure.client-id string               MS Graph application client ID to use
       --azure.client-secret string           MS Graph application client secret to use
       --azure.tenant-id string               MS Graph application tenant id to use
       --ca-cert-file string                  File containing CA certificate
       --cert-file string                     File container server TLS certificate
-      --google.admin-email string            Email of Google Apps administrator
-      --google.sa-json-file string           Path to Google Apps service account json file
+      --google.admin-email string            Email of G Suite administrator
+      --google.sa-json-file string           Path to Google service account json file
   -h, --help                                 help for run
       --key-file string                      File containing server TLS private key
       --ldap.bind-dn string                  The connector uses this DN in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
@@ -47,9 +48,7 @@ guard run [flags]
       --ldap.user-attribute string           Ldap username attribute (default "uid")
       --ldap.user-search-dn string           BaseDN to start the search user
       --ldap.user-search-filter string       Filter to apply when searching user (default "(objectClass=person)")
-      --ops-addr string                      Address to listen on for web interface and telemetry. (default ":56790")
       --token-auth-file string               To enable static token authentication
-      --web-address string                   Http server address (default ":9844")
 ```
 
 ### Options inherited from parent commands

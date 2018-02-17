@@ -26,17 +26,24 @@ import (
 )
 
 type options struct {
-	namespace     string
-	addr          string
-	enableRBAC    bool
-	tokenAuthFile string
-	Google        lib.GoogleOptions
-	Azure         lib.AzureOptions
-	LDAP          lib.LDAPOptions
+	namespace       string
+	addr            string
+	enableRBAC      bool
+	runOnMaster     bool
+	privateRegistry string
+	imagePullSecret string
+	tokenAuthFile   string
+	Google          lib.GoogleOptions
+	Azure           lib.AzureOptions
+	LDAP            lib.LDAPOptions
 }
 
 func NewCmdInstaller() *cobra.Command {
-	var opts options
+	opts := options{
+		namespace:       "kube-system",
+		addr:            "10.96.10.96:443",
+		privateRegistry: "appscode",
+	}
 	cmd := &cobra.Command{
 		Use:               "installer",
 		Short:             "Prints Kubernetes objects for deploying guard server",
@@ -159,9 +166,12 @@ func NewCmdInstaller() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&rootDir, "pki-dir", rootDir, "Path to directory where pki files are stored.")
-	cmd.Flags().StringVarP(&opts.namespace, "namespace", "n", "kube-system", "Name of Kubernetes namespace used to run guard server.")
-	cmd.Flags().StringVar(&opts.addr, "addr", "10.96.10.96:9844", "Address (host:port) of guard server.")
+	cmd.Flags().StringVarP(&opts.namespace, "namespace", "n", opts.namespace, "Name of Kubernetes namespace used to run guard server.")
+	cmd.Flags().StringVar(&opts.addr, "addr", opts.addr, "Address (host:port) of guard server.")
 	cmd.Flags().BoolVar(&opts.enableRBAC, "rbac", opts.enableRBAC, "If true, uses RBAC with operator and database objects")
+	cmd.Flags().BoolVar(&opts.runOnMaster, "run-on-master", opts.runOnMaster, "If true, runs Guard server on master instances")
+	cmd.Flags().StringVar(&opts.privateRegistry, "private-registry", opts.privateRegistry, "Private Docker registry")
+	cmd.Flags().StringVar(&opts.imagePullSecret, "image-pull-secret", opts.imagePullSecret, "Name of image pull secret")
 	cmd.Flags().StringVar(&opts.tokenAuthFile, "token-auth-file", "", "Path to the token file")
 	opts.Google.AddFlags(cmd.Flags())
 	opts.Azure.AddFlags(cmd.Flags())
@@ -209,12 +219,15 @@ func newDeployment(opts options) runtime.Object {
 			Template: core.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
+					Annotations: map[string]string{
+						"scheduler.alpha.kubernetes.io/critical-pod": "",
+					},
 				},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
 							Name:  "guard",
-							Image: fmt.Sprintf("appscode/guard:%v", stringz.Val(v.Version.Version, "canary")),
+							Image: fmt.Sprintf("%s/guard:%v", opts.privateRegistry, stringz.Val(v.Version.Version, "canary")),
 							Args: []string{
 								"run",
 								"--v=3",
@@ -224,14 +237,9 @@ func newDeployment(opts options) runtime.Object {
 							},
 							Ports: []core.ContainerPort{
 								{
-									Name:          "web",
+									Name:          "api",
 									Protocol:      core.ProtocolTCP,
-									ContainerPort: webPort,
-								},
-								{
-									Name:          "ops",
-									Protocol:      core.ProtocolTCP,
-									ContainerPort: opsPort,
+									ContainerPort: port,
 								},
 							},
 							VolumeMounts: []core.VolumeMount{
@@ -239,6 +247,16 @@ func newDeployment(opts options) runtime.Object {
 									Name:      "guard-pki",
 									MountPath: "/etc/guard/pki",
 								},
+							},
+							ReadinessProbe: &core.Probe{
+								Handler: core.Handler{
+									HTTPGet: &core.HTTPGetAction{
+										Path:   "/healthz",
+										Port:   intstr.FromInt(port),
+										Scheme: core.URISchemeHTTPS,
+									},
+								},
+								InitialDelaySeconds: int32(30),
 							},
 						},
 					},
@@ -253,12 +271,35 @@ func newDeployment(opts options) runtime.Object {
 							},
 						},
 					},
+					Tolerations: []core.Toleration{
+						{
+							Key:      "CriticalAddonsOnly",
+							Operator: core.TolerationOpExists,
+						},
+					},
 				},
 			},
 		},
 	}
+	if opts.imagePullSecret != "" {
+		d.Spec.Template.Spec.ImagePullSecrets = []core.LocalObjectReference{
+			{
+				Name: opts.imagePullSecret,
+			},
+		}
+	}
 	if opts.enableRBAC {
 		d.Spec.Template.Spec.ServiceAccountName = "guard"
+	}
+	if opts.runOnMaster {
+		d.Spec.Template.Spec.NodeSelector = map[string]string{
+			"node-role.kubernetes.io/master": "",
+		}
+		d.Spec.Template.Spec.Tolerations = append(d.Spec.Template.Spec.Tolerations, core.Toleration{
+			Key:      "node-role.kubernetes.io/master",
+			Operator: core.TolerationOpExists,
+			Effect:   core.TaintEffectNoSchedule,
+		})
 	}
 
 	if opts.tokenAuthFile != "" || opts.Google.ServiceAccountJsonFile != "" {
@@ -304,10 +345,10 @@ func newService(namespace, addr string) runtime.Object {
 			ClusterIP: host,
 			Ports: []core.ServicePort{
 				{
-					Name:       "web",
+					Name:       "api",
 					Port:       int32(svcPort),
 					Protocol:   core.ProtocolTCP,
-					TargetPort: intstr.FromString("web"),
+					TargetPort: intstr.FromString("api"),
 				},
 			},
 			Selector: labels,
