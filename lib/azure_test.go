@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/appscode/guard/pkg/graph"
+	"github.com/appscode/guard/lib/graph"
 )
 
 type credential struct {

@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/appscode/go/log"
-	"github.com/appscode/guard/pkg/graph"
+	"github.com/appscode/guard/lib/graph"
 	oidc "github.com/coreos/go-oidc"
 	auth "k8s.io/api/authentication/v1beta1"
 )
@@ -30,8 +30,8 @@ const (
 
 var (
 	// ErrorClaimNotFound indicates the given key was not found in the claims
-	ErrorClaimNotFound = fmt.Errorf("Claim not found")
-	ErrorInvalidToken  = fmt.Errorf("Invalid token")
+	ErrorClaimNotFound = fmt.Errorf("claim not found")
+	ErrorInvalidToken  = fmt.Errorf("invalid token")
 )
 
 // claims represents a map of claims provided with a JWT
@@ -102,7 +102,7 @@ func (c claims) ReviewFromClaims(usernameClaim, groupsClaim string) (*auth.Token
 		if err == ErrorClaimNotFound {
 			return nil, fmt.Errorf("username claim %s not found", usernameClaim)
 		}
-		return nil, fmt.Errorf("Unable to get username claim: %s", err)
+		return nil, fmt.Errorf("unable to get username claim: %s", err)
 	}
 	review.Status.User.Username = username
 
@@ -115,7 +115,7 @@ func (c claims) ReviewFromClaims(usernameClaim, groupsClaim string) (*auth.Token
 			log.Infof("Groups is empty")
 			groups = []string{}
 		} else {
-			return nil, fmt.Errorf("Unable to get groups claim: %s", err)
+			return nil, fmt.Errorf("unable to get groups claim: %s", err)
 		}
 	}
 	review.Status.User.Groups = groups
@@ -137,7 +137,7 @@ func (c claims) String(key string) (string, error) {
 	if v, ok := c[key].(string); ok {
 		resp = v
 	} else { // Not a string type
-		return "", fmt.Errorf("Claim is not a string")
+		return "", fmt.Errorf("claim is not a string")
 	}
 	return resp, nil
 }
@@ -153,7 +153,7 @@ func (c claims) StringSlice(key string) ([]string, error) {
 	if val, ok := c[key].([]interface{}); ok {
 		intermediate = val
 	} else {
-		return nil, fmt.Errorf("Claim is not a slice")
+		return nil, fmt.Errorf("claim is not a slice")
 	}
 	// Initialize the slice to the same length as the intermediate slice. This saves
 	// some steps with not having to append
@@ -164,7 +164,7 @@ func (c claims) StringSlice(key string) ([]string, error) {
 		if strVal, ok := intermediate[i].(string); ok {
 			resp[i] = strVal
 		} else {
-			return nil, fmt.Errorf("Claim is not a slice of strings")
+			return nil, fmt.Errorf("claim is not a slice of strings")
 		}
 	}
 	return resp, nil
