@@ -24,15 +24,29 @@ guard get installer [flags]
 ### Options
 
 ```
-      --addr string                  Address (host:port) of guard server. (default "10.96.10.96:9844")
-      --azure.client-id string       MS Graph application client ID to use
-      --azure.client-secret string   MS Graph application client secret to use
-      --azure.tenant-id string       MS Graph application tenant id to use
-  -h, --help                         help for installer
-  -n, --namespace string             Name of Kubernetes namespace used to run guard server. (default "kube-system")
-      --pki-dir string               Path to directory where pki files are stored. (default "$HOME/.guard")
-      --rbac                         If true, uses RBAC with operator and database objects
-      --token-auth-file string       Path to the token file
+      --addr string                          Address (host:port) of guard server. (default "10.96.10.96:9844")
+      --azure.client-id string               MS Graph application client ID to use
+      --azure.client-secret string           MS Graph application client secret to use
+      --azure.tenant-id string               MS Graph application tenant id to use
+  -h, --help                                 help for installer
+      --ldap.bind-dn string                  The connector uses this DN in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
+      --ldap.bind-password string            The connector uses this password in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
+      --ldap.group-member-attribute string   Ldap group member attribute (default "member")
+      --ldap.group-name-attribute string     Ldap group name attribute (default "cn")
+      --ldap.group-search-dn string          BaseDN to start the search group
+      --ldap.group-search-filter string      Filter to apply when searching the groups that user is member of (default "(objectClass=groupOfNames)")
+      --ldap.is-secure-ldap                  Secure LDAP (LDAPS)
+      --ldap.server-address string           Host or IP of the LDAP server
+      --ldap.server-port string              LDAP server port (default "389")
+      --ldap.skip-tls-verification           Skip LDAP server TLS verification, default : false
+      --ldap.start-tls                       Start tls connection
+      --ldap.user-attribute string           Ldap username attribute (default "uid")
+      --ldap.user-search-dn string           BaseDN to start the search user
+      --ldap.user-search-filter string       Filter to apply when searching user (default "(objectClass=person)")
+  -n, --namespace string                     Name of Kubernetes namespace used to run guard server. (default "kube-system")
+      --pki-dir string                       Path to directory where pki files are stored. (default "$HOME/.guard")
+      --rbac                                 If true, uses RBAC with operator and database objects
+      --token-auth-file string               Path to the token file
 ```
 
 ### Options inherited from parent commands

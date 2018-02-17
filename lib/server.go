@@ -28,6 +28,7 @@ type Server struct {
 	OpsAddress    string
 	TokenAuthFile string
 	Azure         AzureOpts
+	Ldap          LdapOpts
 }
 
 func (s *Server) AddFlags(fs *pflag.FlagSet) {
@@ -35,12 +36,11 @@ func (s *Server) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.CACertFile, "ca-cert-file", s.CACertFile, "File containing CA certificate")
 	fs.StringVar(&s.CertFile, "cert-file", s.CertFile, "File container server TLS certificate")
 	fs.StringVar(&s.KeyFile, "key-file", s.KeyFile, "File containing server TLS private key")
-	fs.StringVar(&s.TokenAuthFile, "token-auth-file", "", "To enable static token authentication")
 	fs.StringVar(&s.OpsAddress, "ops-addr", s.OpsAddress, "Address to listen on for web interface and telemetry.")
 
-	fs.StringVar(&s.Azure.ClientID, "azure.client-id", s.Azure.ClientID, "MS Graph application client ID to use")
-	fs.StringVar(&s.Azure.ClientSecret, "azure.client-secret", s.Azure.ClientSecret, "MS Graph application client secret to use")
-	fs.StringVar(&s.Azure.TenantID, "azure.tenant-id", s.Azure.TenantID, "MS Graph application tenant id to use")
+	fs.StringVar(&s.TokenAuthFile, "token-auth-file", "", "To enable static token authentication")
+	s.Azure.AddFlags(fs)
+	s.Ldap.AddFlags(fs)
 }
 
 func (s Server) UseTLS() bool {
