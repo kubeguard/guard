@@ -23,4 +23,5 @@ Guides show you how to perform tasks with Guard.
   - [Github](/docs/guides/authenticator/github.md). Explains how to use Github authenticator.
   - [Gitlab](/docs/guides/authenticator/gitlab.md). Explains how to use Gitlab authenticator.
   - [Google](/docs/guides/authenticator/google.md). Explains how to use Google authenticator.
+  - [Static Token File](/docs/guides/authenticator/static_token_file.md). Explains how to authenticate using static token file.
 - [RBAC Roles](/docs/guides/rbac.md). Documents how to configure RBAC roles for user groups.

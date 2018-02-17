@@ -3,6 +3,7 @@ package cmds
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"path/filepath"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 	stringz "github.com/appscode/go/strings"
 	"github.com/appscode/go/types"
 	v "github.com/appscode/go/version"
+	"github.com/appscode/guard/lib"
 	"github.com/appscode/kutil/meta"
 	"github.com/appscode/kutil/tools/certstore"
 	"github.com/spf13/afero"
@@ -25,9 +27,10 @@ import (
 
 func NewCmdInstaller() *cobra.Command {
 	var (
-		namespace  string
-		addr       string
-		enableRBAC bool
+		namespace     string
+		addr          string
+		enableRBAC    bool
+		tokenAuthFile string
 	)
 	cmd := &cobra.Command{
 		Use:               "installer",
@@ -105,7 +108,25 @@ func NewCmdInstaller() *cobra.Command {
 			buf.Write(data)
 			buf.WriteString("---\n")
 
-			data, err = meta.MarshalToYAML(newDeployment(namespace, enableRBAC), apps.SchemeGroupVersion)
+			if tokenAuthFile != "" {
+				_, err := lib.LoadTokenFile(tokenAuthFile)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				tokenData, err := ioutil.ReadFile(tokenAuthFile)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				data, err = meta.MarshalToYAML(newSecretForTokenAuth(namespace, tokenData), core.SchemeGroupVersion)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				buf.Write(data)
+				buf.WriteString("---\n")
+			}
+
+			enableTokenAuth := tokenAuthFile != ""
+			data, err = meta.MarshalToYAML(newDeployment(namespace, enableRBAC, enableTokenAuth), apps.SchemeGroupVersion)
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -126,6 +147,7 @@ func NewCmdInstaller() *cobra.Command {
 	cmd.Flags().StringVarP(&namespace, "namespace", "n", "kube-system", "Name of Kubernetes namespace used to run guard server.")
 	cmd.Flags().StringVar(&addr, "addr", "10.96.10.96:9844", "Address (host:port) of guard server.")
 	cmd.Flags().BoolVar(&enableRBAC, "rbac", enableRBAC, "If true, uses RBAC with operator and database objects")
+	cmd.Flags().StringVar(&tokenAuthFile, "token-auth-file", "", "Path to the token file")
 	return cmd
 }
 
@@ -157,7 +179,7 @@ func newSecret(namespace string, cert, key, caCert []byte) runtime.Object {
 	}
 }
 
-func newDeployment(namespace string, enableRBAC bool) runtime.Object {
+func newDeployment(namespace string, enableRBAC, enableTokenAuth bool) runtime.Object {
 	d := apps.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "guard",
@@ -219,6 +241,25 @@ func newDeployment(namespace string, enableRBAC bool) runtime.Object {
 	}
 	if enableRBAC {
 		d.Spec.Template.Spec.ServiceAccountName = "guard"
+	}
+	if enableTokenAuth {
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, "--token-auth-file=/etc/guard/auth/token.csv")
+		volMount := core.VolumeMount{
+			Name:      "guard-token-auth",
+			MountPath: "/etc/guard/auth",
+		}
+		d.Spec.Template.Spec.Containers[0].VolumeMounts = append(d.Spec.Template.Spec.Containers[0].VolumeMounts, volMount)
+
+		vol := core.Volume{
+			Name: "guard-token-auth",
+			VolumeSource: core.VolumeSource{
+				Secret: &core.SecretVolumeSource{
+					SecretName:  "guard-token-auth",
+					DefaultMode: types.Int32P(0555),
+				},
+			},
+		}
+		d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
 	}
 	return &d
 }
@@ -293,6 +334,19 @@ func newClusterRoleBinding(namespace string) runtime.Object {
 				Name:      "guard",
 				Namespace: namespace,
 			},
+		},
+	}
+}
+
+func newSecretForTokenAuth(namespace string, tokenFile []byte) runtime.Object {
+	return &core.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "guard-token-auth",
+			Namespace: namespace,
+			Labels:    labels,
+		},
+		Data: map[string][]byte{
+			"token.csv": tokenFile,
 		},
 	}
 }

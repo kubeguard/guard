@@ -24,12 +24,13 @@ guard run [flags]
 ### Options
 
 ```
-      --ca-cert-file string   File containing CA certificate
-      --cert-file string      File container server TLS certificate
-  -h, --help                  help for run
-      --key-file string       File containing server TLS private key
-      --ops-addr string       Address to listen on for web interface and telemetry. (default ":56790")
-      --web-address string    Http server address (default ":9844")
+      --ca-cert-file string      File containing CA certificate
+      --cert-file string         File container server TLS certificate
+  -h, --help                     help for run
+      --key-file string          File containing server TLS private key
+      --ops-addr string          Address to listen on for web interface and telemetry. (default ":56790")
+      --token-auth-file string   To enable static token authentication
+      --web-address string       Http server address (default ":9844")
 ```
 
 ### Options inherited from parent commands
