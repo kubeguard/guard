@@ -54,7 +54,7 @@ func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if s.Azure.ClientID == "" || s.Azure.ClientSecret == "" || s.Azure.TenantID == "" {
 			Write(w, Error("Missing azure client-id or client-secret or tenant-id"), http.StatusBadRequest)
 		}
-		resp, code := s.Azure.checkAzure(data.Spec.Token)
+		resp, code := s.checkAzure(data.Spec.Token)
 		Write(w, resp, code)
 		return
 	}

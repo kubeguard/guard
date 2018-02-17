@@ -43,9 +43,9 @@ type AzureOpts struct {
 	TenantID     string
 }
 
-func (az *AzureOpts) checkAzure(token string) (auth.TokenReview, int) {
+func (s Server) checkAzure(token string) (auth.TokenReview, int) {
 	ctx := context.Background()
-	provider, err := oidc.NewProvider(ctx, azureIssuerURL+az.TenantID+"/")
+	provider, err := oidc.NewProvider(ctx, azureIssuerURL+s.Azure.TenantID+"/")
 	if err != nil {
 		return Error(fmt.Sprintf("Failed to create provider for azure. Reason: %v.", err)), http.StatusUnauthorized
 	}
@@ -65,7 +65,7 @@ func (az *AzureOpts) checkAzure(token string) (auth.TokenReview, int) {
 		log.Infof("Failed to create TokenReview")
 		return Error(fmt.Sprintf("Failed to create TokenReview. Reason %v.", err)), http.StatusBadRequest
 	}
-	client, err := graph.New(az.ClientID, az.ClientSecret, az.TenantID)
+	client, err := graph.New(s.Azure.ClientID, s.Azure.ClientSecret, s.Azure.TenantID)
 	if err != nil {
 		log.Info("Failed to create ms graph client")
 		return Error(fmt.Sprintf("Failed to create ms graph client. Reason %v.", err)), http.StatusInternalServerError
