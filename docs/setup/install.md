@@ -16,7 +16,7 @@ section_menu_id: setup
 
 # Installation Guide
 
-Guard binary works as a cli and server. In cli mode, you can use `guard` to generate various configuration to easily deploy Guard server. Guard server uses TLS client auth to secure the communication channel between Kubernetes api server and Guard server. You can run Guard server external to a Kubernetes cluster. This document shows you how to `self-host` Guard server in a Kubernetes cluster. To that end, we run Guard server using a predefined Service ClusterIP `10.96.10.96` and port `9844`. This ClusterIP is chosen so that it falls in the default --service-cidr range for [Kubeadm](https://kubernetes.io/docs/admin/kubeadm/). If the service CIDR range for your cluster is different, please pick an appropriate ClusterIP.
+Guard binary works as a cli and server. In cli mode, you can use `guard` to generate various configuration to easily deploy Guard server. Guard server uses TLS client auth to secure the communication channel between Kubernetes api server and Guard server. You can run Guard server external to a Kubernetes cluster. This document shows you how to `self-host` Guard server in a Kubernetes cluster. To that end, we run Guard server using a predefined Service ClusterIP `10.96.10.96` and port `443`. This ClusterIP is chosen so that it falls in the default --service-cidr range for [Kubeadm](https://kubernetes.io/docs/admin/kubeadm/). If the service CIDR range for your cluster is different, please pick an appropriate ClusterIP.
 
 If you want to set up guard via [kops](https://github.com/kubernetes/kops) use [this
 documentation](/docs/setup/install-kops.md) to see differences in setup.
@@ -115,13 +115,13 @@ To use webhook authentication, you need to set `--authentication-token-webhook-c
 
 ```console
 # print auth token webhook config file. Change the server address to your guard server address.
-$ guard get webhook-config appscode -o github --addr=10.96.10.96:9844
+$ guard get webhook-config appscode -o github --addr=10.96.10.96:443
 
 apiVersion: v1
 clusters:
 - cluster:
     certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUN1RENDQWFDZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFOTVFzd0NRWURWUVFERXdKallUQWUKRncweE56QTRNamt4TkRJek16aGFGdzB5TnpBNE1qY3hOREl6TXpoYU1BMHhDekFKQmdOVkJBTVRBbU5oTUlJQgpJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBclF3aGRweVE3KzBaVzBDMFpEblI1VS85CjdaVmgyODRtYjdYSmVVaHM0QmI0UHE2Mk1remZpc2lzdXZQZmJzK2Y3dW1oeXhyOGVLak10RlJyc3ZQakhUeDUKTG5rM0hvdE1wNGtCbGJjOTl4dExqN0VwazlXSVNNUW42OEo4K0NCU2N3aFZ1Zlg4NndrNFo3cTZuYXdEUTlRbApyMG1qNWZCVFZ1K3gzYWhXa1F4Rzczd3QxRUdZRkRFMFR1UlV6OXpDclk2bFZzdnZJcXlHL04wWHlUVHNMeFQxCmtOOHRnU3cwVWJOakhGMFVmejhpN05wK1RBZkRFT1pUMWx3SllkSlJ2RjMvYTBRRmdHWTg3K1BJQmhvQklZd1YKU2RXZkRjVWVjcUVuWXkxMEF5MDhZeEZxUTlSNTM4djlpUUxYenZqSVdsYWdDSXBCejB2UDB3dFp4a0lGaFFJRApBUUFCb3lNd0lUQU9CZ05WSFE4QkFmOEVCQU1DQXFRd0R3WURWUjBUQVFIL0JBVXdBd0VCL3pBTkJna3Foa2lHCjl3MEJBUXNGQUFPQ0FRRUFsanRtbzJwMklvVmhKTXZ4MEFNM08xUkxHMGVRbHY5QTNQWm14dTlWemJkaWZjUFYKTWFaeHp3blVtcjRFa2Y2RmY4WGI4Sk90ZWJUdWo4eDA4UWVaSFRnY3JJYitXdk9jVHJLTkFyeE1Ud0JHcnRRTwp0eWhxanJUSXE5SS9kZUNNeCt4RkNPSFVzdmNEa1FmRVVoZ21YWW5TVEdOU3poNmFmdlU5STFUVUNlWXRFeHlDCm5aaDlPd3hzcGFmcFhBRWdmdStTL0F6WFpLV255bjgyVHpGVTZnaFpFZnVDcndMd2JQRmlaS25ESm1mYlNWM1YKVGljTWdsSkNmZldsdk96OUN3eGtxQlRHNDZvUGZraFZVNElKS3pwekVXQXU2Q3lua09RalkvN2VDd1VFc1NWMQpwM0hZTXpNa05aRzlDNldSakd4VlF4NUo4djRuR1UzcXo2UTk4dz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
-    server: https://10.96.10.96:9844/apis/authentication.k8s.io/v1beta1/tokenreviews
+    server: https://10.96.10.96:443/apis/authentication.k8s.io/v1beta1/tokenreviews
   name: guard-server
 contexts:
 - context:

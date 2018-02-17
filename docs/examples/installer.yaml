@@ -38,11 +38,8 @@ spec:
         image: appscode/guard:canary
         name: guard
         ports:
-        - containerPort: 9844
-          name: web
-          protocol: TCP
-        - containerPort: 56790
-          name: ops
+        - containerPort: 8443
+          name: api
           protocol: TCP
         resources: {}
         volumeMounts:
@@ -66,10 +63,10 @@ metadata:
 spec:
   clusterIP: 10.96.10.96
   ports:
-  - name: web
-    port: 9844
+  - name: api
+    port: 443
     protocol: TCP
-    targetPort: web
+    targetPort: api
   selector:
     app: guard
   type: ClusterIP

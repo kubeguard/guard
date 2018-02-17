@@ -24,13 +24,14 @@ guard get installer [flags]
 ### Options
 
 ```
-      --addr string                          Address (host:port) of guard server. (default "10.96.10.96:9844")
+      --addr string                          Address (host:port) of guard server. (default "10.96.10.96:443")
       --azure.client-id string               MS Graph application client ID to use
       --azure.client-secret string           MS Graph application client secret to use
       --azure.tenant-id string               MS Graph application tenant id to use
-      --google.admin-email string            Email of Google Apps administrator
-      --google.sa-json-file string           Path to Google Apps service account json file
+      --google.admin-email string            Email of G Suite administrator
+      --google.sa-json-file string           Path to Google service account json file
   -h, --help                                 help for installer
+      --image-pull-secret string             Name of image pull secret
       --ldap.bind-dn string                  The connector uses this DN in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
       --ldap.bind-password string            The connector uses this password in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
       --ldap.group-member-attribute string   Ldap group member attribute (default "member")
@@ -47,7 +48,9 @@ guard get installer [flags]
       --ldap.user-search-filter string       Filter to apply when searching user (default "(objectClass=person)")
   -n, --namespace string                     Name of Kubernetes namespace used to run guard server. (default "kube-system")
       --pki-dir string                       Path to directory where pki files are stored. (default "$HOME/.guard")
+      --private-registry string              Private Docker registry (default "appscode")
       --rbac                                 If true, uses RBAC with operator and database objects
+      --run-on-master                        If true, runs Guard server on master instances
       --token-auth-file string               Path to the token file
 ```
 

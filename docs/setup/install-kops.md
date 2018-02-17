@@ -45,7 +45,7 @@ spec:
     authenticationTokenWebhookConfigFile: /srv/kubernetes/webhook-guard-config
   fileAssets:
   - content: |
-       (OUTPUT of: guard get webhook-config your-github-org -o github --addr=100.64.10.96:9844)
+       (OUTPUT of: guard get webhook-config your-github-org -o github --addr=100.64.10.96:443)
     name: guard-github-auth
     path: /srv/kubernetes/webhook-guard-config
     roles:
