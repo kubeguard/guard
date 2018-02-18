@@ -13,7 +13,7 @@ import (
 	"appscode.com/api/dtypes"
 	"appscode.com/client-go"
 	_env "github.com/appscode/go/env"
-	auth "k8s.io/api/authentication/v1beta1"
+	auth "k8s.io/api/authentication/v1"
 )
 
 type WhoAmIResponse struct {

@@ -9,7 +9,7 @@ import (
 	"github.com/appscode/guard/lib/graph"
 	oidc "github.com/coreos/go-oidc"
 	"github.com/spf13/pflag"
-	auth "k8s.io/api/authentication/v1beta1"
+	auth "k8s.io/api/authentication/v1"
 )
 
 /*

@@ -10,7 +10,7 @@ import (
 	"github.com/appscode/go/log"
 	"github.com/go-ldap/ldap"
 	"github.com/spf13/pflag"
-	auth "k8s.io/api/authentication/v1beta1"
+	auth "k8s.io/api/authentication/v1"
 )
 
 const (

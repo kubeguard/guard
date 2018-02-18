@@ -25,7 +25,7 @@ $ guard get installer --token-auth-file=[PATH_TO_TOKEN_FILE]
 
 ```json
 {
-  "apiVersion": "authentication.k8s.io/v1beta1",
+  "apiVersion": "authentication.k8s.io/v1",
   "kind": "TokenReview",
   "status": {
     "authenticated": true,

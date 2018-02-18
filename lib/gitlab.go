@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/xanzy/go-gitlab"
-	auth "k8s.io/api/authentication/v1beta1"
+	auth "k8s.io/api/authentication/v1"
 )
 
 func checkGitLab(token string) (auth.TokenReview, int) {

@@ -4,7 +4,7 @@
  Guard by AppsCode is a [Kubernetes Webhook Authentication](https://kubernetes.io/docs/admin/authentication/#webhook-token-authentication) server. Using guard, you can log into your Kubernetes cluster using your Github or Google authentication token. Guard also sets authenticated user's groups to his Github teams or Google groups. This allows cluster administrator to setup RBAC rules based on membership in Github teams or Google groups.
 
 ## Supported Versions
-Kubernetes 1.6+
+Kubernetes 1.8+
 
 ## Installation
 To install Guard, please follow the guide [here](https://appscode.com/products/guard/0.1.0-rc.5/setup/install/).
