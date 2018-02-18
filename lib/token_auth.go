@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	auth "k8s.io/api/authentication/v1beta1"
+	auth "k8s.io/api/authentication/v1"
 )
 
 var (

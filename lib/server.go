@@ -106,7 +106,7 @@ func (s Server) ListenAndServe() {
 	tlsConfig.BuildNameToCertificate()
 
 	m := pat.New()
-	m.Post("/apis/authentication.k8s.io/v1beta1/tokenreviews", s)
+	m.Post("/apis/authentication.k8s.io/v1/tokenreviews", s)
 	m.Get("/metrics", promhttp.Handler())
 	m.Get("/healthz", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(200)

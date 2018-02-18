@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/appscode/go/log"
-	auth "k8s.io/api/authentication/v1beta1"
+	auth "k8s.io/api/authentication/v1"
 )
 
 func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {

@@ -54,7 +54,7 @@ $ kubectl apply -f installer.yaml
 ![google-webhook-flow](/docs/images/google-webhook-flow.png)
 ```json
 {
-  "apiVersion": "authentication.k8s.io/v1beta1",
+  "apiVersion": "authentication.k8s.io/v1",
   "kind": "TokenReview",
   "status": {
     "authenticated": true,

@@ -5,11 +5,11 @@ import (
 	"net/http"
 
 	"github.com/appscode/go/log"
-	auth "k8s.io/api/authentication/v1beta1"
+	auth "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const apiVersion = "authentication.k8s.io/v1beta1"
+const apiVersion = "authentication.k8s.io/v1"
 
 // Write replies to the request with the specified TokenReview object and HTTP code.
 // It does not otherwise end the request; the caller should ensure no further

@@ -1,5 +1,5 @@
 hash: a7f43256633ca59df8ebe031a678c5164cdd77bb77c5e56d4be773bfda015688
-updated: 2018-02-16T22:31:13.622430412-08:00
+updated: 2018-02-18T00:51:20.946578259-08:00
 imports:
 - name: appscode.com/api
   version: 94c2d00055f491d55e8ffbd8ccdc1ff53144fe25
@@ -429,7 +429,7 @@ imports:
   - third_party/forked/golang/json
   - third_party/forked/golang/reflect
 - name: k8s.io/apiserver
-  version: 1270e9f1ad9eaf6127691df90af0836f7e152495
+  version: 91e14f394e4796abf5a994a349a222e7081d86b6
   subpackages:
   - pkg/util/feature
 - name: k8s.io/client-go

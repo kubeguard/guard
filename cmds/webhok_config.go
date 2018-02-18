@@ -85,7 +85,7 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 				APIVersion: "v1",
 				Clusters: map[string]*clientcmdapi.Cluster{
 					"guard-server": {
-						Server: fmt.Sprintf("https://%s/apis/authentication.k8s.io/v1beta1/tokenreviews", addr),
+						Server: fmt.Sprintf("https://%s/apis/authentication.k8s.io/v1/tokenreviews", addr),
 						CertificateAuthorityData: caCert,
 					},
 				},
