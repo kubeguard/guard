@@ -363,7 +363,7 @@ imports:
   - apps/v1beta1
   - apps/v1beta2
   - authentication/v1
-  - authentication/v1beta1
+  - authentication/v1
   - authorization/v1
   - authorization/v1beta1
   - autoscaling/v1
@@ -444,7 +444,7 @@ imports:
   - kubernetes/typed/apps/v1beta1
   - kubernetes/typed/apps/v1beta2
   - kubernetes/typed/authentication/v1
-  - kubernetes/typed/authentication/v1beta1
+  - kubernetes/typed/authentication/v1
   - kubernetes/typed/authorization/v1
   - kubernetes/typed/authorization/v1beta1
   - kubernetes/typed/autoscaling/v1
