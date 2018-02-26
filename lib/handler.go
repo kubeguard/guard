@@ -35,7 +35,8 @@ func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	switch strings.ToLower(org) {
 	case "github":
-		resp, code := checkGithub(crt.Subject.CommonName, data.Spec.Token)
+		client := NewGithubClient(crt.Subject.CommonName, data.Spec.Token)
+		resp, code := client.checkGithub()
 		Write(w, resp, code)
 		return
 	case "google":
