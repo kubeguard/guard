@@ -48,7 +48,8 @@ func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		Write(w, resp, code)
 		return
 	case "gitlab":
-		resp, code := checkGitLab(data.Spec.Token)
+		client := NewGitlabClient(data.Spec.Token)
+		resp, code := client.checkGitLab()
 		Write(w, resp, code)
 		return
 	case "azure":
