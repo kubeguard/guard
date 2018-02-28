@@ -203,3 +203,30 @@ func New(clientID, clientSecret, tenantName string) (*UserInfo, error) {
 
 	return u, nil
 }
+
+func NewUserInfo(clientID, clientSecret, tenantName, loginUrl, apiUrl string) (*UserInfo, error) {
+	parsedLogin, err := url.Parse(loginUrl)
+	if err != nil {
+		return nil, err
+	}
+	parsedApi, err := url.Parse(apiUrl)
+	if err != nil {
+		return nil, err
+	}
+	u := &UserInfo{
+		client: http.DefaultClient,
+		headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		apiURL:       parsedApi,
+		loginURL:     parsedLogin,
+		clientID:     clientID,
+		clientSecret: clientSecret,
+	}
+	err = u.login()
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
+}

@@ -1,63 +1,586 @@
 package lib
 
 import (
+	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/appscode/guard/lib/graph"
+	"github.com/appscode/pat"
+	oidc "github.com/coreos/go-oidc"
+	"gopkg.in/square/go-jose.v2"
+	auth "k8s.io/api/authentication/v1"
 )
 
-type credential struct {
-	ClientID     string `json:"clientID"`
-	ClientSecret string `json:"clientSecret"`
-	TenantID     string `json:"tenantID"`
+type signingKey struct {
+	priv interface{}
+	pub  interface{}
+	alg  jose.SignatureAlgorithm
 }
 
-var (
-	id_token string = ""
-)
+func (s *signingKey) sign(payload []byte) (string, error) {
+	privKey := &jose.JSONWebKey{Key: s.priv, Algorithm: string(s.alg), KeyID: ""}
 
-func TestGraph(t *testing.T) {
-	cred := tGetCred()
-	client, err := graph.New(cred.ClientID, cred.ClientSecret, cred.TenantID)
+	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: s.alg, Key: privKey}, nil)
 	if err != nil {
-		t.Error(err)
+		return "", err
 	}
-	fmt.Println(client.GetGroups("dipta@appscode.com"))
+	jws, err := signer.Sign(payload)
+	if err != nil {
+		return "", err
+	}
 
+	data, err := jws.CompactSerialize()
+	if err != nil {
+		return "", err
+	}
+	return data, nil
+}
+
+// jwk returns the public part of the signing key.
+func (s *signingKey) jwk() jose.JSONWebKeySet {
+	k := jose.JSONWebKey{Key: s.pub, Use: "test", Algorithm: string(s.alg), KeyID: ""}
+	kset := jose.JSONWebKeySet{}
+	kset.Keys = append(kset.Keys, k)
+	return kset
+}
+
+func newRSAKey() (*signingKey, error) {
+	priv, err := rsa.GenerateKey(rand.Reader, 1028)
+	if err != nil {
+		return nil, err
+	}
+	return &signingKey{priv, priv.Public(), jose.RS256}, nil
+}
+
+func azureClientSetup(clientID, clientSecret, tenantID, serverUrl string) (*AzureClient, error) {
+	c := &AzureClient{
+		AzureOptions: AzureOptions{clientID, clientSecret, tenantID},
+		ctx:          context.Background(),
+	}
+
+	p, err := oidc.NewProvider(c.ctx, serverUrl)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create provider for azure. Reason: %v.", err)
+	}
+
+	c.verifier = p.Verifier(&oidc.Config{
+		SkipClientIDCheck: true,
+		SkipExpiryCheck:   true,
+	})
+
+	c.graphClient, err = graph.NewUserInfo(clientID, clientSecret, tenantID, serverUrl+"/login", serverUrl+"/api")
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+func azureServerSetup(loginResp string, loginStatus int, jwkResp, groupIds, groupList []byte, groupStatus ...int) (*httptest.Server, error) {
+	listener, err := net.Listen("tcp", "127.0.0.1:")
+	if err != nil {
+		return nil, err
+	}
+	addr := listener.Addr().String()
+
+	m := pat.New()
+
+	m.Post("/login", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(loginStatus)
+		w.Write([]byte(loginResp))
+	}))
+
+	m.Post("/api/users/nahid/getMemberGroups", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if len(groupStatus) > 0 {
+			w.WriteHeader(groupStatus[0])
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
+		w.Write(groupIds)
+	}))
+
+	m.Post("/api/directoryObjects/getByIds", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write(groupList)
+	}))
+
+	m.Get("/.well-known/openid-configuration", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		resp := `{"issuer" : "http://%v", "jwks_uri" : "http://%v/jwk"}`
+		w.Write([]byte(fmt.Sprintf(resp, addr, addr)))
+	}))
+
+	m.Get("/jwk", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write(jwkResp)
+	}))
+
+	srv := &httptest.Server{
+		Listener: listener,
+		Config:   &http.Server{Handler: m},
+	}
+	srv.Start()
+
+	return srv, nil
+}
+
+/*
+goups id format:
+{
+   "value":[
+      "1"
+   ]
+}
+
+groupList formate:
+{
+   "value":[
+      {
+         "displayName":"group1",
+         "id":"1"
+      }
+   ]
+}
+*/
+func azureGetGroupsAndIds(t *testing.T, groupSz int) ([]byte, []byte) {
+	groupId := struct {
+		Value []string `json:"value"`
+	}{}
+
+	type group struct {
+		DisplayName string `json:"displayName"`
+		Id          string `json:"id"`
+	}
+	groupList := struct {
+		Value []group `json:"value"`
+	}{}
+
+	for i := 1; i <= groupSz; i++ {
+		th := strconv.Itoa(i)
+		groupId.Value = append(groupId.Value, th)
+		groupList.Value = append(groupList.Value, group{"group" + th, th})
+	}
+	gId, err := json.Marshal(groupId)
+	if err != nil {
+		t.Fatalf("Error when generating groups id and group List. reason %v", err)
+	}
+	gList, err := json.Marshal(groupList)
+	if err != nil {
+		t.Fatalf("Error when generating groups id and group List. reason %v", err)
+	}
+	return gId, gList
+}
+
+func azureVerifyGroups(groupList []string, expectedSize int) error {
+	if len(groupList) != expectedSize {
+		return fmt.Errorf("Expected group size: %v, got %v", expectedSize, len(groupList))
+	}
+	mapGroupName := map[string]bool{}
+	for _, name := range groupList {
+		mapGroupName[name] = true
+	}
+	for i := 1; i <= expectedSize; i++ {
+		group := "group" + strconv.Itoa(i)
+		if _, ok := mapGroupName[group]; !ok {
+			return fmt.Errorf("Group %v is missing", group)
+		}
+	}
+	return nil
+}
+
+func azureVerifyAuthenticatedReview(review *auth.TokenReview, groupSize int) error {
+	if !review.Status.Authenticated {
+		return fmt.Errorf("Expected authenticated ture, got false")
+	}
+	if review.Status.User.Username != "nahid" {
+		return fmt.Errorf("Expected username %v, got %v", "nahid", review.Status.User.Username)
+	}
+	err := azureVerifyGroups(review.Status.User.Groups, groupSize)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func azureVerifyUnauthenticatedReview(review *auth.TokenReview) error {
+	if review.Status.Authenticated {
+		return fmt.Errorf("Expected authenticated false, got true")
+	}
+	if len(review.Status.Error) == 0 {
+		return fmt.Errorf("Expected error message, got empty message")
+	}
+	return nil
 }
 
 func TestCheckAzure(t *testing.T) {
-	cred := tGetCred()
-	opts := AzureOptions{
-		ClientID:     cred.ClientID,
-		ClientSecret: cred.ClientSecret,
-		TenantID:     cred.TenantID,
-	}
-	s := Server{Azure: opts}
-	resp, status := s.checkAzure(id_token)
-	if status != 200 {
-		t.Error(resp.Status.Error)
-	}
-	fmt.Println(resp)
-	fmt.Println(resp.Status.User.Username)
-	fmt.Println(resp.Status.User.Groups)
-}
-
-func tGetCred() credential {
-	b, _ := tReadCredFile("/home/ac/Downloads/cred/azure-my.json")
-	v := credential{}
-	fmt.Println("token-error:", json.Unmarshal(b, &v))
-	//fmt.Println(v)
-	return v
-}
-
-func tReadCredFile(name string) ([]byte, error) {
-	crtBytes, err := ioutil.ReadFile(name)
+	signKey, err := newRSAKey()
 	if err != nil {
-		return nil, fmt.Errorf("failed to read `%s`.Reason: %v", name, err)
+		t.Fatalf("Error when creating signing key. reason : %v", err)
 	}
-	return crtBytes, nil
+
+	loginResp := `{ "token_type": "Bearer", "expires_in": 8459, "access_token": "%v"}`
+
+	accessToken := `{    
+						"iss" : "%v",
+						"upn": "nahid",
+						"groups": [ "1", "2", "3"]
+					}`
+	emptyUpn := `{    
+						"iss" : "%v",
+						"groups": [ "1", "2", "3"]
+					}`
+	emptyGroup := `{    
+						"iss" : "%v",
+						"upn": "nahid"
+					}`
+	groupSizes := []int{0, 1, 3, 7, 8, 11, 55, 133, 233}
+
+	for _, sz := range groupSizes {
+		// authenticated : true
+		t.Run("scenario 1", func(t *testing.T) {
+			jwkSet := signKey.jwk()
+			jwkResp, err := json.Marshal(jwkSet)
+			if err != nil {
+				t.Fatalf("Error when generating JSONWebKeySet. reason: %v", err)
+			}
+
+			groupSize := sz
+			groupIds, groupList := azureGetGroupsAndIds(t, groupSize)
+
+			srv, err := azureServerSetup(fmt.Sprintf(loginResp), http.StatusOK, jwkResp, groupIds, groupList)
+			if err != nil {
+				t.Fatalf("Error when creating server, reason: %v", err)
+			} else {
+				defer srv.Close()
+			}
+
+			client, err := azureClientSetup("client_id", "client_secret", "tenant_id", srv.URL)
+			if err != nil {
+				t.Fatalf("Error when creatidng azure client. reason : %v", err)
+			}
+
+			token, err := signKey.sign([]byte(fmt.Sprintf(accessToken, srv.URL)))
+			if err != nil {
+				t.Fatalf("Error when signing token. reason: %v", err)
+			}
+
+			resp, status := client.checkAzure(token)
+			if status != http.StatusOK {
+				t.Errorf("Expected %v, got %v. reason: %v", http.StatusOK, status, resp.Status.Error)
+			}
+
+			err = azureVerifyAuthenticatedReview(&resp, groupSize)
+			if err != nil {
+				t.Error(err)
+			}
+
+		})
+	}
+
+	// authenticate : false
+	// expected error, reason bad token
+	t.Run("scenario 2", func(t *testing.T) {
+		jwkSet := signKey.jwk()
+		jwkResp, err := json.Marshal(jwkSet)
+		if err != nil {
+			t.Fatalf("Error when generating JSONWebKeySet. reason: %v", err)
+		}
+
+		groupSize := 5
+		groupIds, groupList := azureGetGroupsAndIds(t, groupSize)
+
+		srv, err := azureServerSetup(fmt.Sprintf(loginResp), http.StatusOK, jwkResp, groupIds, groupList)
+		if err != nil {
+			t.Fatalf("Error when creating server, reason: %v", err)
+		} else {
+			defer srv.Close()
+		}
+
+		client, err := azureClientSetup("client_id", "client_secret", "tenant_id", srv.URL)
+		if err != nil {
+			t.Fatalf("Error when creatidng azure client. reason : %v", err)
+		}
+
+		resp, status := client.checkAzure("bad_token")
+		if status != http.StatusUnauthorized {
+			t.Errorf("Expected %v, got %v. reason: %v", http.StatusUnauthorized, status, resp.Status.Error)
+		}
+
+		err = azureVerifyUnauthenticatedReview(&resp)
+		if err != nil {
+			t.Error(err)
+		}
+	})
+
+	// authenticate : false
+	// expected error, reason empty username claim
+	t.Run("scenario 3", func(t *testing.T) {
+		jwkSet := signKey.jwk()
+		jwkResp, err := json.Marshal(jwkSet)
+		if err != nil {
+			t.Fatalf("Error when generating JSONWebKeySet. reason: %v", err)
+		}
+
+		groupSize := 5
+		groupIds, groupList := azureGetGroupsAndIds(t, groupSize)
+
+		srv, err := azureServerSetup(fmt.Sprintf(loginResp), http.StatusOK, jwkResp, groupIds, groupList)
+		if err != nil {
+			t.Fatalf("Error when creating server, reason: %v", err)
+		} else {
+			defer srv.Close()
+		}
+
+		client, err := azureClientSetup("client_id", "client_secret", "tenant_id", srv.URL)
+		if err != nil {
+			t.Fatalf("Error when creatidng azure client. reason : %v", err)
+		}
+
+		token, err := signKey.sign([]byte(fmt.Sprintf(emptyUpn, srv.URL)))
+		if err != nil {
+			t.Fatalf("Error when signing token. reason: %v", err)
+		}
+
+		resp, status := client.checkAzure(token)
+		if status != http.StatusBadRequest {
+			t.Errorf("Expected %v, got %v. reason: %v", http.StatusBadRequest, status, resp.Status.Error)
+		}
+
+		err = azureVerifyUnauthenticatedReview(&resp)
+		if err != nil {
+			t.Error(err)
+		}
+	})
+
+	// authenticate : true
+	// empty group claim
+	t.Run("scenario 4", func(t *testing.T) {
+		jwkSet := signKey.jwk()
+		jwkResp, err := json.Marshal(jwkSet)
+		if err != nil {
+			t.Fatalf("Error when generating JSONWebKeySet. reason: %v", err)
+		}
+
+		groupSize := 5
+		groupIds, groupList := azureGetGroupsAndIds(t, groupSize)
+
+		srv, err := azureServerSetup(fmt.Sprintf(loginResp), http.StatusOK, jwkResp, groupIds, groupList)
+		if err != nil {
+			t.Fatalf("Error when creating server, reason: %v", err)
+		} else {
+			defer srv.Close()
+		}
+
+		client, err := azureClientSetup("client_id", "client_secret", "tenant_id", srv.URL)
+		if err != nil {
+			t.Fatalf("Error when creatidng azure client. reason : %v", err)
+		}
+
+		token, err := signKey.sign([]byte(fmt.Sprintf(emptyGroup, srv.URL)))
+		if err != nil {
+			t.Fatalf("Error when signing token. reason: %v", err)
+		}
+
+		resp, status := client.checkAzure(token)
+		if status != http.StatusOK {
+			t.Errorf("Expected %v, got %v. reason: %v", http.StatusOK, status, resp.Status.Error)
+		}
+
+		err = azureVerifyAuthenticatedReview(&resp, groupSize)
+		if err != nil {
+			t.Error(err)
+		}
+	})
+
+	// authenticate : false
+	// error when getting groups
+	t.Run("scenario 5", func(t *testing.T) {
+		jwkSet := signKey.jwk()
+		jwkResp, err := json.Marshal(jwkSet)
+		if err != nil {
+			t.Fatalf("Error when generating JSONWebKeySet. reason: %v", err)
+		}
+
+		groupSize := 5
+		groupIds, groupList := azureGetGroupsAndIds(t, groupSize)
+
+		srv, err := azureServerSetup(fmt.Sprintf(loginResp), http.StatusOK, jwkResp, groupIds, groupList, http.StatusInternalServerError)
+		if err != nil {
+			t.Fatalf("Error when creating server, reason: %v", err)
+		} else {
+			defer srv.Close()
+		}
+
+		client, err := azureClientSetup("client_id", "client_secret", "tenant_id", srv.URL)
+		if err != nil {
+			t.Fatalf("Error when creatidng azure client. reason : %v", err)
+		}
+
+		token, err := signKey.sign([]byte(fmt.Sprintf(accessToken, srv.URL)))
+		if err != nil {
+			t.Fatalf("Error when signing token. reason: %v", err)
+		}
+
+		resp, status := client.checkAzure(token)
+		if status != http.StatusBadRequest {
+			t.Errorf("Expected %v, got %v. reason: %v", http.StatusBadRequest, status, resp.Status.Error)
+		}
+
+		err = azureVerifyUnauthenticatedReview(&resp)
+		if err != nil {
+			t.Error(err)
+		}
+	})
+}
+
+var testClaims = claims{
+	"upn": "nahid",
+	"groups": []interface{}{
+		"group1",
+		"group2",
+	},
+	"bad_groups": []interface{}{
+		"bad1",
+		"bad2",
+		1204,
+	},
+	"bad_upn": 1204,
+}
+
+func TestReviewFromClaims(t *testing.T) {
+	// valid user and groups claim
+	t.Run("scenario 1", func(t *testing.T) {
+		var validReview = &auth.TokenReview{
+			Status: auth.TokenReviewStatus{
+				Authenticated: true,
+				User: auth.UserInfo{
+					Username: "nahid",
+					Groups: []string{
+						"group1",
+						"group2",
+					},
+				},
+			},
+		}
+
+		review, err := testClaims.ReviewFromClaims("upn", "groups")
+		if err != nil {
+			t.Errorf("Error when generating token review: %s", err)
+		}
+		if !reflect.DeepEqual(review, validReview) {
+			t.Errorf("TokenReviews : expected %+v\ngot %+v", *validReview, *review)
+		}
+	})
+
+	// missing group claim
+	t.Run("scenario 2", func(t *testing.T) {
+		review, err := testClaims.ReviewFromClaims("upn", "no_groups")
+		if err != nil {
+			t.Errorf("Error when generating token review: %s", err)
+		}
+		if len(review.Status.User.Groups) != 0 {
+			t.Errorf("TokenReview should have an empty groups list. Got a list with length %d", len(review.Status.User.Groups))
+		}
+	})
+
+	// invalid claim should error
+	t.Run("scenario 3", func(t *testing.T) {
+		review, err := testClaims.ReviewFromClaims("bad_upn", "groups")
+		if err == nil {
+			t.Error("Expected error with invalid claim")
+		}
+		if review != nil {
+			t.Error("TokenReview should be nil when there is an error")
+		}
+	})
+}
+
+func TestString(t *testing.T) {
+	// valid claim key should return value
+	t.Run("scenario 1", func(t *testing.T) {
+		v, err := testClaims.String("upn")
+		if err != nil {
+			t.Errorf("Error getting string: %s", err)
+		}
+		if v != "nahid" {
+			t.Errorf("Expected %v, got %v", "nahid", v)
+		}
+	})
+
+	// non-existent claim key should error
+	t.Run("scenario 2", func(t *testing.T) {
+		v, err := testClaims.String("claim_don't_exist")
+		if err == nil {
+			t.Error("Did not get an error")
+		}
+		if v != "" {
+			t.Errorf("Expected empty, got %v", v)
+		}
+	})
+
+	//non-string claim should error
+	t.Run("scenario 3", func(t *testing.T) {
+		v, err := testClaims.String("bad_upn")
+		if err == nil {
+			t.Error("Expected an error")
+		}
+		if v != "" {
+			t.Errorf("Expected empty, got %v", v)
+		}
+	})
+}
+
+func TestStringSliceClaim(t *testing.T) {
+	// valid claim key should return slice
+	t.Run("scenario 1", func(t *testing.T) {
+		v, err := testClaims.StringSlice("groups")
+		if err != nil {
+			t.Errorf("Error getting slice: %s", err)
+		}
+		if !reflect.DeepEqual(v, []string{"group1", "group2"}) {
+			t.Errorf("Expected %v, got %v", v, []string{"group1", "group2"})
+		}
+	})
+
+	// non-existent claim key should error
+	t.Run("scenario 2", func(t *testing.T) {
+		v, err := testClaims.StringSlice("do_not_exist")
+		if err == nil {
+			t.Error("Expected an error")
+		}
+		if v != nil {
+			t.Errorf("Expected nil slice, got %v", v)
+		}
+	})
+
+	// non string slice claim should error
+	t.Run("scenario 3", func(t *testing.T) {
+		v, err := testClaims.StringSlice("upn")
+		if err == nil {
+			t.Error("Expected an error")
+		}
+		if v != nil {
+			t.Errorf("Expected nil slice, got %v", v)
+		}
+	})
+
+	// wrong type slice claim should error
+	t.Run("scenario 4", func(t *testing.T) {
+		v, err := testClaims.StringSlice("bad_groups")
+		if err == nil {
+			t.Error("Expected an error")
+		}
+		if v != nil {
+			t.Errorf("Expected nil slice, got %v", v)
+		}
+	})
 }

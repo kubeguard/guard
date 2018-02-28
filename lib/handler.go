@@ -55,8 +55,14 @@ func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	case "azure":
 		if s.Azure.ClientID == "" || s.Azure.ClientSecret == "" || s.Azure.TenantID == "" {
 			Write(w, Error("Missing azure client-id or client-secret or tenant-id"), http.StatusBadRequest)
+			return
 		}
-		resp, code := s.checkAzure(data.Spec.Token)
+		client, err := NewAzureClient(s.Azure)
+		if err != nil {
+			Write(w, Error(err.Error()), http.StatusInternalServerError)
+			return
+		}
+		resp, code := client.checkAzure(data.Spec.Token)
 		Write(w, resp, code)
 		return
 	case "ldap":
