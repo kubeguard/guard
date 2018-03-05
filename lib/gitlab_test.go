@@ -12,7 +12,7 @@ import (
 )
 
 func TestGitLab(t *testing.T) {
-	resp, status := checkGitLab("guard-test", tGetToken())
+	resp, status := checkGitLab(tGetToken())
 	if status != http.StatusOK {
 		t.Error("Expected", http.StatusOK, ". Got", status)
 	}

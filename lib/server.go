@@ -76,6 +76,16 @@ func (s Server) ListenAndServe() {
 		}
 	}
 
+	// caCertPool for self signed LDAP sever certificate
+	if s.LDAP.CaCertFile != "" {
+		caCert, err := ioutil.ReadFile(s.LDAP.CaCertFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		s.LDAP.caCertPool = x509.NewCertPool()
+		s.LDAP.caCertPool.AppendCertsFromPEM(caCert)
+	}
+
 	/*
 		Ref:
 		 - http://www.levigross.com/2015/11/21/mutual-tls-authentication-in-go/
@@ -101,7 +111,7 @@ func (s Server) ListenAndServe() {
 			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 		},
-		ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientAuth: tls.VerifyClientCertIfGiven,
 		ClientCAs:  caCertPool,
 		NextProtos: []string{"h2", "http/1.1"},
 	}
