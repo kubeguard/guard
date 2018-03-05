@@ -29,7 +29,7 @@ func (s GoogleOptions) ToArgs() []string {
 	var args []string
 
 	if s.ServiceAccountJsonFile != "" {
-		args = append(args, fmt.Sprintf("--google.sa-json-file=%s", s.ServiceAccountJsonFile))
+		args = append(args, fmt.Sprintf("--google.sa-json-file=/etc/guard/auth/sa.json"))
 	}
 	if s.AdminEmail != "" {
 		args = append(args, fmt.Sprintf("--google.admin-email=%s", s.AdminEmail))
