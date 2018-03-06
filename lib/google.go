@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/appscode/go/log"
 	"github.com/spf13/pflag"
 	"golang.org/x/oauth2/google"
 	gdir "google.golang.org/api/admin/directory/v1"
@@ -19,6 +20,12 @@ type GoogleOptions struct {
 	AdminEmail             string
 }
 
+const (
+	googleIssuerUrl1     = "https://accounts.google.com"
+	googleIssuerUrl2     = "accounts.google.com"
+	googleOauth2ClientID = "37154062056-220683ek37naab43v23vc5qg01k1j14g.apps.googleusercontent.com"
+)
+
 func (s *GoogleOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.ServiceAccountJsonFile, "google.sa-json-file", s.ServiceAccountJsonFile, "Path to Google service account json file")
 	fs.StringVar(&s.AdminEmail, "google.admin-email", s.AdminEmail, "Email of G Suite administrator")
@@ -28,7 +35,7 @@ func (s GoogleOptions) ToArgs() []string {
 	var args []string
 
 	if s.ServiceAccountJsonFile != "" {
-		args = append(args, fmt.Sprintf("--google.sa-json-file=%s", s.ServiceAccountJsonFile))
+		args = append(args, fmt.Sprintf("--google.sa-json-file=/etc/guard/auth/sa.json"))
 	}
 	if s.AdminEmail != "" {
 		args = append(args, fmt.Sprintf("--google.admin-email=%s", s.AdminEmail))
@@ -49,6 +56,19 @@ func (s Server) checkGoogle(name, token string) (auth.TokenReview, int) {
 	}
 	// verify step 2-5
 	// https://developers.google.com/identity/protocols/OpenIDConnect#validatinganidtoken
+	if r1.Issuer != googleIssuerUrl1 && r1.Issuer != googleIssuerUrl2 {
+		return Error(fmt.Sprintf("Issuer url didn't match. Expected %v or %v, got %v", googleIssuerUrl1, googleIssuerUrl2, r1.Issuer)), http.StatusUnauthorized
+	}
+
+	if r1.ExpiresIn <= 0 {
+		return Error(fmt.Sprintf("token is expired")), http.StatusUnauthorized
+	}
+
+	if r1.Audience != googleOauth2ClientID {
+		log.Info("Expected client ID %v, got %v", googleOauth2ClientID, r1.Audience)
+		return Error(fmt.Sprint("client ID didn't match")), http.StatusUnauthorized
+	}
+
 	if !strings.HasSuffix(r1.Email, "@"+name) {
 		return Error(fmt.Sprintf("User is not a member of domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
 	}

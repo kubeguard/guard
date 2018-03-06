@@ -107,6 +107,8 @@ func handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("x-content-type-options", "nosniff")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
+		"client_id":     googleOauth2ClientID,
+		"client_secret": googleOauth2ClientSecret,
 		"id_token":      token.Extra("id_token"),
 		"refresh_token": token.RefreshToken,
 	})

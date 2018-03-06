@@ -2,6 +2,7 @@ package lib
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"fmt"
 	"net/http"
@@ -14,11 +15,11 @@ import (
 )
 
 const (
-	DefaultUserSearchFilter     string = "(objectClass=person)"
-	DefaultGroupSearchFilter    string = "(objectClass=groupOfNames)"
-	DefaultUserAttribute        string = "uid"
-	DefaultGroupMemberAttribute string = "member"
-	DefaultGroupNameAttribute   string = "cn"
+	DefaultUserSearchFilter     = "(objectClass=person)"
+	DefaultGroupSearchFilter    = "(objectClass=groupOfNames)"
+	DefaultUserAttribute        = "uid"
+	DefaultGroupMemberAttribute = "member"
+	DefaultGroupNameAttribute   = "cn"
 )
 
 type LDAPOptions struct {
@@ -34,8 +35,10 @@ type LDAPOptions struct {
 	GroupMemberAttribute string // Ldap group member attribute, default: member
 	GroupNameAttribute   string // Ldap group name attribute, default: cn
 	SkipTLSVerification  bool
-	IsSecureLDAP         bool // for LDAP over SSL
-	StartTLS             bool // for start tls connection
+	IsSecureLDAP         bool   // for LDAP over SSL
+	StartTLS             bool   // for start tls connection
+	CaCertFile           string // path to the caCert file, needed for self signed server certificate
+	caCertPool           *x509.CertPool
 }
 
 func (s *LDAPOptions) AddFlags(fs *pflag.FlagSet) {
@@ -53,6 +56,7 @@ func (s *LDAPOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&s.SkipTLSVerification, "ldap.skip-tls-verification", false, "Skip LDAP server TLS verification, default : false")
 	fs.BoolVar(&s.IsSecureLDAP, "ldap.is-secure-ldap", false, "Secure LDAP (LDAPS)")
 	fs.BoolVar(&s.StartTLS, "ldap.start-tls", false, "Start tls connection")
+	fs.StringVar(&s.CaCertFile, "ldap.ca-cert-file", "", "ca cert file that used for self signed server certificate")
 }
 
 func (s LDAPOptions) ToArgs() []string {
@@ -99,6 +103,9 @@ func (s LDAPOptions) ToArgs() []string {
 	if s.StartTLS {
 		args = append(args, fmt.Sprintf("--ldap.start-tls"))
 	}
+	if s.CaCertFile != "" {
+		args = append(args, fmt.Sprintf("--ldap.ca-cert-file=/etc/guard/certs/ca.crt"))
+	}
 	return args
 }
 
@@ -109,21 +116,27 @@ func (s Server) checkLDAP(token string) (auth.TokenReview, int) {
 	}
 
 	data := auth.TokenReview{}
-	tlsConfig := &tls.Config{
-		ServerName:         s.LDAP.ServerAddress,
-		InsecureSkipVerify: s.LDAP.SkipTLSVerification,
-	}
 	var (
 		err  error
 		conn *ldap.Conn
 	)
+
+	tlsConfig := &tls.Config{
+		ServerName:         s.LDAP.ServerAddress,
+		InsecureSkipVerify: s.LDAP.SkipTLSVerification,
+	}
+
+	if s.LDAP.CaCertFile != "" {
+		tlsConfig.RootCAs = s.LDAP.caCertPool
+	}
+
 	if s.LDAP.IsSecureLDAP {
 		conn, err = ldap.DialTLS("tcp", fmt.Sprintf("%s:%s", s.LDAP.ServerAddress, s.LDAP.ServerPort), tlsConfig)
 	} else {
 		conn, err = ldap.Dial("tcp", fmt.Sprintf("%s:%s", s.LDAP.ServerAddress, s.LDAP.ServerPort))
 	}
 	if err != nil {
-		return Error(fmt.Sprintf("Unable to create ldap connector for %s:%s", s.LDAP.ServerAddress, s.LDAP.ServerPort)), http.StatusInternalServerError
+		return Error(fmt.Sprintf("Unable to create ldap connector for %s:%s. reason : %v", s.LDAP.ServerAddress, s.LDAP.ServerPort, err)), http.StatusInternalServerError
 	}
 	defer conn.Close()
 
