@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	asdfasfsadfasfd
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
