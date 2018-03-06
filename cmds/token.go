@@ -71,11 +71,12 @@ func getGoogleToken() error {
 	defer listener.Close()
 	log.Infoln("Oauth2 callback receiver listening on", listener.Addr())
 
+	// https://developers.google.com/identity/protocols/OpenIDConnect#validatinganidtoken
 	gauthConfig = goauth2.Config{
 		Endpoint:     google.Endpoint,
 		ClientID:     googleOauth2ClientID,
 		ClientSecret: googleOauth2ClientSecret,
-		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
+		Scopes:       []string{"openid", "profile", "email"},
 		RedirectURL:  "http://" + listener.Addr().String(),
 	}
 	// PromptSelectAccount allows a user who has multiple accounts at the authorization server
@@ -105,7 +106,10 @@ func handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("x-content-type-options", "nosniff")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(token)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"id_token":      token.Extra("id_token"),
+		"refresh_token": token.RefreshToken,
+	})
 }
 
 func getAppscodeToken() error {
