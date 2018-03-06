@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/spf13/pflag"
-	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	gdir "google.golang.org/api/admin/directory/v1"
 	gauth "google.golang.org/api/oauth2/v1"
@@ -39,27 +38,25 @@ func (s GoogleOptions) ToArgs() []string {
 }
 
 func (s Server) checkGoogle(name, token string) (auth.TokenReview, int) {
-	client := oauth2.NewClient(context.Background(), oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: token},
-	))
-
-	authSvc, err := gauth.New(client)
+	authSvc, err := gauth.New(http.DefaultClient)
 	if err != nil {
 		return Error(fmt.Sprintf("Failed to create oauth2/v1 api client for domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
 	}
-	r1, err := authSvc.Userinfo.Get().Do()
+	// ref: https://github.com/google/google-api-go-client/issues/160#issuecomment-345155421
+	r1, err := authSvc.Tokeninfo().IdToken(token).Do()
 	if err != nil {
 		return Error(fmt.Sprintf("Failed to load user info for domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
 	}
+	// verify step 2-5
+	// https://developers.google.com/identity/protocols/OpenIDConnect#validatinganidtoken
 	if !strings.HasSuffix(r1.Email, "@"+name) {
 		return Error(fmt.Sprintf("User is not a member of domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
 	}
-
 	resp := auth.TokenReview{}
 	resp.Status = auth.TokenReviewStatus{
 		User: auth.UserInfo{
 			Username: r1.Email,
-			UID:      r1.Id,
+			UID:      r1.UserId,
 		},
 	}
 
