@@ -60,3 +60,5 @@ import:
   version: a93f71fdfe73d2c0f5413c0565eea0af6523a6df
 - package: github.com/go-ldap/ldap
   version: v2.5.1
+- package: github.com/vjeantet/ldapserver
+  version: master
