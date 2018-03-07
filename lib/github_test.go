@@ -325,7 +325,7 @@ func TestCheckGithub(t *testing.T) {
 }
 
 func TestForDifferentTeamSizes(t *testing.T) {
-	teamSizes := []int{25, 0, 1, 13, 100, 77, 233}
+	teamSizes := []int{25, 0, 1, 100} // 25 * N
 
 	for _, size := range teamSizes {
 		// page=1, PerPage=25
@@ -375,12 +375,11 @@ func TestAuthorizationHeader(t *testing.T) {
 }
 
 func TestTeamListErrorAtDifferentPage(t *testing.T) {
-
-	pages := []int{1, 3, 7, 10, 13}
+	pages := []int{1, 2, 3}
 	for _, pageNo := range pages {
 		// error when getting user's team list at page=[pageNo]
 		t.Run(fmt.Sprintf("error when getting user's team list at page %v", pageNo), func(t *testing.T) {
-			teamSize := 400
+			teamSize := 60
 			errMsg := fmt.Sprintf("error when getting user's team list at page=%v", pageNo)
 
 			srv := githubServerSetup(organization, memRespBody, http.StatusOK, func(u *url.URL) (int, string) {
