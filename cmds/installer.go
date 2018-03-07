@@ -134,7 +134,7 @@ func NewCmdInstaller() *cobra.Command {
 				secretData["token.csv"] = tokens
 			}
 			if opts.Google.ServiceAccountJsonFile != "" {
-				sa, err := ioutil.ReadFile(opts.tokenAuthFile)
+				sa, err := ioutil.ReadFile(opts.Google.ServiceAccountJsonFile)
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -142,6 +142,20 @@ func NewCmdInstaller() *cobra.Command {
 			}
 			if len(secretData) > 0 {
 				data, err = meta.MarshalToYAML(newSecretForTokenAuth(opts.namespace, secretData), core.SchemeGroupVersion)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				buf.Write(data)
+				buf.WriteString("---\n")
+			}
+
+			if opts.LDAP.CaCertFile != "" {
+				cert, err := ioutil.ReadFile(opts.LDAP.CaCertFile)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				certData := map[string][]byte{"ca.crt": cert}
+				data, err = meta.MarshalToYAML(newSecretForLDAPCert(opts.namespace, certData), core.SchemeGroupVersion)
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -238,9 +252,7 @@ func newDeployment(opts options) runtime.Object {
 							},
 							Ports: []core.ContainerPort{
 								{
-									Name:          "api",
-									Protocol:      core.ProtocolTCP,
-									ContainerPort: port,
+									ContainerPort: servingPort,
 								},
 							},
 							VolumeMounts: []core.VolumeMount{
@@ -253,7 +265,7 @@ func newDeployment(opts options) runtime.Object {
 								Handler: core.Handler{
 									HTTPGet: &core.HTTPGetAction{
 										Path:   "/healthz",
-										Port:   intstr.FromInt(port),
+										Port:   intstr.FromInt(servingPort),
 										Scheme: core.URISchemeHTTPS,
 									},
 								},
@@ -322,6 +334,25 @@ func newDeployment(opts options) runtime.Object {
 		d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
 	}
 
+	if opts.LDAP.CaCertFile != "" {
+		volMount := core.VolumeMount{
+			Name:      "guard-cert",
+			MountPath: "/etc/guard/certs/",
+		}
+		d.Spec.Template.Spec.Containers[0].VolumeMounts = append(d.Spec.Template.Spec.Containers[0].VolumeMounts, volMount)
+
+		vol := core.Volume{
+			Name: "guard-cert",
+			VolumeSource: core.VolumeSource{
+				Secret: &core.SecretVolumeSource{
+					SecretName:  "guard-cert",
+					DefaultMode: types.Int32P(0444),
+				},
+			},
+		}
+		d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
+	}
+
 	if opts.tokenAuthFile != "" {
 		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, "--token-auth-file=/etc/guard/auth/token.csv")
 	}
@@ -349,7 +380,7 @@ func newService(namespace, addr string) runtime.Object {
 					Name:       "api",
 					Port:       int32(svcPort),
 					Protocol:   core.ProtocolTCP,
-					TargetPort: intstr.FromString("api"),
+					TargetPort: intstr.FromInt(servingPort),
 				},
 			},
 			Selector: labels,
@@ -410,6 +441,17 @@ func newSecretForTokenAuth(namespace string, data map[string][]byte) runtime.Obj
 	return &core.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "guard-auth",
+			Namespace: namespace,
+			Labels:    labels,
+		},
+		Data: data,
+	}
+}
+
+func newSecretForLDAPCert(namespace string, data map[string][]byte) runtime.Object {
+	return &core.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "guard-cert",
 			Namespace: namespace,
 			Labels:    labels,
 		},
