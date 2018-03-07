@@ -270,7 +270,7 @@ func TestGitlab(t *testing.T) {
 }
 
 func TestForDIfferentGroupSizes(t *testing.T) {
-	groupSizes := []int{0, 1, 13, 29, 100, 111, 189}
+	groupSizes := []int{0, 1, 20, 100}
 	for _, groupSize := range groupSizes {
 		// PerPage=20
 		// authenticated : true
@@ -296,10 +296,10 @@ func TestForDIfferentGroupSizes(t *testing.T) {
 }
 
 func TestGroupListErrorInDifferentPage(t *testing.T) {
-	pages := []int{1, 3, 7, 10, 13}
+	pages := []int{1, 2, 3}
 	for _, pageNo := range pages {
 		t.Run(fmt.Sprintf("error when getting user's group at page %v", pageNo), func(t *testing.T) {
-			groupSize := 300
+			groupSize := 55
 			errMsg := fmt.Sprintf("error when getting user's group at page=%v", pageNo)
 			srv := gitlabServerSetup(gitlabUserRespBody, http.StatusOK, func(u *url.URL) (int, string) {
 				if pg, ok := u.Query()["page"]; ok {
