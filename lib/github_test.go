@@ -379,7 +379,7 @@ func TestTeamListErrorAtDifferentPage(t *testing.T) {
 	for _, pageNo := range pages {
 		// error when getting user's team list at page=[pageNo]
 		t.Run(fmt.Sprintf("error when getting user's team list at page %v", pageNo), func(t *testing.T) {
-			teamSize := 60
+			teamSize := 60 // 3 pages
 			errMsg := fmt.Sprintf("error when getting user's team list at page=%v", pageNo)
 
 			srv := githubServerSetup(organization, memRespBody, http.StatusOK, func(u *url.URL) (int, string) {
