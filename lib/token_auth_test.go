@@ -3,22 +3,15 @@ package lib
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/spf13/afero"
 	auth "k8s.io/api/authentication/v1"
 )
 
-func stringArraytoBytes(in []string) []byte {
-	out := ""
-	for _, s := range in {
-		if len(out) == 0 {
-			out = s
-		} else {
-			out = out + "\n" + s
-		}
-	}
-	return []byte(out)
+func stringArrayToBytes(in []string) []byte {
+	return []byte(strings.Join(in, "\n"))
 }
 
 func verifyUserInfo(got, want auth.UserInfo) error {
@@ -202,9 +195,9 @@ func TestLoadTokenFile(t *testing.T) {
 	defer appFs.RemoveAll("token-auth")
 
 	for _, testData := range loadTokenTests {
-		t.Run("scenario 1", func(t *testing.T) {
+		t.Run(fmt.Sprintf("testing load token file, error %v", testData.expectedError), func(t *testing.T) {
 			file := filePath + "/token.csv"
-			tokenData := stringArraytoBytes(testData.tokens)
+			tokenData := stringArrayToBytes(testData.tokens)
 			err := afero.WriteFile(appFs, file, tokenData, 0644)
 			if err != nil {
 				t.Errorf("Error when creating file. reason : %v", err)
@@ -224,7 +217,6 @@ func TestLoadTokenFile(t *testing.T) {
 }
 
 func TestCheckTokenAuth(t *testing.T) {
-	previousTokenMap := tokenMap
 	tokenMap = map[string]auth.UserInfo{
 		"token1": {Username: "user1", UID: "1", Groups: []string{"group1", "group2"}},
 		"token2": {Username: "user2", UID: "2", Groups: []string{"group1"}},
@@ -233,6 +225,7 @@ func TestCheckTokenAuth(t *testing.T) {
 	}
 
 	dataset := []struct {
+		testName       string
 		token          string
 		expectedUser   auth.UserInfo
 		expectedError  string
@@ -240,6 +233,7 @@ func TestCheckTokenAuth(t *testing.T) {
 		expectedAuth   bool
 	}{
 		{
+			"authentication successful, multiple groups",
 			"token1",
 			auth.UserInfo{Username: "user1", UID: "1", Groups: []string{"group1", "group2"}},
 			"",
@@ -247,6 +241,7 @@ func TestCheckTokenAuth(t *testing.T) {
 			true,
 		},
 		{
+			"authentication successful, one group",
 			"token2",
 			auth.UserInfo{Username: "user2", UID: "2", Groups: []string{"group1"}},
 			"",
@@ -254,6 +249,7 @@ func TestCheckTokenAuth(t *testing.T) {
 			true,
 		},
 		{
+			"authentication successful, empty group",
 			"token3",
 			auth.UserInfo{Username: "user3", UID: "3", Groups: []string{}},
 			"",
@@ -261,6 +257,7 @@ func TestCheckTokenAuth(t *testing.T) {
 			true,
 		},
 		{
+			"authentication successful, same user containing multiple token",
 			"token4",
 			auth.UserInfo{Username: "user2", UID: "2", Groups: []string{"group2", "group3"}},
 			"",
@@ -268,6 +265,7 @@ func TestCheckTokenAuth(t *testing.T) {
 			true,
 		},
 		{
+			"authentication unsuccessful, reason invalid token",
 			"badtoken",
 			auth.UserInfo{},
 			"Invalid token",
@@ -275,6 +273,7 @@ func TestCheckTokenAuth(t *testing.T) {
 			false,
 		},
 		{
+			"authentication unsuccessful, reason empty token",
 			"",
 			auth.UserInfo{},
 			"Invalid token",
@@ -285,8 +284,8 @@ func TestCheckTokenAuth(t *testing.T) {
 
 	srv := Server{}
 
-	for pos, testData := range dataset {
-		t.Run(fmt.Sprintf("scenario 1 testcase #%v", pos), func(t *testing.T) {
+	for _, testData := range dataset {
+		t.Run(testData.testName, func(t *testing.T) {
 			resp, status := srv.checkTokenAuth(testData.token)
 
 			t.Log(tokenMap)
@@ -312,7 +311,4 @@ func TestCheckTokenAuth(t *testing.T) {
 			}
 		})
 	}
-
-	//restoring tokenMap in it's previous state
-	tokenMap = previousTokenMap
 }
