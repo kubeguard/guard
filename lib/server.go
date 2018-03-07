@@ -83,7 +83,10 @@ func (s Server) ListenAndServe() {
 			log.Fatal(err)
 		}
 		s.LDAP.caCertPool = x509.NewCertPool()
-		s.LDAP.caCertPool.AppendCertsFromPEM(caCert)
+		ok := s.LDAP.caCertPool.AppendCertsFromPEM(caCert)
+		if !ok {
+			log.Fatal("Failed to add CA cert in CertPool for LDAP")
+		}
 	}
 
 	/*
@@ -98,7 +101,11 @@ func (s Server) ListenAndServe() {
 		log.Fatal(err)
 	}
 	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
+	ok := caCertPool.AppendCertsFromPEM(caCert)
+	if !ok {
+		log.Fatal("Failed to add CA cert in CertPool for guard server")
+	}
+
 	tlsConfig := &tls.Config{
 		PreferServerCipherSuites: true,
 		MinVersion:               tls.VersionTLS12,
@@ -111,6 +118,7 @@ func (s Server) ListenAndServe() {
 			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 		},
+		// ClientAuth: tls.VerifyClientCertIfGiven needed to pass healthz check
 		ClientAuth: tls.VerifyClientCertIfGiven,
 		ClientCAs:  caCertPool,
 		NextProtos: []string{"h2", "http/1.1"},

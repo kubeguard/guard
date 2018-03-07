@@ -154,7 +154,8 @@ func NewCmdInstaller() *cobra.Command {
 				if err != nil {
 					log.Fatalln(err)
 				}
-				data, err = meta.MarshalToYAML(newSecretForLDAPCert(opts.namespace, map[string][]byte{"ca.crt": cert}), core.SchemeGroupVersion)
+				certData := map[string][]byte{"ca.crt": cert}
+				data, err = meta.MarshalToYAML(newSecretForLDAPCert(opts.namespace, certData), core.SchemeGroupVersion)
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -347,7 +348,7 @@ func newDeployment(opts options) runtime.Object {
 			VolumeSource: core.VolumeSource{
 				Secret: &core.SecretVolumeSource{
 					SecretName:  "guard-cert",
-					DefaultMode: types.Int32P(0555),
+					DefaultMode: types.Int32P(0444),
 				},
 			},
 		}
