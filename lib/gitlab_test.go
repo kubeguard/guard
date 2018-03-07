@@ -16,7 +16,16 @@ import (
 	"k8s.io/api/authentication/v1"
 )
 
-type gitlabTeamRespFunc func(u *url.URL) (int, string)
+const (
+	username     = "nahid"
+	uid          = "1204"
+	goodToken    = "secret"
+	badToken     = "badtoken"
+	emptyToken   = ""
+	userRespBody = `{ "id": 1204, "username": "nahid" }`
+)
+
+type gitlabGroupRespFunc func(u *url.URL) (int, string)
 
 // GitLab API docs:
 // https://docs.gitlab.com/ce/api/README.html#data-validation-and-error-reporting
@@ -33,7 +42,7 @@ func gitlabVerifyAuthorization(r *http.Request) error {
 	if got == "" {
 		return fmt.Errorf("Header PRIVATE-TOKEN: expected not empty")
 	}
-	if got != "secret" {
+	if got != goodToken {
 		return fmt.Errorf("PRIVATE-TOKEN: invalid token")
 	}
 	return nil
@@ -52,34 +61,34 @@ func gitlabVerifyPageParameter(values []string) (int, error) {
 	}
 }
 
-func gitlabVerifyTeams(teamList []string, expectedSize int) error {
-	if len(teamList) != expectedSize {
-		return fmt.Errorf("Expected team size: %v, got %v", expectedSize, len(teamList))
+func gitlabVerifyGroup(groupList []string, expectedSize int) error {
+	if len(groupList) != expectedSize {
+		return fmt.Errorf("Expected group size: %v, got %v", expectedSize, len(groupList))
 	}
-	mapTeamName := map[string]bool{}
-	for _, name := range teamList {
-		mapTeamName[name] = true
+	mapGroupName := map[string]bool{}
+	for _, name := range groupList {
+		mapGroupName[name] = true
 	}
 	for i := 1; i <= expectedSize; i++ {
-		team := "team" + strconv.Itoa(i)
-		if _, ok := mapTeamName[team]; !ok {
-			return fmt.Errorf("Team %v is missing", team)
+		group := "team" + strconv.Itoa(i)
+		if _, ok := mapGroupName[group]; !ok {
+			return fmt.Errorf("Group %v is missing", group)
 		}
 	}
 	return nil
 }
 
-func gitlabVerifyAuthenticatedReview(review *v1.TokenReview, teamSize int) error {
+func gitlabVerifyAuthenticatedReview(review *v1.TokenReview, groupSize int) error {
 	if !review.Status.Authenticated {
 		return fmt.Errorf("Expected authenticated ture, got false")
 	}
-	if review.Status.User.Username != "nahid" {
+	if review.Status.User.Username != username {
 		return fmt.Errorf("Expected username %v, got %v", "nahid", review.Status.User.Username)
 	}
-	if review.Status.User.UID != "1204" {
+	if review.Status.User.UID != uid {
 		return fmt.Errorf("Expected user id %v, got %v", "1204", review.Status.User.UID)
 	}
-	err := gitlabVerifyTeams(review.Status.User.Groups, teamSize)
+	err := gitlabVerifyGroup(review.Status.User.Groups, groupSize)
 	if err != nil {
 		return err
 	}
@@ -102,23 +111,23 @@ func gitlabVerifyUnauthenticatedReview(review *v1.TokenReview, expectedErr strin
 //			"name":"team1"
 //		}
 //	]
-// team name format : team[teamNo]
-func GitlabGetTeams(size int, startTeamNo int) ([]byte, error) {
-	type team struct {
+// Group name format : team[groupNo]
+func GitlabGetGroups(size int, startgroupNo int) ([]byte, error) {
+	type group struct {
 		Name string `json:"name"`
 	}
-	teamList := []team{}
+	groupList := []group{}
 	for i := 1; i <= size; i++ {
-		teamList = append(teamList, team{
-			Name: string("team" + strconv.Itoa(startTeamNo)),
+		groupList = append(groupList, group{
+			Name: string("team" + strconv.Itoa(startgroupNo)),
 		})
-		startTeamNo++
+		startgroupNo++
 	}
-	teamsInByte, err := json.MarshalIndent(teamList, "", "  ")
+	groupsInByte, err := json.MarshalIndent(groupList, "", "  ")
 	if err != nil {
 		return nil, err
 	}
-	return teamsInByte, nil
+	return groupsInByte, nil
 }
 
 func gitlabMin(a, b int) int {
@@ -128,37 +137,37 @@ func gitlabMin(a, b int) int {
 	return b
 }
 
-func gitlabGetTeamResp(teamSize int) gitlabTeamRespFunc {
+func gitlabGetGroupResp(groupSize int) gitlabGroupRespFunc {
 	return func(u *url.URL) (int, string) {
 		if pg, ok := u.Query()["page"]; ok {
 			pageNo, err := gitlabVerifyPageParameter(pg)
 			if err != nil {
-				return http.StatusBadRequest, fmt.Sprintf("List user teams request: %v", err)
+				return http.StatusBadRequest, fmt.Sprintf("List user groups request: %v", err)
 			}
 
 			if perPg, ok := u.Query()["per_page"]; ok {
 				perPage, err := gitlabVerifyPageParameter(perPg)
 				if err != nil {
-					return http.StatusBadRequest, fmt.Sprintf("List user teams request: %v", err)
+					return http.StatusBadRequest, fmt.Sprintf("List user groups request: %v", err)
 				}
-				totalTeams := teamSize
-				startTeamNo := (pageNo-1)*perPage + 1
-				resp, err := GitlabGetTeams(gitlabMin(totalTeams-startTeamNo+1, perPage), startTeamNo)
+				totalGroups := groupSize
+				startGroupNo := (pageNo-1)*perPage + 1
+				resp, err := GitlabGetGroups(gitlabMin(totalGroups-startGroupNo+1, perPage), startGroupNo)
 				if err != nil {
-					return http.StatusInternalServerError, fmt.Sprintf("List user teams request: failed to produce teams. Reason: %v", err)
+					return http.StatusInternalServerError, fmt.Sprintf("List user groups request: failed to produce groups. Reason: %v", err)
 				}
 				return http.StatusOK, string(resp)
 			}
 
-			return http.StatusBadRequest, fmt.Sprint("List user teams request: query parameter per_page not provide")
+			return http.StatusBadRequest, fmt.Sprint("List user groups request: query parameter per_page not provide")
 
 		} else {
-			return http.StatusBadRequest, fmt.Sprint("List user teams request: query parameter page not provide")
+			return http.StatusBadRequest, fmt.Sprint("List user groups request: query parameter page not provide")
 		}
 	}
 }
 
-func gitlabServerSetup(userResp string, userStatusCode int, genTeamResp gitlabTeamRespFunc) *httptest.Server {
+func gitlabServerSetup(userResp string, userStatusCode int, gengroupResp gitlabGroupRespFunc) *httptest.Server {
 	m := pat.New()
 
 	m.Get("/user", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -181,7 +190,7 @@ func gitlabServerSetup(userResp string, userStatusCode int, genTeamResp gitlabTe
 			return
 		}
 
-		status, resp := genTeamResp(r.URL)
+		status, resp := gengroupResp(r.URL)
 		w.WriteHeader(status)
 		if status != http.StatusOK {
 			w.Write(gitlabGetErrorMsg(errors.New(resp)))
@@ -206,22 +215,70 @@ func gitlabClientSetup(serverUrl, token string) (*GitlabClient, error) {
 }
 
 func TestGitlab(t *testing.T) {
-	// https://docs.gitlab.com/ce/api/users.html
-	var userRespnBody = `
-{
-   "id": 1204,
-   "username": "nahid"
-}
-`
-	teamSizes := []int{0, 1, 13, 29, 100, 111, 189}
-	for _, teamSize := range teamSizes {
-		// PerPage=20
-		// authenticated : true
-		t.Run("scenario 1", func(t *testing.T) {
-			srv := gitlabServerSetup(userRespnBody, http.StatusOK, gitlabGetTeamResp(teamSize))
+
+	dataset := []struct {
+		testName       string
+		userResp       string
+		userStatusCode int
+		token          string
+		expectedErr    string
+	}{
+		{
+			"authentication unsuccessful, reason invalid token",
+			userRespBody,
+			http.StatusOK,
+			badToken,
+			"{{{PRIVATE-TOKEN: invalid token}}}",
+		},
+		{
+			"authentication unsuccessful, reason emtpy token",
+			userRespBody,
+			http.StatusOK,
+			emptyToken,
+			"{{{Header PRIVATE-TOKEN: expected not empty}}}",
+		},
+		{
+			"error when getting user",
+			string(gitlabGetErrorMsg(errors.New("error when getting user"))),
+			http.StatusInternalServerError,
+			goodToken,
+			"{{{error when getting user}}}",
+		},
+	}
+
+	for _, test := range dataset {
+		t.Run(test.testName, func(t *testing.T) {
+			groupSize := 1
+			srv := gitlabServerSetup(test.userResp, test.userStatusCode, gitlabGetGroupResp(groupSize))
 			defer srv.Close()
 
-			client, err := gitlabClientSetup(srv.URL, "secret")
+			client, err := gitlabClientSetup(srv.URL, test.token)
+			if err != nil {
+				t.Errorf("Error when creating gitlab client. Reason %v", err)
+			} else {
+				resp, status := client.checkGitLab()
+				if status != http.StatusUnauthorized {
+					t.Errorf("Expected status code %v, got %v. Reason %v", http.StatusUnauthorized, status, resp.Status.Error)
+				}
+				err := gitlabVerifyUnauthenticatedReview(&resp, test.expectedErr)
+				if err != nil {
+					t.Error(err)
+				}
+			}
+		})
+	}
+}
+
+func TestForDIfferentGroupSizes(t *testing.T) {
+	groupSizes := []int{0, 1, 13, 29, 100, 111, 189}
+	for _, groupSize := range groupSizes {
+		// PerPage=20
+		// authenticated : true
+		t.Run(fmt.Sprintf("authentication successful, group size %v", groupSize), func(t *testing.T) {
+			srv := gitlabServerSetup(userRespBody, http.StatusOK, gitlabGetGroupResp(groupSize))
+			defer srv.Close()
+
+			client, err := gitlabClientSetup(srv.URL, goodToken)
 			if err != nil {
 				t.Errorf("Error when creating gitlab client. Reason %v", err)
 			} else {
@@ -229,126 +286,39 @@ func TestGitlab(t *testing.T) {
 				if status != http.StatusOK {
 					t.Errorf("Expected status code 200, got %v. Reason %v", status, resp.Status.Error)
 				}
-				err := gitlabVerifyAuthenticatedReview(&resp, teamSize)
+				err := gitlabVerifyAuthenticatedReview(&resp, groupSize)
 				if err != nil {
 					t.Error(err)
 				}
 			}
 		})
 	}
+}
 
-	// authenticated : false
-	// reason : invalid token
-	t.Run("scenario 2", func(t *testing.T) {
-		teamSize := 1
-		srv := gitlabServerSetup(userRespnBody, http.StatusOK, gitlabGetTeamResp(teamSize))
-		defer srv.Close()
-
-		client, err := gitlabClientSetup(srv.URL, "badtoken")
-		if err != nil {
-			t.Errorf("Error when creating gitlab client. Reason %v", err)
-		} else {
-			resp, status := client.checkGitLab()
-			if status != http.StatusUnauthorized {
-				t.Errorf("Expected status code %v, got %v. Reason %v", http.StatusUnauthorized, status, resp.Status.Error)
-			}
-			err := gitlabVerifyUnauthenticatedReview(&resp, "{{{PRIVATE-TOKEN: invalid token}}}")
-			if err != nil {
-				t.Error(err)
-			}
-		}
-	})
-
-	// authenticated : false
-	// reason : empty token
-	t.Run("scenario 3", func(t *testing.T) {
-		teamSize := 1
-		srv := gitlabServerSetup(userRespnBody, http.StatusOK, gitlabGetTeamResp(teamSize))
-		defer srv.Close()
-		client, err := gitlabClientSetup(srv.URL, "")
-		if err != nil {
-			t.Errorf("Error when creating gitlab client. Reason %v", err)
-		} else {
-			resp, status := client.checkGitLab()
-			if status != http.StatusUnauthorized {
-				t.Errorf("Expected status code %v, got %v. Reason %v", http.StatusUnauthorized, status, resp.Status.Error)
-			}
-			err := gitlabVerifyUnauthenticatedReview(&resp, "{{{Header PRIVATE-TOKEN: expected not empty}}}")
-			if err != nil {
-				t.Error(err)
-			}
-		}
-	})
-
-	//error when getting user
-	t.Run("scenario 4", func(t *testing.T) {
-		teamSize := 1
-		errMsg := "error when getting user"
-		srv := gitlabServerSetup(string(gitlabGetErrorMsg(errors.New(errMsg))), http.StatusInternalServerError, gitlabGetTeamResp(teamSize))
-		defer srv.Close()
-
-		client, err := gitlabClientSetup(srv.URL, "secret")
-		if err != nil {
-			t.Errorf("Error when creating gitlab client. Reason %v", err)
-		} else {
-			resp, status := client.checkGitLab()
-			if status != http.StatusUnauthorized {
-				t.Errorf("Expected status code %v, got %v. Reason %v", http.StatusUnauthorized, status, resp.Status.Error)
-			}
-			err := gitlabVerifyUnauthenticatedReview(&resp, "{{{"+errMsg+"}}}")
-			if err != nil {
-				t.Error(err)
-			}
-		}
-	})
-
-	//error when getting user's group
-	t.Run("scenario 5", func(t *testing.T) {
-		errMsg := "error when getting user's group"
-		srv := gitlabServerSetup(userRespnBody, http.StatusOK, func(u *url.URL) (int, string) {
-			return http.StatusInternalServerError, errMsg
-		})
-		defer srv.Close()
-
-		client, err := gitlabClientSetup(srv.URL, "secret")
-		if err != nil {
-			t.Errorf("Error when creating gitlab client. Reason %v", err)
-		} else {
-			resp, status := client.checkGitLab()
-			if status != http.StatusBadRequest {
-				t.Errorf("Expected status code %v, got %v. Reason %v", http.StatusUnauthorized, status, resp.Status.Error)
-			}
-			err := gitlabVerifyUnauthenticatedReview(&resp, "{{{"+errMsg+"}}}")
-			if err != nil {
-				t.Error(err)
-			}
-		}
-	})
-
+func TestGroupListErrorInDifferentPage(t *testing.T) {
 	pages := []int{1, 3, 7, 10, 13}
 	for _, pageNo := range pages {
-		// error when getting user's group at page=[pageNo]
-		t.Run("scenario 6", func(t *testing.T) {
-			teamSize := 300
+		t.Run(fmt.Sprintf("error when getting user's group at page %v", pageNo), func(t *testing.T) {
+			groupSize := 300
 			errMsg := fmt.Sprintf("error when getting user's group at page=%v", pageNo)
-			srv := gitlabServerSetup(userRespnBody, http.StatusOK, func(u *url.URL) (int, string) {
+			srv := gitlabServerSetup(userRespBody, http.StatusOK, func(u *url.URL) (int, string) {
 				if pg, ok := u.Query()["page"]; ok {
 					pgNo, err := gitlabVerifyPageParameter(pg)
 					if err != nil {
-						return http.StatusBadRequest, fmt.Sprintf("List user teams request: %v", err)
+						return http.StatusBadRequest, fmt.Sprintf("List user groups request: %v", err)
 					}
 					if pgNo < pageNo {
-						return gitlabGetTeamResp(teamSize)(u)
+						return gitlabGetGroupResp(groupSize)(u)
 					} else {
 						return http.StatusInternalServerError, errMsg
 					}
 				} else {
-					return http.StatusBadRequest, fmt.Sprint("List user teams request: query parameter page not provide")
+					return http.StatusBadRequest, fmt.Sprint("List user groups request: query parameter page not provide")
 				}
 			})
 			defer srv.Close()
 
-			client, err := gitlabClientSetup(srv.URL, "secret")
+			client, err := gitlabClientSetup(srv.URL, goodToken)
 			if err != nil {
 				t.Errorf("Error when creating gitlab client. Reason %v", err)
 			} else {
