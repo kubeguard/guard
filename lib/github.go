@@ -10,15 +10,28 @@ import (
 	auth "k8s.io/api/authentication/v1"
 )
 
-func checkGithub(name, token string) (auth.TokenReview, int) {
-	ctx := context.Background()
-	client := github.NewClient(oauth2.NewClient(ctx, oauth2.StaticTokenSource(
+type GithubClient struct {
+	Client  *github.Client
+	Ctx     context.Context
+	OrgName string // Github organization name
+}
+
+func NewGithubClient(name, token string) *GithubClient {
+	g := &GithubClient{
+		Ctx:     context.Background(),
+		OrgName: name,
+	}
+	g.Client = github.NewClient(oauth2.NewClient(g.Ctx, oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
 	)))
 
-	mem, _, err := client.Organizations.GetOrgMembership(ctx, "", name)
+	return g
+}
+
+func (g *GithubClient) checkGithub() (auth.TokenReview, int) {
+	mem, _, err := g.Client.Organizations.GetOrgMembership(g.Ctx, "", g.OrgName)
 	if err != nil {
-		return Error(fmt.Sprintf("Failed to check user's membership in Org %s. Reason: %v.", name, err)), http.StatusUnauthorized
+		return Error(fmt.Sprintf("Failed to check user's membership in Org %s. Reason: %v.", g.OrgName, err)), http.StatusUnauthorized
 	}
 	resp := auth.TokenReview{}
 	resp.Status = auth.TokenReviewStatus{
@@ -32,12 +45,12 @@ func checkGithub(name, token string) (auth.TokenReview, int) {
 	page := 1
 	pageSize := 25
 	for {
-		teams, _, err := client.Organizations.ListUserTeams(ctx, &github.ListOptions{Page: page, PerPage: pageSize})
+		teams, _, err := g.Client.Organizations.ListUserTeams(g.Ctx, &github.ListOptions{Page: page, PerPage: pageSize})
 		if err != nil {
-			return Error(fmt.Sprintf("Failed to load user's teams for Org %s. Reason: %v.", name, err)), http.StatusUnauthorized
+			return Error(fmt.Sprintf("Failed to load user's teams for Org %s. Reason: %v.", g.OrgName, err)), http.StatusUnauthorized
 		}
 		for _, team := range teams {
-			if team.Organization.GetLogin() == name {
+			if team.Organization.GetLogin() == g.OrgName {
 				groups = append(groups, team.GetName())
 			}
 		}
