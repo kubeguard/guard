@@ -94,27 +94,27 @@ func init() {
 	}
 }
 
-func (m *CertificateDescribeRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *CertificateDescribeRequest) Valid() (*gojsonschema.Result, error) {
 	return certificateDescribeRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *CertificateDescribeRequest) IsRequest() {}
 
-func (m *CertificateDeleteRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *CertificateDeleteRequest) Valid() (*gojsonschema.Result, error) {
 	return certificateDeleteRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *CertificateDeleteRequest) IsRequest() {}
 
-func (m *CertificateListRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *CertificateListRequest) Valid() (*gojsonschema.Result, error) {
 	return certificateListRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *CertificateListRequest) IsRequest() {}
 
-func (m *CertificateLoadRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *CertificateLoadRequest) Valid() (*gojsonschema.Result, error) {
 	return certificateLoadRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *CertificateLoadRequest) IsRequest() {}
 
-func (m *CertificateDeployRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *CertificateDeployRequest) Valid() (*gojsonschema.Result, error) {
 	return certificateDeployRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *CertificateDeployRequest) IsRequest() {}

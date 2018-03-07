@@ -68,17 +68,17 @@ func init() {
 	}
 }
 
-func (m *ZoneListRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *ZoneListRequest) Valid() (*gojsonschema.Result, error) {
 	return zoneListRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *ZoneListRequest) IsRequest() {}
 
-func (m *BucketListRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *BucketListRequest) Valid() (*gojsonschema.Result, error) {
 	return bucketListRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *BucketListRequest) IsRequest() {}
 
-func (m *RegionListRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *RegionListRequest) Valid() (*gojsonschema.Result, error) {
 	return regionListRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *RegionListRequest) IsRequest() {}
