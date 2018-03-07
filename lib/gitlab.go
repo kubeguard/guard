@@ -9,10 +9,18 @@ import (
 	auth "k8s.io/api/authentication/v1"
 )
 
-func checkGitLab(token string) (auth.TokenReview, int) {
-	client := gitlab.NewClient(nil, token)
+type GitlabClient struct {
+	Client *gitlab.Client
+}
 
-	user, _, err := client.Users.CurrentUser()
+func NewGitlabClient(token string) *GitlabClient {
+	return &GitlabClient{
+		Client: gitlab.NewClient(nil, token),
+	}
+}
+
+func (g *GitlabClient) checkGitLab() (auth.TokenReview, int) {
+	user, _, err := g.Client.Users.CurrentUser()
 	if err != nil {
 		return Error(err.Error()), http.StatusUnauthorized
 	}
@@ -30,7 +38,7 @@ func checkGitLab(token string) (auth.TokenReview, int) {
 	page := 1
 	pageSize := 20
 	for {
-		list, _, err := client.Groups.ListGroups(&gitlab.ListGroupsOptions{
+		list, _, err := g.Client.Groups.ListGroups(&gitlab.ListGroupsOptions{
 			ListOptions: gitlab.ListOptions{Page: page, PerPage: pageSize},
 		})
 		if err != nil {

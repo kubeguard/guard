@@ -19,12 +19,12 @@ import (
 )
 
 const (
-	organization = "appscode"
-	goodToken    = "secret"
-	badToken     = "badtoken"
-	username     = "nahid"
-	uid          = "1204"
-	memRespBody  = `{ "user":{ "login":"nahid", "id":1204 } }`
+	githubOrganization = "appscode"
+	githubGoodToken    = "secret"
+	githubBadToken     = "badtoken"
+	githubUsername     = "nahid"
+	githubUID          = "1204"
+	githubMemRespBody  = `{ "user":{ "login":"nahid", "id":1204 } }`
 )
 
 type teamRespFunc func(u *url.URL) (int, string)
@@ -178,10 +178,10 @@ func verifyAuthenticatedTokenReview(review *v1.TokenReview, teamSize int) error 
 	if !review.Status.Authenticated {
 		return fmt.Errorf("Expected authenticated ture, got false")
 	}
-	if review.Status.User.Username != username {
+	if review.Status.User.Username != githubUsername {
 		return fmt.Errorf("Expected username %v, got %v", "nahid", review.Status.User.Username)
 	}
-	if review.Status.User.UID != uid {
+	if review.Status.User.UID != githubUID {
 		return fmt.Errorf("Expected user id %v, got %v", "1204", review.Status.User.UID)
 	}
 	err := verifyTeamList(review.Status.User.Groups, teamSize)
@@ -268,29 +268,29 @@ func TestCheckGithub(t *testing.T) {
 	}{
 		{
 			"authentication unsuccessful, error: invalid token",
-			memRespBody,
+			githubMemRespBody,
 			http.StatusOK,
-			organization,
-			organization,
-			badToken,
+			githubOrganization,
+			githubOrganization,
+			githubBadToken,
 			"{{{Authorization: invalid token}}}",
 		},
 		{
 			"authentication unsuccessful, error: invalid token, org used: code",
-			memRespBody,
+			githubMemRespBody,
 			http.StatusOK,
-			organization,
+			githubOrganization,
 			"code",
-			goodToken,
+			githubGoodToken,
 			"{{{Authorization: invalid token}}}",
 		},
 		{
 			"error when getting user organization membership",
 			string(getErrorMessage(errors.New("error when checking organization membership"))),
 			http.StatusUnauthorized,
-			organization,
-			organization,
-			goodToken,
+			githubOrganization,
+			githubOrganization,
+			githubGoodToken,
 			"{{{error when checking organization membership}}}",
 		},
 	}
@@ -332,11 +332,11 @@ func TestForDifferentTeamSizes(t *testing.T) {
 		// authenticated : true
 		t.Run(fmt.Sprintf("authentication successful, team size: %v", size), func(t *testing.T) {
 			teamSize := size
-			srv := githubServerSetup(organization, memRespBody, http.StatusOK, getTeamRespFunc(teamSize))
+			srv := githubServerSetup(githubOrganization, githubMemRespBody, http.StatusOK, getTeamRespFunc(teamSize))
 			defer srv.Close()
 			ctx := context.Background()
-			client, err := githubClientSetup(srv.URL, organization, ctx, oauth2.NewClient(ctx, oauth2.StaticTokenSource(
-				&oauth2.Token{AccessToken: goodToken},
+			client, err := githubClientSetup(srv.URL, githubOrganization, ctx, oauth2.NewClient(ctx, oauth2.StaticTokenSource(
+				&oauth2.Token{AccessToken: githubGoodToken},
 			)))
 			if err != nil {
 				t.Errorf("Error when creating github client. Reason %v", err)
@@ -356,10 +356,10 @@ func TestForDifferentTeamSizes(t *testing.T) {
 
 func TestAuthorizationHeader(t *testing.T) {
 	teamSize := 1
-	srv := githubServerSetup(organization, memRespBody, http.StatusOK, getTeamRespFunc(teamSize))
+	srv := githubServerSetup(githubOrganization, githubMemRespBody, http.StatusOK, getTeamRespFunc(teamSize))
 	defer srv.Close()
 	ctx := context.Background()
-	client, err := githubClientSetup(srv.URL, organization, ctx, nil)
+	client, err := githubClientSetup(srv.URL, githubOrganization, ctx, nil)
 	if err != nil {
 		t.Errorf("Error when creating github client. Reason %v", err)
 	} else {
@@ -382,7 +382,7 @@ func TestTeamListErrorAtDifferentPage(t *testing.T) {
 			teamSize := 60 // 3 pages
 			errMsg := fmt.Sprintf("error when getting user's team list at page=%v", pageNo)
 
-			srv := githubServerSetup(organization, memRespBody, http.StatusOK, func(u *url.URL) (int, string) {
+			srv := githubServerSetup(githubOrganization, githubMemRespBody, http.StatusOK, func(u *url.URL) (int, string) {
 				if pg, ok := u.Query()["page"]; ok {
 					pgNo, err := verifyPageParameter(pg)
 					if err != nil {
@@ -400,8 +400,8 @@ func TestTeamListErrorAtDifferentPage(t *testing.T) {
 			defer srv.Close()
 
 			ctx := context.Background()
-			client, err := githubClientSetup(srv.URL, organization, ctx, oauth2.NewClient(ctx, oauth2.StaticTokenSource(
-				&oauth2.Token{AccessToken: goodToken},
+			client, err := githubClientSetup(srv.URL, githubOrganization, ctx, oauth2.NewClient(ctx, oauth2.StaticTokenSource(
+				&oauth2.Token{AccessToken: githubGoodToken},
 			)))
 			if err != nil {
 				t.Errorf("Error when creating github client. Reason %v", err)
