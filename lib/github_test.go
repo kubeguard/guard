@@ -18,6 +18,15 @@ import (
 	"k8s.io/api/authentication/v1"
 )
 
+const (
+	organization = "appscode"
+	goodToken    = "secret"
+	badToken     = "badtoken"
+	username     = "nahid"
+	uid          = "1204"
+	memRespBody  = `{ "user":{ "login":"nahid", "id":1204 } }`
+)
+
 type teamRespFunc func(u *url.URL) (int, string)
 
 // return string format
@@ -169,10 +178,10 @@ func verifyAuthenticatedTokenReview(review *v1.TokenReview, teamSize int) error 
 	if !review.Status.Authenticated {
 		return fmt.Errorf("Expected authenticated ture, got false")
 	}
-	if review.Status.User.Username != "nahid" {
+	if review.Status.User.Username != username {
 		return fmt.Errorf("Expected username %v, got %v", "nahid", review.Status.User.Username)
 	}
-	if review.Status.User.UID != "1204" {
+	if review.Status.User.UID != uid {
 		return fmt.Errorf("Expected user id %v, got %v", "1204", review.Status.User.UID)
 	}
 	err := verifyTeamList(review.Status.User.Groups, teamSize)
@@ -247,33 +256,87 @@ func githubClientSetup(serverUrl, githubOrg string, ctx context.Context, httpCli
 }
 
 func TestCheckGithub(t *testing.T) {
-	//	ref:
-	//  	https://developer.github.com/v3/orgs/members/#get-your-organization-membership
-	var (
-		//user membership response body
-		memBody1 = `
-{
-   "user":{
-      "login":"nahid",
-      "id":1204
-   }
-}
-`
-	)
 
+	dataset := []struct {
+		testName      string
+		memRespBody   string
+		memStatusCode int
+		org           string
+		reqOrg        string
+		accessToken   string
+		expectedErr   string
+	}{
+		{
+			"authentication unsuccessful, error: invalid token",
+			memRespBody,
+			http.StatusOK,
+			organization,
+			organization,
+			badToken,
+			"{{{Authorization: invalid token}}}",
+		},
+		{
+			"authentication unsuccessful, error: invalid token, org used: code",
+			memRespBody,
+			http.StatusOK,
+			organization,
+			"code",
+			goodToken,
+			"{{{Authorization: invalid token}}}",
+		},
+		{
+			"error when getting user organization membership",
+			string(getErrorMessage(errors.New("error when checking organization membership"))),
+			http.StatusUnauthorized,
+			organization,
+			organization,
+			goodToken,
+			"{{{error when checking organization membership}}}",
+		},
+	}
+
+	for _, test := range dataset {
+		t.Run(test.testName, func(t *testing.T) {
+			t.Log(test)
+			teamSize := 1
+			srv := githubServerSetup(test.org, test.memRespBody, test.memStatusCode, getTeamRespFunc(teamSize))
+			defer srv.Close()
+
+			ctx := context.Background()
+			client, err := githubClientSetup(srv.URL, test.reqOrg, ctx, oauth2.NewClient(ctx, oauth2.StaticTokenSource(
+				&oauth2.Token{AccessToken: test.accessToken},
+			)))
+
+			if err != nil {
+				t.Errorf("Error when creating github client. Reason %v", err)
+			} else {
+				resp, status := client.checkGithub()
+				if status != http.StatusUnauthorized {
+					t.Errorf("Expected status code %v, got %v. Reason %v", http.StatusUnauthorized, status, resp.Status.Error)
+				}
+
+				err := verifyUnauthenticatedTokenReview(&resp, test.expectedErr)
+				if err != nil {
+					t.Error(err)
+				}
+			}
+		})
+	}
+}
+
+func TestForDifferentTeamSizes(t *testing.T) {
 	teamSizes := []int{25, 0, 1, 13, 100, 77, 233}
 
 	for _, size := range teamSizes {
 		// page=1, PerPage=25
 		// authenticated : true
-		t.Run("scenario 1", func(t *testing.T) {
-			org := "appscode"
+		t.Run(fmt.Sprintf("authentication successful, team size: %v", size), func(t *testing.T) {
 			teamSize := size
-			srv := githubServerSetup(org, memBody1, http.StatusOK, getTeamRespFunc(teamSize))
+			srv := githubServerSetup(organization, memRespBody, http.StatusOK, getTeamRespFunc(teamSize))
 			defer srv.Close()
 			ctx := context.Background()
-			client, err := githubClientSetup(srv.URL, org, ctx, oauth2.NewClient(ctx, oauth2.StaticTokenSource(
-				&oauth2.Token{AccessToken: "secret"},
+			client, err := githubClientSetup(srv.URL, organization, ctx, oauth2.NewClient(ctx, oauth2.StaticTokenSource(
+				&oauth2.Token{AccessToken: goodToken},
 			)))
 			if err != nil {
 				t.Errorf("Error when creating github client. Reason %v", err)
@@ -289,170 +352,38 @@ func TestCheckGithub(t *testing.T) {
 			}
 		})
 	}
+}
 
-	// authenticated : false
-	// error : invalid token
-	// status code : 401
-	t.Run("scenario 2", func(t *testing.T) {
-		org := "appscode"
-		teamSize := 1
-		srv := githubServerSetup(org, memBody1, http.StatusOK, getTeamRespFunc(teamSize))
-		defer srv.Close()
-		ctx := context.Background()
-		client, err := githubClientSetup(srv.URL, org, ctx, oauth2.NewClient(ctx, oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: "badtoken"},
-		)))
-		if err != nil {
-			t.Errorf("Error when creating github client. Reason %v", err)
-		} else {
-			resp, status := client.checkGithub()
-			if status != http.StatusUnauthorized {
-				t.Errorf("Expected status code %v, got %v. Reason %v", http.StatusUnauthorized, status, resp.Status.Error)
-			}
-			err := verifyUnauthenticatedTokenReview(&resp, "{{{Authorization: invalid token}}}")
-			if err != nil {
-				t.Error(err)
-			}
+func TestAuthorizationHeader(t *testing.T) {
+	teamSize := 1
+	srv := githubServerSetup(organization, memRespBody, http.StatusOK, getTeamRespFunc(teamSize))
+	defer srv.Close()
+	ctx := context.Background()
+	client, err := githubClientSetup(srv.URL, organization, ctx, nil)
+	if err != nil {
+		t.Errorf("Error when creating github client. Reason %v", err)
+	} else {
+		resp, status := client.checkGithub()
+		if status != http.StatusUnauthorized {
+			t.Errorf("Expected status code %v, got %v. Reason %v", http.StatusUnauthorized, status, resp.Status.Error)
 		}
-	})
+		err := verifyUnauthenticatedTokenReview(&resp, "{{{Header Authorization: expected not empty}}}")
+		if err != nil {
+			t.Error(err)
+		}
+	}
+}
 
-	// authenticated : false
-	// error : invalid token
-	// status code : 401
-	// org used when creating client : code
-	t.Run("scenario 3", func(t *testing.T) {
-		org := "appscode"
-		teamSize := 1
-		srv := githubServerSetup(org, memBody1, http.StatusOK, getTeamRespFunc(teamSize))
-		defer srv.Close()
-		ctx := context.Background()
-		client, err := githubClientSetup(srv.URL, "code", ctx, oauth2.NewClient(ctx, oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: "secret"},
-		)))
-		if err != nil {
-			t.Errorf("Error when creating github client. Reason %v", err)
-		} else {
-			resp, status := client.checkGithub()
-			if status != http.StatusUnauthorized {
-				t.Errorf("Expected status code %v, got %v. Reason %v", http.StatusUnauthorized, status, resp.Status.Error)
-			}
-			err := verifyUnauthenticatedTokenReview(&resp, "{{{Authorization: invalid token}}}")
-			if err != nil {
-				t.Error(err)
-			}
-		}
-	})
-
-	// authenticated : false
-	// error : invalid token
-	// status code : 401
-	// org used when creating client : code
-	t.Run("scenario 4", func(t *testing.T) {
-		org := "appscode"
-		teamSize := 1
-		srv := githubServerSetup(org, memBody1, http.StatusOK, getTeamRespFunc(teamSize))
-		defer srv.Close()
-		ctx := context.Background()
-		client, err := githubClientSetup(srv.URL, "code", ctx, oauth2.NewClient(ctx, oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: "secret"},
-		)))
-		if err != nil {
-			t.Errorf("Error when creating github client. Reason %v", err)
-		} else {
-			resp, status := client.checkGithub()
-			if status != http.StatusUnauthorized {
-				t.Errorf("Expected status code %v, got %v. Reason %v", http.StatusUnauthorized, status, resp.Status.Error)
-			}
-			err := verifyUnauthenticatedTokenReview(&resp, "{{{Authorization: invalid token}}}")
-			if err != nil {
-				t.Error(err)
-			}
-		}
-	})
-
-	// authenticated : false
-	// error : authorization header not provided
-	// status code : 401
-	t.Run("scenario 5", func(t *testing.T) {
-		org := "appscode"
-		teamSize := 1
-		srv := githubServerSetup(org, memBody1, http.StatusOK, getTeamRespFunc(teamSize))
-		defer srv.Close()
-		ctx := context.Background()
-		client, err := githubClientSetup(srv.URL, org, ctx, nil)
-		if err != nil {
-			t.Errorf("Error when creating github client. Reason %v", err)
-		} else {
-			resp, status := client.checkGithub()
-			if status != http.StatusUnauthorized {
-				t.Errorf("Expected status code %v, got %v. Reason %v", http.StatusUnauthorized, status, resp.Status.Error)
-			}
-			err := verifyUnauthenticatedTokenReview(&resp, "{{{Header Authorization: expected not empty}}}")
-			if err != nil {
-				t.Error(err)
-			}
-		}
-	})
-
-	//error when getting user organization membership
-	t.Run("scenario 6", func(t *testing.T) {
-		org := "appscode"
-		teamSize := 1
-		errMsg := "error when checking organization membership"
-		srv := githubServerSetup(org, string(getErrorMessage(errors.New(errMsg))), http.StatusUnauthorized, getTeamRespFunc(teamSize))
-		defer srv.Close()
-		ctx := context.Background()
-		client, err := githubClientSetup(srv.URL, org, ctx, oauth2.NewClient(ctx, oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: "secret"},
-		)))
-		if err != nil {
-			t.Errorf("Error when creating github client. Reason %v", err)
-		} else {
-			resp, status := client.checkGithub()
-			if status != http.StatusUnauthorized {
-				t.Errorf("Expected status code %v, got %v. Reason %v", http.StatusUnauthorized, status, resp.Status.Error)
-			}
-			err := verifyUnauthenticatedTokenReview(&resp, "{{{"+errMsg+"}}}")
-			if err != nil {
-				t.Error(err)
-			}
-		}
-	})
-
-	//error when getting user team list
-	t.Run("scenario 6", func(t *testing.T) {
-		org := "appscode"
-		errMsg := "error when getting user team list"
-		srv := githubServerSetup(org, memBody1, http.StatusOK, func(u *url.URL) (int, string) {
-			return http.StatusInternalServerError, errMsg
-		})
-		defer srv.Close()
-		ctx := context.Background()
-		client, err := githubClientSetup(srv.URL, org, ctx, oauth2.NewClient(ctx, oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: "secret"},
-		)))
-		if err != nil {
-			t.Errorf("Error when creating github client. Reason %v", err)
-		} else {
-			resp, status := client.checkGithub()
-			if status != http.StatusUnauthorized {
-				t.Errorf("Expected status code %v, got %v. Reason %v", http.StatusUnauthorized, status, resp.Status.Error)
-			}
-			err := verifyUnauthenticatedTokenReview(&resp, "{{{"+errMsg+"}}}")
-			if err != nil {
-				t.Error(err)
-			}
-		}
-	})
+func TestTeamListErrorAtDifferentPage(t *testing.T) {
 
 	pages := []int{1, 3, 7, 10, 13}
 	for _, pageNo := range pages {
 		// error when getting user's team list at page=[pageNo]
-		t.Run("scenario 6", func(t *testing.T) {
-			org := "appscode"
+		t.Run(fmt.Sprintf("error when getting user's team list at page %v", pageNo), func(t *testing.T) {
 			teamSize := 400
 			errMsg := fmt.Sprintf("error when getting user's team list at page=%v", pageNo)
-			srv := githubServerSetup(org, memBody1, http.StatusOK, func(u *url.URL) (int, string) {
+
+			srv := githubServerSetup(organization, memRespBody, http.StatusOK, func(u *url.URL) (int, string) {
 				if pg, ok := u.Query()["page"]; ok {
 					pgNo, err := verifyPageParameter(pg)
 					if err != nil {
@@ -470,8 +401,8 @@ func TestCheckGithub(t *testing.T) {
 			defer srv.Close()
 
 			ctx := context.Background()
-			client, err := githubClientSetup(srv.URL, org, ctx, oauth2.NewClient(ctx, oauth2.StaticTokenSource(
-				&oauth2.Token{AccessToken: "secret"},
+			client, err := githubClientSetup(srv.URL, organization, ctx, oauth2.NewClient(ctx, oauth2.StaticTokenSource(
+				&oauth2.Token{AccessToken: goodToken},
 			)))
 			if err != nil {
 				t.Errorf("Error when creating github client. Reason %v", err)
@@ -487,5 +418,4 @@ func TestCheckGithub(t *testing.T) {
 			}
 		})
 	}
-
 }
