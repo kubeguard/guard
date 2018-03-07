@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -20,6 +19,12 @@ import (
 	"k8s.io/client-go/util/cert"
 )
 
+const (
+	serverAddr   = "127.0.0.1"
+	inSecurePort = "8089"
+	securePort   = "8889"
+)
+
 type ldapServer struct {
 	server     *ldapserver.Server
 	secureConn bool
@@ -33,12 +38,12 @@ func (s *ldapServer) start() {
 		if s.secureConn {
 			tlsConfig, err := s.getTLSconfig()
 			if err == nil {
-				err = s.server.ListenAndServe("127.0.0.1:8089", func(s *ldapserver.Server) {
+				err = s.server.ListenAndServe(serverAddr+":"+securePort, func(s *ldapserver.Server) {
 					s.Listener = tls.NewListener(s.Listener, tlsConfig)
 				})
 			}
 		} else {
-			err = s.server.ListenAndServe("127.0.0.1:8089")
+			err = s.server.ListenAndServe(serverAddr + ":" + inSecurePort)
 		}
 		log.Println("LDAP Server: ", err)
 	}()
@@ -55,7 +60,7 @@ func (s *ldapServer) stop() {
 // getTLSconfig returns a tls configuration used
 // to build a TLSlistener for TLS or StartTLS
 func (s *ldapServer) getTLSconfig() (*tls.Config, error) {
-	srvCert, srvKey, err := s.certStore.NewServerCertPair("server", cert.AltNames{IPs: []net.IP{net.ParseIP("127.0.0.1")}})
+	srvCert, srvKey, err := s.certStore.NewServerCertPair("server", cert.AltNames{IPs: []net.IP{net.ParseIP(serverAddr)}})
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +74,7 @@ func (s *ldapServer) getTLSconfig() (*tls.Config, error) {
 		MinVersion:   tls.VersionSSL30,
 		MaxVersion:   tls.VersionTLS12,
 		Certificates: []tls.Certificate{cert},
-		ServerName:   "127.0.0.1",
+		ServerName:   serverAddr,
 	}, nil
 }
 
@@ -187,7 +192,7 @@ func handleGroupSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 		e := ldapserver.NewSearchResultEntry("id=1,ou=groups,o=Company")
 		e.AddAttribute("cn", "group1")
 
-		e1 := ldapserver.NewSearchResultEntry("id=1,ou=groupss,o=Company")
+		e1 := ldapserver.NewSearchResultEntry("id=1,ou=groups,o=Company")
 		e1.AddAttribute("cn", "group2")
 
 		w.Write(e)
@@ -199,18 +204,10 @@ func handleGroupSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 }
 
 func TestCheckLdapInSecure(t *testing.T) {
-	srv, err := ldapServerSetup(false, "o=Company,ou=users", "o=Company,ou=groups")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	go srv.start()
-	time.Sleep(1 * time.Second)
-	defer srv.stop()
 
 	opts := LDAPOptions{
-		ServerAddress:        "127.0.0.1",
-		ServerPort:           "8089",
+		ServerAddress:        serverAddr,
+		ServerPort:           inSecurePort,
 		BindDN:               "uid=admin,ou=system",
 		BindPassword:         "secret",
 		UserSearchDN:         "o=Company,ou=users",
@@ -228,125 +225,13 @@ func TestCheckLdapInSecure(t *testing.T) {
 		LDAP: opts,
 	}
 
-	// authenticated : true
-	t.Run("scenario 1", func(t *testing.T) {
-		resp, status := s.checkLDAP(base64.StdEncoding.EncodeToString([]byte("nahid:secret")))
-		if status != http.StatusOK {
-			t.Errorf("Expected authentication true, got false. reason: %v", resp.Status.Error)
-		}
-
-		u := resp.Status.User
-		if u.Username != "nahid" {
-			t.Errorf("Expected username %v, got %v", "nahid", u.Username)
-		}
-		if g := []string{"group1", "group2"}; !reflect.DeepEqual(u.Groups, g) {
-			t.Errorf("Expected groups %v, got %v", g, u.Groups)
-		}
-	})
-
-	// error expected
-	// multiple entry when searching userDN
-	t.Run("scenario 2", func(t *testing.T) {
-		serv := s
-		serv.LDAP.UserAttribute = "id"
-		resp, status := serv.checkLDAP(base64.StdEncoding.EncodeToString([]byte("nahid:secret")))
-		if status != http.StatusUnauthorized {
-			t.Errorf("Expected authentication false, got true")
-		}
-
-		if resp.Status.Error == "" {
-			t.Errorf("Expected non empty error message")
-		}
-		// restoring to previous value
-		//s.LDAP.UserAttribute = DefaultUserAttribute
-	})
-
-	// error expected
-	// empty entry when searching userDN
-	t.Run("scenario 3", func(t *testing.T) {
-		resp, status := s.checkLDAP(base64.StdEncoding.EncodeToString([]byte("nahid1:secret")))
-		if status != http.StatusUnauthorized {
-			t.Errorf("Expected authentication false, got true")
-		}
-
-		if resp.Status.Error == "" {
-			t.Errorf("Expected non empty error message")
-		}
-	})
-
-	// error expected
-	// invalid token
-	t.Run("scenario 4", func(t *testing.T) {
-		resp, status := s.checkLDAP(base64.StdEncoding.EncodeToString([]byte("invalid_token")))
-		if status != http.StatusUnauthorized {
-			t.Errorf("Expected authentication false, got true")
-		}
-
-		if resp.Status.Error == "" {
-			t.Errorf("Expected non empty error message")
-		}
-	})
-
-	// error expected
-	// invalid token
-	t.Run("scenario 5", func(t *testing.T) {
-		resp, status := s.checkLDAP(base64.StdEncoding.EncodeToString([]byte("invalid_token")))
-		if status != http.StatusUnauthorized {
-			t.Errorf("Expected authentication false, got true")
-		}
-
-		if resp.Status.Error == "" {
-			t.Errorf("Expected non empty error message")
-		}
-	})
-
-	// error expected
-	// failed to authenticate user
-	t.Run("scenario 6", func(t *testing.T) {
-		resp, status := s.checkLDAP(base64.StdEncoding.EncodeToString([]byte("nahid:12345")))
-		if status != http.StatusUnauthorized {
-			t.Errorf("Expected authentication false, got true")
-		}
-
-		if resp.Status.Error == "" {
-			t.Errorf("Expected non empty error message")
-		}
-	})
-
-	// empty groups
-	t.Run("scenario 7", func(t *testing.T) {
-		resp, status := s.checkLDAP(base64.StdEncoding.EncodeToString([]byte("shuvo:secret")))
-		if status != http.StatusOK {
-			t.Errorf("Expected authentication true, got false. reason: %v", resp.Status.Error)
-		}
-
-		u := resp.Status.User
-		if u.Username != "shuvo" {
-			t.Errorf("Expected username %v, got %v", "nahid", u.Username)
-		}
-		if len(u.Groups) > 0 {
-			t.Errorf("Expected empty groups, got %v", u.Groups)
-		}
-	})
-
+	runTest(t, false, s, "Insecure LDAP")
 }
 
 func TestCheckLdapSecure(t *testing.T) {
-	srv, err := ldapServerSetup(true, "o=Company,ou=users", "o=Company,ou=groups")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	go srv.start()
-	time.Sleep(1 * time.Second)
-	defer srv.stop()
-
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(srv.certStore.CACert())
-
 	opts := LDAPOptions{
-		ServerAddress:        "127.0.0.1",
-		ServerPort:           "8089",
+		ServerAddress:        serverAddr,
+		ServerPort:           securePort,
 		BindDN:               "uid=admin,ou=system",
 		BindPassword:         "secret",
 		UserSearchDN:         "o=Company,ou=users",
@@ -359,114 +244,125 @@ func TestCheckLdapSecure(t *testing.T) {
 		SkipTLSVerification:  false,
 		StartTLS:             false,
 		IsSecureLDAP:         true,
-		caCertPool:           caCertPool,
-		CaCertFile:           "/test/certs/ca.file",
 	}
 	s := Server{
 		LDAP: opts,
 	}
 
-	testType := "Secure LDAP"
+	runTest(t, true, s, "Secure LDAP")
+}
 
-	// authenticated : true
-	t.Run(fmt.Sprintf("%v : scenario 1", testType), func(t *testing.T) {
-		resp, status := s.checkLDAP(base64.StdEncoding.EncodeToString([]byte("nahid:secret")))
-		if status != http.StatusOK {
-			t.Errorf("Expected authentication true, got false. reason: %v", resp.Status.Error)
-		}
+func runTest(t *testing.T, secureConn bool, s Server, serverType string) {
+	srv, err := ldapServerSetup(secureConn, "o=Company,ou=users", "o=Company,ou=groups")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-		u := resp.Status.User
-		if u.Username != "nahid" {
-			t.Errorf("Expected username %v, got %v", "nahid", u.Username)
-		}
-		if g := []string{"group1", "group2"}; !reflect.DeepEqual(u.Groups, g) {
-			t.Errorf("Expected groups %v, got %v", g, u.Groups)
-		}
-	})
+	go srv.start()
+	time.Sleep(2 * time.Second)
+	defer srv.stop()
 
-	// error expected
-	// multiple entry when searching userDN
-	t.Run(fmt.Sprintf("%v : scenario 2", testType), func(t *testing.T) {
-		serv := s
-		serv.LDAP.UserAttribute = "id"
-		resp, status := serv.checkLDAP(base64.StdEncoding.EncodeToString([]byte("nahid:secret")))
-		if status != http.StatusUnauthorized {
-			t.Errorf("Expected authentication false, got true")
-		}
+	if secureConn {
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(srv.certStore.CACert())
+		s.LDAP.CaCertFile = "/test/certs/ca.file"
+		s.LDAP.caCertPool = caCertPool
+	}
 
-		if resp.Status.Error == "" {
-			t.Errorf("Expected non empty error message")
-		}
-	})
+	dataset := []struct {
+		testName       string
+		token          string
+		expectedStatus int
+		username       string
+		groups         []string
+		userAttribute  string
+	}{
+		{
+			"authentication successful",
+			"nahid:secret",
+			http.StatusOK,
+			"nahid",
+			[]string{"group1", "group2"},
+			DefaultUserAttribute,
+		},
+		{
+			"authentication unsuccessful, reason multiple entry when searching userDN",
+			"nahid:secret",
+			http.StatusUnauthorized,
+			"",
+			nil,
+			"id",
+		},
+		{
+			"authentication unsuccessful, reason empty entry when searching userDN",
+			"nahid1:secret",
+			http.StatusUnauthorized,
+			"",
+			nil,
+			DefaultUserAttribute,
+		},
+		{
+			"authentication unsuccessful, reason invalid token",
+			"invalid_token",
+			http.StatusUnauthorized,
+			"",
+			nil,
+			DefaultUserAttribute,
+		},
+		{
+			"authentication unsuccessful, wrong username or password",
+			"nahid:12345",
+			http.StatusUnauthorized,
+			"",
+			nil,
+			DefaultUserAttribute,
+		},
+		{
+			"authentication successful, empty group",
+			"shuvo:secret",
+			http.StatusOK,
+			"shuvo",
+			[]string{},
+			DefaultUserAttribute,
+		},
+	}
 
-	// error expected
-	// empty entry when searching userDN
-	t.Run(fmt.Sprintf("%v : scenario 3", testType), func(t *testing.T) {
-		resp, status := s.checkLDAP(base64.StdEncoding.EncodeToString([]byte("nahid1:secret")))
-		if status != http.StatusUnauthorized {
-			t.Errorf("Expected authentication false, got true")
-		}
+	for _, test := range dataset {
+		t.Run(serverType+": "+test.testName, func(t *testing.T) {
+			t.Log(test)
 
-		if resp.Status.Error == "" {
-			t.Errorf("Expected non empty error message")
-		}
-	})
+			serv := s
+			serv.LDAP.UserAttribute = test.userAttribute
 
-	// error expected
-	// invalid token
-	t.Run(fmt.Sprintf("%v : scenario 4", testType), func(t *testing.T) {
-		resp, status := s.checkLDAP(base64.StdEncoding.EncodeToString([]byte("invalid_token")))
-		if status != http.StatusUnauthorized {
-			t.Errorf("Expected authentication false, got true")
-		}
+			resp, status := serv.checkLDAP(base64.StdEncoding.EncodeToString([]byte(test.token)))
+			if test.expectedStatus == http.StatusOK {
+				if status != http.StatusOK {
+					t.Errorf("Expected authentication true, got false. reason: %v", resp.Status.Error)
+				}
 
-		if resp.Status.Error == "" {
-			t.Errorf("Expected non empty error message")
-		}
-	})
-
-	// error expected
-	// invalid token
-	t.Run(fmt.Sprintf("%v : scenario 5", testType), func(t *testing.T) {
-		resp, status := s.checkLDAP(base64.StdEncoding.EncodeToString([]byte("invalid_token")))
-		if status != http.StatusUnauthorized {
-			t.Errorf("Expected authentication false, got true")
-		}
-
-		if resp.Status.Error == "" {
-			t.Errorf("Expected non empty error message")
-		}
-	})
-
-	// error expected
-	// failed to authenticate user
-	t.Run(fmt.Sprintf("%v : scenario 6", testType), func(t *testing.T) {
-		resp, status := s.checkLDAP(base64.StdEncoding.EncodeToString([]byte("nahid:12345")))
-		if status != http.StatusUnauthorized {
-			t.Errorf("Expected authentication false, got true")
-		}
-
-		if resp.Status.Error == "" {
-			t.Errorf("Expected non empty error message")
-		}
-	})
-
-	// empty groups
-	t.Run(fmt.Sprintf("%v : scenario 7", testType), func(t *testing.T) {
-		resp, status := s.checkLDAP(base64.StdEncoding.EncodeToString([]byte("shuvo:secret")))
-		if status != http.StatusOK {
-			t.Errorf("Expected authentication true, got false. reason: %v", resp.Status.Error)
-		}
-
-		u := resp.Status.User
-		if u.Username != "shuvo" {
-			t.Errorf("Expected username %v, got %v", "shuvou", u.Username)
-		}
-		if len(u.Groups) > 0 {
-			t.Errorf("Expected empty groups, got %v", u.Groups)
-		}
-	})
-
+				u := resp.Status.User
+				if u.Username != test.username {
+					t.Errorf("Expected username %v, got %v", test.username, u.Username)
+				}
+				if len(u.Groups) != len(test.groups) {
+					t.Errorf("Expected group size %v, got %v", len(test.groups), len(u.Groups))
+				} else {
+					if len(u.Groups) > 0 {
+						if !reflect.DeepEqual(u.Groups, test.groups) {
+							t.Errorf("Expected groups %v, got %v", test.groups, u.Groups)
+						}
+					}
+				}
+			} else {
+				if status != test.expectedStatus {
+					t.Errorf("Expected status %v, got %v. reason: %v", test.expectedStatus, status, resp.Status.Error)
+				}
+				if resp.Status.Error == "" {
+					t.Errorf("Expected non empty error message")
+				}
+			}
+		})
+	}
 }
 
 func TestParseEncodedToken(t *testing.T) {
