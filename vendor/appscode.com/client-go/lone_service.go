@@ -2,7 +2,7 @@ package client
 
 import (
 	"appscode.com/api/health"
-	operation "appscode.com/api/operation/v1beta1"
+	operation "appscode.com/api/operation/v1alpha1"
 	"google.golang.org/grpc"
 )
 

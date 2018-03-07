@@ -1,22 +1,20 @@
 hash: a7f43256633ca59df8ebe031a678c5164cdd77bb77c5e56d4be773bfda015688
-updated: 2018-02-18T00:51:20.946578259-08:00
+updated: 2018-03-07T04:57:30.9914713-08:00
 imports:
 - name: appscode.com/api
-  version: 94c2d00055f491d55e8ffbd8ccdc1ff53144fe25
+  version: 4563b7ddd49c3a332c9159b84417f15c3c5e574b
   repo: https://bitbucket.org/appscode/api.git
   subpackages:
-  - attic/v1beta1
-  - auth/v1beta1
-  - ci/v1beta1
+  - auth/v1alpha1
   - cloud/v1alpha1
   - dtypes
   - health
-  - kubernetes/v1beta1
-  - namespace/v1beta1
-  - operation/v1beta1
+  - kubernetes/v1alpha1
+  - namespace/v1alpha1
+  - operation/v1alpha1
   - version
 - name: appscode.com/client-go
-  version: a0e881cd77c294ea369e9bb11a7e5a90f8fd98e5
+  version: c583bcd48f574ed698dff65f30a15933a35e34ec
   repo: https://bitbucket.org/appscode/client-go.git
   subpackages:
   - credential
@@ -27,7 +25,7 @@ imports:
   - compute/metadata
   - internal
 - name: github.com/appscode/go
-  version: 8367769380cf93a12b381d957941ddf2a19d0356
+  version: c312c0a1fe0d4988480073287b8633fc5a244647
   subpackages:
   - analytics
   - context
@@ -43,8 +41,10 @@ imports:
   - term
   - types
   - version
+- name: github.com/appscode/jsonpatch
+  version: ee757872f6aca6d412d0d80543725bd4cf48f793
 - name: github.com/appscode/kutil
-  version: 579ddb8cc946c9e5f09d59863a3c5fe27cdc56f5
+  version: e91f3c329ced02152b18de971fc358a5cb00ee96
   subpackages:
   - meta
   - tools/analytics
@@ -73,7 +73,7 @@ imports:
 - name: github.com/evanphx/json-patch
   version: 944e07253867aacae43c04b2e6a239005443f33a
 - name: github.com/fatih/color
-  version: 570b54cabe6b8eb0bc2dfce68d964677d63b5260
+  version: 9aae6aaa22315390f03959adca2c4d395b02fcef
 - name: github.com/fsnotify/fsnotify
   version: c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9
 - name: github.com/ghodss/yaml
@@ -109,7 +109,7 @@ imports:
 - name: github.com/google/btree
   version: 7d79101e329e5a3adf994758c578dab82b90c017
 - name: github.com/google/go-cmp
-  version: 3af367b6b30c263d47e8895973edcca9a49cf029
+  version: 0c93777250bd58222171888d1651979319d8b381
   subpackages:
   - cmp
   - cmp/internal/diff
@@ -170,10 +170,8 @@ imports:
   - jwriter
 - name: github.com/mattn/go-colorable
   version: 5411d3eea5978e6cdc258b30de592b60df6aba96
-  repo: https://github.com/mattn/go-colorable
 - name: github.com/mattn/go-isatty
   version: 57fdcb988a5c543893cc61bce354a6e24ab70022
-  repo: https://github.com/mattn/go-isatty
 - name: github.com/matttproud/golang_protobuf_extensions
   version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
   subpackages:
@@ -181,13 +179,13 @@ imports:
 - name: github.com/peterbourgon/diskv
   version: 5f041e8faa004a95c88a202771f4cc3e991971e6
 - name: github.com/pharmer/pharmer
-  version: 1d00e6a8234b956303527d156ef7989423189c16
+  version: 454bb3dea1b9f8fbfb3da5306386cbcd6aeb179e
   subpackages:
   - apis/v1alpha1
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/pquerna/cachecontrol
-  version: 0dec1b30a0215bb68605dfc568e8855066c9202d
+  version: 525d0eb5f91d30e3b1548de401b7ef9ea6898520
   subpackages:
   - cacheobject
 - name: github.com/prometheus/client_golang
@@ -232,11 +230,17 @@ imports:
   subpackages:
   - mem
 - name: github.com/spf13/cobra
-  version: be77323fc05148ef091e83b3866c0d47c8e74a8b
+  version: c6c44e6fdcc30161c7f4480754da7230d01c06e3
   subpackages:
   - doc
 - name: github.com/spf13/pflag
   version: e57e3eeb33f795204c1ca35f56c44f83227c6e66
+- name: github.com/vjeantet/goldap
+  version: ea702ca12a40a2817b90d53ec7d4ebdcc5489570
+  subpackages:
+  - message
+- name: github.com/vjeantet/ldapserver
+  version: 479fece7c5f15b209e2e3ba082a89d18cd2a8207
 - name: github.com/xanzy/go-gitlab
   version: b3618c7c81a14bc59d49e181d9ce7dbab91f148c
 - name: github.com/xeipuuv/gojsonpointer
@@ -348,7 +352,7 @@ imports:
 - name: gopkg.in/inf.v0
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/square/go-jose.v2
-  version: f8f38de21b4dcd69d0413faf231983f5fd6634b1
+  version: 6ee92191fea850cdcab9a18867abf5f521cdbadb
   subpackages:
   - cipher
   - json
@@ -363,7 +367,7 @@ imports:
   - apps/v1beta1
   - apps/v1beta2
   - authentication/v1
-  - authentication/v1
+  - authentication/v1beta1
   - authorization/v1
   - authorization/v1beta1
   - autoscaling/v1
@@ -414,7 +418,6 @@ imports:
   - pkg/util/framer
   - pkg/util/intstr
   - pkg/util/json
-  - pkg/util/jsonmergepatch
   - pkg/util/mergepatch
   - pkg/util/net
   - pkg/util/runtime
@@ -429,7 +432,7 @@ imports:
   - third_party/forked/golang/json
   - third_party/forked/golang/reflect
 - name: k8s.io/apiserver
-  version: 91e14f394e4796abf5a994a349a222e7081d86b6
+  version: 1270e9f1ad9eaf6127691df90af0836f7e152495
   subpackages:
   - pkg/util/feature
 - name: k8s.io/client-go
@@ -444,7 +447,7 @@ imports:
   - kubernetes/typed/apps/v1beta1
   - kubernetes/typed/apps/v1beta2
   - kubernetes/typed/authentication/v1
-  - kubernetes/typed/authentication/v1
+  - kubernetes/typed/authentication/v1beta1
   - kubernetes/typed/authorization/v1
   - kubernetes/typed/authorization/v1beta1
   - kubernetes/typed/autoscaling/v1

@@ -154,7 +154,8 @@ func NewCmdInstaller() *cobra.Command {
 				if err != nil {
 					log.Fatalln(err)
 				}
-				data, err = meta.MarshalToYAML(newSecretForLDAPCert(opts.namespace, map[string][]byte{"ca.crt": cert}), core.SchemeGroupVersion)
+				certData := map[string][]byte{"ca.crt": cert}
+				data, err = meta.MarshalToYAML(newSecretForLDAPCert(opts.namespace, certData), core.SchemeGroupVersion)
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -251,9 +252,7 @@ func newDeployment(opts options) runtime.Object {
 							},
 							Ports: []core.ContainerPort{
 								{
-									Name:          "api",
-									Protocol:      core.ProtocolTCP,
-									ContainerPort: port,
+									ContainerPort: servingPort,
 								},
 							},
 							VolumeMounts: []core.VolumeMount{
@@ -266,7 +265,7 @@ func newDeployment(opts options) runtime.Object {
 								Handler: core.Handler{
 									HTTPGet: &core.HTTPGetAction{
 										Path:   "/healthz",
-										Port:   intstr.FromInt(port),
+										Port:   intstr.FromInt(servingPort),
 										Scheme: core.URISchemeHTTPS,
 									},
 								},
@@ -347,7 +346,7 @@ func newDeployment(opts options) runtime.Object {
 			VolumeSource: core.VolumeSource{
 				Secret: &core.SecretVolumeSource{
 					SecretName:  "guard-cert",
-					DefaultMode: types.Int32P(0555),
+					DefaultMode: types.Int32P(0444),
 				},
 			},
 		}
@@ -378,10 +377,10 @@ func newService(namespace, addr string) runtime.Object {
 			ClusterIP: host,
 			Ports: []core.ServicePort{
 				{
-					Name:       "service-api",
+					Name:       "api",
 					Port:       int32(svcPort),
 					Protocol:   core.ProtocolTCP,
-					TargetPort: intstr.FromString("api"),
+					TargetPort: intstr.FromInt(servingPort),
 				},
 			},
 			Selector: labels,

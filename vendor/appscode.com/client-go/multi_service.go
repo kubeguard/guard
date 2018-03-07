@@ -1,30 +1,24 @@
 package client
 
 import (
-	attic "appscode.com/api/attic/v1beta1"
-	auth "appscode.com/api/auth/v1beta1"
-	ci "appscode.com/api/ci/v1beta1"
+	auth "appscode.com/api/auth/v1alpha1"
 	cloud_v1alpha1 "appscode.com/api/cloud/v1alpha1"
-	k8s_v1beta1 "appscode.com/api/kubernetes/v1beta1"
-	namespace "appscode.com/api/namespace/v1beta1"
+	k8s_v1beta1 "appscode.com/api/kubernetes/v1alpha1"
+	namespace "appscode.com/api/namespace/v1alpha1"
 	"google.golang.org/grpc"
 )
 
 // multi client services are grouped by there main client. the api service
 // clients are wrapped around with sub-service.
 type multiClientInterface interface {
-	Attic() *atticService
 	Authentication() *authenticationService
-	CI() *ciService
 	Namespace() *nsService
 	Cloud() *versionedClusterService
 	Kubernetes() *versionedKubernetesService
 }
 
 type multiClientServices struct {
-	atticClient               *atticService
 	authenticationClient      *authenticationService
-	ciClient                  *ciService
 	nsClient                  *nsService
 	versionedClusterClient    *versionedClusterService
 	versionedKubernetesClient *versionedKubernetesService
@@ -32,18 +26,10 @@ type multiClientServices struct {
 
 func newMultiClientService(conn *grpc.ClientConn) multiClientInterface {
 	return &multiClientServices{
-		atticClient: &atticService{
-			artifactClient: attic.NewArtifactsClient(conn),
-			versionClient:  attic.NewVersionsClient(conn),
-		},
 		authenticationClient: &authenticationService{
 			authenticationClient: auth.NewAuthenticationClient(conn),
 			conduitClient:        auth.NewConduitClient(conn),
 			projectClient:        auth.NewProjectsClient(conn),
-		},
-		ciClient: &ciService{
-			agentsClient:   ci.NewAgentsClient(conn),
-			metadataClient: ci.NewMetadataClient(conn),
 		},
 		versionedClusterClient: &versionedClusterService{
 			v1alpha1Service: &clusterV1alpha1Service{
@@ -57,19 +43,14 @@ func newMultiClientService(conn *grpc.ClientConn) multiClientInterface {
 		},
 		versionedKubernetesClient: &versionedKubernetesService{
 			v1beta1Service: &kubernetesV1beta1Service{
-				incidentClient: k8s_v1beta1.NewIncidentsClient(conn),
-				clientsClient:  k8s_v1beta1.NewClientsClient(conn),
-				diskClient:     k8s_v1beta1.NewDisksClient(conn),
+				clientsClient: k8s_v1beta1.NewClientsClient(conn),
+				diskClient:    k8s_v1beta1.NewDisksClient(conn),
 			},
 		},
 		nsClient: &nsService{
 			teamClient: namespace.NewTeamsClient(conn),
 		},
 	}
-}
-
-func (s *multiClientServices) Attic() *atticService {
-	return s.atticClient
 }
 
 func (s *multiClientServices) Authentication() *authenticationService {
@@ -80,31 +61,12 @@ func (s *multiClientServices) Namespace() *nsService {
 	return s.nsClient
 }
 
-func (s *multiClientServices) CI() *ciService {
-	return s.ciClient
-}
-
 func (s *multiClientServices) Cloud() *versionedClusterService {
 	return s.versionedClusterClient
 }
 
 func (s *multiClientServices) Kubernetes() *versionedKubernetesService {
 	return s.versionedKubernetesClient
-}
-
-// original service clients that needs to exposed under grouped wrapper
-// services.
-type atticService struct {
-	artifactClient attic.ArtifactsClient
-	versionClient  attic.VersionsClient
-}
-
-func (a *atticService) Artifacts() attic.ArtifactsClient {
-	return a.artifactClient
-}
-
-func (a *atticService) Versions() attic.VersionsClient {
-	return a.versionClient
 }
 
 type authenticationService struct {
@@ -123,19 +85,6 @@ func (a *authenticationService) Conduit() auth.ConduitClient {
 
 func (a *authenticationService) Project() auth.ProjectsClient {
 	return a.projectClient
-}
-
-type ciService struct {
-	agentsClient   ci.AgentsClient
-	metadataClient ci.MetadataClient
-}
-
-func (a *ciService) Agents() ci.AgentsClient {
-	return a.agentsClient
-}
-
-func (a *ciService) Metadata() ci.MetadataClient {
-	return a.metadataClient
 }
 
 type nsService struct {
@@ -196,13 +145,8 @@ func (v *versionedKubernetesService) V1beta1() *kubernetesV1beta1Service {
 }
 
 type kubernetesV1beta1Service struct {
-	incidentClient k8s_v1beta1.IncidentsClient
-	clientsClient  k8s_v1beta1.ClientsClient
-	diskClient     k8s_v1beta1.DisksClient
-}
-
-func (a *kubernetesV1beta1Service) Incident() k8s_v1beta1.IncidentsClient {
-	return a.incidentClient
+	clientsClient k8s_v1beta1.ClientsClient
+	diskClient    k8s_v1beta1.DisksClient
 }
 
 func (k *kubernetesV1beta1Service) Client() k8s_v1beta1.ClientsClient {

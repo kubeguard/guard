@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	api "appscode.com/api/auth/v1beta1"
+	api "appscode.com/api/auth/v1alpha1"
 	"appscode.com/api/dtypes"
 	"appscode.com/client-go"
 	_env "github.com/appscode/go/env"

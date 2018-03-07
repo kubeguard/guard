@@ -43,6 +43,13 @@ type AzureOptions struct {
 	TenantID     string
 }
 
+type AzureClient struct {
+	AzureOptions
+	graphClient *graph.UserInfo
+	verifier    *oidc.IDTokenVerifier
+	ctx         context.Context
+}
+
 func (s *AzureOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.ClientID, "azure.client-id", s.ClientID, "MS Graph application client ID to use")
 	fs.StringVar(&s.ClientSecret, "azure.client-secret", s.ClientSecret, "MS Graph application client secret to use")
@@ -65,18 +72,34 @@ func (s AzureOptions) ToArgs() []string {
 	return args
 }
 
-func (s Server) checkAzure(token string) (auth.TokenReview, int) {
-	ctx := context.Background()
-	provider, err := oidc.NewProvider(ctx, azureIssuerURL+s.Azure.TenantID+"/")
-	if err != nil {
-		return Error(fmt.Sprintf("Failed to create provider for azure. Reason: %v.", err)), http.StatusUnauthorized
+func NewAzureClient(opts AzureOptions) (*AzureClient, error) {
+	c := &AzureClient{
+		AzureOptions: opts,
+		ctx:          context.Background(),
 	}
-	verifier := provider.Verifier(&oidc.Config{SkipClientIDCheck: true})
 
-	idToken, err := verifier.Verify(ctx, token)
+	var err error
+	provider, err := oidc.NewProvider(c.ctx, azureIssuerURL+c.TenantID+"/")
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create provider for azure. Reason: %v.", err)
+	}
+
+	c.verifier = provider.Verifier(&oidc.Config{SkipClientIDCheck: true})
+
+	c.graphClient, err = graph.New(c.ClientID, c.ClientSecret, c.TenantID)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create ms graph client. Reason %v.", err)
+	}
+
+	return c, nil
+}
+
+func (s AzureClient) checkAzure(token string) (auth.TokenReview, int) {
+	idToken, err := s.verifier.Verify(s.ctx, token)
 	if err != nil {
 		return Error(fmt.Sprintf("Failed to verify token for azure. Reason: %v.", err)), http.StatusUnauthorized
 	}
+
 	claims, err := getClaims(idToken)
 	if err != nil {
 		return Error(fmt.Sprintf("Error parsing claims: %s", err)), http.StatusUnauthorized
@@ -87,12 +110,8 @@ func (s Server) checkAzure(token string) (auth.TokenReview, int) {
 		log.Infof("Failed to create TokenReview")
 		return Error(fmt.Sprintf("Failed to create TokenReview. Reason %v.", err)), http.StatusBadRequest
 	}
-	client, err := graph.New(s.Azure.ClientID, s.Azure.ClientSecret, s.Azure.TenantID)
-	if err != nil {
-		log.Info("Failed to create ms graph client")
-		return Error(fmt.Sprintf("Failed to create ms graph client. Reason %v.", err)), http.StatusInternalServerError
-	}
-	finalReview.Status.User.Groups, err = client.GetGroups(finalReview.Status.User.Username)
+
+	finalReview.Status.User.Groups, err = s.graphClient.GetGroups(finalReview.Status.User.Username)
 	if err != nil {
 		log.Info("Failed to get groups")
 		return Error(fmt.Sprintf("Failed to get groups. Reason %v.", err)), http.StatusBadRequest
@@ -111,7 +130,6 @@ func getClaims(token *oidc.IDToken) (claims, error) {
 }
 
 // ReviewFromClaims creates a new TokenReview object from the claims object
-// groupsRequired specifies whether or not the groups claim must be present in
 // the claims object
 func (c claims) ReviewFromClaims(usernameClaim, groupsClaim string) (*auth.TokenReview, error) {
 	var review = &auth.TokenReview{

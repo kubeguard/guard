@@ -35,7 +35,8 @@ func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	switch strings.ToLower(org) {
 	case "github":
-		resp, code := checkGithub(crt.Subject.CommonName, data.Spec.Token)
+		client := NewGithubClient(crt.Subject.CommonName, data.Spec.Token)
+		resp, code := client.checkGithub()
 		Write(w, resp, code)
 		return
 	case "google":
@@ -47,14 +48,21 @@ func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		Write(w, resp, code)
 		return
 	case "gitlab":
-		resp, code := checkGitLab(data.Spec.Token)
+		client := NewGitlabClient(data.Spec.Token)
+		resp, code := client.checkGitLab()
 		Write(w, resp, code)
 		return
 	case "azure":
 		if s.Azure.ClientID == "" || s.Azure.ClientSecret == "" || s.Azure.TenantID == "" {
 			Write(w, Error("Missing azure client-id or client-secret or tenant-id"), http.StatusBadRequest)
+			return
 		}
-		resp, code := s.checkAzure(data.Spec.Token)
+		client, err := NewAzureClient(s.Azure)
+		if err != nil {
+			Write(w, Error(err.Error()), http.StatusInternalServerError)
+			return
+		}
+		resp, code := client.checkAzure(data.Spec.Token)
 		Write(w, resp, code)
 		return
 	case "ldap":

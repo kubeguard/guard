@@ -750,6 +750,9 @@ func init() {
         "gce": {
           "$ref": "#/definitions/v1alpha1GoogleSpec"
         },
+        "gke": {
+          "$ref": "#/definitions/v1alpha1GKESpec"
+        },
         "instanceImage": {
           "title": "master needs it for ossec",
           "type": "string"
@@ -890,6 +893,20 @@ func init() {
             "$ref": "#/definitions/v1alpha1ReservedIP"
           },
           "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "v1alpha1GKESpec": {
+      "properties": {
+        "networkName": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
         }
       },
       "type": "object"
@@ -2485,6 +2502,9 @@ func init() {
         "gce": {
           "$ref": "#/definitions/v1alpha1GoogleSpec"
         },
+        "gke": {
+          "$ref": "#/definitions/v1alpha1GKESpec"
+        },
         "instanceImage": {
           "title": "master needs it for ossec",
           "type": "string"
@@ -2629,6 +2649,20 @@ func init() {
       },
       "type": "object"
     },
+    "v1alpha1GKESpec": {
+      "properties": {
+        "networkName": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "v1alpha1GoogleSpec": {
       "properties": {
         "networkName": {
@@ -2729,92 +2763,92 @@ func init() {
 	}
 }
 
-func (m *SSHConfigGetRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *SSHConfigGetRequest) Valid() (*gojsonschema.Result, error) {
 	return sSHConfigGetRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *SSHConfigGetRequest) IsRequest() {}
 
-func (m *ClusterApplyRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *ClusterApplyRequest) Valid() (*gojsonschema.Result, error) {
 	return clusterApplyRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *ClusterApplyRequest) IsRequest() {}
 
-func (m *CredentialCreateRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *CredentialCreateRequest) Valid() (*gojsonschema.Result, error) {
 	return credentialCreateRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *CredentialCreateRequest) IsRequest() {}
 
-func (m *NodeGroupDeleteRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *NodeGroupDeleteRequest) Valid() (*gojsonschema.Result, error) {
 	return nodeGroupDeleteRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *NodeGroupDeleteRequest) IsRequest() {}
 
-func (m *ClusterUpdateRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *ClusterUpdateRequest) Valid() (*gojsonschema.Result, error) {
 	return clusterUpdateRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *ClusterUpdateRequest) IsRequest() {}
 
-func (m *NodeGroupListRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *NodeGroupListRequest) Valid() (*gojsonschema.Result, error) {
 	return nodeGroupListRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *NodeGroupListRequest) IsRequest() {}
 
-func (m *ClusterDeleteRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *ClusterDeleteRequest) Valid() (*gojsonschema.Result, error) {
 	return clusterDeleteRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *ClusterDeleteRequest) IsRequest() {}
 
-func (m *NodeGroupDescribeRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *NodeGroupDescribeRequest) Valid() (*gojsonschema.Result, error) {
 	return nodeGroupDescribeRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *NodeGroupDescribeRequest) IsRequest() {}
 
-func (m *CredentialDescribeRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *CredentialDescribeRequest) Valid() (*gojsonschema.Result, error) {
 	return credentialDescribeRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *CredentialDescribeRequest) IsRequest() {}
 
-func (m *CredentialDeleteRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *CredentialDeleteRequest) Valid() (*gojsonschema.Result, error) {
 	return credentialDeleteRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *CredentialDeleteRequest) IsRequest() {}
 
-func (m *ClusterDescribeRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *ClusterDescribeRequest) Valid() (*gojsonschema.Result, error) {
 	return clusterDescribeRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *ClusterDescribeRequest) IsRequest() {}
 
-func (m *ClusterListRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *ClusterListRequest) Valid() (*gojsonschema.Result, error) {
 	return clusterListRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *ClusterListRequest) IsRequest() {}
 
-func (m *ClusterClientConfigRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *ClusterClientConfigRequest) Valid() (*gojsonschema.Result, error) {
 	return clusterClientConfigRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *ClusterClientConfigRequest) IsRequest() {}
 
-func (m *NodeGroupUpdateRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *NodeGroupUpdateRequest) Valid() (*gojsonschema.Result, error) {
 	return nodeGroupUpdateRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *NodeGroupUpdateRequest) IsRequest() {}
 
-func (m *NodeGroupCreateRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *NodeGroupCreateRequest) Valid() (*gojsonschema.Result, error) {
 	return nodeGroupCreateRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *NodeGroupCreateRequest) IsRequest() {}
 
-func (m *CredentialUpdateRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *CredentialUpdateRequest) Valid() (*gojsonschema.Result, error) {
 	return credentialUpdateRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *CredentialUpdateRequest) IsRequest() {}
 
-func (m *ClusterCreateRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *ClusterCreateRequest) Valid() (*gojsonschema.Result, error) {
 	return clusterCreateRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *ClusterCreateRequest) IsRequest() {}
 
-func (m *ClusterMetadataRequest) IsValid() (*gojsonschema.Result, error) {
+func (m *ClusterMetadataRequest) Valid() (*gojsonschema.Result, error) {
 	return clusterMetadataRequestSchema.Validate(gojsonschema.NewGoLoader(m))
 }
 func (m *ClusterMetadataRequest) IsRequest() {}

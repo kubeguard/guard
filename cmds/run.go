@@ -9,12 +9,12 @@ import (
 )
 
 const (
-	port = 8443
+	servingPort = 8443
 )
 
 func NewCmdRun() *cobra.Command {
 	srv := lib.Server{
-		Address: fmt.Sprintf(":%d", port),
+		Address: fmt.Sprintf(":%d", servingPort),
 	}
 	cmd := &cobra.Command{
 		Use:               "run",
