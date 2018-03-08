@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/appscode/go/log"
 	"github.com/spf13/pflag"
 	"golang.org/x/oauth2/google"
 	gdir "google.golang.org/api/admin/directory/v1"
@@ -21,9 +20,12 @@ type GoogleOptions struct {
 }
 
 const (
-	googleIssuerUrl1     = "https://accounts.google.com"
-	googleIssuerUrl2     = "accounts.google.com"
-	googleOauth2ClientID = "37154062056-220683ek37naab43v23vc5qg01k1j14g.apps.googleusercontent.com"
+	googleIssuerUrl1 = "https://accounts.google.com"
+	googleIssuerUrl2 = "accounts.google.com"
+
+	// https://developers.google.com/identity/protocols/OAuth2InstalledApp
+	GoogleOauth2ClientID     = "37154062056-220683ek37naab43v23vc5qg01k1j14g.apps.googleusercontent.com"
+	GoogleOauth2ClientSecret = "pB9ITCuMPLj-bkObrTqKbt57"
 )
 
 func (s *GoogleOptions) AddFlags(fs *pflag.FlagSet) {
@@ -64,9 +66,8 @@ func (s Server) checkGoogle(name, token string) (auth.TokenReview, int) {
 		return Error(fmt.Sprintf("token is expired")), http.StatusUnauthorized
 	}
 
-	if r1.Audience != googleOauth2ClientID {
-		log.Info("Expected client ID %v, got %v", googleOauth2ClientID, r1.Audience)
-		return Error(fmt.Sprint("client ID didn't match")), http.StatusUnauthorized
+	if r1.Audience != GoogleOauth2ClientID {
+		return Error(fmt.Sprintf("Expected client ID %v, got %v", GoogleOauth2ClientID, r1.Audience)), http.StatusUnauthorized
 	}
 
 	if !strings.HasSuffix(r1.Email, "@"+name) {

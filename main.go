@@ -2,9 +2,10 @@ package main
 
 import (
 	"os"
-_ "github.com/vjeantet/ldapserver"
+
 	logs "github.com/appscode/go/log/golog"
 	"github.com/appscode/guard/cmds"
+	_ "github.com/vjeantet/ldapserver"
 )
 
 func main() {
