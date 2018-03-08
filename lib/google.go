@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
+	"github.com/coreos/go-oidc"
 	"github.com/spf13/pflag"
 	"golang.org/x/oauth2/google"
 	gdir "google.golang.org/api/admin/directory/v1"
@@ -14,19 +14,30 @@ import (
 	auth "k8s.io/api/authentication/v1"
 )
 
-type GoogleOptions struct {
-	ServiceAccountJsonFile string
-	AdminEmail             string
-}
-
 const (
-	googleIssuerUrl1 = "https://accounts.google.com"
-	googleIssuerUrl2 = "accounts.google.com"
+	googleIssuerUrl = "https://accounts.google.com"
 
 	// https://developers.google.com/identity/protocols/OAuth2InstalledApp
 	GoogleOauth2ClientID     = "37154062056-220683ek37naab43v23vc5qg01k1j14g.apps.googleusercontent.com"
 	GoogleOauth2ClientSecret = "pB9ITCuMPLj-bkObrTqKbt57"
 )
+
+type GoogleOptions struct {
+	ServiceAccountJsonFile string
+	AdminEmail             string
+}
+
+type GoogleClient struct {
+	GoogleOptions
+	verifier *oidc.IDTokenVerifier
+	ctx      context.Context
+	service  *gdir.Service
+}
+
+type ExtendedTokenInfo struct {
+	gauth.Tokeninfo
+	HD string `json:"hd"`
+}
 
 func (s *GoogleOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.ServiceAccountJsonFile, "google.sa-json-file", s.ServiceAccountJsonFile, "Path to Google service account json file")
@@ -46,67 +57,79 @@ func (s GoogleOptions) ToArgs() []string {
 	return args
 }
 
-func (s Server) checkGoogle(name, token string) (auth.TokenReview, int) {
-	authSvc, err := gauth.New(http.DefaultClient)
+func NewGoogleClient(opts GoogleOptions, domain string) (*GoogleClient, error) {
+	g := &GoogleClient{
+		GoogleOptions: opts,
+		ctx:           context.Background(),
+	}
+
+	var err error
+	provider, err := oidc.NewProvider(g.ctx, googleIssuerUrl)
 	if err != nil {
-		return Error(fmt.Sprintf("Failed to create oauth2/v1 api client for domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
-	}
-	// ref: https://github.com/google/google-api-go-client/issues/160#issuecomment-345155421
-	r1, err := authSvc.Tokeninfo().IdToken(token).Do()
-	if err != nil {
-		return Error(fmt.Sprintf("Failed to load user info for domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
-	}
-	// verify step 2-5
-	// https://developers.google.com/identity/protocols/OpenIDConnect#validatinganidtoken
-	if r1.Issuer != googleIssuerUrl1 && r1.Issuer != googleIssuerUrl2 {
-		return Error(fmt.Sprintf("Issuer url didn't match. Expected %v or %v, got %v", googleIssuerUrl1, googleIssuerUrl2, r1.Issuer)), http.StatusUnauthorized
+		return nil, fmt.Errorf("Failed to create oidc provider for google. Reason: %v.", err)
 	}
 
-	if r1.ExpiresIn <= 0 {
-		return Error(fmt.Sprintf("token is expired")), http.StatusUnauthorized
-	}
+	g.verifier = provider.Verifier(&oidc.Config{
+		ClientID: GoogleOauth2ClientID,
+	})
 
-	if r1.Audience != GoogleOauth2ClientID {
-		return Error(fmt.Sprintf("Expected client ID %v, got %v", GoogleOauth2ClientID, r1.Audience)), http.StatusUnauthorized
-	}
-
-	if !strings.HasSuffix(r1.Email, "@"+name) {
-		return Error(fmt.Sprintf("User is not a member of domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
-	}
-	resp := auth.TokenReview{}
-	resp.Status = auth.TokenReviewStatus{
-		User: auth.UserInfo{
-			Username: r1.Email,
-			UID:      r1.UserId,
-		},
-	}
-
-	if s.Google.ServiceAccountJsonFile != "" {
-		sa, err := ioutil.ReadFile(s.Google.ServiceAccountJsonFile)
+	if opts.ServiceAccountJsonFile != "" {
+		sa, err := ioutil.ReadFile(opts.ServiceAccountJsonFile)
 		if err != nil {
-			return Error(fmt.Sprintf("Failed to load service account json file %s. Reason: %v.", s.Google.ServiceAccountJsonFile, err)), http.StatusUnauthorized
+			return nil, fmt.Errorf("Failed to load service account json file %s. Reason: %v.", opts.ServiceAccountJsonFile, err)
 		}
 
 		cfg, err := google.JWTConfigFromJSON(sa, gdir.AdminDirectoryGroupReadonlyScope)
 		if err != nil {
-			return Error(fmt.Sprintf("Failed to create JWT config from service account json file %s. Reason: %v.", s.Google.ServiceAccountJsonFile, err)), http.StatusUnauthorized
+			return nil, fmt.Errorf("Failed to create JWT config from service account json file %s. Reason: %v.", opts.ServiceAccountJsonFile, err)
 		}
 
 		// https://admin.google.com/ManageOauthClients
 		// ref: https://developers.google.com/admin-sdk/directory/v1/guides/delegation
 		// Note: Only users with access to the Admin APIs can access the Admin SDK Directory API, therefore your service account needs to impersonate one of those users to access the Admin SDK Directory API.
-		cfg.Subject = s.Google.AdminEmail
+		cfg.Subject = opts.AdminEmail
 		client := cfg.Client(context.Background())
 
-		svc, err := gdir.New(client)
+		g.service, err = gdir.New(client)
 		if err != nil {
-			return Error(fmt.Sprintf("Failed to create admin/directory/v1 client for domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
+			return nil, fmt.Errorf("Failed to create admin/directory/v1 client for domain %s. Reason: %v.", domain, err)
 		}
+	}
+	return g, nil
+}
 
+func (g *GoogleClient) checkGoogle(name, token string) (auth.TokenReview, int) {
+	idToken, err := g.verifier.Verify(g.ctx, token)
+	if err != nil {
+		return Error(fmt.Sprintf("Failed to verify token for google. Reason: %v.", err)), http.StatusUnauthorized
+	}
+
+	user := ExtendedTokenInfo{}
+
+	err = idToken.Claims(&user)
+	if err != nil {
+		return Error(fmt.Sprintf("Failed to get claim from token. Reason: %v", err)), http.StatusUnauthorized
+	}
+
+	// https://developers.google.com/identity/protocols/OpenIDConnect#validatinganidtoken
+	if user.HD != name {
+		return Error(fmt.Sprintf("User is not a member of domain %s.", name)), http.StatusUnauthorized
+	}
+
+	resp := auth.TokenReview{}
+	resp.Status = auth.TokenReviewStatus{
+		User: auth.UserInfo{
+			Username: user.Email,
+			UID:      user.UserId,
+		},
+	}
+
+	if g.ServiceAccountJsonFile != "" {
 		var groups []string
 		var pageToken string
+
 		for {
-			r2, err := svc.Groups.List().UserKey(r1.Email).Domain(name).PageToken(pageToken).Do()
+			r2, err := g.service.Groups.List().UserKey(user.Email).Domain(name).PageToken(pageToken).Do()
 			if err != nil {
 				return Error(fmt.Sprintf("Failed to load user's groups for domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
 			}
