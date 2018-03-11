@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -14,15 +13,16 @@ import (
 	"github.com/appscode/go/log"
 	term "github.com/appscode/go/term"
 	"github.com/appscode/guard/lib"
-	"github.com/ghodss/yaml"
 	"github.com/howeyc/gopass"
+	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	goauth2 "golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	clientcmd "k8s.io/client-go/tools/clientcmd/api/v1"
+	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/util/homedir"
 )
 
@@ -108,16 +108,14 @@ func handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("x-content-type-options", "nosniff")
 	w.WriteHeader(http.StatusOK)
 
-	data, err := addUserInKubeConfig(token.Extra("id_token").(string), token.RefreshToken)
+	err = addUserInKubeConfig(token.Extra("id_token").(string), token.RefreshToken)
 	if err != nil {
 		w.Write([]byte(fmt.Sprintf("Error: %v", err)))
 		return
 	} else {
-		w.Write([]byte("Configuration has been written to " + KubeConfigPath() + ":\n"))
-		w.Write(data)
+		w.Write([]byte("Configuration has been written to " + KubeConfigPath()))
 		return
 	}
-
 }
 
 func getAppscodeToken() error {
@@ -149,36 +147,26 @@ func getAppscodeToken() error {
 	return err
 }
 
-func addUserInKubeConfig(idToken, refreshToken string) ([]byte, error) {
-	var kubeConfig clientcmd.Config
-
+func addUserInKubeConfig(idToken, refreshToken string) error {
+	var konfig *clientcmdapi.Config
 	if _, err := os.Stat(KubeConfigPath()); err == nil {
 		// ~/.kube/config exists
-		data, err := ioutil.ReadFile(KubeConfigPath())
+		konfig, err = clientcmd.LoadFromFile(KubeConfigPath())
 		if err != nil {
-			return nil, err
+			return err
 		}
-		data, err = yaml.YAMLToJSON(data)
-		if err != nil {
-			return nil, err
-		}
-		err = json.Unmarshal(data, &kubeConfig)
-		if err != nil {
-			return nil, err
-		}
-
 	} else {
-		kubeConfig = clientcmd.Config{
+		konfig = &clientcmdapi.Config{
 			APIVersion: "v1",
 			Kind:       "Config",
-			Preferences: clientcmd.Preferences{
+			Preferences: clientcmdapi.Preferences{
 				Colors: true,
 			},
 		}
 	}
 
-	authInfo := clientcmd.AuthInfo{
-		AuthProvider: &clientcmd.AuthProviderConfig{
+	authInfo := &clientcmdapi.AuthInfo{
+		AuthProvider: &clientcmdapi.AuthProviderConfig{
 			Name: "oidc",
 			Config: map[string]string{
 				"client-id":      lib.GoogleOauth2ClientID,
@@ -191,38 +179,20 @@ func addUserInKubeConfig(idToken, refreshToken string) ([]byte, error) {
 	}
 	email, err := getEmailFromIdToken(idToken)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to retrive emial from idToken, reason %v", err)
+		return errors.Wrap(err, "failed to retrive emial from idToken")
 	}
-	// if exists, then update it
-	// otherwise append it
-	user := clientcmd.NamedAuthInfo{
-		Name:     email,
-		AuthInfo: authInfo,
-	}
-	found := false
-	for pos := range kubeConfig.AuthInfos {
-		if kubeConfig.AuthInfos[pos].Name == email {
-			kubeConfig.AuthInfos[pos] = user
-			found = true
-		}
-	}
-	if !found {
-		kubeConfig.AuthInfos = append(kubeConfig.AuthInfos, user)
-	}
+	konfig.AuthInfos["google-"+email] = authInfo
+
 	err = os.MkdirAll(filepath.Dir(KubeConfigPath()), 0755)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	data, err := yaml.Marshal(kubeConfig)
+	err = clientcmd.WriteToFile(*konfig, KubeConfigPath())
 	if err != nil {
-		return nil, err
-	}
-	err = ioutil.WriteFile(KubeConfigPath(), data, 0600)
-	if err != nil {
-		return nil, err
+		return err
 	}
 	term.Successln("Configuration has been written to", KubeConfigPath())
-	return data, nil
+	return nil
 }
 
 func getEmailFromIdToken(idToken string) (string, error) {
