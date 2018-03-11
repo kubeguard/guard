@@ -36,6 +36,7 @@ guard run [flags]
       --key-file string                      File containing server TLS private key
       --ldap.bind-dn string                  The connector uses this DN in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
       --ldap.bind-password string            The connector uses this password in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
+      --ldap.ca-cert-file string             ca cert file that used for self signed server certificate
       --ldap.group-member-attribute string   Ldap group member attribute (default "member")
       --ldap.group-name-attribute string     Ldap group name attribute (default "cn")
       --ldap.group-search-dn string          BaseDN to start the search group
@@ -48,6 +49,7 @@ guard run [flags]
       --ldap.user-attribute string           Ldap username attribute (default "uid")
       --ldap.user-search-dn string           BaseDN to start the search user
       --ldap.user-search-filter string       Filter to apply when searching user (default "(objectClass=person)")
+      --max-clock-skeew duration             Max acceptable clock skew for server clock (default 5s)
       --token-auth-file string               To enable static token authentication
 ```
 
