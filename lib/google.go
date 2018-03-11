@@ -5,19 +5,39 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
+	"github.com/coreos/go-oidc"
+	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
-	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	gdir "google.golang.org/api/admin/directory/v1"
 	gauth "google.golang.org/api/oauth2/v1"
 	auth "k8s.io/api/authentication/v1"
 )
 
+const (
+	googleIssuerUrl = "https://accounts.google.com"
+
+	// https://developers.google.com/identity/protocols/OAuth2InstalledApp
+	GoogleOauth2ClientID     = "37154062056-220683ek37naab43v23vc5qg01k1j14g.apps.googleusercontent.com"
+	GoogleOauth2ClientSecret = "pB9ITCuMPLj-bkObrTqKbt57"
+)
+
 type GoogleOptions struct {
 	ServiceAccountJsonFile string
 	AdminEmail             string
+}
+
+type GoogleClient struct {
+	GoogleOptions
+	verifier *oidc.IDTokenVerifier
+	ctx      context.Context
+	service  *gdir.Service
+}
+
+type TokenInfo struct {
+	gauth.Tokeninfo
+	HD string `json:"hd"`
 }
 
 func (s *GoogleOptions) AddFlags(fs *pflag.FlagSet) {
@@ -38,57 +58,78 @@ func (s GoogleOptions) ToArgs() []string {
 	return args
 }
 
-func (s Server) checkGoogle(name, token string) (auth.TokenReview, int) {
-	client := oauth2.NewClient(context.Background(), oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: token},
-	))
+func NewGoogleClient(opts GoogleOptions, domain string) (*GoogleClient, error) {
+	g := &GoogleClient{
+		GoogleOptions: opts,
+		ctx:           context.Background(),
+	}
 
-	authSvc, err := gauth.New(client)
+	provider, err := oidc.NewProvider(g.ctx, googleIssuerUrl)
 	if err != nil {
-		return Error(fmt.Sprintf("Failed to create oauth2/v1 api client for domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
-	}
-	r1, err := authSvc.Userinfo.Get().Do()
-	if err != nil {
-		return Error(fmt.Sprintf("Failed to load user info for domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
-	}
-	if !strings.HasSuffix(r1.Email, "@"+name) {
-		return Error(fmt.Sprintf("User is not a member of domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
+		return nil, errors.Wrap(err, "failed to create oidc provider for google")
 	}
 
-	resp := auth.TokenReview{}
-	resp.Status = auth.TokenReviewStatus{
-		User: auth.UserInfo{
-			Username: r1.Email,
-			UID:      r1.Id,
-		},
-	}
+	g.verifier = provider.Verifier(&oidc.Config{
+		ClientID: GoogleOauth2ClientID,
+	})
 
-	if s.Google.ServiceAccountJsonFile != "" {
-		sa, err := ioutil.ReadFile(s.Google.ServiceAccountJsonFile)
+	if opts.ServiceAccountJsonFile != "" {
+		sa, err := ioutil.ReadFile(opts.ServiceAccountJsonFile)
 		if err != nil {
-			return Error(fmt.Sprintf("Failed to load service account json file %s. Reason: %v.", s.Google.ServiceAccountJsonFile, err)), http.StatusUnauthorized
+			return nil, errors.Wrapf(err, "failed to load service account json file %s", opts.ServiceAccountJsonFile)
 		}
 
 		cfg, err := google.JWTConfigFromJSON(sa, gdir.AdminDirectoryGroupReadonlyScope)
 		if err != nil {
-			return Error(fmt.Sprintf("Failed to create JWT config from service account json file %s. Reason: %v.", s.Google.ServiceAccountJsonFile, err)), http.StatusUnauthorized
+			return nil, errors.Wrapf(err, "failed to create JWT config from service account json file %s", opts.ServiceAccountJsonFile)
 		}
 
 		// https://admin.google.com/ManageOauthClients
 		// ref: https://developers.google.com/admin-sdk/directory/v1/guides/delegation
 		// Note: Only users with access to the Admin APIs can access the Admin SDK Directory API, therefore your service account needs to impersonate one of those users to access the Admin SDK Directory API.
-		cfg.Subject = s.Google.AdminEmail
+		cfg.Subject = opts.AdminEmail
 		client := cfg.Client(context.Background())
 
-		svc, err := gdir.New(client)
+		g.service, err = gdir.New(client)
 		if err != nil {
-			return Error(fmt.Sprintf("Failed to create admin/directory/v1 client for domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
+			return nil, errors.Wrapf(err, "failed to create admin/directory/v1 client for domain %s", domain)
 		}
+	}
+	return g, nil
+}
 
+// https://developers.google.com/identity/protocols/OpenIDConnect#validatinganidtoken
+func (g *GoogleClient) checkGoogle(name, token string) (auth.TokenReview, int) {
+	idToken, err := g.verifier.Verify(g.ctx, token)
+	if err != nil {
+		return Error(fmt.Sprintf("Failed to verify token for google. Reason: %v.", err)), http.StatusUnauthorized
+	}
+
+	info := TokenInfo{}
+
+	err = idToken.Claims(&info)
+	if err != nil {
+		return Error(fmt.Sprintf("Failed to get claim from token. Reason: %v", err)), http.StatusUnauthorized
+	}
+
+	if info.HD != name {
+		return Error(fmt.Sprintf("User is not a member of domain %s.", name)), http.StatusUnauthorized
+	}
+
+	resp := auth.TokenReview{}
+	resp.Status = auth.TokenReviewStatus{
+		User: auth.UserInfo{
+			Username: info.Email,
+			UID:      info.UserId,
+		},
+	}
+
+	if g.ServiceAccountJsonFile != "" {
 		var groups []string
 		var pageToken string
+
 		for {
-			r2, err := svc.Groups.List().UserKey(r1.Email).Domain(name).PageToken(pageToken).Do()
+			r2, err := g.service.Groups.List().UserKey(info.Email).Domain(name).PageToken(pageToken).Do()
 			if err != nil {
 				return Error(fmt.Sprintf("Failed to load user's groups for domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
 			}

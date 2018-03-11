@@ -2,6 +2,7 @@ package lib
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -40,7 +41,12 @@ func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		Write(w, resp, code)
 		return
 	case "google":
-		resp, code := s.checkGoogle(crt.Subject.CommonName, data.Spec.Token)
+		client, err := NewGoogleClient(s.Google, crt.Subject.CommonName)
+		if err != nil {
+			Write(w, Error(fmt.Sprintf("Unable to create google client. Reason: %v", err)), http.StatusBadRequest)
+			return
+		}
+		resp, code := client.checkGoogle(crt.Subject.CommonName, data.Spec.Token)
 		Write(w, resp, code)
 		return
 	case "appscode":

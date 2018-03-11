@@ -83,6 +83,7 @@ func (s Server) ListenAndServe() {
 			log.Fatal(err)
 		}
 		s.LDAP.caCertPool = x509.NewCertPool()
+		s.LDAP.caCertPool.AppendCertsFromPEM(caCert)
 		ok := s.LDAP.caCertPool.AppendCertsFromPEM(caCert)
 		if !ok {
 			log.Fatal("Failed to add CA cert in CertPool for LDAP")
