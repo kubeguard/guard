@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/coreos/go-oidc"
+	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"golang.org/x/oauth2/google"
 	gdir "google.golang.org/api/admin/directory/v1"
@@ -34,7 +35,7 @@ type GoogleClient struct {
 	service  *gdir.Service
 }
 
-type ExtendedTokenInfo struct {
+type TokenInfo struct {
 	gauth.Tokeninfo
 	HD string `json:"hd"`
 }
@@ -63,10 +64,9 @@ func NewGoogleClient(opts GoogleOptions, domain string) (*GoogleClient, error) {
 		ctx:           context.Background(),
 	}
 
-	var err error
 	provider, err := oidc.NewProvider(g.ctx, googleIssuerUrl)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create oidc provider for google. Reason: %v.", err)
+		return nil, errors.Wrap(err, "failed to create oidc provider for google")
 	}
 
 	g.verifier = provider.Verifier(&oidc.Config{
@@ -76,12 +76,12 @@ func NewGoogleClient(opts GoogleOptions, domain string) (*GoogleClient, error) {
 	if opts.ServiceAccountJsonFile != "" {
 		sa, err := ioutil.ReadFile(opts.ServiceAccountJsonFile)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to load service account json file %s. Reason: %v.", opts.ServiceAccountJsonFile, err)
+			return nil, errors.Wrapf(err, "failed to load service account json file %s", opts.ServiceAccountJsonFile)
 		}
 
 		cfg, err := google.JWTConfigFromJSON(sa, gdir.AdminDirectoryGroupReadonlyScope)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to create JWT config from service account json file %s. Reason: %v.", opts.ServiceAccountJsonFile, err)
+			return nil, errors.Wrapf(err, "failed to create JWT config from service account json file %s", opts.ServiceAccountJsonFile)
 		}
 
 		// https://admin.google.com/ManageOauthClients
@@ -92,35 +92,35 @@ func NewGoogleClient(opts GoogleOptions, domain string) (*GoogleClient, error) {
 
 		g.service, err = gdir.New(client)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to create admin/directory/v1 client for domain %s. Reason: %v.", domain, err)
+			return nil, errors.Wrapf(err, "failed to create admin/directory/v1 client for domain %s", domain)
 		}
 	}
 	return g, nil
 }
 
+// https://developers.google.com/identity/protocols/OpenIDConnect#validatinganidtoken
 func (g *GoogleClient) checkGoogle(name, token string) (auth.TokenReview, int) {
 	idToken, err := g.verifier.Verify(g.ctx, token)
 	if err != nil {
 		return Error(fmt.Sprintf("Failed to verify token for google. Reason: %v.", err)), http.StatusUnauthorized
 	}
 
-	user := ExtendedTokenInfo{}
+	info := TokenInfo{}
 
-	err = idToken.Claims(&user)
+	err = idToken.Claims(&info)
 	if err != nil {
 		return Error(fmt.Sprintf("Failed to get claim from token. Reason: %v", err)), http.StatusUnauthorized
 	}
 
-	// https://developers.google.com/identity/protocols/OpenIDConnect#validatinganidtoken
-	if user.HD != name {
+	if info.HD != name {
 		return Error(fmt.Sprintf("User is not a member of domain %s.", name)), http.StatusUnauthorized
 	}
 
 	resp := auth.TokenReview{}
 	resp.Status = auth.TokenReviewStatus{
 		User: auth.UserInfo{
-			Username: user.Email,
-			UID:      user.UserId,
+			Username: info.Email,
+			UID:      info.UserId,
 		},
 	}
 
@@ -129,7 +129,7 @@ func (g *GoogleClient) checkGoogle(name, token string) (auth.TokenReview, int) {
 		var pageToken string
 
 		for {
-			r2, err := g.service.Groups.List().UserKey(user.Email).Domain(name).PageToken(pageToken).Do()
+			r2, err := g.service.Groups.List().UserKey(info.Email).Domain(name).PageToken(pageToken).Do()
 			if err != nil {
 				return Error(fmt.Sprintf("Failed to load user's groups for domain %s. Reason: %v.", name, err)), http.StatusUnauthorized
 			}

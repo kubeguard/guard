@@ -1,0 +1,10 @@
+language: go
+go:
+ - 1.x
+ - tip
+
+install: true
+
+script:
+ - go build -v ./...
+ - go test -v ./...
