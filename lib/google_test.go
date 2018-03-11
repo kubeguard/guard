@@ -117,7 +117,7 @@ func googleClientSetup(serverUrl string) (*GoogleClient, error) {
 	}
 	p, err := oidc.NewProvider(g.ctx, serverUrl)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create provider for azure. Reason: %v.", err)
+		return nil, fmt.Errorf("failed to create provider for azure. Reason: %v", err)
 	}
 
 	g.verifier = p.Verifier(&oidc.Config{
@@ -127,7 +127,7 @@ func googleClientSetup(serverUrl string) (*GoogleClient, error) {
 
 	g.service, err = gdir.New(http.DefaultClient)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create google service. Reason: %v.", err)
+		return nil, fmt.Errorf("failed to create google service. Reason: %v", err)
 	}
 	g.service.BasePath = serverUrl
 	g.service.Groups = gdir.NewGroupsService(g.service)
@@ -180,7 +180,7 @@ func googleServerSetup(jwkResp []byte, groupResp googleGroupResp) (*httptest.Ser
 
 func googleVerifyGroups(groups []string, expectedSize int) error {
 	if len(groups) != expectedSize {
-		return fmt.Errorf("Expected group size: %v, got %v", expectedSize, len(groups))
+		return fmt.Errorf("expected group size: %v, got %v", expectedSize, len(groups))
 	}
 	mapGroupName := map[string]bool{}
 	for _, name := range groups {
@@ -189,7 +189,7 @@ func googleVerifyGroups(groups []string, expectedSize int) error {
 	for i := 1; i <= expectedSize; i++ {
 		group := googleGetGroupEmail(i)
 		if _, ok := mapGroupName[group]; !ok {
-			return fmt.Errorf("Group %v is missing", group)
+			return fmt.Errorf("group %v is missing", group)
 		}
 	}
 	return nil
@@ -197,10 +197,10 @@ func googleVerifyGroups(groups []string, expectedSize int) error {
 
 func googleVerifyAuthenticatedReview(review auth.TokenReview, groupSize int) error {
 	if !review.Status.Authenticated {
-		return fmt.Errorf("Expected authenticated ture, got false")
+		return fmt.Errorf("expected authenticated ture, got false")
 	}
 	if review.Status.User.Username != userEmail {
-		return fmt.Errorf("Expected username %v, got %v", userEmail, review.Status.User.Username)
+		return fmt.Errorf("expected username %v, got %v", userEmail, review.Status.User.Username)
 	}
 	err := googleVerifyGroups(review.Status.User.Groups, groupSize)
 	if err != nil {
@@ -211,10 +211,10 @@ func googleVerifyAuthenticatedReview(review auth.TokenReview, groupSize int) err
 
 func googleVerifyUnauthenticatedReview(review auth.TokenReview) error {
 	if review.Status.Authenticated {
-		return fmt.Errorf("Expected authenticated false, got true")
+		return fmt.Errorf("expected authenticated false, got true")
 	}
 	if review.Status.Error == "" {
-		return fmt.Errorf("Expected error non empty")
+		return fmt.Errorf("expected error non empty")
 	}
 	return nil
 }
@@ -320,12 +320,12 @@ func TestCheckGoogleAuthenticationFailed(t *testing.T) {
 			googleGetGroupResp(4, 5, 1),
 		},
 		{
-			"authentication unsuccessful, reason error occured in Page 1 (first page)",
+			"authentication unsuccessful, reason error occurred in Page 1 (first page)",
 			goodIDToken,
 			groupErrResp,
 		},
 		{
-			"authentication unsuccessful, reason error occured in Page 2 (last page)",
+			"authentication unsuccessful, reason error occurred in Page 2 (last page)",
 			goodIDToken,
 			groupErrResp,
 		},
