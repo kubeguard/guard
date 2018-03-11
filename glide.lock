@@ -1,5 +1,5 @@
 hash: 952499e0c45f5ea358a53cddf1c5d3985bb02ce0bc754c58b79143b90cecea6e
-updated: 2018-03-11T05:38:07.405502881-07:00
+updated: 2018-03-11T07:10:19.32793036-07:00
 imports:
 - name: appscode.com/api
   version: 4563b7ddd49c3a332c9159b84417f15c3c5e574b
@@ -182,7 +182,7 @@ imports:
 - name: github.com/peterbourgon/diskv
   version: 5f041e8faa004a95c88a202771f4cc3e991971e6
 - name: github.com/pharmer/pharmer
-  version: 454bb3dea1b9f8fbfb3da5306386cbcd6aeb179e
+  version: fb97d50a22bbe1703b35260d2856f9d3a0085c17
   subpackages:
   - apis/v1alpha1
 - name: github.com/pkg/errors
@@ -290,7 +290,6 @@ imports:
   version: 95c6576299259db960f6c5b9b69ea52422860fce
   subpackages:
   - unix
-  - windows
 - name: golang.org/x/text
   version: b19bf474d317b857955b12035d2c5acb57ce8b01
   subpackages:

@@ -2,7 +2,6 @@ package cmds
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/appscode/go/log"
-	term "github.com/appscode/go/term"
+	"github.com/appscode/go/term"
 	"github.com/appscode/guard/lib"
 	"github.com/howeyc/gopass"
 	"github.com/pkg/errors"
