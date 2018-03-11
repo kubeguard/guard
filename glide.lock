@@ -1,5 +1,5 @@
 hash: 952499e0c45f5ea358a53cddf1c5d3985bb02ce0bc754c58b79143b90cecea6e
-updated: 2018-03-11T03:37:54.814625161-07:00
+updated: 2018-03-11T05:38:07.405502881-07:00
 imports:
 - name: appscode.com/api
   version: 4563b7ddd49c3a332c9159b84417f15c3c5e574b
@@ -34,6 +34,7 @@ imports:
   - log
   - log/golog
   - net
+  - ntp
   - runtime
   - sets
   - signals
@@ -52,6 +53,8 @@ imports:
   - tools/fsnotify
 - name: github.com/appscode/pat
   version: 48ff78925b7955367d8a048fc2b5cec8efadf8d3
+- name: github.com/beevik/ntp
+  version: 802074b1b037c59dbdbee7e196ad91b51d0ec844
 - name: github.com/beorn7/perks
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
@@ -264,12 +267,16 @@ imports:
 - name: golang.org/x/net
   version: 1c05540f6879653db88113bc4a2b70aec4bd491f
   subpackages:
+  - bpf
   - context
   - context/ctxhttp
   - http2
   - http2/hpack
   - idna
+  - internal/iana
+  - internal/socket
   - internal/timeseries
+  - ipv4
   - lex/httplex
   - trace
 - name: golang.org/x/oauth2

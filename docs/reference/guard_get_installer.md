@@ -34,6 +34,7 @@ guard get installer [flags]
       --image-pull-secret string             Name of image pull secret
       --ldap.bind-dn string                  The connector uses this DN in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
       --ldap.bind-password string            The connector uses this password in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
+      --ldap.ca-cert-file string             ca cert file that used for self signed server certificate
       --ldap.group-member-attribute string   Ldap group member attribute (default "member")
       --ldap.group-name-attribute string     Ldap group name attribute (default "cn")
       --ldap.group-search-dn string          BaseDN to start the search group
