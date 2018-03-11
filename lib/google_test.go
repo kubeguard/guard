@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/appscode/pat"
@@ -22,7 +23,7 @@ const (
 	userEmail   = "nahid@domain.com"
 	adminEmail  = "admin@domain.com"
 	domain      = "domain"
-	googleToken = `{ "iss" : "%v", "email" : "%v", "aud" : "%v", "hd" : "%v"}`
+	googleToken = `{ "iss" : "%s", "email" : "%s", "aud" : "%s", "hd" : "%s"}`
 )
 
 type googleGroupResp func(u *url.URL) (int, []byte)
@@ -220,7 +221,7 @@ func googleVerifyUnauthenticatedReview(review auth.TokenReview) error {
 }
 
 func TestCheckGoogleAuthenticationSuccess(t *testing.T) {
-	signKey, err := newRSAKey()
+	signKey, err := newRSAKey(t)
 	if err != nil {
 		t.Fatalf("Error when creating signing key. reason : %v", err)
 	}
@@ -271,15 +272,15 @@ func TestCheckGoogleAuthenticationSuccess(t *testing.T) {
 }
 
 func TestCheckGoogleAuthenticationFailed(t *testing.T) {
-
 	var (
-		emptyHDToken     = fmt.Sprintf(`{ "iss" : "%%v", "email" : "%v", "aud" : "%v"}`, userEmail, GoogleOauth2ClientID)
-		badClientIDToken = fmt.Sprintf(`{ "iss" : "%%v", "email" : "%v", "aud" : "bad_client_id", "hd" : "%v"}`, userEmail, domain)
-		badDomainIDToken = fmt.Sprintf(`{ "iss" : "%%v", "email" : "%v", "aud" : "%v", "hd" : "bad_domain"}`, userEmail, GoogleOauth2ClientID)
-		goodIDToken      = fmt.Sprintf(`{ "iss" : "%%v", "email" : "%v", "aud" : "%v", "hd" : "%v"}`, userEmail, GoogleOauth2ClientID, domain)
+		badIssuer        = fmt.Sprintf(`{ "iss":"%s", "email":"%s", "aud":"%s", "hd":"%s"}`, "https://bad", userEmail, GoogleOauth2ClientID, domain)
+		emptyHDToken     = fmt.Sprintf(`{ "iss":"_ISSUER_", "email":"%s", "aud":"%s"}`, userEmail, GoogleOauth2ClientID)
+		badClientIDToken = fmt.Sprintf(`{ "iss":"_ISSUER_", "email":"%s", "aud":"bad_client_id", "hd":"%s"}`, userEmail, domain)
+		badDomainIDToken = fmt.Sprintf(`{ "iss":"_ISSUER_", "email":"%s", "aud":"%s", "hd":"bad_domain"}`, userEmail, GoogleOauth2ClientID)
+		goodIDToken      = fmt.Sprintf(`{ "iss":"_ISSUER_", "email":"%s", "aud":"%s", "hd":"%s"}`, userEmail, GoogleOauth2ClientID, domain)
 	)
 
-	signKey, err := newRSAKey()
+	signKey, err := newRSAKey(t)
 	if err != nil {
 		t.Fatalf("Error when creating signing key. reason : %v", err)
 	}
@@ -299,6 +300,11 @@ func TestCheckGoogleAuthenticationFailed(t *testing.T) {
 		token     string
 		groupResp googleGroupResp
 	}{
+		{
+			"authentication unsuccessful, reason invalid issuer",
+			badIssuer,
+			googleGetGroupResp(4, 5, 1),
+		},
 		{
 			"authentication unsuccessful, reason invalid token",
 			badToken,
@@ -344,7 +350,8 @@ func TestCheckGoogleAuthenticationFailed(t *testing.T) {
 				t.Fatalf("Error when creatidng google client. reason : %v", err)
 			}
 
-			token, err := signKey.sign([]byte(fmt.Sprintf(test.token, srv.URL)))
+			test.token = strings.Replace(test.token, "_ISSUER_", srv.URL, -1)
+			token, err := signKey.sign([]byte(test.token))
 			if err != nil {
 				t.Fatalf("Error when signing token. reason: %v", err)
 			}

@@ -30,9 +30,10 @@ const (
 )
 
 type signingKey struct {
-	priv interface{}
-	pub  interface{}
-	alg  jose.SignatureAlgorithm
+	keyID string // optional
+	priv  interface{}
+	pub   interface{}
+	alg   jose.SignatureAlgorithm
 }
 
 func (s *signingKey) sign(payload []byte) (string, error) {
@@ -56,18 +57,18 @@ func (s *signingKey) sign(payload []byte) (string, error) {
 
 // jwk returns the public part of the signing key.
 func (s *signingKey) jwk() jose.JSONWebKeySet {
-	k := jose.JSONWebKey{Key: s.pub, Use: "test", Algorithm: string(s.alg), KeyID: ""}
+	k := jose.JSONWebKey{Key: s.pub, Use: "sig", Algorithm: string(s.alg), KeyID: s.keyID}
 	kset := jose.JSONWebKeySet{}
 	kset.Keys = append(kset.Keys, k)
 	return kset
 }
 
-func newRSAKey() (*signingKey, error) {
+func newRSAKey(t *testing.T) (*signingKey, error) {
 	priv, err := rsa.GenerateKey(rand.Reader, 1028)
 	if err != nil {
-		return nil, err
+		t.Fatal(err)
 	}
-	return &signingKey{priv, priv.Public(), jose.RS256}, nil
+	return &signingKey{"", priv, priv.Public(), jose.RS256}, nil
 }
 
 func azureClientSetup(clientID, clientSecret, tenantID, serverUrl string) (*AzureClient, error) {
@@ -78,7 +79,7 @@ func azureClientSetup(clientID, clientSecret, tenantID, serverUrl string) (*Azur
 
 	p, err := oidc.NewProvider(c.ctx, serverUrl)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create provider for azure. Reason: %v.", err)
+		return nil, fmt.Errorf("failed to create provider for azure. Reason: %v", err)
 	}
 
 	c.verifier = p.Verifier(&oidc.Config{
@@ -191,7 +192,7 @@ func azureGetGroupsAndIds(t *testing.T, groupSz int) ([]byte, []byte) {
 
 func azureVerifyGroups(groupList []string, expectedSize int) error {
 	if len(groupList) != expectedSize {
-		return fmt.Errorf("Expected group size: %v, got %v", expectedSize, len(groupList))
+		return fmt.Errorf("expected group size: %v, got %v", expectedSize, len(groupList))
 	}
 	mapGroupName := map[string]bool{}
 	for _, name := range groupList {
@@ -200,7 +201,7 @@ func azureVerifyGroups(groupList []string, expectedSize int) error {
 	for i := 1; i <= expectedSize; i++ {
 		group := "group" + strconv.Itoa(i)
 		if _, ok := mapGroupName[group]; !ok {
-			return fmt.Errorf("Group %v is missing", group)
+			return fmt.Errorf("group %v is missing", group)
 		}
 	}
 	return nil
@@ -208,10 +209,10 @@ func azureVerifyGroups(groupList []string, expectedSize int) error {
 
 func azureVerifyAuthenticatedReview(review *auth.TokenReview, groupSize int) error {
 	if !review.Status.Authenticated {
-		return fmt.Errorf("Expected authenticated ture, got false")
+		return fmt.Errorf("expected authenticated ture, got false")
 	}
 	if review.Status.User.Username != username {
-		return fmt.Errorf("Expected username %v, got %v", username, review.Status.User.Username)
+		return fmt.Errorf("expected username %v, got %v", username, review.Status.User.Username)
 	}
 	err := azureVerifyGroups(review.Status.User.Groups, groupSize)
 	if err != nil {
@@ -222,10 +223,10 @@ func azureVerifyAuthenticatedReview(review *auth.TokenReview, groupSize int) err
 
 func azureVerifyUnauthenticatedReview(review *auth.TokenReview) error {
 	if review.Status.Authenticated {
-		return fmt.Errorf("Expected authenticated false, got true")
+		return fmt.Errorf("expected authenticated false, got true")
 	}
 	if len(review.Status.Error) == 0 {
-		return fmt.Errorf("Expected error message, got empty message")
+		return fmt.Errorf("expected error message, got empty message")
 	}
 	return nil
 }
@@ -253,7 +254,7 @@ func azureGetServerAndClient(t *testing.T, signKey *signingKey, loginResp string
 }
 
 func TestCheckAzureAuthenticationSuccess(t *testing.T) {
-	signKey, err := newRSAKey()
+	signKey, err := newRSAKey(t)
 	if err != nil {
 		t.Fatalf("Error when creating signing key. reason : %v", err)
 	}
@@ -296,7 +297,7 @@ func TestCheckAzureAuthenticationSuccess(t *testing.T) {
 }
 
 func TestCheckAzureAuthenticationFailed(t *testing.T) {
-	signKey, err := newRSAKey()
+	signKey, err := newRSAKey(t)
 	if err != nil {
 		t.Fatalf("Error when creating signing key. reason : %v", err)
 	}
