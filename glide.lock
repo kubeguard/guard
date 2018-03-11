@@ -1,5 +1,5 @@
-hash: a7f43256633ca59df8ebe031a678c5164cdd77bb77c5e56d4be773bfda015688
-updated: 2018-03-07T04:57:30.9914713-08:00
+hash: 952499e0c45f5ea358a53cddf1c5d3985bb02ce0bc754c58b79143b90cecea6e
+updated: 2018-03-11T03:37:54.814625161-07:00
 imports:
 - name: appscode.com/api
   version: 4563b7ddd49c3a332c9159b84417f15c3c5e574b
@@ -25,7 +25,7 @@ imports:
   - compute/metadata
   - internal
 - name: github.com/appscode/go
-  version: c312c0a1fe0d4988480073287b8633fc5a244647
+  version: 2dee2377181f720406c72288811662576cbd5c21
   subpackages:
   - analytics
   - context
@@ -44,7 +44,7 @@ imports:
 - name: github.com/appscode/jsonpatch
   version: ee757872f6aca6d412d0d80543725bd4cf48f793
 - name: github.com/appscode/kutil
-  version: e91f3c329ced02152b18de971fc358a5cb00ee96
+  version: e3a21009a5f4536b54e15941bb8cd081a856d9fb
   subpackages:
   - meta
   - tools/analytics
@@ -57,7 +57,7 @@ imports:
   subpackages:
   - quantile
 - name: github.com/coreos/go-oidc
-  version: a93f71fdfe73d2c0f5413c0565eea0af6523a6df
+  version: a4973d9a4225417aecf5d450a9522f00c1f7130f
 - name: github.com/cpuguy83/go-md2man
   version: 71acacd42f85e5e82f70a55327789582a5200a90
   subpackages:
