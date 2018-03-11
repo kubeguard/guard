@@ -8,6 +8,7 @@ import (
 	v "github.com/appscode/go/version"
 	"github.com/appscode/kutil/tools/analytics"
 	"github.com/jpillora/go-ogle-analytics"
+	"github.com/json-iterator/go"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -15,6 +16,8 @@ import (
 const (
 	gaTrackingCode = "UA-62096468-20"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func NewRootCmd(version string) *cobra.Command {
 	var (

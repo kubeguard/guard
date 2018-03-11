@@ -1,13 +1,15 @@
 package lib
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/appscode/go/log"
+	"github.com/json-iterator/go"
 	auth "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // Write replies to the request with the specified TokenReview object and HTTP code.
 // It does not otherwise end the request; the caller should ensure no further

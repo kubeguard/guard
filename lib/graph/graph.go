@@ -2,19 +2,21 @@ package graph
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"path"
 	"strings"
 	"time"
+
+	"github.com/json-iterator/go"
 )
 
 // These are the base URL endpoints for MS graph
 var (
 	baseAPIURL, _ = url.Parse("https://graph.microsoft.com/v1.0")
 	loginURL      = "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
+	json          = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
 const (
