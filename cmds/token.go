@@ -8,18 +8,21 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/appscode/go/ioutil"
 	"github.com/appscode/go/log"
 	"github.com/appscode/go/term"
-	"github.com/appscode/guard/lib"
+	"github.com/appscode/guard/appscode"
+	"github.com/appscode/guard/google"
+	"github.com/appscode/guard/server"
 	"github.com/howeyc/gopass"
 	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
-	goauth2 "golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
+	goauth "golang.org/x/oauth2/google"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/util/homedir"
@@ -29,7 +32,7 @@ func NewCmdGetToken() *cobra.Command {
 	var org string
 	cmd := &cobra.Command{
 		Use:               "token",
-		Short:             fmt.Sprintf("Get tokens for %v", lib.SupportedOrgPrintForm()),
+		Short:             fmt.Sprintf("Get tokens for %v", server.SupportedOrgPrintForm()),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			org = strings.ToLower(org)
@@ -57,11 +60,11 @@ func NewCmdGetToken() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&org, "organization", "o", org, fmt.Sprintf("Name of Organization (%v).", lib.SupportedOrgPrintForm()))
+	cmd.Flags().StringVarP(&org, "organization", "o", org, fmt.Sprintf("Name of Organization (%v).", server.SupportedOrgPrintForm()))
 	return cmd
 }
 
-var gauthConfig goauth2.Config
+var gauthConfig oauth2.Config
 
 func getGoogleToken() error {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -72,10 +75,10 @@ func getGoogleToken() error {
 	log.Infoln("Oauth2 callback receiver listening on", listener.Addr())
 
 	// https://developers.google.com/identity/protocols/OpenIDConnect#validatinganidtoken
-	gauthConfig = goauth2.Config{
-		Endpoint:     google.Endpoint,
-		ClientID:     lib.GoogleOauth2ClientID,
-		ClientSecret: lib.GoogleOauth2ClientSecret,
+	gauthConfig = oauth2.Config{
+		Endpoint:     goauth.Endpoint,
+		ClientID:     google.GoogleOauth2ClientID,
+		ClientSecret: google.GoogleOauth2ClientSecret,
 		Scopes:       []string{"openid", "profile", "email"},
 		RedirectURL:  "http://" + listener.Addr().String(),
 	}
@@ -129,11 +132,11 @@ func getAppscodeToken() error {
 	}
 
 	token := string(tokenBytes)
-	client := &lib.ConduitClient{
+	client := &appscode.ConduitClient{
 		Url:   strings.Join([]string{endpoint, "api", "user.whoami"}, "/"),
 		Token: token,
 	}
-	result := &lib.WhoAmIResponse{}
+	result := &appscode.WhoAmIResponse{}
 	err = client.Call().Into(result)
 	if err != nil {
 		term.Fatalln("Failed to validate token", err)
@@ -154,6 +157,13 @@ func addUserInKubeConfig(idToken, refreshToken string) error {
 		if err != nil {
 			return err
 		}
+
+		bakFile := KubeConfigPath() + ".bak." + time.Now().Format("2006-01-02T15-04")
+		err = ioutil.CopyFile(bakFile, KubeConfigPath())
+		if err != nil {
+			return err
+		}
+		term.Infoln(fmt.Sprintf("Current Kubeconfig is backed up as %s.", bakFile))
 	} else {
 		konfig = &clientcmdapi.Config{
 			APIVersion: "v1",
@@ -168,8 +178,8 @@ func addUserInKubeConfig(idToken, refreshToken string) error {
 		AuthProvider: &clientcmdapi.AuthProviderConfig{
 			Name: "oidc",
 			Config: map[string]string{
-				"client-id":      lib.GoogleOauth2ClientID,
-				"client-secret":  lib.GoogleOauth2ClientSecret,
+				"client-id":      google.GoogleOauth2ClientID,
+				"client-secret":  google.GoogleOauth2ClientSecret,
 				"id-token":       idToken,
 				"idp-issuer-url": "https://accounts.google.com",
 				"refresh-token":  refreshToken,

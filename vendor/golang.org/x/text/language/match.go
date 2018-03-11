@@ -6,16 +6,6 @@ package language
 
 import "errors"
 
-// A MatchOption configures a Matcher.
-type MatchOption func(*matcher)
-
-// PreferSameScript will, in the absence of a match, result in the first
-// preferred tag with the same script as a supported tag to match this supported
-// tag. The default is currently true, but this may change in the future.
-func PreferSameScript(preferSame bool) MatchOption {
-	return func(m *matcher) { m.preferSameScript = preferSame }
-}
-
 // Matcher is the interface that wraps the Match method.
 //
 // Match returns the best match for any of the given tags, along with
@@ -46,44 +36,23 @@ func Comprehends(speaker, alternative Tag) Confidence {
 // matched tag in t, but is augmented with the Unicode extension ('u')of the
 // corresponding preferred tag. This allows user locale options to be passed
 // transparently.
-func NewMatcher(t []Tag, options ...MatchOption) Matcher {
-	return newMatcher(t, options)
+func NewMatcher(t []Tag) Matcher {
+	return newMatcher(t)
 }
 
 func (m *matcher) Match(want ...Tag) (t Tag, index int, c Confidence) {
 	match, w, c := m.getBest(want...)
-	if match != nil {
-		t, index = match.tag, match.index
-	} else {
-		// TODO: this should be an option
+	if match == nil {
 		t = m.default_.tag
-		if m.preferSameScript {
-		outer:
-			for _, w := range want {
-				script, _ := w.Script()
-				if script.scriptID == 0 {
-					// Don't do anything if there is no script, such as with
-					// private subtags.
-					continue
-				}
-				for i, h := range m.supported {
-					if script.scriptID == h.maxScript {
-						t, index = h.tag, i
-						break outer
-					}
-				}
-			}
-		}
-		// TODO: select first language tag based on script.
-	}
-	if w.region != 0 && t.region != 0 && t.region.contains(w.region) {
-		t, _ = Raw.Compose(t, Region{w.region})
+	} else {
+		t, index = match.tag, match.index
 	}
 	// Copy options from the user-provided tag into the result tag. This is hard
 	// to do after the fact, so we do it here.
-	// TODO: add in alternative variants to -u-va-.
-	// TODO: add preferred region to -u-rg-.
-	// TODO: add other extensions. Merge with existing extensions.
+	// TODO: consider also adding in variants that are compatible with the
+	// matched language.
+	// TODO: Add back region if it is non-ambiguous? Or create another tag to
+	// preserve the region?
 	if u, ok := w.Extension('u'); ok {
 		t, _ = Raw.Compose(t, u)
 	}
@@ -419,11 +388,9 @@ func minimizeTags(t Tag) (Tag, error) {
 
 // matcher keeps a set of supported language tags, indexed by language.
 type matcher struct {
-	default_         *haveTag
-	supported        []*haveTag
-	index            map[langID]*matchHeader
-	passSettings     bool
-	preferSameScript bool
+	default_     *haveTag
+	index        map[langID]*matchHeader
+	passSettings bool
 }
 
 // matchHeader has the lists of tags for exact matches and matches based on
@@ -473,10 +440,8 @@ func makeHaveTag(tag Tag, index int) (haveTag, langID) {
 // script to map to another and we rely on this to keep the code simple.
 func altScript(l langID, s scriptID) scriptID {
 	for _, alt := range matchScript {
-		// TODO: also match cases where language is not the same.
-		if (langID(alt.wantLang) == l || langID(alt.haveLang) == l) &&
-			scriptID(alt.haveScript) == s {
-			return scriptID(alt.wantScript)
+		if (alt.lang == 0 || langID(alt.lang) == l) && scriptID(alt.have) == s {
+			return scriptID(alt.want)
 		}
 	}
 	return 0
@@ -521,26 +486,12 @@ func (m *matcher) header(l langID) *matchHeader {
 	return h
 }
 
-func toConf(d uint8) Confidence {
-	if d <= 10 {
-		return High
-	}
-	if d < 30 {
-		return Low
-	}
-	return No
-}
-
 // newMatcher builds an index for the given supported tags and returns it as
 // a matcher. It also expands the index by considering various equivalence classes
 // for a given tag.
-func newMatcher(supported []Tag, options []MatchOption) *matcher {
+func newMatcher(supported []Tag) *matcher {
 	m := &matcher{
-		index:            make(map[langID]*matchHeader),
-		preferSameScript: true,
-	}
-	for _, o := range options {
-		o(m)
+		index: make(map[langID]*matchHeader),
 	}
 	if len(supported) == 0 {
 		m.default_ = &haveTag{}
@@ -551,7 +502,6 @@ func newMatcher(supported []Tag, options []MatchOption) *matcher {
 	for i, tag := range supported {
 		pair, _ := makeHaveTag(tag, i)
 		m.header(tag.lang).addIfNew(pair, true)
-		m.supported = append(m.supported, &pair)
 	}
 	m.default_ = m.header(supported[0].lang).exact[0]
 	for i, tag := range supported {
@@ -560,9 +510,6 @@ func newMatcher(supported []Tag, options []MatchOption) *matcher {
 			m.header(max).addIfNew(pair, false)
 		}
 	}
-
-	// TODO: include alt script.
-	// - don't replace regions, but allow regions to be made more specific.
 
 	// update is used to add indexes in the map for equivalent languages.
 	// If force is true, the update will also apply to derived entries. To
@@ -590,9 +537,9 @@ func newMatcher(supported []Tag, options []MatchOption) *matcher {
 	// Add entries for languages with mutual intelligibility as defined by CLDR's
 	// languageMatch data.
 	for _, ml := range matchLang {
-		update(ml.want, ml.have, toConf(ml.distance), false)
+		update(ml.want, ml.have, Confidence(ml.conf), false)
 		if !ml.oneway {
-			update(ml.have, ml.want, toConf(ml.distance), false)
+			update(ml.have, ml.want, Confidence(ml.conf), false)
 		}
 	}
 
@@ -689,12 +636,11 @@ type bestMatch struct {
 	want Tag
 	conf Confidence
 	// Cached results from applying tie-breaking rules.
-	origLang     bool
-	origReg      bool
-	regGroupDist uint8
-	regDist      uint8
-	origScript   bool
-	parentDist   uint8 // 255 if have is not an ancestor of want tag.
+	origLang   bool
+	origReg    bool
+	regDist    uint8
+	origScript bool
+	parentDist uint8 // 255 if have is not an ancestor of want tag.
 }
 
 // update updates the existing best match if the new pair is considered to be a
@@ -748,14 +694,6 @@ func (m *bestMatch) update(have *haveTag, tag Tag, maxScript scriptID, maxRegion
 		beaten = true
 	}
 
-	regGroupDist := regionGroupDist(have.maxRegion, maxRegion, maxScript, tag.lang)
-	if !beaten && m.regGroupDist != regGroupDist {
-		if regGroupDist > m.regGroupDist {
-			return
-		}
-		beaten = true
-	}
-
 	// We prefer if the pre-maximized region was specified and identical.
 	origReg := have.tag.region == tag.region && tag.region != 0
 	if !beaten && m.origReg != origReg {
@@ -765,22 +703,8 @@ func (m *bestMatch) update(have *haveTag, tag Tag, maxScript scriptID, maxRegion
 		beaten = true
 	}
 
-	// TODO: remove the region distance rule. Region distance has been replaced
-	// by the region grouping rule. For now we leave it as it still seems to
-	// have a net positive effect when applied after the grouping rule.
-	// Possible solutions:
-	// - apply the primary locale rule first to effectively disable region
-	//   region distance if groups are defined.
-	// - express the following errors in terms of grouping (if possible)
-	// - find another method of handling the following cases.
-	// maximization of legacy: find mo in
-	//      "sr-Cyrl, sr-Latn, ro, ro-MD": have ro; want ro-MD (High)
-	// region distance French: find fr-US in
-	//      "en, fr, fr-CA, fr-CH": have fr; want fr-CA (High)
-
-	// Next we prefer smaller distances between regions, as defined by
-	// regionDist.
-	regDist := uint8(regionDistance(have.maxRegion, maxRegion))
+	// Next we prefer smaller distances between regions, as defined by regionDist.
+	regDist := regionDist(have.maxRegion, maxRegion, tag.lang)
 	if !beaten && m.regDist != regDist {
 		if regDist > m.regDist {
 			return
@@ -798,9 +722,6 @@ func (m *bestMatch) update(have *haveTag, tag Tag, maxScript scriptID, maxRegion
 	}
 
 	// Finally we prefer tags which have a closer parent relationship.
-	// TODO: the parent relationship no longer seems necessary. It doesn't hurt
-	// to leave it in as the final tie-breaker, though, especially until the
-	// grouping data has further matured.
 	parentDist := parentDistance(have.tag.region, tag)
 	if !beaten && m.parentDist != parentDist {
 		if parentDist > m.parentDist {
@@ -817,7 +738,6 @@ func (m *bestMatch) update(have *haveTag, tag Tag, maxScript scriptID, maxRegion
 		m.origLang = origLang
 		m.origReg = origReg
 		m.origScript = origScript
-		m.regGroupDist = regGroupDist
 		m.regDist = regDist
 		m.parentDist = parentDist
 	}
@@ -840,27 +760,15 @@ func parentDistance(haveRegion regionID, tag Tag) uint8 {
 	return d
 }
 
-// regionGroupDist computes the distance between two regions based on their
-// CLDR grouping.
-func regionGroupDist(a, b regionID, script scriptID, lang langID) uint8 {
-	aGroup := uint(regionToGroups[a]) << 1
-	bGroup := uint(regionToGroups[b]) << 1
-	for _, ri := range matchRegion {
-		if langID(ri.lang) == lang && (ri.script == 0 || scriptID(ri.script) == script) {
-			group := uint(1 << (ri.group &^ 0x80))
-			if 0x80&ri.group == 0 {
-				if aGroup&bGroup&group != 0 { // Both regions are in the group.
-					return ri.distance
-				}
-			} else {
-				if (aGroup|bGroup)&group == 0 { // Both regions are not in the group.
-					return ri.distance
-				}
-			}
+// regionDist wraps regionDistance with some exceptions to the algorithmic distance.
+func regionDist(a, b regionID, lang langID) uint8 {
+	if lang == _en {
+		// Two variants of non-US English are close to each other, regardless of distance.
+		if a != _US && b != _US {
+			return 2
 		}
 	}
-	const defaultDistance = 4
-	return defaultDistance
+	return uint8(regionDistance(a, b))
 }
 
 // regionDistance computes the distance between two regions based on the

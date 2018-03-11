@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/appscode/go/log"
-	"github.com/appscode/guard/lib"
+	"github.com/appscode/guard/server"
 	"github.com/appscode/kutil/tools/certstore"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -113,7 +113,7 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&rootDir, "pki-dir", rootDir, "Path to directory where pki files are stored.")
-	cmd.Flags().StringVarP(&org, "organization", "o", org, fmt.Sprintf("Name of Organization (%v).", lib.SupportedOrgPrintForm()))
+	cmd.Flags().StringVarP(&org, "organization", "o", org, fmt.Sprintf("Name of Organization (%v).", server.SupportedOrgPrintForm()))
 	cmd.Flags().StringVar(&addr, "addr", "10.96.10.96:443", "Address (host:port) of guard server.")
 	return cmd
 }

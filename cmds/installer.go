@@ -12,7 +12,11 @@ import (
 	stringz "github.com/appscode/go/strings"
 	"github.com/appscode/go/types"
 	v "github.com/appscode/go/version"
-	"github.com/appscode/guard/lib"
+	"github.com/appscode/guard/azure"
+	"github.com/appscode/guard/google"
+	"github.com/appscode/guard/ldap"
+	"github.com/appscode/guard/server"
+	"github.com/appscode/guard/token"
 	"github.com/appscode/kutil/meta"
 	"github.com/appscode/kutil/tools/certstore"
 	"github.com/spf13/afero"
@@ -32,10 +36,11 @@ type options struct {
 	runOnMaster     bool
 	privateRegistry string
 	imagePullSecret string
-	tokenAuthFile   string
-	Google          lib.GoogleOptions
-	Azure           lib.AzureOptions
-	LDAP            lib.LDAPOptions
+
+	Token  token.Options
+	Google google.Options
+	Azure  azure.Options
+	LDAP   ldap.Options
 }
 
 func NewCmdInstaller() *cobra.Command {
@@ -122,12 +127,12 @@ func NewCmdInstaller() *cobra.Command {
 			buf.WriteString("---\n")
 
 			secretData := map[string][]byte{}
-			if opts.tokenAuthFile != "" {
-				_, err := lib.LoadTokenFile(opts.tokenAuthFile)
+			if opts.Token.AuthFile != "" {
+				_, err := token.LoadTokenFile(opts.Token.AuthFile)
 				if err != nil {
 					log.Fatalln(err)
 				}
-				tokens, err := ioutil.ReadFile(opts.tokenAuthFile)
+				tokens, err := ioutil.ReadFile(opts.Token.AuthFile)
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -187,7 +192,7 @@ func NewCmdInstaller() *cobra.Command {
 	cmd.Flags().BoolVar(&opts.runOnMaster, "run-on-master", opts.runOnMaster, "If true, runs Guard server on master instances")
 	cmd.Flags().StringVar(&opts.privateRegistry, "private-registry", opts.privateRegistry, "Private Docker registry")
 	cmd.Flags().StringVar(&opts.imagePullSecret, "image-pull-secret", opts.imagePullSecret, "Name of image pull secret")
-	cmd.Flags().StringVar(&opts.tokenAuthFile, "token-auth-file", "", "Path to the token file")
+	opts.Token.AddFlags(cmd.Flags())
 	opts.Google.AddFlags(cmd.Flags())
 	opts.Azure.AddFlags(cmd.Flags())
 	opts.LDAP.AddFlags(cmd.Flags())
@@ -246,13 +251,10 @@ func newDeployment(opts options) runtime.Object {
 							Args: []string{
 								"run",
 								"--v=3",
-								"--ca-cert-file=/etc/guard/pki/ca.crt",
-								"--cert-file=/etc/guard/pki/tls.crt",
-								"--key-file=/etc/guard/pki/tls.key",
 							},
 							Ports: []core.ContainerPort{
 								{
-									ContainerPort: servingPort,
+									ContainerPort: server.ServingPort,
 								},
 							},
 							VolumeMounts: []core.VolumeMount{
@@ -265,7 +267,7 @@ func newDeployment(opts options) runtime.Object {
 								Handler: core.Handler{
 									HTTPGet: &core.HTTPGetAction{
 										Path:   "/healthz",
-										Port:   intstr.FromInt(servingPort),
+										Port:   intstr.FromInt(server.ServingPort),
 										Scheme: core.URISchemeHTTPS,
 									},
 								},
@@ -315,7 +317,7 @@ func newDeployment(opts options) runtime.Object {
 		})
 	}
 
-	if opts.tokenAuthFile != "" || opts.Google.ServiceAccountJsonFile != "" {
+	if opts.Token.AuthFile != "" || opts.Google.ServiceAccountJsonFile != "" {
 		volMount := core.VolumeMount{
 			Name:      "guard-auth",
 			MountPath: "/etc/guard/auth",
@@ -353,9 +355,8 @@ func newDeployment(opts options) runtime.Object {
 		d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
 	}
 
-	if opts.tokenAuthFile != "" {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, "--token-auth-file=/etc/guard/auth/token.csv")
-	}
+	d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, server.SecureServingOptions{}.ToArgs()...)
+	d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, opts.Token.ToArgs()...)
 	d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, opts.Google.ToArgs()...)
 	d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, opts.Azure.ToArgs()...)
 	d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, opts.LDAP.ToArgs()...)
@@ -380,7 +381,7 @@ func newService(namespace, addr string) runtime.Object {
 					Name:       "api",
 					Port:       int32(svcPort),
 					Protocol:   core.ProtocolTCP,
-					TargetPort: intstr.FromInt(servingPort),
+					TargetPort: intstr.FromInt(server.ServingPort),
 				},
 			},
 			Selector: labels,

@@ -52,7 +52,7 @@ guard get installer [flags]
       --private-registry string              Private Docker registry (default "appscode")
       --rbac                                 If true, uses RBAC with operator and database objects
       --run-on-master                        If true, runs Guard server on master instances (default true)
-      --token-auth-file string               Path to the token file
+      --token-auth-file string               To enable static token authentication
 ```
 
 ### Options inherited from parent commands
