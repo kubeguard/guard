@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/appscode/guard.svg?branch=master)](https://travis-ci.org/appscode/guard)
+[![codecov](https://codecov.io/gh/appscode/guard/branch/master/graph/badge.svg)](https://codecov.io/gh/appscode/guard)
 [![Go Report Card](https://goreportcard.com/badge/appscode/guard "Go Report Card")](https://goreportcard.com/report/appscode/guard)
 [![GoDoc](https://godoc.org/github.com/appscode/guard?status.svg "GoDoc")](https://godoc.org/github.com/appscode/guard)
 
