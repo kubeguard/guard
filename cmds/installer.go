@@ -32,7 +32,6 @@ import (
 type options struct {
 	namespace       string
 	addr            string
-	enableRBAC      bool
 	runOnMaster     bool
 	privateRegistry string
 	imagePullSecret string
@@ -96,28 +95,26 @@ func NewCmdInstaller() *cobra.Command {
 				buf.WriteString("---\n")
 			}
 
-			if opts.enableRBAC {
-				data, err = meta.MarshalToYAML(newServiceAccount(opts.namespace), core.SchemeGroupVersion)
-				if err != nil {
-					log.Fatalln(err)
-				}
-				buf.Write(data)
-				buf.WriteString("---\n")
-
-				data, err = meta.MarshalToYAML(newClusterRole(opts.namespace), rbac.SchemeGroupVersion)
-				if err != nil {
-					log.Fatalln(err)
-				}
-				buf.Write(data)
-				buf.WriteString("---\n")
-
-				data, err = meta.MarshalToYAML(newClusterRoleBinding(opts.namespace), rbac.SchemeGroupVersion)
-				if err != nil {
-					log.Fatalln(err)
-				}
-				buf.Write(data)
-				buf.WriteString("---\n")
+			data, err = meta.MarshalToYAML(newServiceAccount(opts.namespace), core.SchemeGroupVersion)
+			if err != nil {
+				log.Fatalln(err)
 			}
+			buf.Write(data)
+			buf.WriteString("---\n")
+
+			data, err = meta.MarshalToYAML(newClusterRole(opts.namespace), rbac.SchemeGroupVersion)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			buf.Write(data)
+			buf.WriteString("---\n")
+
+			data, err = meta.MarshalToYAML(newClusterRoleBinding(opts.namespace), rbac.SchemeGroupVersion)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			buf.Write(data)
+			buf.WriteString("---\n")
 
 			data, err = meta.MarshalToYAML(newSecret(opts.namespace, serverCert, serverKey, caCert), core.SchemeGroupVersion)
 			if err != nil {
@@ -188,7 +185,6 @@ func NewCmdInstaller() *cobra.Command {
 	cmd.Flags().StringVar(&rootDir, "pki-dir", rootDir, "Path to directory where pki files are stored.")
 	cmd.Flags().StringVarP(&opts.namespace, "namespace", "n", opts.namespace, "Name of Kubernetes namespace used to run guard server.")
 	cmd.Flags().StringVar(&opts.addr, "addr", opts.addr, "Address (host:port) of guard server.")
-	cmd.Flags().BoolVar(&opts.enableRBAC, "rbac", opts.enableRBAC, "If true, uses RBAC with operator and database objects")
 	cmd.Flags().BoolVar(&opts.runOnMaster, "run-on-master", opts.runOnMaster, "If true, runs Guard server on master instances")
 	cmd.Flags().StringVar(&opts.privateRegistry, "private-registry", opts.privateRegistry, "Private Docker registry")
 	cmd.Flags().StringVar(&opts.imagePullSecret, "image-pull-secret", opts.imagePullSecret, "Name of image pull secret")
@@ -244,6 +240,7 @@ func newDeployment(opts options) runtime.Object {
 					},
 				},
 				Spec: core.PodSpec{
+					ServiceAccountName: "guard",
 					Containers: []core.Container{
 						{
 							Name:  "guard",
@@ -302,9 +299,6 @@ func newDeployment(opts options) runtime.Object {
 				Name: opts.imagePullSecret,
 			},
 		}
-	}
-	if opts.enableRBAC {
-		d.Spec.Template.Spec.ServiceAccountName = "guard"
 	}
 	if opts.runOnMaster {
 		d.Spec.Template.Spec.NodeSelector = map[string]string{

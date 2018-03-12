@@ -1,5 +1,5 @@
 hash: 952499e0c45f5ea358a53cddf1c5d3985bb02ce0bc754c58b79143b90cecea6e
-updated: 2018-03-11T20:48:22.389756595-07:00
+updated: 2018-03-11T21:11:04.541907059-07:00
 imports:
 - name: appscode.com/api
   version: 4563b7ddd49c3a332c9159b84417f15c3c5e574b
@@ -31,6 +31,7 @@ imports:
   - context
   - env
   - homedir
+  - ioutil
   - log
   - log/golog
   - net
