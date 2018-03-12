@@ -33,3 +33,4 @@ dist/
 .idea/
 **/node_modules/
 .vscode/
+coverage.txt
