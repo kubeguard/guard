@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/appscode/guard.svg?branch=master)](https://travis-ci.org/appscode/guard)
-![badge](https://ci.concourse-ci.org/api/v1/teams/main/pipelines/main/jobs/bosh-rc/badge)
+![badge](http://159.65.228.198:8080/api/v1/teams/main/pipelines/guard/jobs/test-guard/badge)
 [![Go Report Card](https://goreportcard.com/badge/appscode/guard "Go Report Card")](https://goreportcard.com/report/appscode/guard)
 [![GoDoc](https://godoc.org/github.com/appscode/guard?status.svg "GoDoc")](https://godoc.org/github.com/appscode/guard)
 
