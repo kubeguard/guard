@@ -8,7 +8,6 @@ import (
 	"github.com/coreos/go-oidc"
 	"github.com/pkg/errors"
 	auth "k8s.io/api/authentication/v1"
-	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 /*
@@ -80,14 +79,10 @@ func (s Authenticator) Check(token string) (*auth.UserInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	groups, err := s.graphClient.GetGroups(resp.Username)
+	resp.Groups, err = s.graphClient.GetGroups(resp.Username)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get groups")
 	}
-	g := sets.NewString(groups...)
-	g.Insert(resp.Groups...)
-	resp.Groups = g.List()
 	return resp, nil
 }
 
