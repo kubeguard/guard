@@ -69,12 +69,50 @@ $ kubectl apply -f installer.yaml
   }
 }
 ```
-To use Google authentication, you need a token with the following OAuth scopes:
- - https://www.googleapis.com/auth/userinfo.email
- - https://www.googleapis.com/auth/admin.directory.group.readonly
+
+## Configure kubectl
 
 You can use the following command to issue a token:
 ```
 $ guard get token -o google
 ```
-This will run a local HTTP server to issue a token with appropriate OAuth2 scopes. Guard uses the token found in `TokenReview` request object to read user's profile information and list of Google Groups this user is member of. In the `TokenReview` response, `status.user.username` is set to user's Google email, `status.user.groups` is set to email of Google groups under the domain found in client cert of which this user is a member of.
+
+This will open a login window in your browser. After logged into your account, user info will be written in `~/.kube/config`. Your email will be used for user name.
+```
+$ guard get token -o google
+I0312 12:36:40.927613   14596 logs.go:19] FLAG: --alsologtostderr="false"
+I0312 12:36:40.927770   14596 logs.go:19] FLAG: --analytics="true"
+I0312 12:36:40.927784   14596 logs.go:19] FLAG: --help="false"
+I0312 12:36:40.927796   14596 logs.go:19] FLAG: --httptest.serve=""
+I0312 12:36:40.927809   14596 logs.go:19] FLAG: --log_backtrace_at=":0"
+I0312 12:36:40.927820   14596 logs.go:19] FLAG: --log_dir=""
+I0312 12:36:40.927830   14596 logs.go:19] FLAG: --logtostderr="false"
+I0312 12:36:40.927842   14596 logs.go:19] FLAG: --organization="google"
+I0312 12:36:40.927855   14596 logs.go:19] FLAG: --stderrthreshold="0"
+I0312 12:36:40.927867   14596 logs.go:19] FLAG: --v="0"
+I0312 12:36:40.927877   14596 logs.go:19] FLAG: --vmodule=""
+I0312 12:36:41.252150   14596 token.go:75] [Oauth2 callback receiver listening on 127.0.0.1:44027]
+I0312 12:36:41.252275   14596 token.go:91] [Auhtorization code URL: https://accounts.google.com/o/oauth2/auth?client_id=37154062056-220683ek37naab43v23vc5qg01k1j14g.apps.googleusercontent.com&prompt=select_account&redirect_uri=http%3A%2F%2F127.0.0.1%3A44027&response_type=code&scope=openid+profile+email&state=%2F]
+Current Kubeconfig is backed up as /home/ac/.kube/config.bak.2018-03-12T12-36.
+Configuration has been written to /home/ac/.kube/config
+
+$ cat ~/.kube/config
+...
+users:
+- name: [YOUR_EMAIL]
+  user:
+    auth-provider:
+      config:
+        client-id: REDACTED
+        client-secret: REDACTED
+        id-token: REDACTED 
+        idp-issuer-url: https://accounts.google.com
+        refresh-token: REDACTED
+
+# using this [YOUR_EMAIL] for authenticaiton
+$ kubeclt get pods --user [YOUR_EMAIL]
+NAMESPACE     NAME                                    READY     STATUS    RESTARTS   AGE
+kube-system   kube-dns-54cccfbdf8-jf9p2               3/3       Running   0          6h
+
+```
+Guard uses the token found in `TokenReview` request object to read user's profile information and list of Google Groups this user is member of. In the `TokenReview` response, `status.user.username` is set to user's Google email, `status.user.groups` is set to email of Google groups under the domain found in client cert of which this user is a member of.

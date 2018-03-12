@@ -19,56 +19,59 @@ TO use LDAP,
 1.  Create a client cert with `Organization` set to `Ldap`.For LDAP `COMMON_NAME` is optional. To ease this process, use the Guard cli to issue a client cert/key pair.
     
     ```console
-    # If COMMON_NAME is not provided, then default COMMON_NAME `client` is used
+    # If COMMON_NAME is not provided, then default COMMON_NAME `ldap` is used
     $ guard init client [COMMON_NAME] -o Ldap
     ```
 
 2.  Send following additional flags to guard server.
     ```console
-    --ldap-server-address=[SERVER_ADDRESS]
+    --ldap.server-address=[SERVER_ADDRESS]
     
     # If the port is not supplied, then default port `389` is used
-    --ldap-server-port=[PORT]
+    --ldap.server-port=[PORT]
     
     # To start tls connection
-    --ldap-start-tls
+    --ldap.start-tls
     
     # For secure LDAP (LDAPS)
-    --ldap-is-secure-ldap
+    --ldap.is-secure-ldap
     
     # The connector uses bind DN and password as credential to search for users and groups.
     # Not required if the LDAP server provides access for anonymous auth.
-    --ldap-bind-dn=[BIND_DN]
-    --ldap-bind-password=[BIND_PASSWORD]
+    --ldap.bind-dn=[BIND_DN]
+    --ldap.bind-password=[BIND_PASSWORD]
     
     # BaseDN to start the user search
-    --ldap-user-search-dn=[USER_SEARCH_DN]
+    --ldap.user-search-dn=[USER_SEARCH_DN]
     
     # Filter to apply when searching user
     # If the filter is not supplied, then default filter `(objectClass=person)` is used
-    --ldap-user-search-filter=[USER_SEARCH_FILTER]
+    --ldap.user-search-filter=[USER_SEARCH_FILTER]
     
     # LDAP username attribute
     # If the attribute is not supplied, then default attribute `uid` is used
-    --ldap-user-attribute=[USER_ATTRIBUTE]
+    --ldap.user-attribute=[USER_ATTRIBUTE]
     
     # BaseDN to start the group search
-    --ldap-group-search-dn=[GROUP_SEARCH_DN]
+    --ldap.group-search-dn=[GROUP_SEARCH_DN]
     
     # Filter to apply when searching the group
     # If the filter is not supplied, then default filter `(objectClass=groupOfNames)` is used
-    --ldap-group-search-filter=[GROUP_SEARCH_FILTER]
+    --ldap.group-search-filter=[GROUP_SEARCH_FILTER]
     
     # LDAP group name attribute
     # If the attribute is not supplied, then default attribute `cn` is used
-    --ldap-group-name-attribute=[GROUP_NAME_ATTRIBUTE]
+    --ldap.group-name-attribute=[GROUP_NAME_ATTRIBUTE]
     
     # LDAP group member attribute
     # If the attribute is not supplied, then default attribute `member` is used
-    --ldap-group-member-attribute=[GROUP_MEMBER_ATTRIBUTE]  
+    --ldap.group-member-attribute=[GROUP_MEMBER_ATTRIBUTE]  
     
     # To skip LDAP server TLS verification, provide this flag
-    --ldap-skip-tls-verification
+    --ldap.skip-tls-verification
+    
+    # Ca cert file that used for self signed LDAP server certificate
+    --ldap.ca-cert-file
         
     ```
     
@@ -76,20 +79,21 @@ TO use LDAP,
      ```console
      # generate Kubernetes YAMLs for deploying guard server
      $  guard get installer \
-            --ldap-server-address=[SERVER_ADDRESS] \
-            --ldap-server-port=[PORT] \
-            --ldap-bind-dn=[BIND_DN] \
-            --ldap-bind-password=[BIND_PASSWORD] \
-            --ldap-user-search-dn=[USER_SEARCH_DN] \
-            --ldap-user-search-filter=[USER_SEARCH_FILTER] \
-            --ldap-user-attribute=[USER_ATTRIBUTE] \
-            --ldap-group-search-dn=[GROUP_SEARCH_DN] \
-            --ldap-group-search-filter=[GROUP_SEARCH_FILTER] \
-            --ldap-group-name-attribute=[GROUP_NAME_ATTRIBUTE] \
-            --ldap-group-member-attribute=[GROUP_MEMBER_ATTRIBUTE] \
-            --ldap-skip-tls-verification=[true/false] \
-            --ldap-start-tls=[true/false]\
-            --ldap-is-secure-ldap=[true/false]\
+            --ldap.server-address=[SERVER_ADDRESS] \
+            --ldap.server-port=[PORT] \
+            --ldap.bind-dn=[BIND_DN] \
+            --ldap.bind-password=[BIND_PASSWORD] \
+            --ldap.user-search-dn=[USER_SEARCH_DN] \
+            --ldap.user-search-filter=[USER_SEARCH_FILTER] \
+            --ldap.user-attribute=[USER_ATTRIBUTE] \
+            --ldap.group-search-dn=[GROUP_SEARCH_DN] \
+            --ldap.group-search-filter=[GROUP_SEARCH_FILTER] \
+            --ldap.group-name-attribute=[GROUP_NAME_ATTRIBUTE] \
+            --ldap.group-member-attribute=[GROUP_MEMBER_ATTRIBUTE] \
+            --ldap.skip-tls-verification=[true/false] \
+            --ldap.start-tls=[true/false]\
+            --ldap.is-secure-ldap=[true/false]\
+            --ldap.ca-cert-file=[PATH_TO_THE_CA_CERT_FILE]
             > installer.yaml
 
      $ kubectl apply -f installer.yaml

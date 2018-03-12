@@ -22,14 +22,14 @@ TO use Azure,
     $ guard init client {common-name} -o Azure
     ```
 
-2.  Send additional `--azure-client-id`,`--azure-client-secret` and `--azure-tenant-id` flags to guard server. You can use following command to create YAMLs for this setup.
+2.  Send additional `--azure.client-id`,`--azure.client-secret` and `--azure.tenant-id` flags to guard server. You can use following command to create YAMLs for this setup.
      ```console
      # generate Kubernetes YAMLs for deploying guard server
-     $ guard get installer --azure-client-id=[APPLICATION_ID] --azure-client-secret=[APPLICATION_SECRET] --azure-tenant-id=[TENANT_ID] > installer.yaml
+     $ guard get installer --azure.client-id=[APPLICATION_ID] --azure.client-secret=[APPLICATION_SECRET] --azure.tenant-id=[TENANT_ID] > installer.yaml
      $ kubectl apply -f installer.yaml
 
      ```
-     Procedure to find `APPLICATION_ID`, `APPLICATION_SECRET` are given below. Replace the TENANT_ID with your azure tenant id.
+     Procedure to find `APPLICATION_ID`, `APPLICATION_SECRET` are given below. Replace the `TENANT_ID` with your azure tenant id.
 
 ### Configure Azure Active Directory App
 
