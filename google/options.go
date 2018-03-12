@@ -20,7 +20,7 @@ func (o Options) ToArgs() []string {
 	var args []string
 
 	if o.ServiceAccountJsonFile != "" {
-		args = append(args, fmt.Sprintf("--google.sa-json-file=/etc/guard/auth/sa.json"))
+		args = append(args, "--google.sa-json-file=/etc/guard/auth/sa.json")
 	}
 	if o.AdminEmail != "" {
 		args = append(args, fmt.Sprintf("--google.admin-email=%s", o.AdminEmail))

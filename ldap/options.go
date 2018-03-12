@@ -81,13 +81,13 @@ func (o Options) ToArgs() []string {
 		args = append(args, fmt.Sprintf("--ldap.group-name-attribute=%s", o.GroupNameAttribute))
 	}
 	if o.SkipTLSVerification {
-		args = append(args, fmt.Sprintf("--ldap.skip-tls-verification"))
+		args = append(args, "--ldap.skip-tls-verification")
 	}
 	if o.IsSecureLDAP {
-		args = append(args, fmt.Sprintf("--ldap.is-secure-ldap"))
+		args = append(args, "--ldap.is-secure-ldap")
 	}
 	if o.StartTLS {
-		args = append(args, fmt.Sprintf("--ldap.start-tls"))
+		args = append(args, "--ldap.start-tls")
 	}
 	if o.CaCertFile != "" {
 		args = append(args, fmt.Sprintf("--ldap.ca-cert-file=/etc/guard/certs/ca.crt"))

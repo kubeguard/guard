@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/appscode/go/log"
+	"github.com/appscode/go/ntp"
 	"github.com/appscode/go/signals"
 	v "github.com/appscode/go/version"
 	"github.com/appscode/guard/token"
@@ -32,6 +33,17 @@ func (s *Server) AddFlags(fs *pflag.FlagSet) {
 }
 
 func (s Server) ListenAndServe() {
+	if s.RecommendedOptions.NTP.Enabled() {
+		ticker := time.NewTicker(s.RecommendedOptions.NTP.Interval)
+		go func() {
+			for range ticker.C {
+				if err := ntp.CheckSkew(s.RecommendedOptions.NTP.MaxClodkSkew); err != nil {
+					log.Fatal(err)
+				}
+			}
+		}()
+	}
+
 	if s.RecommendedOptions.Token.AuthFile != "" {
 		s.TokenAuthenticator = token.New(s.RecommendedOptions.Token)
 

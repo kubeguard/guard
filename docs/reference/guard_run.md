@@ -27,6 +27,7 @@ guard run [flags]
       --azure.client-id string               MS Graph application client ID to use
       --azure.client-secret string           MS Graph application client secret to use
       --azure.tenant-id string               MS Graph application tenant id to use
+      --clock-check-interval duration        Interval between checking time against NTP servers (default 5m0s)
       --google.admin-email string            Email of G Suite administrator
       --google.sa-json-file string           Path to Google service account json file
   -h, --help                                 help for run
@@ -45,7 +46,7 @@ guard run [flags]
       --ldap.user-attribute string           Ldap username attribute (default "uid")
       --ldap.user-search-dn string           BaseDN to start the search user
       --ldap.user-search-filter string       Filter to apply when searching user (default "(objectClass=person)")
-      --max-clock-skeew duration             Max acceptable clock skew for server clock (default 5s)
+      --max-clock-skew duration              Max acceptable clock skew for server clock (default 5s)
       --secure-addr string                   host:port used to serve secure apis (default ":8443")
       --tls-ca-file string                   File containing CA certificate
       --tls-cert-file string                 File container server TLS certificate
