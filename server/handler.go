@@ -22,7 +22,7 @@ func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	org := crt.Subject.Organization[0]
-	log.Infof("Received token review request for %s@%s", crt.Subject.CommonName, org)
+	log.Infof("Received token review request for %s/%s", org, crt.Subject.CommonName)
 
 	data := auth.TokenReview{}
 	err := json.NewDecoder(req.Body).Decode(&data)
