@@ -190,7 +190,7 @@ func addUserInKubeConfig(idToken, refreshToken string) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to retrive emial from idToken")
 	}
-	konfig.AuthInfos["google-"+email] = authInfo
+	konfig.AuthInfos[email] = authInfo
 
 	err = os.MkdirAll(filepath.Dir(KubeConfigPath()), 0755)
 	if err != nil {

@@ -22,7 +22,7 @@ Guide for Guard installation and PKI initialization are given [here](/docs/setup
 Create a client cert with `Organization` set to `Ldap`.For LDAP `COMMON_NAME` is optional. To ease this process, use the Guard cli to issue a client cert/key pair.
     
 ```console
-    # If COMMON_NAME is not provided, then default COMMON_NAME `client` is used
+    # If COMMON_NAME is not provided, then default COMMON_NAME `ldap` is used
     $ guard init client [COMMON_NAME] -o Ldap
 ```
 
@@ -32,20 +32,20 @@ Now deploy Guard server so that your Kubernetes api server can access it. Use th
 ```console
      # generate Kubernetes YAMLs for deploying guard server
      $  guard get installer \
-            --ldap-server-address=[SERVER_ADDRESS] \
-            --ldap-server-port=636 \
-            --ldap-bind-dn=[BIND_DN] \
-            --ldap-bind-password=[BIND_PASSWORD] \
-            --ldap-user-search-dn=[USER_SEARCH_DN] \
-            --ldap-user-search-filter=[USER_SEARCH_FILTER] \
-            --ldap-user-attribute=[USER_ATTRIBUTE] \
-            --ldap-group-search-dn=[GROUP_SEARCH_DN] \
-            --ldap-group-search-filter=[GROUP_SEARCH_FILTER] \
-            --ldap-group-name-attribute=[GROUP_NAME_ATTRIBUTE] \
-            --ldap-group-member-attribute=[GROUP_MEMBER_ATTRIBUTE] \
-            --ldap-skip-tls-verification=[true/false] \
-            --ldap-start-tls=false\
-            --ldap-is-secure-ldap=true\
+            --ldap.server-address=[SERVER_ADDRESS] \
+            --ldap.server-port=636 \
+            --ldap.bind-dn=[BIND_DN] \
+            --ldap.bind-password=[BIND_PASSWORD] \
+            --ldap.user-search-dn=[USER_SEARCH_DN] \
+            --ldap.user-search-filter=[USER_SEARCH_FILTER] \
+            --ldap.user-attribute=[USER_ATTRIBUTE] \
+            --ldap.group-search-dn=[GROUP_SEARCH_DN] \
+            --ldap.group-search-filter=[GROUP_SEARCH_FILTER] \
+            --ldap.group-name-attribute=[GROUP_NAME_ATTRIBUTE] \
+            --ldap.group-member-attribute=[GROUP_MEMBER_ATTRIBUTE] \
+            --ldap.skip-tls-verification=[true/false] \
+            --ldap.start-tls=false\
+            --ldap.is-secure-ldap=true\
             > installer.yaml
 
      $ kubectl apply -f installer.yaml
