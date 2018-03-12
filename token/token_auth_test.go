@@ -84,11 +84,16 @@ func TestLoadTokenFile(t *testing.T) {
 			[]string{
 				`token1,user1,1," group1 , group2 "`,
 				`token2, user2, 2,group1`,
-				`token4, user3, 3`,
-				`token3, user4, 4,`,
+				`token3, user3, 3`,
+				`token4, user4, 4,`,
+			},
+			map[string]auth.UserInfo{
+				"token1": {Username: "user1", UID: "1", Groups: []string{"group1", "group2"}},
+				"token2": {Username: "user2", UID: "2", Groups: []string{"group1"}},
+				"token3": {Username: "user3", UID: "3"},
+				"token4": {Username: "user4", UID: "4"},
 			},
 			nil,
-			fmt.Errorf("failed to parse token auth file: line 3, column 0: wrong number of fields in line"),
 		},
 		{
 			[]string{

@@ -62,6 +62,7 @@ func LoadTokenFile(file string) (map[string]auth.UserInfo, error) {
 	defer csvFile.Close()
 
 	reader := csv.NewReader(bufio.NewReader(csvFile))
+	reader.FieldsPerRecord = -1
 	data := map[string]auth.UserInfo{}
 	lineNum := 0
 	for {
