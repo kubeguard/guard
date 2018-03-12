@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/appscode/go/log"
 	"github.com/appscode/guard/azure/graph"
 	"github.com/coreos/go-oidc"
 	"github.com/pkg/errors"
@@ -27,7 +26,6 @@ const (
 	OrgType            = "azure"
 	azureIssuerURL     = "https://sts.windows.net/"
 	azureUsernameClaim = "upn"
-	azureGroupClaim    = "groups"
 )
 
 var (
@@ -78,7 +76,7 @@ func (s Authenticator) Check(token string) (*auth.UserInfo, error) {
 		return nil, errors.Wrap(err, "error parsing claims")
 	}
 
-	resp, err := claims.getUserInfo(azureUsernameClaim, azureGroupClaim)
+	resp, err := claims.getUserInfo(azureUsernameClaim)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +103,7 @@ func getClaims(token *oidc.IDToken) (claims, error) {
 
 // ReviewFromClaims creates a new TokenReview object from the claims object
 // the claims object
-func (c claims) getUserInfo(usernameClaim, groupsClaim string) (*auth.UserInfo, error) {
+func (c claims) getUserInfo(usernameClaim string) (*auth.UserInfo, error) {
 	var resp = &auth.UserInfo{}
 
 	username, err := c.String(usernameClaim)
@@ -117,19 +115,6 @@ func (c claims) getUserInfo(usernameClaim, groupsClaim string) (*auth.UserInfo, 
 	}
 	resp.Username = username
 
-	//groups contain group-id
-	groups, err := c.StringSlice(groupsClaim)
-	if err != nil {
-		if err == ErrorClaimNotFound {
-			// Don't error out if groups claim is not present.
-			// Just log a warning
-			log.Infof("Groups is empty")
-			groups = []string{}
-		} else {
-			return nil, errors.Wrap(err, "unable to get groups claim")
-		}
-	}
-	resp.Groups = groups
 	return resp, nil
 }
 
@@ -149,34 +134,6 @@ func (c claims) String(key string) (string, error) {
 		resp = v
 	} else { // Not a string type
 		return "", fmt.Errorf("claim is not a string")
-	}
-	return resp, nil
-}
-
-// StringSlice gets a slice of strings from claims given a key. Returns false if
-// the key does not exist
-func (c claims) StringSlice(key string) ([]string, error) {
-	var resp []string
-	var intermediate []interface{}
-	if !c.hasKey(key) {
-		return nil, ErrorClaimNotFound
-	}
-	if val, ok := c[key].([]interface{}); ok {
-		intermediate = val
-	} else {
-		return nil, fmt.Errorf("claim is not a slice")
-	}
-	// Initialize the slice to the same length as the intermediate slice. This saves
-	// some steps with not having to append
-	resp = make([]string, len(intermediate))
-	// You can't type assert the whole slice as a type, so assert each element to make
-	// sure it is a string
-	for i := 0; i < len(resp); i++ {
-		if strVal, ok := intermediate[i].(string); ok {
-			resp[i] = strVal
-		} else {
-			return nil, fmt.Errorf("claim is not a slice of strings")
-		}
 	}
 	return resp, nil
 }

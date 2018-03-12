@@ -386,6 +386,7 @@ func TestCheckGoogleAuthenticationFailed(t *testing.T) {
 				t.Fatalf("Error when signing token. reason: %v", err)
 			}
 			resp, err := client.Check(domain, token)
+			//t.Log(test)
 			assert.NotNil(t, err)
 			assert.Nil(t, resp)
 		})

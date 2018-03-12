@@ -88,7 +88,7 @@ func (g *Authenticator) Check(name, token string) (*auth.UserInfo, error) {
 	}
 
 	if info.HD != name {
-		return nil, errors.Wrapf(err, "user is not a member of domain %s", name)
+		return nil, errors.Errorf("user is not a member of domain %s", name)
 	}
 
 	resp := &auth.UserInfo{

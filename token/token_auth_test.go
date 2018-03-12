@@ -265,13 +265,15 @@ func TestCheckTokenAuth(t *testing.T) {
 		},
 	}
 
-	srv := Authenticator{}
+	srv := Authenticator{
+		tokenMap: tokenMap,
+	}
 
 	for _, testData := range dataset {
 		t.Run(testData.testName, func(t *testing.T) {
 			resp, err := srv.Check(testData.token)
 
-			t.Log(tokenMap)
+			t.Log(srv.tokenMap)
 			t.Log("token :", testData.token)
 
 			if testData.authenticated {

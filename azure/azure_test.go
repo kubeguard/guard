@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"strconv"
 	"testing"
 
@@ -320,64 +319,27 @@ func TestCheckAzureAuthenticationFailed(t *testing.T) {
 }
 
 var testClaims = claims{
-	"upn": "nahid",
-	"groups": []interface{}{
-		"group1",
-		"group2",
-	},
-	"bad_groups": []interface{}{
-		"bad1",
-		"bad2",
-		1204,
-	},
+	"upn":     username,
 	"bad_upn": 1204,
 }
 
 func TestReviewFromClaims(t *testing.T) {
-	// valid user and groups claim
-	t.Run("valid user and groups claim", func(t *testing.T) {
-		var validReview = &auth.TokenReview{
-			Status: auth.TokenReviewStatus{
-				Authenticated: true,
-				User: auth.UserInfo{
-					Username: "nahid",
-					Groups: []string{
-						"group1",
-						"group2",
-					},
-				},
-			},
+	// valid user claim
+	t.Run("valid user claim", func(t *testing.T) {
+		var validUserInfo = &auth.UserInfo{
+			Username: username,
 		}
 
-		review, err := testClaims.getUserInfo("upn", "groups")
-		if err != nil {
-			t.Errorf("Error when generating token review: %s", err)
-		}
-		if !reflect.DeepEqual(review, validReview) {
-			t.Errorf("TokenReviews : expected %+v\ngot %+v", *validReview, *review)
-		}
-	})
-
-	// missing group claim
-	t.Run("missing group claim", func(t *testing.T) {
-		review, err := testClaims.getUserInfo("upn", "no_groups")
-		if err != nil {
-			t.Errorf("Error when generating token review: %s", err)
-		}
-		if len(review.Groups) != 0 {
-			t.Errorf("TokenReview should have an empty groups list. Got a list with length %d", len(review.Groups))
-		}
+		resp, err := testClaims.getUserInfo("upn")
+		assert.Nil(t, err)
+		assert.Equal(t, validUserInfo, resp)
 	})
 
 	// invalid claim should error
 	t.Run("invalid claim should error", func(t *testing.T) {
-		review, err := testClaims.getUserInfo("bad_upn", "groups")
-		if err == nil {
-			t.Error("Expected error with invalid claim")
-		}
-		if review != nil {
-			t.Error("TokenReview should be nil when there is an error")
-		}
+		resp, err := testClaims.getUserInfo("bad_upn")
+		assert.NotNil(t, err)
+		assert.Nil(t, resp)
 	})
 }
 
@@ -385,79 +347,21 @@ func TestString(t *testing.T) {
 	// valid claim key should return value
 	t.Run("valid claim key should return value", func(t *testing.T) {
 		v, err := testClaims.String("upn")
-		if err != nil {
-			t.Errorf("Error getting string: %s", err)
-		}
-		if v != "nahid" {
-			t.Errorf("Expected %v, got %v", "nahid", v)
-		}
+		assert.Nil(t, err)
+		assert.Equal(t, username, v)
 	})
 
 	// non-existent claim key should error
 	t.Run("non-existent claim key should error", func(t *testing.T) {
 		v, err := testClaims.String("claim_don't_exist")
-		if err == nil {
-			t.Error("Did not get an error")
-		}
-		if v != "" {
-			t.Errorf("Expected empty, got %v", v)
-		}
+		assert.NotNil(t, err)
+		assert.Empty(t, v, "expected empty")
 	})
 
 	//non-string claim should error
 	t.Run("non-string claim should error", func(t *testing.T) {
 		v, err := testClaims.String("bad_upn")
-		if err == nil {
-			t.Error("Expected an error")
-		}
-		if v != "" {
-			t.Errorf("Expected empty, got %v", v)
-		}
-	})
-}
-
-func TestStringSliceClaim(t *testing.T) {
-	// valid claim key should return slice
-	t.Run("valid claim key should return slice", func(t *testing.T) {
-		v, err := testClaims.StringSlice("groups")
-		if err != nil {
-			t.Errorf("Error getting slice: %s", err)
-		}
-		if !reflect.DeepEqual(v, []string{"group1", "group2"}) {
-			t.Errorf("Expected %v, got %v", v, []string{"group1", "group2"})
-		}
-	})
-
-	// non-existent claim key should error
-	t.Run("non-existent claim key should error", func(t *testing.T) {
-		v, err := testClaims.StringSlice("do_not_exist")
-		if err == nil {
-			t.Error("Expected an error")
-		}
-		if v != nil {
-			t.Errorf("Expected nil slice, got %v", v)
-		}
-	})
-
-	// non string slice claim should error
-	t.Run("non string slice claim should error", func(t *testing.T) {
-		v, err := testClaims.StringSlice("upn")
-		if err == nil {
-			t.Error("Expected an error")
-		}
-		if v != nil {
-			t.Errorf("Expected nil slice, got %v", v)
-		}
-	})
-
-	// wrong type slice claim should error
-	t.Run("wrong type slice claim should error", func(t *testing.T) {
-		v, err := testClaims.StringSlice("bad_groups")
-		if err == nil {
-			t.Error("Expected an error")
-		}
-		if v != nil {
-			t.Errorf("Expected nil slice, got %v", v)
-		}
+		assert.NotNil(t, err)
+		assert.Empty(t, v, "expected empty")
 	})
 }
