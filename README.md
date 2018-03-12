@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/appscode/guard.svg?branch=master)](https://travis-ci.org/appscode/guard)
-[![ci.nono.io](https://ci.nono.io/api/v1/pipelines/sslip.io/jobs/check-dns/badge)]
+![ci.nono.io](https://ci.nono.io/api/v1/pipelines/sslip.io/jobs/check-dns/badge)
 [![Go Report Card](https://goreportcard.com/badge/appscode/guard "Go Report Card")](https://goreportcard.com/report/appscode/guard)
 [![GoDoc](https://godoc.org/github.com/appscode/guard?status.svg "GoDoc")](https://godoc.org/github.com/appscode/guard)
 
