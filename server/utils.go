@@ -1,6 +1,8 @@
 package server
 
 import (
+	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -13,10 +15,10 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-// Write replies to the request with the specified TokenReview object and HTTP code.
+// write replies to the request with the specified TokenReview object and HTTP code.
 // It does not otherwise end the request; the caller should ensure no further
 // writes are done to w.
-func Write(w http.ResponseWriter, info *auth.UserInfo, err error) {
+func write(w http.ResponseWriter, info *auth.UserInfo, err error) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("x-content-type-options", "nosniff")
 
@@ -28,35 +30,46 @@ func Write(w http.ResponseWriter, info *auth.UserInfo, err error) {
 	}
 
 	if err != nil {
+		code := http.StatusUnauthorized
+		if v, ok := err.(httpStatusCode); ok {
+			code = v.Code()
+		}
 		printStackTrace(err)
-		w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(code)
 		resp.Status = auth.TokenReviewStatus{
 			Authenticated: false,
 			Error:         err.Error(),
 		}
-		return
+	} else {
+		w.WriteHeader(http.StatusOK)
+		resp.Status = auth.TokenReviewStatus{
+			Authenticated: true,
+			User:          *info,
+		}
 	}
 
-	w.WriteHeader(http.StatusOK)
-	resp.Status = auth.TokenReviewStatus{
-		Authenticated: true,
-		User:          *info,
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		panic(err)
 	}
-	json.NewEncoder(w).Encode(resp)
 }
 
-func printStackTrace(e2 error) {
-	type stackTracer interface {
-		StackTrace() errors.StackTrace
-	}
+type stackTracer interface {
+	StackTrace() errors.StackTrace
+}
 
-	err, ok := errors.Cause(e2).(stackTracer)
+type httpStatusCode interface {
+	Code() int
+}
+
+func printStackTrace(err error) {
+	c, ok := errors.Cause(err).(stackTracer)
 	if !ok {
 		panic("oops, err does not implement stackTracer")
 	}
 
-	st := err.StackTrace()
-	log.Errorf("%s\nStacktrace: %+v", e2.Error(), st) // top two frames
+	st := c.StackTrace()
+	log.Errorf("%s\nStacktrace: %+v", err.Error(), st) // top two frames
 }
 
 func GetSupportedOrg() []string {
@@ -70,4 +83,38 @@ func GetSupportedOrg() []string {
 // output form : Github/Google/Gitlab
 func SupportedOrgPrintForm() string {
 	return strings.Join(GetSupportedOrg(), "/")
+}
+
+// WithCode annotates err with a new code.
+// If err is nil, WithCode returns nil.
+func WithCode(err error, code int) error {
+	if err == nil {
+		return nil
+	}
+	return &withCode{
+		cause: err,
+		code:  code,
+	}
+}
+
+type withCode struct {
+	cause error
+	code  int
+}
+
+func (w *withCode) Error() string { return w.cause.Error() }
+func (w *withCode) Cause() error  { return w.cause }
+func (w *withCode) Code() int     { return w.code }
+
+func (w *withCode) Format(s fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		if s.Flag('+') {
+			fmt.Fprintf(s, "%+v\n", w.Cause())
+			return
+		}
+		fallthrough
+	case 's', 'q':
+		io.WriteString(s, w.Error())
+	}
 }

@@ -3,14 +3,14 @@ package server
 import (
 	"bytes"
 	"crypto/tls"
-	"fmt"
-	"io/ioutil"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/appscode/kutil/tools/certstore"
 	"github.com/google/gofuzz"
 	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
 	auth "k8s.io/api/authentication/v1"
 	"k8s.io/client-go/util/cert"
 )
@@ -55,11 +55,14 @@ func TestServeHTTP(t *testing.T) {
 	f := fuzz.New()
 	obj := TestData{}
 
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 1000; i++ {
 		f.Fuzz(&obj)
 
 		review := new(bytes.Buffer)
-		json.NewEncoder(review).Encode(obj.TokenReview)
+		err := json.NewEncoder(review).Encode(obj.TokenReview)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		req := httptest.NewRequest("GET", "http://guard.test/tokenreviews", review)
 		if obj.UseClientCert && obj.IncludeClientOrg {
@@ -76,10 +79,9 @@ func TestServeHTTP(t *testing.T) {
 		srv.ServeHTTP(w, req)
 
 		resp := w.Result()
-		body, _ := ioutil.ReadAll(resp.Body)
-
-		fmt.Println(resp.StatusCode)
-		fmt.Println(resp.Header.Get("Content-Type"))
-		fmt.Println(string(body))
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "unexpected response status code")
+		assert.Equal(t, "application/json", resp.Header.Get("Content-Type"), "unexpected response content-type")
+		err = json.NewDecoder(resp.Body).Decode(&auth.TokenReview{})
+		assert.Nil(t, err, "response body must be of kind TokenReview")
 	}
 }
