@@ -1,0 +1,72 @@
+resource_types:
+- name: pull-request
+  type: docker-image
+  source:
+    repository: appscode/git-pull-resource
+    tag: 1.0.0
+
+resources:
+- name: guard
+  type: git
+  source:
+    uri: https://github.com/appscode/guard
+    branch: master
+
+- name: pull-request
+  type: pull-request
+  source:
+    owner: appscode
+    repo: guard
+    label: ok-to-test
+    org: appscode
+    access_token: ((access_token))
+
+jobs:
+- name: test-guard
+  plan:
+  - get: guard
+    trigger: true
+  - task: test-guard
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: golang
+          tags: 1.10-alpine
+      inputs:
+      - name: guard
+      run:
+        path: guard/hack/concourse/test.sh
+
+- name: test-pr
+  plan:
+  - get: pull-request
+    version: every
+    trigger: true
+  - put: pull-request
+    params:
+      path: pull-request
+      status: pending
+  - task: test-pr
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: golang
+          tags: 1.10-alpine
+      inputs:
+      - name: pull-request
+      run:
+        path: pull-request/hack/concourse/test_pr.sh
+    on_success:
+      put: pull-request
+      params:
+        path: pull-request
+        status: success
+    on_failure:
+      put: pull-request
+      params:
+        path: pull-request
+        status: failure
