@@ -63,13 +63,12 @@ type httpStatusCode interface {
 }
 
 func printStackTrace(err error) {
-	c, ok := errors.Cause(err).(stackTracer)
-	if !ok {
-		panic("oops, err does not implement stackTracer")
-	}
+	log.Errorln(err)
 
-	st := c.StackTrace()
-	log.Errorf("%s\nStacktrace: %+v", err.Error(), st) // top two frames
+	if c, ok := errors.Cause(err).(stackTracer); ok {
+		st := c.StackTrace()
+		log.Debugf("Stacktrace: %+v", err.Error(), st) // top two frames
+	}
 }
 
 func GetSupportedOrg() []string {

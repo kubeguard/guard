@@ -3,7 +3,6 @@ package server
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
@@ -18,9 +17,9 @@ import (
 	"github.com/appscode/kutil/meta"
 	"github.com/appscode/kutil/tools/fsnotify"
 	"github.com/appscode/pat"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
-	auth "k8s.io/api/authentication/v1"
 )
 
 type Server struct {
@@ -114,7 +113,17 @@ func (s Server) ListenAndServe() {
 	tlsConfig.BuildNameToCertificate()
 
 	m := pat.New()
-	m.Post(fmt.Sprintf("/apis/%s/tokenreviews", auth.SchemeGroupVersion), s)
+
+	// Instrument the handlers with all the metrics, injecting the "handler"
+	// label by currying.
+	handler := promhttp.InstrumentHandlerInFlight(inFlightGauge,
+		promhttp.InstrumentHandlerDuration(duration.MustCurryWith(prometheus.Labels{"handler": "tokenreviews"}),
+			promhttp.InstrumentHandlerCounter(counter,
+				promhttp.InstrumentHandlerResponseSize(responseSize.MustCurryWith(prometheus.Labels{"handler": "tokenreviews"}), s),
+			),
+		),
+	)
+	m.Post("/tokenreviews", handler)
 	m.Get("/metrics", promhttp.Handler())
 	m.Get("/healthz", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(200)

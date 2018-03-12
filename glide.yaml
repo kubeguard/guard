@@ -16,7 +16,7 @@ import:
 - package: github.com/howeyc/gopass
 - package: github.com/jpillora/go-ogle-analytics
 - package: github.com/prometheus/client_golang
-  version: v0.8.0
+  version: c3324c1198cf3374996e9d3098edd46a6b55afc9
 - package: github.com/prometheus/common
   version: 3233b24a36715a2fe36d162260457857a56d672d
 - package: github.com/sirupsen/logrus

@@ -10,7 +10,6 @@ import (
 	"github.com/appscode/kutil/tools/certstore"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
-	auth "k8s.io/api/authentication/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/util/cert"
@@ -86,7 +85,7 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 				APIVersion: "v1",
 				Clusters: map[string]*clientcmdapi.Cluster{
 					"guard-server": {
-						Server: fmt.Sprintf("https://%s/apis/%s/tokenreviews", addr, auth.SchemeGroupVersion),
+						Server: fmt.Sprintf("https://%s/tokenreviews", addr),
 						CertificateAuthorityData: caCert,
 					},
 				},
