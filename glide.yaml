@@ -62,3 +62,5 @@ import:
   version: v2.5.1
 - package: github.com/vjeantet/ldapserver
   version: master
+- package: gopkg.in/yaml.v2
+  version: v2.1.1

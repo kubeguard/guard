@@ -24,16 +24,13 @@ guard run [flags]
 ### Options
 
 ```
-      --addr string                          Http server address (default ":8443")
       --azure.client-id string               MS Graph application client ID to use
       --azure.client-secret string           MS Graph application client secret to use
       --azure.tenant-id string               MS Graph application tenant id to use
-      --ca-cert-file string                  File containing CA certificate
-      --cert-file string                     File container server TLS certificate
+      --clock-check-interval duration        Interval between checking time against NTP servers (default 5m0s)
       --google.admin-email string            Email of G Suite administrator
       --google.sa-json-file string           Path to Google service account json file
   -h, --help                                 help for run
-      --key-file string                      File containing server TLS private key
       --ldap.bind-dn string                  The connector uses this DN in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
       --ldap.bind-password string            The connector uses this password in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
       --ldap.ca-cert-file string             ca cert file that used for self signed server certificate
@@ -49,7 +46,11 @@ guard run [flags]
       --ldap.user-attribute string           Ldap username attribute (default "uid")
       --ldap.user-search-dn string           BaseDN to start the search user
       --ldap.user-search-filter string       Filter to apply when searching user (default "(objectClass=person)")
-      --max-clock-skeew duration             Max acceptable clock skew for server clock (default 5s)
+      --max-clock-skew duration              Max acceptable clock skew for server clock (default 5s)
+      --secure-addr string                   host:port used to serve secure apis (default ":8443")
+      --tls-ca-file string                   File containing CA certificate
+      --tls-cert-file string                 File container server TLS certificate
+      --tls-private-key-file string          File containing server TLS private key
       --token-auth-file string               To enable static token authentication
 ```
 

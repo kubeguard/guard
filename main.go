@@ -5,6 +5,7 @@ import (
 
 	logs "github.com/appscode/go/log/golog"
 	"github.com/appscode/guard/cmds"
+	_ "github.com/stretchr/testify/assert"
 	_ "github.com/vjeantet/ldapserver"
 )
 

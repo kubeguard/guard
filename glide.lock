@@ -1,5 +1,5 @@
-hash: 952499e0c45f5ea358a53cddf1c5d3985bb02ce0bc754c58b79143b90cecea6e
-updated: 2018-03-11T07:10:19.32793036-07:00
+hash: cd1a4c533797709eb0650a1e322b9fca98ca0ed69f162c265a0be412f46c9058
+updated: 2018-03-11T23:04:39.720819286-07:00
 imports:
 - name: appscode.com/api
   version: 4563b7ddd49c3a332c9159b84417f15c3c5e574b
@@ -25,12 +25,13 @@ imports:
   - compute/metadata
   - internal
 - name: github.com/appscode/go
-  version: 2dee2377181f720406c72288811662576cbd5c21
+  version: f8f2e1c7d2d10789cdd0540468b487d14421dbf9
   subpackages:
   - analytics
   - context
   - env
   - homedir
+  - ioutil
   - log
   - log/golog
   - net
@@ -66,7 +67,7 @@ imports:
   subpackages:
   - md2man
 - name: github.com/davecgh/go-spew
-  version: 782f4967f2dc4564575ca782fe2d04090b5faca8
+  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
   subpackages:
   - spew
 - name: github.com/emicklei/go-restful
@@ -80,7 +81,7 @@ imports:
 - name: github.com/fsnotify/fsnotify
   version: c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9
 - name: github.com/ghodss/yaml
-  version: 0ca9ea5df5451ffdf184b4428c902747c2c11cd7
+  version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
 - name: github.com/go-ldap/ldap
   version: bb7a9ca6e4fbc2129e3db588a34bc970ffe811a9
 - name: github.com/go-openapi/jsonpointer
@@ -187,6 +188,10 @@ imports:
   - apis/v1alpha1
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
 - name: github.com/pquerna/cachecontrol
   version: 525d0eb5f91d30e3b1548de401b7ef9ea6898520
   subpackages:
@@ -238,6 +243,10 @@ imports:
   - doc
 - name: github.com/spf13/pflag
   version: e57e3eeb33f795204c1ca35f56c44f83227c6e66
+- name: github.com/stretchr/testify
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  subpackages:
+  - assert
 - name: github.com/vjeantet/goldap
   version: ea702ca12a40a2817b90d53ec7d4ebdcc5489570
   subpackages:
@@ -265,7 +274,7 @@ imports:
   - ed25519/internal/edwards25519
   - ssh/terminal
 - name: golang.org/x/net
-  version: 1c05540f6879653db88113bc4a2b70aec4bd491f
+  version: da118f7b8e5954f39d0d2130ab35d4bf0e3cb344
   subpackages:
   - bpf
   - context
@@ -274,7 +283,7 @@ imports:
   - http2/hpack
   - idna
   - internal/iana
-  - internal/socket
+  - internal/netreflect
   - internal/timeseries
   - ipv4
   - lex/httplex
@@ -290,8 +299,9 @@ imports:
   version: 95c6576299259db960f6c5b9b69ea52422860fce
   subpackages:
   - unix
+  - windows
 - name: golang.org/x/text
-  version: b19bf474d317b857955b12035d2c5acb57ce8b01
+  version: 470f45bf29f4147d6fbd7dfd0a02a848e49f5bf4
   subpackages:
   - cases
   - internal
@@ -363,7 +373,7 @@ imports:
   - cipher
   - json
 - name: gopkg.in/yaml.v2
-  version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
+  version: 7f97868eec74b32b0982dd158a51a446d1da7eb5
 - name: k8s.io/api
   version: af4bc157c3a209798fc897f6d4aaaaeb6c2e0d6a
   subpackages:
