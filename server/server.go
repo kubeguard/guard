@@ -114,8 +114,10 @@ func (s Server) ListenAndServe() {
 
 	m := pat.New()
 
-	// Instrument the handlers with all the metrics, injecting the "handler"
-	// label by currying.
+	// Instrument the handlers with all the metrics, injecting the "handler" label by currying.
+	// ref:
+	// - https://godoc.org/github.com/prometheus/client_golang/prometheus/promhttp#example-InstrumentHandlerDuration
+	// - https://github.com/brancz/prometheus-example-app/blob/master/main.go#L44:28
 	handler := promhttp.InstrumentHandlerInFlight(inFlightGauge,
 		promhttp.InstrumentHandlerDuration(duration.MustCurryWith(prometheus.Labels{"handler": "tokenreviews"}),
 			promhttp.InstrumentHandlerCounter(counter,

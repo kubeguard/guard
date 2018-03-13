@@ -52,5 +52,5 @@ var (
 
 func init() {
 	// Register all of the metrics in the standard registry.
-	prometheus.MustRegister(inFlightGauge, counter, duration, responseSize)
+	prometheus.MustRegister(version, inFlightGauge, counter, duration, responseSize)
 }
