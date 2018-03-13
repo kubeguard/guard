@@ -1,4 +1,6 @@
 [![Build Status](https://travis-ci.org/appscode/guard.svg?branch=master)](https://travis-ci.org/appscode/guard)
+[![Generic Badge](http://159.65.228.198:8080/api/v1/teams/main/pipelines/guard/jobs/test-guard/badge)](http://159.65.228.198:8080/teams/main/pipelines/guard)
+[![Generic badge](https://img.shields.io/badge/<SUBJECT>-<STATUS>-<COLOR>.svg)](https://google.com)
 [![Go Report Card](https://goreportcard.com/badge/appscode/guard "Go Report Card")](https://goreportcard.com/report/appscode/guard)
 [![GoDoc](https://godoc.org/github.com/appscode/guard?status.svg "GoDoc")](https://godoc.org/github.com/appscode/guard)
 
