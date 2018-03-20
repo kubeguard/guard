@@ -5,12 +5,12 @@ import (
 	"strings"
 
 	"github.com/appscode/go/log"
-	"github.com/appscode/guard/appscode"
-	"github.com/appscode/guard/azure"
-	"github.com/appscode/guard/github"
-	"github.com/appscode/guard/gitlab"
-	"github.com/appscode/guard/google"
-	"github.com/appscode/guard/ldap"
+	"github.com/appscode/guard/auth/providers/appscode"
+	"github.com/appscode/guard/auth/providers/azure"
+	"github.com/appscode/guard/auth/providers/github"
+	"github.com/appscode/guard/auth/providers/gitlab"
+	"github.com/appscode/guard/auth/providers/google"
+	"github.com/appscode/guard/auth/providers/ldap"
 	"github.com/pkg/errors"
 	auth "k8s.io/api/authentication/v1"
 )

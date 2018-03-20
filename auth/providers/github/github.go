@@ -4,15 +4,20 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/appscode/guard/auth"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
-	auth "k8s.io/api/authentication/v1"
+	authv1 "k8s.io/api/authentication/v1"
 )
 
 const (
 	OrgType = "github"
 )
+
+func init() {
+	auth.SupportedOrgs = append(auth.SupportedOrgs, OrgType)
+}
 
 type Authenticator struct {
 	Client  *github.Client
@@ -32,13 +37,13 @@ func New(name, token string) *Authenticator {
 	return g
 }
 
-func (g *Authenticator) Check() (*auth.UserInfo, error) {
+func (g *Authenticator) Check() (*authv1.UserInfo, error) {
 	mem, _, err := g.Client.Organizations.GetOrgMembership(g.ctx, "", g.OrgName)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to check user's membership in Org %s", g.OrgName)
 	}
 
-	resp := &auth.UserInfo{
+	resp := &authv1.UserInfo{
 		Username: mem.User.GetLogin(),
 		UID:      fmt.Sprintf("%d", mem.User.GetID()),
 	}

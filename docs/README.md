@@ -30,7 +30,7 @@ From here you can learn all about Guard's architecture and how to deploy and use
 - [Guides](/docs/guides/). Guides show you how to perform tasks with Guard.
 
 - [Reference](/docs/reference/). Detailed exhaustive lists of
-command-line options, configuration options, API definitions, and procedures.
+command-line Options, configuration Options, API definitions, and procedures.
 
 We're always looking for help improving our documentation, so please don't hesitate to [file an issue](https://github.com/appscode/guard/issues/new) if you see some problem. Or better yet, submit your own [contributions](/docs/CONTRIBUTING.md) to help
 make our docs better.

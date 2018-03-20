@@ -53,5 +53,5 @@ func AddAuthInfo(username string, authInfo *clientcmdapi.AuthInfo) error {
 }
 
 func Path() string {
-	return filepath.Join(homedir.HomeDir(),  ".kube", "config")
+	return filepath.Join(homedir.HomeDir(), ".kube", "config")
 }

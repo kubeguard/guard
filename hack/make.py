@@ -81,9 +81,9 @@ def version():
 
 
 def fmt():
-    libbuild.ungroup_go_imports('*.go', 'appscode', 'azure', 'commands', 'github', 'gitlab', 'google', 'hack', 'ldap', 'server', 'token')
-    die(call('goimports -w *.go appscode azure commands github gitlab google hack ldap server token'))
-    call('gofmt -s -w *.go appscode azure commands github gitlab google hack ldap server token')
+    libbuild.ungroup_go_imports('*.go', 'auth', 'commands', 'docs', 'installer', 'server', 'util')
+    die(call('goimports -w *.go auth commands docs installer server util'))
+    call('gofmt -s -w *.go auth commands docs installer server util')
 
 
 def vet():

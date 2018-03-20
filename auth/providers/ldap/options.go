@@ -3,9 +3,16 @@ package ldap
 import (
 	"crypto/x509"
 	"fmt"
+	"io/ioutil"
+	"os"
 
+	"github.com/appscode/go/types"
 	"github.com/go-ldap/ldap"
 	"github.com/spf13/pflag"
+	"k8s.io/api/apps/v1beta1"
+	core "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type Options struct {
@@ -78,6 +85,13 @@ type Options struct {
 	ServiceAccountName string
 }
 
+func NewOptions() Options {
+	return Options{
+		BindDN:       os.Getenv("LDAP_BIND_DN"),
+		BindPassword: os.Getenv("LDAP_BIND_PASSWORD"),
+	}
+}
+
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.ServerAddress, "ldap.server-address", o.ServerAddress, "Host or IP of the LDAP server")
 	fs.StringVar(&o.ServerPort, "ldap.server-port", "389", "LDAP server port")
@@ -97,64 +111,6 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&o.AuthenticationChoice, "ldap.auth-choice", 0, "LDAP user authentication mechanism, 0 for simple authentication, 1 for kerberos(via GSSAPI)")
 	fs.StringVar(&o.KeytabFile, "ldap.keytab-file", "", "path to the keytab file, it's contain LDAP service principal keys")
 	fs.StringVar(&o.ServiceAccountName, "ldap.service-account", "", "service account name")
-}
-
-func (o Options) ToArgs() []string {
-	var args []string
-	if o.ServerAddress != "" {
-		args = append(args, fmt.Sprintf("--ldap.server-address=%s", o.ServerAddress))
-	}
-	if o.ServerPort != "" {
-		args = append(args, fmt.Sprintf("--ldap.server-port=%s", o.ServerPort))
-	}
-	if o.BindDN != "" {
-		args = append(args, fmt.Sprintf("--ldap.bind-dn=%s", o.BindDN))
-	}
-	if o.BindPassword != "" {
-		args = append(args, fmt.Sprintf("--ldap.bind-password=%s", o.BindPassword))
-	}
-	if o.UserSearchDN != "" {
-		args = append(args, fmt.Sprintf("--ldap.user-search-dn=%s", o.UserSearchDN))
-	}
-	if o.UserSearchFilter != "" {
-		args = append(args, fmt.Sprintf("--ldap.user-search-filter=%s", o.UserSearchFilter))
-	}
-	if o.UserSearchFilter != "" {
-		args = append(args, fmt.Sprintf("--ldap.user-attribute=%s", o.UserAttribute))
-	}
-	if o.GroupSearchDN != "" {
-		args = append(args, fmt.Sprintf("--ldap.group-search-dn=%s", o.GroupSearchDN))
-	}
-	if o.GroupSearchFilter != "" {
-		args = append(args, fmt.Sprintf("--ldap.group-search-filter=%s", o.GroupSearchFilter))
-	}
-	if o.GroupMemberAttribute != "" {
-		args = append(args, fmt.Sprintf("--ldap.group-member-attribute=%s", o.GroupMemberAttribute))
-	}
-	if o.GroupNameAttribute != "" {
-		args = append(args, fmt.Sprintf("--ldap.group-name-attribute=%s", o.GroupNameAttribute))
-	}
-	if o.SkipTLSVerification {
-		args = append(args, "--ldap.skip-tls-verification")
-	}
-	if o.IsSecureLDAP {
-		args = append(args, "--ldap.is-secure-ldap")
-	}
-	if o.StartTLS {
-		args = append(args, "--ldap.start-tls")
-	}
-	if o.CaCertFile != "" {
-		args = append(args, fmt.Sprintf("--ldap.ca-cert-file=/etc/guard/ldap/ca.crt"))
-	}
-	if o.ServiceAccountName != "" {
-		args = append(args, fmt.Sprintf("--ldap.service-account=%s", o.ServiceAccountName))
-	}
-	if o.KeytabFile != "" {
-		args = append(args, fmt.Sprintf("--ldap.keytab-file=/etc/guard/ldap/krb5.keytab"))
-	}
-	args = append(args, fmt.Sprintf("--ldap.auth-choice=%v", o.AuthenticationChoice))
-
-	return args
 }
 
 // request to search user
@@ -188,4 +144,139 @@ func (o *Options) newGroupSearchRequest(userDN string) *ldap.SearchRequest {
 
 func (o *Options) Validate() []error {
 	return nil
+}
+
+func (o Options) IsSet() bool {
+	return o.BindDN != "" || o.BindPassword != ""
+}
+
+func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
+	if !o.IsSet() {
+		return nil, nil // nothing to apply
+	}
+
+	container := d.Spec.Template.Spec.Containers[0]
+
+	// create auth secret
+	ldapData := map[string][]byte{
+		"bind-dn":       []byte(o.BindDN), // username kept in secret, since password is in secret
+		"bind-password": []byte(o.BindPassword),
+	}
+	if o.CaCertFile != "" {
+		cert, err := ioutil.ReadFile(o.CaCertFile)
+		if err != nil {
+			return nil, err
+		}
+		ldapData["ca.crt"] = cert
+	}
+	if o.KeytabFile != "" {
+		key, err := ioutil.ReadFile(o.KeytabFile)
+		if err != nil {
+			return nil, err
+		}
+		ldapData["krb5.keytab"] = key
+	}
+	authSecret := &core.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "guard-ldap-auth",
+			Namespace: d.Namespace,
+			Labels:    d.Labels,
+		},
+		Data: ldapData,
+	}
+	extraObjs = append(extraObjs, authSecret)
+
+	// mount auth secret into deployment
+	volMount := core.VolumeMount{
+		Name:      authSecret.Name,
+		MountPath: "/etc/guard/auth/ldap",
+	}
+	container.VolumeMounts = append(container.VolumeMounts, volMount)
+
+	vol := core.Volume{
+		Name: authSecret.Name,
+		VolumeSource: core.VolumeSource{
+			Secret: &core.SecretVolumeSource{
+				SecretName:  authSecret.Name,
+				DefaultMode: types.Int32P(0444),
+			},
+		},
+	}
+	d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
+
+	// use auth secret in container[0] args
+	container.Env = append(container.Env,
+		core.EnvVar{
+			Name: "LDAP_BIND_DN",
+			ValueFrom: &core.EnvVarSource{
+				SecretKeyRef: &core.SecretKeySelector{
+					LocalObjectReference: core.LocalObjectReference{
+						Name: authSecret.Name,
+					},
+					Key: "bind-dn",
+				},
+			},
+		},
+		core.EnvVar{
+			Name: "LDAP_BIND_PASSWORD",
+			ValueFrom: &core.EnvVarSource{
+				SecretKeyRef: &core.SecretKeySelector{
+					LocalObjectReference: core.LocalObjectReference{
+						Name: authSecret.Name,
+					},
+					Key: "bind-password",
+				},
+			},
+		},
+	)
+
+	args := container.Args
+	if o.ServerAddress != "" {
+		args = append(args, fmt.Sprintf("--ldap.server-address=%s", o.ServerAddress))
+	}
+	if o.ServerPort != "" {
+		args = append(args, fmt.Sprintf("--ldap.server-port=%s", o.ServerPort))
+	}
+	if o.UserSearchDN != "" {
+		args = append(args, fmt.Sprintf("--ldap.user-search-dn=%s", o.UserSearchDN))
+	}
+	if o.UserSearchFilter != "" {
+		args = append(args, fmt.Sprintf("--ldap.user-search-filter=%s", o.UserSearchFilter))
+	}
+	if o.UserSearchFilter != "" {
+		args = append(args, fmt.Sprintf("--ldap.user-attribute=%s", o.UserAttribute))
+	}
+	if o.GroupSearchDN != "" {
+		args = append(args, fmt.Sprintf("--ldap.group-search-dn=%s", o.GroupSearchDN))
+	}
+	if o.GroupSearchFilter != "" {
+		args = append(args, fmt.Sprintf("--ldap.group-search-filter=%s", o.GroupSearchFilter))
+	}
+	if o.GroupMemberAttribute != "" {
+		args = append(args, fmt.Sprintf("--ldap.group-member-attribute=%s", o.GroupMemberAttribute))
+	}
+	if o.GroupNameAttribute != "" {
+		args = append(args, fmt.Sprintf("--ldap.group-name-attribute=%s", o.GroupNameAttribute))
+	}
+	if o.SkipTLSVerification {
+		args = append(args, "--ldap.skip-tls-verification")
+	}
+	if o.IsSecureLDAP {
+		args = append(args, "--ldap.is-secure-ldap")
+	}
+	if o.StartTLS {
+		args = append(args, "--ldap.start-tls")
+	}
+	if o.CaCertFile != "" {
+		args = append(args, fmt.Sprintf("--ldap.ca-cert-file=/etc/guard/auth/ldap/ca.crt"))
+	}
+	if o.ServiceAccountName != "" {
+		args = append(args, fmt.Sprintf("--ldap.service-account=%s", o.ServiceAccountName))
+	}
+	if o.KeytabFile != "" {
+		args = append(args, fmt.Sprintf("--ldap.keytab-file=/etc/guard/auth/ldap/krb5.keytab"))
+	}
+	args = append(args, fmt.Sprintf("--ldap.auth-choice=%v", o.AuthenticationChoice))
+
+	return extraObjs, nil
 }

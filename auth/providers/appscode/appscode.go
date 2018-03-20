@@ -11,14 +11,19 @@ import (
 	"appscode.com/api/dtypes"
 	"appscode.com/client-go"
 	_env "github.com/appscode/go/env"
+	"github.com/appscode/guard/auth"
 	"github.com/json-iterator/go"
 	"github.com/pkg/errors"
-	auth "k8s.io/api/authentication/v1"
+	authv1 "k8s.io/api/authentication/v1"
 )
 
 const (
 	OrgType = "appscode"
 )
+
+func init() {
+	auth.SupportedOrgs = append(auth.SupportedOrgs, OrgType)
+}
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
@@ -46,7 +51,7 @@ type ConduitClient struct {
 	Token string
 }
 
-func Check(name, token string) (*auth.UserInfo, error) {
+func Check(name, token string) (*authv1.UserInfo, error) {
 	ctx := context.Background()
 	options := client.NewOption(_env.ProdApiServer)
 	options.UserAgent("appscode/guard")
@@ -73,7 +78,7 @@ func Check(name, token string) (*auth.UserInfo, error) {
 		return nil, errors.Wrapf(err, "failed to load user's teams for Org %s", name)
 	}
 
-	resp := &auth.UserInfo{
+	resp := &authv1.UserInfo{
 		Username: user.User.UserName,
 		UID:      user.User.Phid,
 	}
