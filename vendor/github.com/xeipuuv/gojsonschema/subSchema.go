@@ -28,7 +28,6 @@ package gojsonschema
 
 import (
 	"errors"
-	"math/big"
 	"regexp"
 	"strings"
 
@@ -37,7 +36,7 @@ import (
 
 const (
 	KEY_SCHEMA                = "$subSchema"
-	KEY_ID                    = "id"
+	KEY_ID                    = "$id"
 	KEY_REF                   = "$ref"
 	KEY_TITLE                 = "title"
 	KEY_DESCRIPTION           = "description"
@@ -69,14 +68,12 @@ const (
 	KEY_ANY_OF                = "anyOf"
 	KEY_ALL_OF                = "allOf"
 	KEY_NOT                   = "not"
-	KEY_IF                    = "if"
-	KEY_THEN                  = "then"
-	KEY_ELSE                  = "else"
 )
 
 type subSchema struct {
+
 	// basic subSchema meta properties
-	id          *gojsonreference.JsonReference
+	id          *string
 	title       *string
 	description *string
 
@@ -101,10 +98,10 @@ type subSchema struct {
 	propertiesChildren          []*subSchema
 
 	// validation : number / integer
-	multipleOf       *big.Float
-	maximum          *big.Float
+	multipleOf       *float64
+	maximum          *float64
 	exclusiveMaximum bool
-	minimum          *big.Float
+	minimum          *float64
 	exclusiveMinimum bool
 
 	// validation : string
@@ -137,9 +134,6 @@ type subSchema struct {
 	anyOf []*subSchema
 	allOf []*subSchema
 	not   *subSchema
-	_if   *subSchema // if/else are golang keywords
-	_then *subSchema
-	_else *subSchema
 }
 
 func (s *subSchema) AddEnum(i interface{}) error {
@@ -187,18 +181,6 @@ func (s *subSchema) SetNot(subSchema *subSchema) {
 	s.not = subSchema
 }
 
-func (s *subSchema) SetIf(subSchema *subSchema) {
-	s._if = subSchema
-}
-
-func (s *subSchema) SetThen(subSchema *subSchema) {
-	s._then = subSchema
-}
-
-func (s *subSchema) SetElse(subSchema *subSchema) {
-	s._else = subSchema
-}
-
 func (s *subSchema) AddRequired(value string) error {
 
 	if isStringInSlice(s.required, value) {
@@ -232,7 +214,7 @@ func (s *subSchema) PatternPropertiesString() string {
 	}
 
 	patternPropertiesKeySlice := []string{}
-	for pk := range s.patternProperties {
+	for pk, _ := range s.patternProperties {
 		patternPropertiesKeySlice = append(patternPropertiesKeySlice, `"`+pk+`"`)
 	}
 

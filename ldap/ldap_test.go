@@ -6,10 +6,11 @@ import (
 	"encoding/base64"
 	"log"
 	"net"
-	"path/filepath"
+	"os"
 	"reflect"
 	"testing"
 	"time"
+	"path/filepath"
 
 	"github.com/appscode/kutil/tools/certstore"
 	"github.com/go-ldap/ldap"
@@ -55,6 +56,9 @@ func (s *ldapServer) start() {
 
 func (s *ldapServer) stop() {
 	s.stopCh <- true
+	if s.certStore != nil {
+		os.RemoveAll(s.certStore.Location())
+	}
 }
 
 // getTLSconfig returns a tls configuration used
@@ -99,7 +103,7 @@ func ldapServerSetup(secureConn bool, userSearchDN, groupSearchDN string) (*ldap
 	}
 
 	if secureConn {
-		store, err := certstore.NewCertStore(afero.NewMemMapFs(), filepath.Join("", "certs"), "test")
+		store, err := certstore.NewCertStore(afero.NewOsFs(), filepath.Join(os.TempDir(), "ldap-certs"), "test")
 		if err != nil {
 			return nil, err
 		}
@@ -265,7 +269,7 @@ func runTest(t *testing.T, secureConn bool, s Authenticator, serverType string) 
 	if secureConn {
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(srv.certStore.CACert())
-		s.opts.CaCertFile = "/test/certs/ca.file"
+		s.opts.CaCertFile = srv.certStore.CertFile("ca")
 		s.opts.CaCertPool = caCertPool
 	}
 

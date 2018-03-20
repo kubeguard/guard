@@ -29,18 +29,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"math/big"
 	"reflect"
 	"strconv"
 )
 
 func isKind(what interface{}, kind reflect.Kind) bool {
-	target := what
-	if isJsonNumber(what) {
-		// JSON Numbers are strings!
-		target = *mustBeNumber(what)
-	}
-	return reflect.ValueOf(target).Kind() == kind
+	return reflect.ValueOf(what).Kind() == kind
 }
 
 func existsMapKey(m map[string]interface{}, k string) bool {
@@ -83,14 +77,13 @@ func checkJsonNumber(what interface{}) (isValidFloat64 bool, isValidInt64 bool, 
 
 	jsonNumber := what.(json.Number)
 
-	f64, errFloat64 := jsonNumber.Float64()
-	s64 := strconv.FormatFloat(f64, 'f', -1, 64)
-	_, errInt64 := strconv.ParseInt(s64, 10, 64)
+	_, errFloat64 := jsonNumber.Float64()
+	_, errInt64 := jsonNumber.Int64()
 
 	isValidFloat64 = errFloat64 == nil
 	isValidInt64 = errInt64 == nil
 
-	_, errInt32 := strconv.ParseInt(s64, 10, 32)
+	_, errInt32 := strconv.ParseInt(jsonNumber.String(), 10, 32)
 	isValidInt32 = isValidInt64 && errInt32 == nil
 
 	return
@@ -139,13 +132,15 @@ func mustBeInteger(what interface{}) *int {
 	return nil
 }
 
-func mustBeNumber(what interface{}) *big.Float {
+func mustBeNumber(what interface{}) *float64 {
 
 	if isJsonNumber(what) {
+
 		number := what.(json.Number)
-		float64Value, success := new(big.Float).SetString(string(number))
-		if success {
-			return float64Value
+		float64Value, err := number.Float64()
+
+		if err == nil {
+			return &float64Value
 		} else {
 			return nil
 		}
