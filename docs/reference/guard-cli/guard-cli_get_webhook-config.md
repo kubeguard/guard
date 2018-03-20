@@ -1,15 +1,15 @@
 ---
-title: Guard Get Webhook-Config
+title: Get Webhook-Config
 menu:
   product_guard_0.1.0-rc.5:
-    identifier: guard-get-webhook-config
-    name: Guard Get Webhook-Config
-    parent: reference
+    identifier: guard-cli-get-webhook-config
+    name: Get Webhook-Config
+    parent: guard-cli
 product_name: guard
-menu_name: product_guard_0.1.0-rc.5
 section_menu_id: reference
+menu_name: product_guard_0.1.0-rc.5
 ---
-## guard get webhook-config
+## guard-cli get webhook-config
 
 Prints authentication token webhook config file
 
@@ -18,7 +18,7 @@ Prints authentication token webhook config file
 Prints authentication token webhook config file
 
 ```
-guard get webhook-config [flags]
+guard-cli get webhook-config [flags]
 ```
 
 ### Options
@@ -45,5 +45,5 @@ guard get webhook-config [flags]
 
 ### SEE ALSO
 
-* [guard get](/docs/reference/guard_get.md)	 - Get PKI
+* [guard-cli get](/docs/reference/guard-cli/guard-cli_get.md)	 - Get PKI
 

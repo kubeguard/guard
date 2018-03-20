@@ -1,31 +1,31 @@
 ---
-title: Guard Version
+title: Init Ca
 menu:
   product_guard_0.1.0-rc.5:
-    identifier: guard-version
-    name: Guard Version
-    parent: reference
+    identifier: guard-cli-init-ca
+    name: Init Ca
+    parent: guard-cli
 product_name: guard
-menu_name: product_guard_0.1.0-rc.5
 section_menu_id: reference
+menu_name: product_guard_0.1.0-rc.5
 ---
-## guard version
+## guard-cli init ca
 
-Prints binary version number.
+Init CA
 
 ### Synopsis
 
-Prints binary version number.
+Init CA
 
 ```
-guard version [flags]
+guard-cli init ca [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help    help for version
-      --short   Print just the version number.
+  -h, --help             help for ca
+      --pki-dir string   Path to directory where pki files are stored. (default "$HOME/.guard")
 ```
 
 ### Options inherited from parent commands
@@ -43,5 +43,5 @@ guard version [flags]
 
 ### SEE ALSO
 
-* [guard](/docs/reference/guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
+* [guard-cli init](/docs/reference/guard-cli/guard-cli_init.md)	 - Init PKI
 

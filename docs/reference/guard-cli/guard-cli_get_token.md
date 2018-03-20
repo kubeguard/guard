@@ -1,15 +1,15 @@
 ---
-title: Guard Get Token
+title: Get Token
 menu:
   product_guard_0.1.0-rc.5:
-    identifier: guard-get-token
-    name: Guard Get Token
-    parent: reference
+    identifier: guard-cli-get-token
+    name: Get Token
+    parent: guard-cli
 product_name: guard
-menu_name: product_guard_0.1.0-rc.5
 section_menu_id: reference
+menu_name: product_guard_0.1.0-rc.5
 ---
-## guard get token
+## guard-cli get token
 
 Get tokens for Github/Gitlab/Google
 
@@ -18,7 +18,7 @@ Get tokens for Github/Gitlab/Google
 Get tokens for Github/Gitlab/Google
 
 ```
-guard get token [flags]
+guard-cli get token [flags]
 ```
 
 ### Options
@@ -50,5 +50,5 @@ guard get token [flags]
 
 ### SEE ALSO
 
-* [guard get](/docs/reference/guard_get.md)	 - Get PKI
+* [guard-cli get](/docs/reference/guard-cli/guard-cli_get.md)	 - Get PKI
 

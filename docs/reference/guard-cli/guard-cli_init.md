@@ -1,26 +1,26 @@
 ---
-title: Guard Get
+title: Init
 menu:
   product_guard_0.1.0-rc.5:
-    identifier: guard-get
-    name: Guard Get
-    parent: reference
+    identifier: guard-cli-init
+    name: Init
+    parent: guard-cli
 product_name: guard
-menu_name: product_guard_0.1.0-rc.5
 section_menu_id: reference
+menu_name: product_guard_0.1.0-rc.5
 ---
-## guard get
+## guard-cli init
 
-Get PKI
+Init PKI
 
 ### Synopsis
 
-Get PKI
+Init PKI
 
 ### Options
 
 ```
-  -h, --help   help for get
+  -h, --help   help for init
 ```
 
 ### Options inherited from parent commands
@@ -38,8 +38,8 @@ Get PKI
 
 ### SEE ALSO
 
-* [guard](/docs/reference/guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
-* [guard get installer](/docs/reference/guard_get_installer.md)	 - Prints Kubernetes objects for deploying guard server
-* [guard get token](/docs/reference/guard_get_token.md)	 - Get tokens for Github/Gitlab/Google
-* [guard get webhook-config](/docs/reference/guard_get_webhook-config.md)	 - Prints authentication token webhook config file
+* [guard-cli](/docs/reference/guard-cli/guard-cli.md)	 - Guard Command Line Interface by AppsCode - Kubernetes Authentication WebHook Server
+* [guard-cli init ca](/docs/reference/guard-cli/guard-cli_init_ca.md)	 - Init CA
+* [guard-cli init client](/docs/reference/guard-cli/guard-cli_init_client.md)	 - Generate client certificate pair
+* [guard-cli init server](/docs/reference/guard-cli/guard-cli_init_server.md)	 - Generate server certificate pair
 

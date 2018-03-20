@@ -13,7 +13,7 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	if err := commands.NewRootCmd(Version).Execute(); err != nil {
+	if err := commands.NewRootCmdCLI(Version).Execute(); err != nil {
 		os.Exit(1)
 	}
 	os.Exit(0)
