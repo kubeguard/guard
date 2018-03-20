@@ -9,22 +9,73 @@ import (
 )
 
 type Options struct {
-	ServerAddress        string
-	ServerPort           string
-	BindDN               string // The connector uses this DN in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
-	BindPassword         string // The connector uses this Password in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
-	UserSearchDN         string // BaseDN to start the search user
-	UserSearchFilter     string // filter to apply when searching user, default : (objectClass=person)
-	UserAttribute        string // Ldap username attribute, default : uid
-	GroupSearchDN        string // BaseDN to start the search group
-	GroupSearchFilter    string // filter to apply when searching the groups that user is member of, default : (objectClass=groupOfNames)
-	GroupMemberAttribute string // Ldap group member attribute, default: member
-	GroupNameAttribute   string // Ldap group name attribute, default: cn
-	SkipTLSVerification  bool
-	IsSecureLDAP         bool   // for LDAP over SSL
-	StartTLS             bool   // for start tls connection
-	CaCertFile           string // path to the caCert file, needed for self signed server certificate
-	CaCertPool           *x509.CertPool
+	ServerAddress string
+
+	ServerPort string
+
+	// The connector uses this DN in credentials to search for users and groups.
+	// Not required if the LDAP server provides access for anonymous auth.
+	BindDN string
+
+	// The connector uses this Password in credentials to search for users and groups.
+	// Not required if the LDAP server provides access for anonymous auth.
+	BindPassword string
+
+	// BaseDN to start the search user
+	UserSearchDN string
+
+	// filter to apply when searching user
+	// default : (objectClass=person)
+	UserSearchFilter string
+
+	// Ldap username attribute
+	// default : uid
+	UserAttribute string
+
+	//BaseDN to start the search group
+	GroupSearchDN string
+
+	// filter to apply when searching the groups that user is member of
+	// default : (objectClass=groupOfNames)
+	GroupSearchFilter string
+
+	// Ldap group member attribute
+	// default: member
+	GroupMemberAttribute string
+
+	// Ldap group name attribute
+	// default: cn
+	GroupNameAttribute string
+
+	SkipTLSVerification bool
+
+	// for LDAP over SSL
+	IsSecureLDAP bool
+
+	// for start tls connection
+	StartTLS bool
+
+	// path to the caCert file, needed for self signed server certificate
+	CaCertFile string
+
+	CaCertPool *x509.CertPool
+
+	// LDAP user authentication mechanism
+	// 0 for simple authentication
+	// 1 for kerberos(via GSSAPI)
+	AuthenticationChoice int
+
+	// path to the keytab file
+	// it's contain LDAP service principal keys
+	// required for kerberos
+	// default : 0
+	KeytabFile string
+
+	// The serviceAccountName needs to be defined when using Active Directory
+	// where the SPN is mapped to a user account. If this is not required it
+	// should be set to an empty string ""
+	// default : ""
+	ServiceAccountName string
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
@@ -43,6 +94,9 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.IsSecureLDAP, "ldap.is-secure-ldap", false, "Secure LDAP (LDAPS)")
 	fs.BoolVar(&o.StartTLS, "ldap.start-tls", false, "Start tls connection")
 	fs.StringVar(&o.CaCertFile, "ldap.ca-cert-file", "", "ca cert file that used for self signed server certificate")
+	fs.IntVar(&o.AuthenticationChoice, "ldap.auth-choice", 0, "LDAP user authentication mechanism, 0 for simple authentication, 1 for kerberos(via GSSAPI)")
+	fs.StringVar(&o.KeytabFile, "ldap.keytab-file", "", "path to the keytab file, it's contain LDAP service principal keys")
+	fs.StringVar(&o.ServiceAccountName, "ldap.service-account", "", "service account name")
 }
 
 func (o Options) ToArgs() []string {
@@ -90,8 +144,16 @@ func (o Options) ToArgs() []string {
 		args = append(args, "--ldap.start-tls")
 	}
 	if o.CaCertFile != "" {
-		args = append(args, fmt.Sprintf("--ldap.ca-cert-file=/etc/guard/certs/ca.crt"))
+		args = append(args, fmt.Sprintf("--ldap.ca-cert-file=/etc/guard/ldap/ca.crt"))
 	}
+	if o.ServiceAccountName != "" {
+		args = append(args, fmt.Sprintf("--ldap.service-account=%s", o.ServiceAccountName))
+	}
+	if o.KeytabFile != "" {
+		args = append(args, fmt.Sprintf("--ldap.keytab-file=/etc/guard/ldap/krb5.keytab"))
+	}
+	args = append(args, fmt.Sprintf("--ldap.auth-choice=%v", o.AuthenticationChoice))
+
 	return args
 }
 
@@ -102,10 +164,10 @@ func (o *Options) newUserSearchRequest(username string) *ldap.SearchRequest {
 		BaseDN:       o.UserSearchDN,
 		Scope:        ldap.ScopeWholeSubtree,
 		DerefAliases: ldap.NeverDerefAliases,
-		SizeLimit:    2, //limit number of entries in result
+		SizeLimit:    2, // limit number of entries in result
 		TimeLimit:    10,
 		TypesOnly:    false,
-		Filter:       userFilter, //filter default format : (&(objectClass=person)(uid=%s))
+		Filter:       userFilter, // filter default format : (&(objectClass=person)(uid=%s))
 	}
 }
 
@@ -116,10 +178,10 @@ func (o *Options) newGroupSearchRequest(userDN string) *ldap.SearchRequest {
 		BaseDN:       o.GroupSearchDN,
 		Scope:        ldap.ScopeWholeSubtree,
 		DerefAliases: ldap.NeverDerefAliases,
-		SizeLimit:    0, //limit number of entries in result, 0 values means no limitations
+		SizeLimit:    0, // limit number of entries in result, 0 values means no limitations
 		TimeLimit:    10,
 		TypesOnly:    false,
-		Filter:       groupFilter, //filter default format : (&(objectClass=groupOfNames)(member=%s))
+		Filter:       groupFilter, // filter default format : (&(objectClass=groupOfNames)(member=%s))
 		Attributes:   []string{o.GroupNameAttribute},
 	}
 }

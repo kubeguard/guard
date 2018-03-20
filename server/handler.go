@@ -81,7 +81,11 @@ func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		write(w, resp, err)
 		return
 	case ldap.OrgType:
-		client := ldap.New(s.RecommendedOptions.LDAP)
+		client, err := ldap.New(s.RecommendedOptions.LDAP)
+		if err != nil {
+			write(w, nil, err)
+			return
+		}
 		resp, code := client.Check(data.Spec.Token)
 		write(w, resp, code)
 		return

@@ -6,10 +6,11 @@ import (
 	"encoding/base64"
 	"log"
 	"net"
-	"path/filepath"
+	"os"
 	"reflect"
 	"testing"
 	"time"
+	"path/filepath"
 
 	"github.com/appscode/kutil/tools/certstore"
 	"github.com/go-ldap/ldap"
@@ -55,6 +56,9 @@ func (s *ldapServer) start() {
 
 func (s *ldapServer) stop() {
 	s.stopCh <- true
+	if s.certStore != nil {
+		os.RemoveAll(s.certStore.Location())
+	}
 }
 
 // getTLSconfig returns a tls configuration used
@@ -99,7 +103,7 @@ func ldapServerSetup(secureConn bool, userSearchDN, groupSearchDN string) (*ldap
 	}
 
 	if secureConn {
-		store, err := certstore.NewCertStore(afero.NewMemMapFs(), filepath.Join("", "certs"), "test")
+		store, err := certstore.NewCertStore(afero.NewOsFs(), filepath.Join(os.TempDir(), "ldap-certs"), "test")
 		if err != nil {
 			return nil, err
 		}
@@ -265,7 +269,7 @@ func runTest(t *testing.T, secureConn bool, s Authenticator, serverType string) 
 	if secureConn {
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(srv.certStore.CACert())
-		s.opts.CaCertFile = "/test/certs/ca.file"
+		s.opts.CaCertFile = srv.certStore.CertFile("ca")
 		s.opts.CaCertPool = caCertPool
 	}
 
@@ -327,35 +331,38 @@ func runTest(t *testing.T, secureConn bool, s Authenticator, serverType string) 
 		},
 	}
 
-	for _, test := range dataset {
-		t.Run(serverType+": "+test.testName, func(t *testing.T) {
-			t.Log(test)
+	// This Run will not return until the parallel tests finish.
+	t.Run("ldap", func(t *testing.T) {
+		for _, tc := range dataset {
+			t.Run(serverType+": "+tc.testName, func(t *testing.T) {
+				t.Log(tc)
 
-			serv := s
-			serv.opts.UserAttribute = test.userAttribute
+				serv := s
+				serv.opts.UserAttribute = tc.userAttribute
 
-			resp, err := serv.Check(base64.StdEncoding.EncodeToString([]byte(test.token)))
-			if test.authenticated {
-				assert.Nil(t, err)
-
-				if resp.Username != test.username {
-					t.Errorf("Expected username %v, got %v", test.username, resp.Username)
-				}
-				if len(resp.Groups) != len(test.groups) {
-					t.Errorf("Expected group size %v, got %v", len(test.groups), len(resp.Groups))
-				} else {
-					if len(resp.Groups) > 0 {
-						if !reflect.DeepEqual(resp.Groups, test.groups) {
-							t.Errorf("Expected groups %v, got %v", test.groups, resp.Groups)
+				resp, err := serv.Check(base64.StdEncoding.EncodeToString([]byte(tc.token)))
+				if tc.authenticated {
+					if assert.Nil(t, err) {
+						if resp.Username != tc.username {
+							t.Errorf("Expected username %v, got %v", tc.username, resp.Username)
+						}
+						if len(resp.Groups) != len(tc.groups) {
+							t.Errorf("Expected group size %v, got %v", len(tc.groups), len(resp.Groups))
+						} else {
+							if len(resp.Groups) > 0 {
+								if !reflect.DeepEqual(resp.Groups, tc.groups) {
+									t.Errorf("Expected groups %v, got %v", tc.groups, resp.Groups)
+								}
+							}
 						}
 					}
+				} else {
+					assert.NotNil(t, err)
+					assert.Nil(t, resp)
 				}
-			} else {
-				assert.NotNil(t, err)
-				assert.Nil(t, resp)
-			}
-		})
-	}
+			})
+		}
+	})
 }
 
 func TestParseEncodedToken(t *testing.T) {

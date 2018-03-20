@@ -8,6 +8,9 @@ import (
 
 	"github.com/go-ldap/ldap"
 	"github.com/pkg/errors"
+	"gopkg.in/jcmturner/gokrb5.v4/keytab"
+	"gopkg.in/jcmturner/gokrb5.v4/messages"
+	"gopkg.in/jcmturner/gokrb5.v4/service"
 	auth "k8s.io/api/authentication/v1"
 )
 
@@ -22,21 +25,25 @@ const (
 )
 
 type Authenticator struct {
-	opts Options
+	opts   Options
+	keyTab keytab.Keytab
 }
 
-func New(opts Options) *Authenticator {
-	return &Authenticator{
+func New(opts Options) (*Authenticator, error) {
+	au := &Authenticator{
 		opts: opts,
 	}
+
+	var err error
+	au.keyTab, err = keytab.Load(opts.KeytabFile)
+	if err != nil {
+		return nil, errors.Wrap(err, "unabele to parse keytab file")
+	}
+
+	return au, nil
 }
 
 func (s Authenticator) Check(token string) (*auth.UserInfo, error) {
-	username, password, ok := parseEncodedToken(token)
-	if !ok {
-		return nil, errors.New("Invalid basic auth token")
-	}
-
 	var (
 		err  error
 		conn *ldap.Conn
@@ -75,46 +82,40 @@ func (s Authenticator) Check(token string) (*auth.UserInfo, error) {
 		}
 	}
 
-	req := s.opts.newUserSearchRequest(username)
-	res, err := conn.Search(req)
+	username, err := s.authenticateUser(conn, token)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error searching for user %s", username)
+		return nil, errors.Wrap(err, "authentication failed")
 	}
 
-	if len(res.Entries) == 0 {
-		return nil, errors.Errorf("No result for the user search filter '%s'", req.Filter)
-	} else if len(res.Entries) > 1 {
-		return nil, errors.Errorf("Multiple entries found for the user search filter '%s'", req.Filter)
-	}
-
-	userDN := res.Entries[0].DN
-	// authenticate user
-	err = conn.Bind(userDN, password)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	//rebind
-	if s.opts.BindDN != "" && s.opts.BindPassword != "" {
-		err = conn.Bind(s.opts.BindDN, s.opts.BindPassword)
-		if err != nil {
-			return nil, errors.WithStack(err)
+	if s.opts.AuthenticationChoice == 0 {
+		// rebind, as in simple authentication we bind using username, password
+		if s.opts.BindDN != "" && s.opts.BindPassword != "" {
+			err = conn.Bind(s.opts.BindDN, s.opts.BindPassword)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
 		}
 	}
 
+	userDN, err := s.getUserDN(conn, username)
+	if err != nil {
+		return nil, errors.Wrap(err, "error when getting user DN")
+	}
+
 	// user group list
-	req = s.opts.newGroupSearchRequest(userDN)
-	res, err = conn.Search(req)
+	req := s.opts.newGroupSearchRequest(userDN)
+	res, err := conn.Search(req)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error searching for user's group for %s", userDN)
 	}
+
 	var groups []string
 	//default use `cn` as group name
 	for _, en := range res.Entries {
 		for _, g := range en.Attributes {
 			if g.Name == s.opts.GroupNameAttribute {
 				if len(g.Values) == 0 {
-					return nil, errors.Errorf("cn not provided for %s", en.DN)
+					return nil, errors.Errorf("%s not provided for %s", s.opts.GroupNameAttribute, en.DN)
 				} else {
 					groups = append(groups, g.Values[0])
 				}
@@ -126,6 +127,69 @@ func (s Authenticator) Check(token string) (*auth.UserInfo, error) {
 	resp.Username = username
 	resp.Groups = groups
 	return resp, nil
+}
+
+func (s Authenticator) authenticateUser(conn *ldap.Conn, token string) (string, error) {
+	if s.opts.AuthenticationChoice == 0 {
+		//simple authentication
+		username, password, ok := parseEncodedToken(token)
+		if !ok {
+			return "", errors.New("Invalid basic auth token")
+		}
+
+		userDN, err := s.getUserDN(conn, username)
+		if err != nil {
+			return "", errors.WithStack(err)
+		}
+
+		// authenticate user
+		err = conn.Bind(userDN, password)
+		if err != nil {
+			return "", errors.WithStack(err)
+		}
+		return username, nil
+
+	} else if s.opts.AuthenticationChoice == 1 {
+		// kerberos
+		data, err := base64.StdEncoding.DecodeString(token)
+		if err != nil {
+			return "", errors.Wrap(err, "unable to decode token")
+		}
+
+		apReq := &messages.APReq{}
+		err = apReq.Unmarshal(data)
+		if err != nil {
+			return "", errors.Wrap(err, "unable to unmarshall")
+		}
+
+		if ok, creds, err := service.ValidateAPREQ(*apReq, s.keyTab, s.opts.ServiceAccountName, "", false); ok {
+			return creds.Username, nil
+		} else {
+			return "", err
+		}
+
+	} else {
+		return "", errors.New("authentication choice invalid")
+	}
+}
+
+func (s Authenticator) getUserDN(conn *ldap.Conn, username string) (string, error) {
+	req := s.opts.newUserSearchRequest(username)
+
+	res, err := conn.Search(req)
+	if err != nil {
+		return "", errors.Wrapf(err, "error searching for user %s", username)
+	}
+
+	if len(res.Entries) == 0 {
+		return "", errors.Errorf("No result for the user search filter '%s'", req.Filter)
+	} else if len(res.Entries) > 1 {
+		return "", errors.Errorf("Multiple entries found for the user search filter '%s'", req.Filter)
+	}
+
+	userDN := res.Entries[0].DN
+
+	return userDN, nil
 }
 
 // parseEncodedToken parses base64 encode token
