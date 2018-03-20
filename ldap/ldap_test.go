@@ -331,35 +331,38 @@ func runTest(t *testing.T, secureConn bool, s Authenticator, serverType string) 
 		},
 	}
 
-	for _, test := range dataset {
-		t.Run(serverType+": "+test.testName, func(t *testing.T) {
-			t.Log(test)
+	// This Run will not return until the parallel tests finish.
+	t.Run("ldap", func(t *testing.T) {
+		for _, tc := range dataset {
+			t.Run(serverType+": "+tc.testName, func(t *testing.T) {
+				t.Log(tc)
 
-			serv := s
-			serv.opts.UserAttribute = test.userAttribute
+				serv := s
+				serv.opts.UserAttribute = tc.userAttribute
 
-			resp, err := serv.Check(base64.StdEncoding.EncodeToString([]byte(test.token)))
-			if test.authenticated {
-				if assert.Nil(t, err) {
-					if resp.Username != test.username {
-						t.Errorf("Expected username %v, got %v", test.username, resp.Username)
-					}
-					if len(resp.Groups) != len(test.groups) {
-						t.Errorf("Expected group size %v, got %v", len(test.groups), len(resp.Groups))
-					} else {
-						if len(resp.Groups) > 0 {
-							if !reflect.DeepEqual(resp.Groups, test.groups) {
-								t.Errorf("Expected groups %v, got %v", test.groups, resp.Groups)
+				resp, err := serv.Check(base64.StdEncoding.EncodeToString([]byte(tc.token)))
+				if tc.authenticated {
+					if assert.Nil(t, err) {
+						if resp.Username != tc.username {
+							t.Errorf("Expected username %v, got %v", tc.username, resp.Username)
+						}
+						if len(resp.Groups) != len(tc.groups) {
+							t.Errorf("Expected group size %v, got %v", len(tc.groups), len(resp.Groups))
+						} else {
+							if len(resp.Groups) > 0 {
+								if !reflect.DeepEqual(resp.Groups, tc.groups) {
+									t.Errorf("Expected groups %v, got %v", tc.groups, resp.Groups)
+								}
 							}
 						}
 					}
+				} else {
+					assert.NotNil(t, err)
+					assert.Nil(t, resp)
 				}
-			} else {
-				assert.NotNil(t, err)
-				assert.Nil(t, resp)
-			}
-		})
-	}
+			})
+		}
+	})
 }
 
 func TestParseEncodedToken(t *testing.T) {
