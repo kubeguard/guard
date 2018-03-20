@@ -31,6 +31,7 @@ guard run [flags]
       --google.admin-email string            Email of G Suite administrator
       --google.sa-json-file string           Path to Google service account json file
   -h, --help                                 help for run
+      --ldap.auth-choice int                 LDAP user authentication mechanism, 0 for simple authentication, 1 for kerberos(via GSSAPI)
       --ldap.bind-dn string                  The connector uses this DN in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
       --ldap.bind-password string            The connector uses this password in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
       --ldap.ca-cert-file string             ca cert file that used for self signed server certificate
@@ -39,8 +40,10 @@ guard run [flags]
       --ldap.group-search-dn string          BaseDN to start the search group
       --ldap.group-search-filter string      Filter to apply when searching the groups that user is member of (default "(objectClass=groupOfNames)")
       --ldap.is-secure-ldap                  Secure LDAP (LDAPS)
+      --ldap.keytab-file string              path to the keytab file, it's contain LDAP service principal keys
       --ldap.server-address string           Host or IP of the LDAP server
       --ldap.server-port string              LDAP server port (default "389")
+      --ldap.service-account string          service account name
       --ldap.skip-tls-verification           Skip LDAP server TLS verification, default : false
       --ldap.start-tls                       Start tls connection
       --ldap.user-attribute string           Ldap username attribute (default "uid")
