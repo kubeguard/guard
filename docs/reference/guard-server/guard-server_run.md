@@ -1,37 +1,36 @@
 ---
-title: Guard Get Installer
+title: Run
 menu:
   product_guard_0.1.0-rc.5:
-    identifier: guard-get-installer
-    name: Guard Get Installer
-    parent: reference
+    identifier: guard-server-run
+    name: Run
+    parent: guard-server
 product_name: guard
-menu_name: product_guard_0.1.0-rc.5
 section_menu_id: reference
+menu_name: product_guard_0.1.0-rc.5
 ---
-## guard get installer
+## guard-server run
 
-Prints Kubernetes objects for deploying guard server
+Run server
 
 ### Synopsis
 
-Prints Kubernetes objects for deploying guard server
+Run server
 
 ```
-guard get installer [flags]
+guard-server run [flags]
 ```
 
 ### Options
 
 ```
-      --addr string                          Address (host:port) of guard server. (default "10.96.10.96:443")
       --azure.client-id string               MS Graph application client ID to use
       --azure.client-secret string           MS Graph application client secret to use
       --azure.tenant-id string               MS Graph application tenant id to use
+      --clock-check-interval duration        Interval between checking time against NTP servers (default 5m0s)
       --google.admin-email string            Email of G Suite administrator
       --google.sa-json-file string           Path to Google service account json file
-  -h, --help                                 help for installer
-      --image-pull-secret string             Name of image pull secret
+  -h, --help                                 help for run
       --ldap.auth-choice int                 LDAP user authentication mechanism, 0 for simple authentication, 1 for kerberos(via GSSAPI)
       --ldap.bind-dn string                  The connector uses this DN in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
       --ldap.bind-password string            The connector uses this password in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
@@ -50,10 +49,11 @@ guard get installer [flags]
       --ldap.user-attribute string           Ldap username attribute (default "uid")
       --ldap.user-search-dn string           BaseDN to start the search user
       --ldap.user-search-filter string       Filter to apply when searching user (default "(objectClass=person)")
-  -n, --namespace string                     Name of Kubernetes namespace used to run guard server. (default "kube-system")
-      --pki-dir string                       Path to directory where pki files are stored. (default "$HOME/.guard")
-      --private-registry string              Private Docker registry (default "appscode")
-      --run-on-master                        If true, runs Guard server on master instances (default true)
+      --max-clock-skew duration              Max acceptable clock skew for server clock (default 5s)
+      --secure-addr string                   host:port used to serve secure apis (default ":8443")
+      --tls-ca-file string                   File containing CA certificate
+      --tls-cert-file string                 File container server TLS certificate
+      --tls-private-key-file string          File containing server TLS private key
       --token-auth-file string               To enable static token authentication
 ```
 
@@ -72,5 +72,5 @@ guard get installer [flags]
 
 ### SEE ALSO
 
-* [guard get](/docs/reference/guard_get.md)	 - Get PKI
+* [guard-server](/docs/reference/guard-server/guard-server.md)	 - Guard server by AppsCode - Kubernetes Authentication WebHook Server
 

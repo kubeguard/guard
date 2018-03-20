@@ -1,32 +1,26 @@
 ---
-title: Guard Init Client
+title: Get
 menu:
   product_guard_0.1.0-rc.5:
-    identifier: guard-init-client
-    name: Guard Init Client
-    parent: reference
+    identifier: guard-cli-get
+    name: Get
+    parent: guard-cli
 product_name: guard
-menu_name: product_guard_0.1.0-rc.5
 section_menu_id: reference
+menu_name: product_guard_0.1.0-rc.5
 ---
-## guard init client
+## guard-cli get
 
-Generate client certificate pair
+Get PKI
 
 ### Synopsis
 
-Generate client certificate pair
-
-```
-guard init client [flags]
-```
+Get PKI
 
 ### Options
 
 ```
-  -h, --help                  help for client
-  -o, --organization string   Name of Organization (Github/Gitlab/Google).
-      --pki-dir string        Path to directory where pki files are stored. (default "$HOME/.guard")
+  -h, --help   help for get
 ```
 
 ### Options inherited from parent commands
@@ -44,5 +38,8 @@ guard init client [flags]
 
 ### SEE ALSO
 
-* [guard init](/docs/reference/guard_init.md)	 - Init PKI
+* [guard-cli](/docs/reference/guard-cli/guard-cli.md)	 - Guard Command Line Interface by AppsCode - Kubernetes Authentication WebHook Server
+* [guard-cli get installer](/docs/reference/guard-cli/guard-cli_get_installer.md)	 - Prints Kubernetes objects for deploying guard server
+* [guard-cli get token](/docs/reference/guard-cli/guard-cli_get_token.md)	 - Get tokens for Github/Gitlab/Google
+* [guard-cli get webhook-config](/docs/reference/guard-cli/guard-cli_get_webhook-config.md)	 - Prints authentication token webhook config file
 

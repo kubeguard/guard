@@ -1,33 +1,38 @@
 ---
-title: Guard
+title: Version
 menu:
   product_guard_0.1.0-rc.5:
-    identifier: guard
-    name: Guard
-    parent: reference
-    weight: 0
-
+    identifier: guard-cli-version
+    name: Version
+    parent: guard-cli
 product_name: guard
-menu_name: product_guard_0.1.0-rc.5
 section_menu_id: reference
-aliases:
-  - products/guard/0.1.0-rc.5/reference/
-
+menu_name: product_guard_0.1.0-rc.5
 ---
-## guard
+## guard-cli version
 
-Guard by AppsCode - Kubernetes Authentication WebHook Server
+Prints binary version number.
 
 ### Synopsis
 
-Guard by AppsCode - Kubernetes Authentication WebHook Server
+Prints binary version number.
+
+```
+guard-cli version [flags]
+```
 
 ### Options
 
 ```
+  -h, --help    help for version
+      --short   Print just the version number.
+```
+
+### Options inherited from parent commands
+
+```
       --alsologtostderr                  log to standard error as well as files
       --analytics                        Send analytical events to Google Guard (default true)
-  -h, --help                             help for guard
       --log_backtrace_at traceLocation   when logging hits line file:N, emit a stack trace (default :0)
       --log_dir string                   If non-empty, write log files in this directory
       --logtostderr                      log to standard error instead of files
@@ -38,8 +43,5 @@ Guard by AppsCode - Kubernetes Authentication WebHook Server
 
 ### SEE ALSO
 
-* [guard get](/docs/reference/guard_get.md)	 - Get PKI
-* [guard init](/docs/reference/guard_init.md)	 - Init PKI
-* [guard run](/docs/reference/guard_run.md)	 - Run server
-* [guard version](/docs/reference/guard_version.md)	 - Prints binary version number.
+* [guard-cli](/docs/reference/guard-cli/guard-cli.md)	 - Guard Command Line Interface by AppsCode - Kubernetes Authentication WebHook Server
 

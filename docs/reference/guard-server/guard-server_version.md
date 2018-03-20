@@ -1,26 +1,31 @@
 ---
-title: Guard Init
+title: Version
 menu:
   product_guard_0.1.0-rc.5:
-    identifier: guard-init
-    name: Guard Init
-    parent: reference
+    identifier: guard-server-version
+    name: Version
+    parent: guard-server
 product_name: guard
-menu_name: product_guard_0.1.0-rc.5
 section_menu_id: reference
+menu_name: product_guard_0.1.0-rc.5
 ---
-## guard init
+## guard-server version
 
-Init PKI
+Prints binary version number.
 
 ### Synopsis
 
-Init PKI
+Prints binary version number.
+
+```
+guard-server version [flags]
+```
 
 ### Options
 
 ```
-  -h, --help   help for init
+  -h, --help    help for version
+      --short   Print just the version number.
 ```
 
 ### Options inherited from parent commands
@@ -38,8 +43,5 @@ Init PKI
 
 ### SEE ALSO
 
-* [guard](/docs/reference/guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
-* [guard init ca](/docs/reference/guard_init_ca.md)	 - Init CA
-* [guard init client](/docs/reference/guard_init_client.md)	 - Generate client certificate pair
-* [guard init server](/docs/reference/guard_init_server.md)	 - Generate server certificate pair
+* [guard-server](/docs/reference/guard-server/guard-server.md)	 - Guard server by AppsCode - Kubernetes Authentication WebHook Server
 

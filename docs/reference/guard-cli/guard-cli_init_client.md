@@ -1,31 +1,32 @@
 ---
-title: Guard Init Ca
+title: Init Client
 menu:
   product_guard_0.1.0-rc.5:
-    identifier: guard-init-ca
-    name: Guard Init Ca
-    parent: reference
+    identifier: guard-cli-init-client
+    name: Init Client
+    parent: guard-cli
 product_name: guard
-menu_name: product_guard_0.1.0-rc.5
 section_menu_id: reference
+menu_name: product_guard_0.1.0-rc.5
 ---
-## guard init ca
+## guard-cli init client
 
-Init CA
+Generate client certificate pair
 
 ### Synopsis
 
-Init CA
+Generate client certificate pair
 
 ```
-guard init ca [flags]
+guard-cli init client [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help             help for ca
-      --pki-dir string   Path to directory where pki files are stored. (default "$HOME/.guard")
+  -h, --help                  help for client
+  -o, --organization string   Name of Organization (Github/Gitlab/Google).
+      --pki-dir string        Path to directory where pki files are stored. (default "$HOME/.guard")
 ```
 
 ### Options inherited from parent commands
@@ -43,5 +44,5 @@ guard init ca [flags]
 
 ### SEE ALSO
 
-* [guard init](/docs/reference/guard_init.md)	 - Init PKI
+* [guard-cli init](/docs/reference/guard-cli/guard-cli_init.md)	 - Init PKI
 

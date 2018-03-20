@@ -39,19 +39,26 @@ from os.path import expandvars, join, dirname
 libbuild.REPO_ROOT = expandvars('$GOPATH') + '/src/github.com/appscode/guard'
 BUILD_METADATA = libbuild.metadata(libbuild.REPO_ROOT)
 libbuild.BIN_MATRIX = {
-    'guard': {
+    'guard-server': {
         'type': 'go',
         'go_version': True,
         'distro': {
-            'alpine': ['amd64'],
-            'darwin': ['amd64'],
-            'linux': ['amd64'],
+            'alpine': ['amd64']
         }
+    },
+    'guard-cli': {
+        'type': 'go',
+        'go_version': True,
+        'distro': {
+            'darwin': ['amd64'],
+            'linux': ['amd64']
+        },
+        'upx': True
     }
 }
 if libbuild.ENV not in ['prod']:
-    libbuild.BIN_MATRIX['guard']['distro'] = {
-        'alpine': ['amd64']
+    libbuild.BIN_MATRIX['guard-cli']['distro'] = {
+        libbuild.GOHOSTOS: [libbuild.GOHOSTARCH]
     }
 libbuild.BUCKET_MATRIX = {
     'prod': 'gs://appscode-cdn',
@@ -81,17 +88,17 @@ def version():
 
 
 def fmt():
-    libbuild.ungroup_go_imports('*.go', 'appscode', 'azure', 'commands', 'github', 'gitlab', 'google', 'hack', 'ldap', 'server', 'token')
-    die(call('goimports -w *.go appscode azure commands github gitlab google hack ldap server token'))
-    call('gofmt -s -w *.go appscode azure commands github gitlab google hack ldap server token')
+    libbuild.ungroup_go_imports('appscode', 'azure', 'cmd', 'commands', 'github', 'gitlab', 'google', 'hack', 'ldap', 'server', 'token')
+    die(call('goimports -w appscode azure cmd commands github gitlab google hack ldap server token'))
+    call('gofmt -s -w appscode azure cmd commands github gitlab google hack ldap server token')
 
 
 def vet():
-    call('go vet *.go ./...')
+    call('go vet ./...')
 
 
 def lint():
-    call('golint *.go ./...')
+    call('golint ./...')
 
 
 def gen():
@@ -100,13 +107,16 @@ def gen():
 
 def build_cmd(name):
     cfg = libbuild.BIN_MATRIX[name]
+    entrypoint = 'cmd/{}/*.go'.format(name)
+    compress = libbuild.ENV in ['prod']
+    upx = cfg['upx']
     if cfg['type'] == 'go':
         if 'distro' in cfg:
             for goos, archs in cfg['distro'].items():
                 for goarch in archs:
-                    libbuild.go_build(name, goos, goarch, main='*.go')
+                    libbuild.go_build(name, goos, goarch, entrypoint, compress, upx)
         else:
-            libbuild.go_build(name, libbuild.GOHOSTOS, libbuild.GOHOSTARCH, main='*.go')
+            libbuild.go_build(name, libbuild.GOHOSTOS, libbuild.GOHOSTARCH, entrypoint, compress, upx)
 
 
 def build_cmds():
@@ -126,13 +136,13 @@ def build(name=None):
 
 
 def install():
-    die(call('GO15VENDOREXPERIMENT=1 ' + libbuild.GOC + ' install ./...'))
+    die(call('GO15VENDOREXPERIMENT=1 ' + libbuild.GOC + ' install ./cmd/...'))
 
 
 def default():
     gen()
     fmt()
-    die(call('GO15VENDOREXPERIMENT=1 ' + libbuild.GOC + ' install .'))
+    die(call('GO15VENDOREXPERIMENT=1 ' + libbuild.GOC + ' install ./cmd/...'))
 
 
 if __name__ == "__main__":

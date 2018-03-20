@@ -1,40 +1,34 @@
 ---
-title: Guard Init Server
+title: Guard-Cli
 menu:
   product_guard_0.1.0-rc.5:
-    identifier: guard-init-server
-    name: Guard Init Server
-    parent: reference
-product_name: guard
-menu_name: product_guard_0.1.0-rc.5
-section_menu_id: reference
----
-## guard init server
+    identifier: guard-cli
+    name: Guard-Cli
+    parent: guard-cli
+    weight: 0
 
-Generate server certificate pair
+product_name: guard
+section_menu_id: reference
+menu_name: product_guard_0.1.0-rc.5
+url: /products/guard/0.1.0-rc.5/reference/guard-cli/
+aliases:
+  - products/guard/0.1.0-rc.5/reference/guard-cli/guard-cli/
+
+---
+## guard-cli
+
+Guard Command Line Interface by AppsCode - Kubernetes Authentication WebHook Server
 
 ### Synopsis
 
-Generate server certificate pair
-
-```
-guard init server [flags]
-```
+Guard Command Line Interface by AppsCode - Kubernetes Authentication WebHook Server
 
 ### Options
 
 ```
-      --domains stringSlice   Alternative Domain names
-  -h, --help                  help for server
-      --ips ipSlice           Alternative IP addresses (default [127.0.0.1])
-      --pki-dir string        Path to directory where pki files are stored. (default "$HOME/.guard")
-```
-
-### Options inherited from parent commands
-
-```
       --alsologtostderr                  log to standard error as well as files
       --analytics                        Send analytical events to Google Guard (default true)
+  -h, --help                             help for guard-cli
       --log_backtrace_at traceLocation   when logging hits line file:N, emit a stack trace (default :0)
       --log_dir string                   If non-empty, write log files in this directory
       --logtostderr                      log to standard error instead of files
@@ -45,5 +39,7 @@ guard init server [flags]
 
 ### SEE ALSO
 
-* [guard init](/docs/reference/guard_init.md)	 - Init PKI
+* [guard-cli get](/docs/reference/guard-cli/guard-cli_get.md)	 - Get PKI
+* [guard-cli init](/docs/reference/guard-cli/guard-cli_init.md)	 - Init PKI
+* [guard-cli version](/docs/reference/guard-cli/guard-cli_version.md)	 - Prints binary version number.
 
