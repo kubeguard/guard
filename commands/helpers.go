@@ -1,4 +1,4 @@
-package cmds
+package commands
 
 import "k8s.io/client-go/util/cert"
 

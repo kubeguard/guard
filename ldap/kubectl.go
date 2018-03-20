@@ -3,7 +3,7 @@ package ldap
 import (
 	"encoding/base64"
 
-	"github.com/appscode/guard/cli"
+	"github.com/appscode/guard/util/kubeconfig"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"gopkg.in/jcmturner/gokrb5.v4/client"
@@ -144,5 +144,5 @@ func (t *TokenOptions) addAuthInfo(token string) error {
 		Token: token,
 	}
 
-	return cli.AddAuthInfoToKubeConfig(t.Username, authInfo)
+	return kubeconfig.AddAuthInfo(t.Username, authInfo)
 }

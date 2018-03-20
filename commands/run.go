@@ -1,4 +1,4 @@
-package cmds
+package commands
 
 import (
 	"github.com/appscode/go/log"

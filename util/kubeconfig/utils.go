@@ -1,4 +1,4 @@
-package cli
+package kubeconfig
 
 import (
 	"fmt"
@@ -13,17 +13,17 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-func AddAuthInfoToKubeConfig(email string, authInfo *clientcmdapi.AuthInfo) error {
+func AddAuthInfo(username string, authInfo *clientcmdapi.AuthInfo) error {
 	var konfig *clientcmdapi.Config
-	if _, err := os.Stat(KubeConfigPath()); err == nil {
+	if _, err := os.Stat(Path()); err == nil {
 		// ~/.kube/config exists
-		konfig, err = clientcmd.LoadFromFile(KubeConfigPath())
+		konfig, err = clientcmd.LoadFromFile(Path())
 		if err != nil {
 			return err
 		}
 
-		bakFile := KubeConfigPath() + ".bak." + time.Now().Format("2006-01-02T15-04")
-		err = ioutil.CopyFile(bakFile, KubeConfigPath())
+		bakFile := Path() + ".bak." + time.Now().Format("2006-01-02T15-04")
+		err = ioutil.CopyFile(bakFile, Path())
 		if err != nil {
 			return err
 		}
@@ -38,20 +38,20 @@ func AddAuthInfoToKubeConfig(email string, authInfo *clientcmdapi.AuthInfo) erro
 		}
 	}
 
-	konfig.AuthInfos[email] = authInfo
+	konfig.AuthInfos[username] = authInfo
 
-	err := os.MkdirAll(filepath.Dir(KubeConfigPath()), 0755)
+	err := os.MkdirAll(filepath.Dir(Path()), 0755)
 	if err != nil {
 		return err
 	}
-	err = clientcmd.WriteToFile(*konfig, KubeConfigPath())
+	err = clientcmd.WriteToFile(*konfig, Path())
 	if err != nil {
 		return err
 	}
-	term.Successln("Configuration has been written to", KubeConfigPath())
+	term.Successln("Configuration has been written to", Path())
 	return nil
 }
 
-func KubeConfigPath() string {
-	return homedir.HomeDir() + "/.kube/config"
+func Path() string {
+	return filepath.Join(homedir.HomeDir(),  ".kube", "config")
 }
