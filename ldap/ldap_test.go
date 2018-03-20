@@ -336,17 +336,17 @@ func runTest(t *testing.T, secureConn bool, s Authenticator, serverType string) 
 
 			resp, err := serv.Check(base64.StdEncoding.EncodeToString([]byte(test.token)))
 			if test.authenticated {
-				assert.Nil(t, err)
-
-				if resp.Username != test.username {
-					t.Errorf("Expected username %v, got %v", test.username, resp.Username)
-				}
-				if len(resp.Groups) != len(test.groups) {
-					t.Errorf("Expected group size %v, got %v", len(test.groups), len(resp.Groups))
-				} else {
-					if len(resp.Groups) > 0 {
-						if !reflect.DeepEqual(resp.Groups, test.groups) {
-							t.Errorf("Expected groups %v, got %v", test.groups, resp.Groups)
+				if assert.Nil(t, err) {
+					if resp.Username != test.username {
+						t.Errorf("Expected username %v, got %v", test.username, resp.Username)
+					}
+					if len(resp.Groups) != len(test.groups) {
+						t.Errorf("Expected group size %v, got %v", len(test.groups), len(resp.Groups))
+					} else {
+						if len(resp.Groups) > 0 {
+							if !reflect.DeepEqual(resp.Groups, test.groups) {
+								t.Errorf("Expected groups %v, got %v", test.groups, resp.Groups)
+							}
 						}
 					}
 				}
