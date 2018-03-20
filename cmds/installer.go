@@ -151,13 +151,23 @@ func NewCmdInstaller() *cobra.Command {
 				buf.WriteString("---\n")
 			}
 
+			ldapData := map[string][]byte{}
 			if opts.LDAP.CaCertFile != "" {
 				cert, err := ioutil.ReadFile(opts.LDAP.CaCertFile)
 				if err != nil {
 					log.Fatalln(err)
 				}
-				certData := map[string][]byte{"ca.crt": cert}
-				data, err = meta.MarshalToYAML(newSecretForLDAPCert(opts.namespace, certData), core.SchemeGroupVersion)
+				ldapData["ca.crt"] = cert
+			}
+			if opts.LDAP.KeytabFile != "" {
+				key, err := ioutil.ReadFile(opts.LDAP.KeytabFile)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				ldapData["krb5.keytab"] = key
+			}
+			if len(ldapData) > 0 {
+				data, err = meta.MarshalToYAML(newSecretForLDAP(opts.namespace, ldapData), core.SchemeGroupVersion)
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -330,18 +340,18 @@ func newDeployment(opts options) runtime.Object {
 		d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
 	}
 
-	if opts.LDAP.CaCertFile != "" {
+	if opts.LDAP.CaCertFile != "" || opts.LDAP.KeytabFile != "" {
 		volMount := core.VolumeMount{
-			Name:      "guard-cert",
-			MountPath: "/etc/guard/certs/",
+			Name:      "guard-ldap",
+			MountPath: "/etc/guard/ldap/",
 		}
 		d.Spec.Template.Spec.Containers[0].VolumeMounts = append(d.Spec.Template.Spec.Containers[0].VolumeMounts, volMount)
 
 		vol := core.Volume{
-			Name: "guard-cert",
+			Name: "guard-ldap",
 			VolumeSource: core.VolumeSource{
 				Secret: &core.SecretVolumeSource{
-					SecretName:  "guard-cert",
+					SecretName:  "guard-ldap",
 					DefaultMode: types.Int32P(0444),
 				},
 			},
@@ -443,10 +453,10 @@ func newSecretForTokenAuth(namespace string, data map[string][]byte) runtime.Obj
 	}
 }
 
-func newSecretForLDAPCert(namespace string, data map[string][]byte) runtime.Object {
+func newSecretForLDAP(namespace string, data map[string][]byte) runtime.Object {
 	return &core.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "guard-cert",
+			Name:      "guard-ldap",
 			Namespace: namespace,
 			Labels:    labels,
 		},

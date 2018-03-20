@@ -144,13 +144,13 @@ func (o Options) ToArgs() []string {
 		args = append(args, "--ldap.start-tls")
 	}
 	if o.CaCertFile != "" {
-		args = append(args, fmt.Sprintf("--ldap.ca-cert-file=/etc/guard/certs/ca.crt"))
+		args = append(args, fmt.Sprintf("--ldap.ca-cert-file=/etc/guard/ldap/ca.crt"))
 	}
 	if o.ServiceAccountName != "" {
 		args = append(args, fmt.Sprintf("--ldap.service-account=%s", o.ServiceAccountName))
 	}
 	if o.KeytabFile != "" {
-		args = append(args, fmt.Sprintf("--ldap.keytab-file=/etc/guard/certs/krb5.keytab"))
+		args = append(args, fmt.Sprintf("--ldap.keytab-file=/etc/guard/ldap/krb5.keytab"))
 	}
 	args = append(args, fmt.Sprintf("--ldap.auth-choice=%v", o.AuthenticationChoice))
 
