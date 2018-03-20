@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/appscode/go/log"
-	"github.com/appscode/guard/cli"
+	"github.com/appscode/guard/util/kubeconfig"
 	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
 	"golang.org/x/net/context"
@@ -69,7 +69,7 @@ func handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("Error: %v", err)))
 		return
 	} else {
-		w.Write([]byte("Configuration has been written to " + cli.KubeConfigPath()))
+		w.Write([]byte("Configuration has been written to " + kubeconfig.Path()))
 		return
 	}
 }
@@ -91,7 +91,7 @@ func addAuthInfo(idToken, refreshToken string) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to retrieve email from idToken")
 	}
-	return cli.AddAuthInfoToKubeConfig(email, authInfo)
+	return kubeconfig.AddAuthInfo(email, authInfo)
 }
 
 func getEmailFromIdToken(idToken string) (string, error) {

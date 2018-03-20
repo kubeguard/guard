@@ -7,10 +7,10 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
-	"path/filepath"
 
 	"github.com/appscode/kutil/tools/certstore"
 	"github.com/go-ldap/ldap"

@@ -1,26 +1,25 @@
-package cmds
+package commands
 
 import (
-	"crypto/x509"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/appscode/go/log"
-	"github.com/appscode/go/term"
 	"github.com/appscode/guard/server"
 	"github.com/appscode/kutil/tools/certstore"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/util/cert"
 )
 
-func NewCmdInitClient() *cobra.Command {
-	var org string
+func NewCmdGetWebhookConfig() *cobra.Command {
+	var org, addr string
 	cmd := &cobra.Command{
-		Use:               "client",
-		Short:             "Generate client certificate pair",
+		Use:               "webhook-config",
+		Short:             "Prints authentication token webhook config file",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			org = strings.ToLower(org)
@@ -41,9 +40,7 @@ func NewCmdInitClient() *cobra.Command {
 
 			cfg := cert.Config{
 				CommonName: args[0],
-				Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 			}
-
 			switch org {
 			case "github":
 				cfg.Organization = []string{"Github"}
@@ -63,33 +60,59 @@ func NewCmdInitClient() *cobra.Command {
 				log.Fatalf("Unknown organization %s.", org)
 			}
 
-			store, err := certstore.NewCertStore(afero.NewOsFs(), filepath.Join(rootDir, "pki"), cfg.Organization...)
+			store, err := certstore.NewCertStore(afero.NewOsFs(), filepath.Join(rootDir, "pki"))
 			if err != nil {
 				log.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}
-			if store.IsExists(filename(cfg)) {
-				if !term.Ask(fmt.Sprintf("Client certificate found at %s. Do you want to overwrite?", store.Location()), false) {
-					os.Exit(1)
-				}
+			if !store.PairExists("ca") {
+				log.Fatalf("CA certificates not found in %s. Run `guard init ca`", store.Location())
+			}
+			if !store.PairExists(filename(cfg)) {
+				log.Fatalf("Client certificate not found in %s. Run `guard init client %s -p %s`", store.Location(), cfg.CommonName, cfg.Organization[0])
 			}
 
-			if err = store.LoadCA(); err != nil {
+			caCert, _, err := store.ReadBytes("ca")
+			if err != nil {
+				log.Fatalf("Failed to load ca certificate. Reason: %v.", err)
+			}
+			clientCert, clientKey, err := store.ReadBytes(filename(cfg))
+			if err != nil {
 				log.Fatalf("Failed to load ca certificate. Reason: %v.", err)
 			}
 
-			crt, key, err := store.NewClientCertPair(cfg.CommonName, cfg.Organization...)
-			if err != nil {
-				log.Fatalf("Failed to generate certificate pair. Reason: %v.", err)
+			config := clientcmdapi.Config{
+				Kind:       "Config",
+				APIVersion: "v1",
+				Clusters: map[string]*clientcmdapi.Cluster{
+					"guard-server": {
+						Server: fmt.Sprintf("https://%s/tokenreviews", addr),
+						CertificateAuthorityData: caCert,
+					},
+				},
+				AuthInfos: map[string]*clientcmdapi.AuthInfo{
+					filename(cfg): {
+						ClientCertificateData: clientCert,
+						ClientKeyData:         clientKey,
+					},
+				},
+				Contexts: map[string]*clientcmdapi.Context{
+					"webhook": {
+						Cluster:  "guard-server",
+						AuthInfo: filename(cfg),
+					},
+				},
+				CurrentContext: "webhook",
 			}
-			err = store.WriteBytes(filename(cfg), crt, key)
+			data, err := clientcmd.Write(config)
 			if err != nil {
-				log.Fatalf("Failed to init client certificate pair. Reason: %v.", err)
+				log.Fatalln(err)
 			}
-			term.Successln("Wrote client certificates in ", store.Location())
+			fmt.Println(string(data))
 		},
 	}
 
 	cmd.Flags().StringVar(&rootDir, "pki-dir", rootDir, "Path to directory where pki files are stored.")
 	cmd.Flags().StringVarP(&org, "organization", "o", org, fmt.Sprintf("Name of Organization (%v).", server.SupportedOrgPrintForm()))
+	cmd.Flags().StringVar(&addr, "addr", "10.96.10.96:443", "Address (host:port) of guard server.")
 	return cmd
 }
