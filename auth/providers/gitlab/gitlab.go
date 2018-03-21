@@ -21,10 +21,14 @@ type Authenticator struct {
 	Client *gitlab.Client
 }
 
-func New(token string) *Authenticator {
+func New(token string) auth.Interface {
 	return &Authenticator{
 		Client: gitlab.NewClient(nil, token),
 	}
+}
+
+func (g Authenticator) UID() string {
+	return OrgType
 }
 
 func (g *Authenticator) Check() (*authv1.UserInfo, error) {

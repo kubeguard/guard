@@ -260,7 +260,10 @@ func TestCheckAzureAuthenticationSuccess(t *testing.T) {
 				t.Fatalf("Error when signing token. reason: %v", err)
 			}
 
-			resp, err := client.Check(token)
+			// token
+			client.token = token
+
+			resp, err := client.Check()
 			assert.Nil(t, err)
 			assertUserInfo(t, resp, test.groupSize)
 		})
@@ -311,7 +314,10 @@ func TestCheckAzureAuthenticationFailed(t *testing.T) {
 				token = test.token
 			}
 
-			resp, err := client.Check(token)
+			// token
+			client.token = token
+
+			resp, err := client.Check()
 			assert.NotNil(t, err)
 			assert.Nil(t, resp)
 		})

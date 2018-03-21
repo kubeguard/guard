@@ -340,7 +340,10 @@ func runTest(t *testing.T, secureConn bool, s Authenticator, serverType string) 
 				serv := s
 				serv.opts.UserAttribute = tc.userAttribute
 
-				resp, err := serv.Check(base64.StdEncoding.EncodeToString([]byte(tc.token)))
+				// set up client token
+				serv.token = base64.StdEncoding.EncodeToString([]byte(tc.token))
+
+				resp, err := serv.Check()
 				if tc.authenticated {
 					if assert.Nil(t, err) {
 						if resp.Username != tc.username {

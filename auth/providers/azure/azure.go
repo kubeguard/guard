@@ -45,12 +45,14 @@ type Authenticator struct {
 	graphClient *graph.UserInfo
 	verifier    *oidc.IDTokenVerifier
 	ctx         context.Context
+	token       string
 }
 
-func New(opts Options) (auth.Interface, error) {
+func New(opts Options, token string) (auth.Interface, error) {
 	c := &Authenticator{
 		Options: opts,
 		ctx:     context.Background(),
+		token:   token,
 	}
 
 	var err error
@@ -72,8 +74,8 @@ func (s Authenticator) UID() string {
 	return OrgType
 }
 
-func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
-	idToken, err := s.verifier.Verify(s.ctx, token)
+func (s Authenticator) Check() (*authv1.UserInfo, error) {
+	idToken, err := s.verifier.Verify(s.ctx, s.token)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to verify token for azure")
 	}

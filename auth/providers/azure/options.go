@@ -26,7 +26,6 @@ func NewOptions() Options {
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.ClientID, "azure.client-id", o.ClientID, "MS Graph application client ID to use")
-	fs.StringVar(&o.ClientSecret, "azure.client-secret", o.ClientSecret, "MS Graph application client secret to use")
 	fs.StringVar(&o.TenantID, "azure.tenant-id", o.TenantID, "MS Graph application tenant id to use")
 }
 

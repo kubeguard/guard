@@ -5,7 +5,11 @@ import (
 	"io/ioutil"
 
 	"github.com/appscode/go/types"
+	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
+	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2/jwt"
+	gdir "google.golang.org/api/admin/directory/v1"
 	"k8s.io/api/apps/v1beta1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,10 +19,32 @@ import (
 type Options struct {
 	ServiceAccountJsonFile string
 	AdminEmail             string
+	jwtConfig              *jwt.Config
 }
 
 func NewOptions() Options {
 	return Options{}
+}
+
+func (o *Options) Bootstrap() error {
+	if o.ServiceAccountJsonFile != "" {
+		sa, err := ioutil.ReadFile(o.ServiceAccountJsonFile)
+		if err != nil {
+			return errors.Wrapf(err, "failed to load service account json file %s", o.ServiceAccountJsonFile)
+		}
+
+		o.jwtConfig, err = google.JWTConfigFromJSON(sa, gdir.AdminDirectoryGroupReadonlyScope)
+		if err != nil {
+			return errors.Wrapf(err, "failed to create JWT config from service account json file %s", o.ServiceAccountJsonFile)
+		}
+
+		// https://admin.google.com/ManageOauthClients
+		// ref: https://developers.google.com/admin-sdk/directory/v1/guides/delegation
+		// Note: Only users with access to the Admin APIs can access the Admin SDK Directory API, therefore your service account needs to impersonate one of those users to access the Admin SDK Directory API.
+		o.jwtConfig.Subject = o.AdminEmail
+	}
+
+	return nil
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {

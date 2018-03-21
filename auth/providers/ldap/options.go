@@ -8,7 +8,9 @@ import (
 
 	"github.com/appscode/go/types"
 	"github.com/go-ldap/ldap"
+	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
+	"gopkg.in/jcmturner/gokrb5.v4/keytab"
 	"k8s.io/api/apps/v1beta1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -78,6 +80,9 @@ type Options struct {
 	// default : 0
 	KeytabFile string
 
+	// keytab contains service principal and encryption key
+	keytab keytab.Keytab
+
 	// The serviceAccountName needs to be defined when using Active Directory
 	// where the SPN is mapped to a user account. If this is not required it
 	// should be set to an empty string ""
@@ -92,11 +97,41 @@ func NewOptions() Options {
 	}
 }
 
+// if ca cert is provided then create CA Cert Pool
+// if keytab file is provides then load it
+func (o *Options) Bootstrap() error {
+	// caCertPool for self signed LDAP sever certificate
+	if o.CaCertFile != "" {
+		caCert, err := ioutil.ReadFile(o.CaCertFile)
+		if err != nil {
+			return errors.Wrap(err, "unable to read ca cert file")
+		}
+		o.CaCertPool = x509.NewCertPool()
+		o.CaCertPool.AppendCertsFromPEM(caCert)
+		ok := o.CaCertPool.AppendCertsFromPEM(caCert)
+		if !ok {
+			return errors.New("Failed to add CA cert in CertPool for LDAP")
+		}
+	}
+
+	// keytab required for kerberos
+	if o.AuthenticationChoice == AuthChoiceKerberos {
+		var err error
+		if o.KeytabFile != "" {
+			return errors.New("keytab not provided")
+		}
+
+		o.keytab, err = keytab.Load(o.KeytabFile)
+		if err != nil {
+			return errors.Wrap(err, "unable to parse keytab file")
+		}
+	}
+	return nil
+}
+
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.ServerAddress, "ldap.server-address", o.ServerAddress, "Host or IP of the LDAP server")
 	fs.StringVar(&o.ServerPort, "ldap.server-port", "389", "LDAP server port")
-	fs.StringVar(&o.BindDN, "ldap.bind-dn", o.BindDN, "The connector uses this DN in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.")
-	fs.StringVar(&o.BindPassword, "ldap.bind-password", o.BindPassword, "The connector uses this password in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.")
 	fs.StringVar(&o.UserSearchDN, "ldap.user-search-dn", o.UserSearchDN, "BaseDN to start the search user")
 	fs.StringVar(&o.UserSearchFilter, "ldap.user-search-filter", DefaultUserSearchFilter, "Filter to apply when searching user")
 	fs.StringVar(&o.UserAttribute, "ldap.user-attribute", DefaultUserAttribute, "Ldap username attribute")

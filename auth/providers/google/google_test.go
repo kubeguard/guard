@@ -294,7 +294,10 @@ func TestCheckGoogleAuthenticationSuccess(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Error when signing token. reason: %v", err)
 			}
-			resp, err := client.Check(domain, token)
+			// set client domain, token
+			client.domainName = domain
+			client.token = token
+			resp, err := client.Check()
 			assert.Nil(t, err)
 			assertUserInfo(t, resp, test.groupSize)
 		})
@@ -385,7 +388,12 @@ func TestCheckGoogleAuthenticationFailed(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Error when signing token. reason: %v", err)
 			}
-			resp, err := client.Check(domain, token)
+
+			// set client domain, token
+			client.domainName = domain
+			client.token = token
+
+			resp, err := client.Check()
 			//t.Log(test)
 			assert.NotNil(t, err)
 			assert.Nil(t, resp)

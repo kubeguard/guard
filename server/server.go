@@ -62,18 +62,12 @@ func (s Server) ListenAndServe() {
 		}
 	}
 
-	// caCertPool for self signed LDAP sever certificate
-	if s.RecommendedOptions.LDAP.CaCertFile != "" {
-		caCert, err := ioutil.ReadFile(s.RecommendedOptions.LDAP.CaCertFile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		s.RecommendedOptions.LDAP.CaCertPool = x509.NewCertPool()
-		s.RecommendedOptions.LDAP.CaCertPool.AppendCertsFromPEM(caCert)
-		ok := s.RecommendedOptions.LDAP.CaCertPool.AppendCertsFromPEM(caCert)
-		if !ok {
-			log.Fatal("Failed to add CA cert in CertPool for LDAP")
-		}
+	// loading file read related data
+	if err := s.RecommendedOptions.LDAP.Bootstrap(); err != nil {
+		log.Fatal(err)
+	}
+	if err := s.RecommendedOptions.Google.Bootstrap(); err != nil {
+		log.Fatal(err)
 	}
 
 	/*

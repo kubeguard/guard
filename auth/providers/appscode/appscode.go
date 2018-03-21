@@ -51,7 +51,23 @@ type ConduitClient struct {
 	Token string
 }
 
-func Check(name, token string) (*authv1.UserInfo, error) {
+type Authenticator struct {
+	token      string
+	name string
+}
+
+func New(name, token string) auth.Interface {
+	return &Authenticator{
+		token:token,
+		name:name,
+	}
+}
+
+func (a Authenticator) UID() string {
+	return OrgType
+}
+
+func (a Authenticator)Check() (*authv1.UserInfo, error) {
 	ctx := context.Background()
 	options := client.NewOption(_env.ProdApiServer)
 	options.UserAgent("appscode/guard")
@@ -59,15 +75,15 @@ func Check(name, token string) (*authv1.UserInfo, error) {
 	if len(namespace) != 3 {
 		return Error(fmt.Sprintf("Failed to detect namespace from domain: %v", name)), http.StatusUnauthorized
 	}*/
-	options = options.BearerAuth(name, token)
+	options = options.BearerAuth(a.name, a.token)
 	c, err := client.New(options)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create oauth2/v1 api for domain %s", name)
+		return nil, errors.Wrapf(err, "failed to create oauth2/v1 api for domain %s", a.name)
 	}
 
 	user, err := c.Authentication().Conduit().WhoAmI(ctx, &dtypes.VoidRequest{})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load user info for domain %s", name)
+		return nil, errors.Wrapf(err, "failed to load user info for domain %s", a.name)
 	}
 
 	projects, err := c.Authentication().Project().List(ctx, &api.ProjectListRequest{
@@ -75,7 +91,7 @@ func Check(name, token string) (*authv1.UserInfo, error) {
 		Members:    []string{user.User.Phid},
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load user's teams for Org %s", name)
+		return nil, errors.Wrapf(err, "failed to load user's teams for Org %s", a.name)
 	}
 
 	resp := &authv1.UserInfo{
