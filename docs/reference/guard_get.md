@@ -40,6 +40,6 @@ Get PKI
 
 * [guard](/docs/reference/guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
 * [guard get installer](/docs/reference/guard_get_installer.md)	 - Prints Kubernetes objects for deploying guard server
-* [guard get token](/docs/reference/guard_get_token.md)	 - Get tokens for Github/Gitlab/Google
+* [guard get token](/docs/reference/guard_get_token.md)	 - Get tokens for Appscode/Azure/Github/Gitlab/Google/Ldap
 * [guard get webhook-config](/docs/reference/guard_get_webhook-config.md)	 - Prints authentication token webhook config file
 

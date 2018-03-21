@@ -7,17 +7,16 @@ import (
 
 	"github.com/appscode/go/log"
 	"github.com/appscode/go/term"
+	"github.com/appscode/guard/auth"
 	"github.com/appscode/kutil/tools/certstore"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/util/homedir"
-)
-
-var (
-	rootDir = filepath.Join(homedir.HomeDir(), ".guard")
 )
 
 func NewCmdInitCA() *cobra.Command {
+	var (
+		rootDir = auth.DefaultPKIDir
+	)
 	cmd := &cobra.Command{
 		Use:               "ca",
 		Short:             "Init CA",
