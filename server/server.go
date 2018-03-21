@@ -13,7 +13,7 @@ import (
 	"github.com/appscode/go/ntp"
 	"github.com/appscode/go/signals"
 	v "github.com/appscode/go/version"
-	"github.com/appscode/guard/token"
+	"github.com/appscode/guard/auth/providers/token"
 	"github.com/appscode/kutil/meta"
 	"github.com/appscode/kutil/tools/fsnotify"
 	"github.com/appscode/pat"

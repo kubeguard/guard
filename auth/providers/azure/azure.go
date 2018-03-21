@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/appscode/guard/azure/graph"
+	"github.com/appscode/guard/auth"
+	"github.com/appscode/guard/auth/providers/azure/graph"
 	"github.com/coreos/go-oidc"
 	"github.com/pkg/errors"
-	auth "k8s.io/api/authentication/v1"
+	authv1 "k8s.io/api/authentication/v1"
 )
 
 /*
@@ -26,6 +27,10 @@ const (
 	azureIssuerURL     = "https://sts.windows.net/"
 	azureUsernameClaim = "upn"
 )
+
+func init() {
+	auth.SupportedOrgs = append(auth.SupportedOrgs, OrgType)
+}
 
 var (
 	// ErrorClaimNotFound indicates the given key was not found in the claims
@@ -64,7 +69,7 @@ func New(opts Options) (*Authenticator, error) {
 	return c, nil
 }
 
-func (s Authenticator) Check(token string) (*auth.UserInfo, error) {
+func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 	idToken, err := s.verifier.Verify(s.ctx, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to verify token for azure")
@@ -98,8 +103,8 @@ func getClaims(token *oidc.IDToken) (claims, error) {
 
 // ReviewFromClaims creates a new TokenReview object from the claims object
 // the claims object
-func (c claims) getUserInfo(usernameClaim string) (*auth.UserInfo, error) {
-	var resp = &auth.UserInfo{}
+func (c claims) getUserInfo(usernameClaim string) (*authv1.UserInfo, error) {
+	var resp = &authv1.UserInfo{}
 
 	username, err := c.String(usernameClaim)
 	if err != nil {

@@ -9,19 +9,19 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	auth "k8s.io/api/authentication/v1"
+	authv1 "k8s.io/api/authentication/v1"
 )
 
 type Authenticator struct {
 	options  Options
-	tokenMap map[string]auth.UserInfo
+	tokenMap map[string]authv1.UserInfo
 	lock     sync.RWMutex
 }
 
 func New(opts Options) *Authenticator {
 	return &Authenticator{
 		options:  opts,
-		tokenMap: map[string]auth.UserInfo{},
+		tokenMap: map[string]authv1.UserInfo{},
 	}
 }
 
@@ -37,7 +37,7 @@ func (s *Authenticator) Configure() error {
 	return nil
 }
 
-func (s *Authenticator) Check(token string) (*auth.UserInfo, error) {
+func (s *Authenticator) Check(token string) (*authv1.UserInfo, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -54,7 +54,7 @@ func (s *Authenticator) Check(token string) (*auth.UserInfo, error) {
 //  - groups can be empty, others cannot be empty
 //  - token should be unique
 //  - one user can have multiple token
-func LoadTokenFile(file string) (map[string]auth.UserInfo, error) {
+func LoadTokenFile(file string) (map[string]authv1.UserInfo, error) {
 	csvFile, err := os.Open(file)
 	if err != nil {
 		return nil, err
@@ -63,7 +63,7 @@ func LoadTokenFile(file string) (map[string]auth.UserInfo, error) {
 
 	reader := csv.NewReader(bufio.NewReader(csvFile))
 	reader.FieldsPerRecord = -1
-	data := map[string]auth.UserInfo{}
+	data := map[string]authv1.UserInfo{}
 	lineNum := 0
 	for {
 		row, err := reader.Read()
@@ -87,7 +87,7 @@ func LoadTokenFile(file string) (map[string]auth.UserInfo, error) {
 			return nil, errors.Errorf("line #%d of token auth file reuses token", lineNum)
 		}
 
-		user := auth.UserInfo{
+		user := authv1.UserInfo{
 			Username: strings.TrimSpace(row[1]),
 			UID:      strings.TrimSpace(row[2]),
 		}

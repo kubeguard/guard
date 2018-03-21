@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/appscode/guard/auth"
 	"github.com/go-ldap/ldap"
 	"github.com/pkg/errors"
 	"gopkg.in/jcmturner/gokrb5.v4/keytab"
 	"gopkg.in/jcmturner/gokrb5.v4/messages"
 	"gopkg.in/jcmturner/gokrb5.v4/service"
-	auth "k8s.io/api/authentication/v1"
+	authv1 "k8s.io/api/authentication/v1"
 )
 
 const (
@@ -23,6 +24,10 @@ const (
 	DefaultGroupMemberAttribute = "member"
 	DefaultGroupNameAttribute   = "cn"
 )
+
+func init() {
+	auth.SupportedOrgs = append(auth.SupportedOrgs, OrgType)
+}
 
 type Authenticator struct {
 	opts   Options
@@ -43,7 +48,7 @@ func New(opts Options) (*Authenticator, error) {
 	return au, nil
 }
 
-func (s Authenticator) Check(token string) (*auth.UserInfo, error) {
+func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 	var (
 		err  error
 		conn *ldap.Conn
@@ -123,7 +128,7 @@ func (s Authenticator) Check(token string) (*auth.UserInfo, error) {
 		}
 	}
 
-	resp := &auth.UserInfo{}
+	resp := &authv1.UserInfo{}
 	resp.Username = username
 	resp.Groups = groups
 	return resp, nil

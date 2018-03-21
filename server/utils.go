@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/appscode/go/log"
 	"github.com/json-iterator/go"
@@ -69,19 +68,6 @@ func printStackTrace(err error) {
 		st := c.StackTrace()
 		log.Debugf("Stacktrace: %+v", err.Error(), st) // top two frames
 	}
-}
-
-func GetSupportedOrg() []string {
-	return []string{
-		"Github",
-		"Gitlab",
-		"Google",
-	}
-}
-
-// output form : Github/Google/Gitlab
-func SupportedOrgPrintForm() string {
-	return strings.Join(GetSupportedOrg(), "/")
 }
 
 // WithCode annotates err with a new code.

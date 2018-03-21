@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	gdir "google.golang.org/api/admin/directory/v1"
 	"gopkg.in/square/go-jose.v2"
-	auth "k8s.io/api/authentication/v1"
+	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -248,7 +248,7 @@ func assertGroups(t *testing.T, groupNames []string, expectedSize int) {
 	}
 }
 
-func assertUserInfo(t *testing.T, info *auth.UserInfo, groupSize int) {
+func assertUserInfo(t *testing.T, info *authv1.UserInfo, groupSize int) {
 	if info.Username != userEmail {
 		t.Errorf("expected username %v, got %v", userEmail, info.Username)
 	}

@@ -4,12 +4,13 @@ import (
 	"context"
 	"io/ioutil"
 
+	"github.com/appscode/guard/auth"
 	"github.com/coreos/go-oidc"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2/google"
 	gdir "google.golang.org/api/admin/directory/v1"
 	gauth "google.golang.org/api/oauth2/v1"
-	auth "k8s.io/api/authentication/v1"
+	authv1 "k8s.io/api/authentication/v1"
 )
 
 const (
@@ -20,6 +21,10 @@ const (
 	GoogleOauth2ClientID     = "37154062056-220683ek37naab43v23vc5qg01k1j14g.apps.googleusercontent.com"
 	GoogleOauth2ClientSecret = "pB9ITCuMPLj-bkObrTqKbt57"
 )
+
+func init() {
+	auth.SupportedOrgs = append(auth.SupportedOrgs, OrgType)
+}
 
 type Authenticator struct {
 	Options
@@ -74,7 +79,7 @@ func New(opts Options, domain string) (*Authenticator, error) {
 }
 
 // https://developers.google.com/identity/protocols/OpenIDConnect#validatinganidtoken
-func (g *Authenticator) Check(name, token string) (*auth.UserInfo, error) {
+func (g *Authenticator) Check(name, token string) (*authv1.UserInfo, error) {
 	idToken, err := g.verifier.Verify(g.ctx, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to verify token for google")
@@ -91,7 +96,7 @@ func (g *Authenticator) Check(name, token string) (*auth.UserInfo, error) {
 		return nil, errors.Errorf("user is not a member of domain %s", name)
 	}
 
-	resp := &auth.UserInfo{
+	resp := &authv1.UserInfo{
 		Username: info.Email,
 		UID:      info.UserId,
 	}

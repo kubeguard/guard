@@ -5,12 +5,12 @@ import (
 	"strings"
 
 	"github.com/appscode/go/log"
-	"github.com/appscode/guard/appscode"
-	"github.com/appscode/guard/github"
-	"github.com/appscode/guard/gitlab"
-	"github.com/appscode/guard/google"
-	"github.com/appscode/guard/ldap"
-	"github.com/appscode/guard/server"
+	"github.com/appscode/guard/auth"
+	"github.com/appscode/guard/auth/providers/appscode"
+	"github.com/appscode/guard/auth/providers/github"
+	"github.com/appscode/guard/auth/providers/gitlab"
+	"github.com/appscode/guard/auth/providers/google"
+	"github.com/appscode/guard/auth/providers/ldap"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +24,7 @@ func NewCmdGetToken() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:               "token",
-		Short:             fmt.Sprintf("Get tokens for %v", server.SupportedOrgPrintForm()),
+		Short:             fmt.Sprintf("Get tokens for %v", auth.SupportedOrgs),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			opts.Org = strings.ToLower(opts.Org)
@@ -61,7 +61,7 @@ func NewCmdGetToken() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.Org, "organization", "o", opts.Org, fmt.Sprintf("Name of Organization (%v).", server.SupportedOrgPrintForm()))
+	cmd.Flags().StringVarP(&opts.Org, "organization", "o", opts.Org, fmt.Sprintf("Name of Organization (%v).", auth.SupportedOrgs))
 	opts.LDAP.AddFlags(cmd.Flags())
 	return cmd
 }

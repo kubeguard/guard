@@ -11,13 +11,13 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/appscode/guard/azure/graph"
+	"github.com/appscode/guard/auth/providers/azure/graph"
 	"github.com/appscode/pat"
 	"github.com/coreos/go-oidc"
 	"github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/square/go-jose.v2"
-	auth "k8s.io/api/authentication/v1"
+	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -193,7 +193,7 @@ func getGroupsAndIds(t *testing.T, groupSz int) ([]byte, []byte) {
 	return gId, gList
 }
 
-func assertUserInfo(t *testing.T, info *auth.UserInfo, groupSize int) {
+func assertUserInfo(t *testing.T, info *authv1.UserInfo, groupSize int) {
 	if info.Username != username {
 		t.Errorf("expected username %v, got %v", username, info.Username)
 	}
@@ -326,7 +326,7 @@ var testClaims = claims{
 func TestReviewFromClaims(t *testing.T) {
 	// valid user claim
 	t.Run("valid user claim", func(t *testing.T) {
-		var validUserInfo = &auth.UserInfo{
+		var validUserInfo = &authv1.UserInfo{
 			Username: username,
 		}
 

@@ -3,14 +3,19 @@ package gitlab
 import (
 	"strconv"
 
+	"github.com/appscode/guard/auth"
 	"github.com/pkg/errors"
 	"github.com/xanzy/go-gitlab"
-	auth "k8s.io/api/authentication/v1"
+	authv1 "k8s.io/api/authentication/v1"
 )
 
 const (
 	OrgType = "gitlab"
 )
+
+func init() {
+	auth.SupportedOrgs = append(auth.SupportedOrgs, OrgType)
+}
 
 type Authenticator struct {
 	Client *gitlab.Client
@@ -22,13 +27,13 @@ func New(token string) *Authenticator {
 	}
 }
 
-func (g *Authenticator) Check() (*auth.UserInfo, error) {
+func (g *Authenticator) Check() (*authv1.UserInfo, error) {
 	user, _, err := g.Client.Users.CurrentUser()
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	resp := &auth.UserInfo{
+	resp := &authv1.UserInfo{
 		Username: user.Username,
 		UID:      strconv.Itoa(user.ID),
 	}

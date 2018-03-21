@@ -1,10 +1,10 @@
 package server
 
 import (
-	"github.com/appscode/guard/azure"
-	"github.com/appscode/guard/google"
-	"github.com/appscode/guard/ldap"
-	"github.com/appscode/guard/token"
+	"github.com/appscode/guard/auth/providers/azure"
+	"github.com/appscode/guard/auth/providers/google"
+	"github.com/appscode/guard/auth/providers/ldap"
+	"github.com/appscode/guard/auth/providers/token"
 	"github.com/spf13/pflag"
 )
 

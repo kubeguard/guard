@@ -9,7 +9,7 @@ import (
 
 	"github.com/appscode/go/log"
 	"github.com/appscode/go/term"
-	"github.com/appscode/guard/server"
+	"github.com/appscode/guard/auth"
 	"github.com/appscode/kutil/tools/certstore"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -44,23 +44,12 @@ func NewCmdInitClient() *cobra.Command {
 				Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 			}
 
-			switch org {
-			case "github":
-				cfg.Organization = []string{"Github"}
-			case "google":
-				cfg.Organization = []string{"Google"}
-			case "appscode":
-				cfg.Organization = []string{"Appscode"}
-			case "gitlab":
-				cfg.Organization = []string{"Gitlab"}
-			case "azure":
-				cfg.Organization = []string{"Azure"}
-			case "ldap":
-				cfg.Organization = []string{"Ldap"}
-			case "":
-				log.Fatalln("Missing organization name. Set flag -o Google|Github.")
-			default:
+			if org == "" {
+				log.Fatalf("Missing organization name. Set flag -o %s", auth.SupportedOrgs)
+			} else if !auth.SupportedOrgs.Has(org) {
 				log.Fatalf("Unknown organization %s.", org)
+			} else {
+				cfg.Organization = []string{org}
 			}
 
 			store, err := certstore.NewCertStore(afero.NewOsFs(), filepath.Join(rootDir, "pki"), cfg.Organization...)
@@ -90,6 +79,6 @@ func NewCmdInitClient() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&rootDir, "pki-dir", rootDir, "Path to directory where pki files are stored.")
-	cmd.Flags().StringVarP(&org, "organization", "o", org, fmt.Sprintf("Name of Organization (%v).", server.SupportedOrgPrintForm()))
+	cmd.Flags().StringVarP(&org, "organization", "o", org, fmt.Sprintf("Name of Organization (%v).", auth.SupportedOrgs))
 	return cmd
 }
