@@ -25,7 +25,7 @@ type Authenticator struct {
 	OrgName string // Github organization name
 }
 
-func New(name, token string) *Authenticator {
+func New(name string) auth.Interface {
 	g := &Authenticator{
 		ctx:     context.Background(),
 		OrgName: name,
@@ -37,7 +37,11 @@ func New(name, token string) *Authenticator {
 	return g
 }
 
-func (g *Authenticator) Check() (*authv1.UserInfo, error) {
+func (g Authenticator) UID() string {
+	return OrgType
+}
+
+func (g *Authenticator) Check(token string) (*authv1.UserInfo, error) {
 	mem, _, err := g.Client.Organizations.GetOrgMembership(g.ctx, "", g.OrgName)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to check user's membership in Org %s", g.OrgName)

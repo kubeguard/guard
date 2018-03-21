@@ -47,7 +47,7 @@ type Authenticator struct {
 	ctx         context.Context
 }
 
-func New(opts Options) (*Authenticator, error) {
+func New(opts Options) (auth.Interface, error) {
 	c := &Authenticator{
 		Options: opts,
 		ctx:     context.Background(),
@@ -65,8 +65,11 @@ func New(opts Options) (*Authenticator, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create ms graph client")
 	}
-
 	return c, nil
+}
+
+func (s Authenticator) UID() string {
+	return OrgType
 }
 
 func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
