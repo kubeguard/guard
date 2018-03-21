@@ -1,6 +1,13 @@
 package auth
 
-import "strings"
+import (
+	"path/filepath"
+	"strings"
+
+	"k8s.io/client-go/util/homedir"
+)
+
+var DefaultPKIDir = filepath.Join(homedir.HomeDir(), ".guard")
 
 type orgs []string
 
@@ -17,5 +24,9 @@ func (o orgs) Has(name string) bool {
 }
 
 func (o orgs) String() string {
-	return strings.Join(o, "/")
+	names := make([]string, len(o))
+	for i, org := range o {
+		names[i] = strings.Title(org)
+	}
+	return strings.Join(names, "/")
 }

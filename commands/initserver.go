@@ -9,6 +9,7 @@ import (
 
 	"github.com/appscode/go/log"
 	"github.com/appscode/go/term"
+	"github.com/appscode/guard/auth"
 	"github.com/appscode/kutil/tools/certstore"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -16,9 +17,12 @@ import (
 )
 
 func NewCmdInitServer() *cobra.Command {
-	sans := cert.AltNames{
-		IPs: []net.IP{net.ParseIP("127.0.0.1")},
-	}
+	var (
+		rootDir = auth.DefaultPKIDir
+		sans    = cert.AltNames{
+			IPs: []net.IP{net.ParseIP("127.0.0.1")},
+		}
+	)
 	cmd := &cobra.Command{
 		Use:               "server",
 		Short:             "Generate server certificate pair",

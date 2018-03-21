@@ -16,7 +16,11 @@ import (
 )
 
 func NewCmdGetWebhookConfig() *cobra.Command {
-	var org, addr string
+	var (
+		rootDir = auth.DefaultPKIDir
+		org     string
+		addr    string
+	)
 	cmd := &cobra.Command{
 		Use:               "webhook-config",
 		Short:             "Prints authentication token webhook config file",

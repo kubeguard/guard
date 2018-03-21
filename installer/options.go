@@ -1,6 +1,7 @@
 package installer
 
 import (
+	"github.com/appscode/guard/auth"
 	"github.com/appscode/guard/auth/providers/azure"
 	"github.com/appscode/guard/auth/providers/google"
 	"github.com/appscode/guard/auth/providers/ldap"
@@ -25,6 +26,7 @@ type Options struct {
 
 func New() Options {
 	return Options{
+		pkiDir:          auth.DefaultPKIDir,
 		namespace:       metav1.NamespaceSystem,
 		addr:            "10.96.10.96:443",
 		privateRegistry: "appscode",

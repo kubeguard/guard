@@ -25,7 +25,7 @@ guard init client [flags]
 
 ```
   -h, --help                  help for client
-  -o, --organization string   Name of Organization (Github/Gitlab/Google).
+  -o, --organization string   Name of Organization (Appscode/Azure/Github/Gitlab/Google/Ldap).
       --pki-dir string        Path to directory where pki files are stored. (default "$HOME/.guard")
 ```
 

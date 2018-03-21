@@ -17,7 +17,10 @@ import (
 )
 
 func NewCmdInitClient() *cobra.Command {
-	var org string
+	var (
+		rootDir = auth.DefaultPKIDir
+		org     string
+	)
 	cmd := &cobra.Command{
 		Use:               "client",
 		Short:             "Generate client certificate pair",
