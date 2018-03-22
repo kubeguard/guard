@@ -53,18 +53,17 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 }
 
 func (o *Options) Validate() []error {
-	return nil
-}
-
-func (o Options) IsSet() bool {
-	return o.ServiceAccountJsonFile != ""
+	var errs []error
+	if o.ServiceAccountJsonFile == "" {
+		errs = append(errs, errors.New("google.sa-json-file must be non empty"))
+	}
+	if o.AdminEmail == "" {
+		errs = append(errs, errors.New("google.admin-email must be non empty"))
+	}
+	return errs
 }
 
 func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
-	if !o.IsSet() {
-		return nil, nil // nothing to apply
-	}
-
 	container := d.Spec.Template.Spec.Containers[0]
 
 	// create auth secret

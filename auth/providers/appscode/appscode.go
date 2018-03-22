@@ -52,14 +52,14 @@ type ConduitClient struct {
 }
 
 type Authenticator struct {
-	token      string
-	name string
+	token string
+	name  string
 }
 
 func New(name, token string) auth.Interface {
 	return &Authenticator{
-		token:token,
-		name:name,
+		token: token,
+		name:  name,
 	}
 }
 
@@ -67,7 +67,7 @@ func (a Authenticator) UID() string {
 	return OrgType
 }
 
-func (a Authenticator)Check() (*authv1.UserInfo, error) {
+func (a Authenticator) Check() (*authv1.UserInfo, error) {
 	ctx := context.Background()
 	options := client.NewOption(_env.ProdApiServer)
 	options.UserAgent("appscode/guard")

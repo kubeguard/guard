@@ -178,18 +178,38 @@ func (o *Options) newGroupSearchRequest(userDN string) *ldap.SearchRequest {
 }
 
 func (o *Options) Validate() []error {
-	return nil
-}
-
-func (o Options) IsSet() bool {
-	return o.BindDN != "" || o.BindPassword != ""
+	var errs []error
+	if o.ServerAddress == "" {
+		errs = append(errs, errors.New("ldap.server-address must be non empty"))
+	}
+	if o.ServerPort == "" {
+		errs = append(errs, errors.New("ldap.server-port must be non empty"))
+	}
+	if o.UserSearchDN == "" {
+		errs = append(errs, errors.New("ldap.user-search-dn must be non empty"))
+	}
+	if o.UserAttribute == "" {
+		errs = append(errs, errors.New("ldap.user-attribute must be non empty"))
+	}
+	if o.GroupSearchDN == "" {
+		errs = append(errs, errors.New("ldap.group-search-dn must be non empty"))
+	}
+	if o.GroupMemberAttribute == "" {
+		errs = append(errs, errors.New("ldap.group-member-attribute must be non empty"))
+	}
+	if o.GroupNameAttribute == "" {
+		errs = append(errs, errors.New("ldap.group-name-attribute must be non empty"))
+	}
+	if o.IsSecureLDAP && o.StartTLS {
+		errs = append(errs, errors.New("ldap.is-secure-ldap and ldap.start-tls both can not be true at the same time"))
+	}
+	if o.AuthenticationChoice == AuthChoiceKerberos && o.KeytabFile == "" {
+		errs = append(errs, errors.New("for kerberos ldap.keytab-file must be non empty"))
+	}
+	return errs
 }
 
 func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
-	if !o.IsSet() {
-		return nil, nil // nothing to apply
-	}
-
 	container := d.Spec.Template.Spec.Containers[0]
 
 	// create auth secret

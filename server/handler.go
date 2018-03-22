@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/appscode/go/log"
+	"github.com/appscode/guard/auth"
 	"github.com/appscode/guard/auth/providers/appscode"
 	"github.com/appscode/guard/auth/providers/azure"
 	"github.com/appscode/guard/auth/providers/github"
@@ -13,7 +14,6 @@ import (
 	"github.com/appscode/guard/auth/providers/ldap"
 	"github.com/pkg/errors"
 	authv1 "k8s.io/api/authentication/v1"
-	"github.com/appscode/guard/auth"
 )
 
 func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -45,8 +45,8 @@ func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	client, err := s.getOrgClient(org, crt.Subject.CommonName, data.Spec.Token)
-	if err!=nil {
-		write(w,nil, err)
+	if err != nil {
+		write(w, nil, err)
 		return
 	}
 
@@ -66,10 +66,6 @@ func (s Server) getOrgClient(org, commonName, token string) (auth.Interface, err
 	case gitlab.OrgType:
 		return gitlab.New(token), nil
 	case azure.OrgType:
-		// this will go in validate
-		//if s.RecommendedOptions.Azure.ClientID == "" || s.RecommendedOptions.Azure.ClientSecret == "" || s.RecommendedOptions.Azure.TenantID == "" {
-		//	return  nil, errors.New("Missing azure client-id or client-secret or tenant-id")
-		//}
 		return azure.New(s.RecommendedOptions.Azure, token)
 	case ldap.OrgType:
 		return ldap.New(s.RecommendedOptions.LDAP, token), nil
