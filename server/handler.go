@@ -12,6 +12,7 @@ import (
 	"github.com/appscode/guard/auth/providers/gitlab"
 	"github.com/appscode/guard/auth/providers/google"
 	"github.com/appscode/guard/auth/providers/ldap"
+	"github.com/appscode/guard/auth/providers/token"
 	"github.com/pkg/errors"
 	authv1 "k8s.io/api/authentication/v1"
 )
@@ -36,7 +37,12 @@ func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if s.TokenAuthenticator != nil {
+	if !s.RecommendedOptions.AuthProvider.Has(org) {
+		write(w, nil, WithCode(errors.Errorf("guard does provide service for %v", org), http.StatusBadRequest))
+		return
+	}
+
+	if s.RecommendedOptions.AuthProvider.Has(token.OrgType) && s.TokenAuthenticator != nil {
 		resp, err := s.TokenAuthenticator.Check(data.Spec.Token)
 		if err == nil {
 			write(w, resp, err)
@@ -44,7 +50,7 @@ func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	client, err := s.getOrgClient(org, crt.Subject.CommonName, data.Spec.Token)
+	client, err := s.getAuthProviderClient(org, crt.Subject.CommonName, data.Spec.Token)
 	if err != nil {
 		write(w, nil, err)
 		return
@@ -55,7 +61,7 @@ func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	return
 }
 
-func (s Server) getOrgClient(org, commonName, token string) (auth.Interface, error) {
+func (s Server) getAuthProviderClient(org, commonName, token string) (auth.Interface, error) {
 	switch strings.ToLower(org) {
 	case github.OrgType:
 		return github.New(commonName, token), nil

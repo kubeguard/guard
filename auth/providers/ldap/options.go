@@ -99,7 +99,7 @@ func NewOptions() Options {
 
 // if ca cert is provided then create CA Cert Pool
 // if keytab file is provides then load it
-func (o *Options) Bootstrap() error {
+func (o *Options) Configure() error {
 	// caCertPool for self signed LDAP sever certificate
 	if o.CaCertFile != "" {
 		caCert, err := ioutil.ReadFile(o.CaCertFile)

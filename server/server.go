@@ -32,6 +32,10 @@ func (s *Server) AddFlags(fs *pflag.FlagSet) {
 }
 
 func (s Server) ListenAndServe() {
+	if errs := s.RecommendedOptions.Validate(); errs != nil {
+		log.Fatal(errs)
+	}
+
 	if s.RecommendedOptions.NTP.Enabled() {
 		ticker := time.NewTicker(s.RecommendedOptions.NTP.Interval)
 		go func() {
@@ -63,10 +67,10 @@ func (s Server) ListenAndServe() {
 	}
 
 	// loading file read related data
-	if err := s.RecommendedOptions.LDAP.Bootstrap(); err != nil {
+	if err := s.RecommendedOptions.LDAP.Configure(); err != nil {
 		log.Fatal(err)
 	}
-	if err := s.RecommendedOptions.Google.Bootstrap(); err != nil {
+	if err := s.RecommendedOptions.Google.Configure(); err != nil {
 		log.Fatal(err)
 	}
 

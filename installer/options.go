@@ -2,6 +2,7 @@ package installer
 
 import (
 	"github.com/appscode/guard/auth"
+	"github.com/appscode/guard/auth/providers"
 	"github.com/appscode/guard/auth/providers/azure"
 	"github.com/appscode/guard/auth/providers/google"
 	"github.com/appscode/guard/auth/providers/ldap"
@@ -18,10 +19,11 @@ type Options struct {
 	privateRegistry string
 	imagePullSecret string
 
-	Token  token.Options
-	Google google.Options
-	Azure  azure.Options
-	LDAP   ldap.Options
+	AuthProvider providers.AuthProviders
+	Token        token.Options
+	Google       google.Options
+	Azure        azure.Options
+	LDAP         ldap.Options
 }
 
 func New() Options {
@@ -45,8 +47,29 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.runOnMaster, "run-on-master", o.runOnMaster, "If true, runs Guard server on master instances")
 	fs.StringVar(&o.privateRegistry, "private-registry", o.privateRegistry, "Private Docker registry")
 	fs.StringVar(&o.imagePullSecret, "image-pull-secret", o.imagePullSecret, "Name of image pull secret")
+	o.AuthProvider.AddFlags(fs)
 	o.Token.AddFlags(fs)
 	o.Google.AddFlags(fs)
 	o.Azure.AddFlags(fs)
 	o.LDAP.AddFlags(fs)
+}
+
+func (o *Options) Validate() []error {
+	var errs []error
+	errs = append(errs, o.AuthProvider.Validate()...)
+
+	if o.AuthProvider.Has(token.OrgType) {
+		errs = append(errs, o.Token.Validate()...)
+	}
+	if o.AuthProvider.Has(google.OrgType) {
+		errs = append(errs, o.Google.Validate()...)
+	}
+	if o.AuthProvider.Has(azure.OrgType) {
+		errs = append(errs, o.Azure.Validate()...)
+	}
+	if o.AuthProvider.Has(ldap.OrgType) {
+		errs = append(errs, o.LDAP.Validate()...)
+	}
+
+	return errs
 }

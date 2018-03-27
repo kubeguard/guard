@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/appscode/guard/auth/providers"
 	"github.com/appscode/guard/auth/providers/azure"
 	"github.com/appscode/guard/auth/providers/google"
 	"github.com/appscode/guard/auth/providers/ldap"
@@ -15,6 +16,7 @@ type RecommendedOptions struct {
 	Google        google.Options
 	Azure         azure.Options
 	LDAP          ldap.Options
+	AuthProvider  providers.AuthProviders
 }
 
 func NewRecommendedOptions() *RecommendedOptions {
@@ -27,6 +29,7 @@ func NewRecommendedOptions() *RecommendedOptions {
 func (o *RecommendedOptions) AddFlags(fs *pflag.FlagSet) {
 	o.SecureServing.AddFlags(fs)
 	o.NTP.AddFlags(fs)
+	o.AuthProvider.AddFlags(fs)
 	o.Token.AddFlags(fs)
 	o.Google.AddFlags(fs)
 	o.Azure.AddFlags(fs)
@@ -34,13 +37,23 @@ func (o *RecommendedOptions) AddFlags(fs *pflag.FlagSet) {
 }
 
 func (o *RecommendedOptions) Validate() []error {
-	var errors []error
-	errors = append(errors, o.SecureServing.Validate()...)
-	errors = append(errors, o.NTP.Validate()...)
-	errors = append(errors, o.Token.Validate()...)
-	errors = append(errors, o.Google.Validate()...)
-	errors = append(errors, o.Azure.Validate()...)
-	errors = append(errors, o.LDAP.Validate()...)
+	var errs []error
+	errs = append(errs, o.SecureServing.Validate()...)
+	errs = append(errs, o.NTP.Validate()...)
+	errs = append(errs, o.AuthProvider.Validate()...)
 
-	return errors
+	if o.AuthProvider.Has(token.OrgType) {
+		errs = append(errs, o.Token.Validate()...)
+	}
+	if o.AuthProvider.Has(google.OrgType) {
+		errs = append(errs, o.Google.Validate()...)
+	}
+	if o.AuthProvider.Has(azure.OrgType) {
+		errs = append(errs, o.Azure.Validate()...)
+	}
+	if o.AuthProvider.Has(ldap.OrgType) {
+		errs = append(errs, o.LDAP.Validate()...)
+	}
+
+	return errs
 }

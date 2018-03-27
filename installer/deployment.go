@@ -6,6 +6,10 @@ import (
 	stringz "github.com/appscode/go/strings"
 	"github.com/appscode/go/types"
 	v "github.com/appscode/go/version"
+	"github.com/appscode/guard/auth/providers/azure"
+	"github.com/appscode/guard/auth/providers/google"
+	"github.com/appscode/guard/auth/providers/ldap"
+	"github.com/appscode/guard/auth/providers/token"
 	"github.com/appscode/guard/server"
 	apps "k8s.io/api/apps/v1beta1"
 	core "k8s.io/api/core/v1"
@@ -93,28 +97,42 @@ func newDeployment(opts Options) (objects []runtime.Object, err error) {
 		objects = append(objects, extras...)
 	}
 
-	if extras, err := opts.Token.Apply(d); err != nil {
+	if extras, err := opts.AuthProvider.Apply(d); err != nil {
 		return nil, err
 	} else {
 		objects = append(objects, extras...)
 	}
 
-	if extras, err := opts.Google.Apply(d); err != nil {
-		return nil, err
-	} else {
-		objects = append(objects, extras...)
+	if opts.AuthProvider.Has(token.OrgType) {
+		if extras, err := opts.Token.Apply(d); err != nil {
+			return nil, err
+		} else {
+			objects = append(objects, extras...)
+		}
 	}
 
-	if extras, err := opts.Azure.Apply(d); err != nil {
-		return nil, err
-	} else {
-		objects = append(objects, extras...)
+	if opts.AuthProvider.Has(google.OrgType) {
+		if extras, err := opts.Google.Apply(d); err != nil {
+			return nil, err
+		} else {
+			objects = append(objects, extras...)
+		}
 	}
 
-	if extras, err := opts.LDAP.Apply(d); err != nil {
-		return nil, err
-	} else {
-		objects = append(objects, extras...)
+	if opts.AuthProvider.Has(azure.OrgType) {
+		if extras, err := opts.Azure.Apply(d); err != nil {
+			return nil, err
+		} else {
+			objects = append(objects, extras...)
+		}
+	}
+
+	if opts.AuthProvider.Has(ldap.OrgType) {
+		if extras, err := opts.LDAP.Apply(d); err != nil {
+			return nil, err
+		} else {
+			objects = append(objects, extras...)
+		}
 	}
 
 	return

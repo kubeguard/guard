@@ -26,7 +26,7 @@ func NewOptions() Options {
 	return Options{}
 }
 
-func (o *Options) Bootstrap() error {
+func (o *Options) Configure() error {
 	if o.ServiceAccountJsonFile != "" {
 		sa, err := ioutil.ReadFile(o.ServiceAccountJsonFile)
 		if err != nil {
