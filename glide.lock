@@ -1,5 +1,5 @@
-hash: 3be3a1514c65c8432448361c4fd0f062126412529412e26d13c932ce27af8044
-updated: 2018-03-27T12:22:49.471373828+06:00
+hash: a179202a06f069924133267cdf9d6dd77d23a3dc5e2efb1e57dd0fb10c51c11d
+updated: 2018-03-26T23:27:50.583678362-07:00
 imports:
 - name: appscode.com/api
   version: 7785c23ee99112a78e7eab1a4f07b00242a10a1c
@@ -47,7 +47,7 @@ imports:
   - util/errors
   - version
 - name: github.com/appscode/jsonpatch
-  version: 3e75a56b8967932466984d4432401e1c1a7ff61e
+  version: ee757872f6aca6d412d0d80543725bd4cf48f793
 - name: github.com/appscode/kutil
   version: ec35d3a9c9de2400477fa0cd6131cfa7b7e64d9c
   subpackages:
@@ -72,7 +72,7 @@ imports:
   - autorest/azure
   - autorest/date
 - name: github.com/beevik/ntp
-  version: 68f85807c2ee1e34097f9fcce627f020607be19d
+  version: 802074b1b037c59dbdbee7e196ad91b51d0ec844
 - name: github.com/beorn7/perks
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
@@ -96,7 +96,7 @@ imports:
 - name: github.com/evanphx/json-patch
   version: 944e07253867aacae43c04b2e6a239005443f33a
 - name: github.com/fatih/color
-  version: 507f6050b8568533fb3f5504de8e5205fa62a114
+  version: 9aae6aaa22315390f03959adca2c4d395b02fcef
 - name: github.com/fsnotify/fsnotify
   version: c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9
 - name: github.com/ghodss/yaml
@@ -132,7 +132,7 @@ imports:
 - name: github.com/google/btree
   version: 7d79101e329e5a3adf994758c578dab82b90c017
 - name: github.com/google/go-cmp
-  version: 97aa668b73e764ccdd786bc3ccd2edffe621150e
+  version: 7d086766fb84312590ea843913dc5b8949a485c5
   subpackages:
   - cmp
   - cmp/internal/diff
@@ -149,7 +149,7 @@ imports:
 - name: github.com/google/gofuzz
   version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
 - name: github.com/google/uuid
-  version: 8c31c18f31ede9fc8eae72290a7e7a8064e9b3e3
+  version: dec09d789f3dba190787f8b4454c7d3c936fed9e
 - name: github.com/googleapis/gnostic
   version: 0c5108395e2debce0d731cf0287ddf7242066aba
   subpackages:
@@ -181,7 +181,9 @@ imports:
 - name: github.com/hashicorp/go-uuid
   version: 27454136f0364f2d44b1276c552d69105cf8c498
 - name: github.com/hashicorp/go-version
-  version: 23480c0665776210b5fbbac6eaaee40e3e6a96b7
+  version: 53932f80ddea12bea96be074f9fb2dc545806aba
+  repo: https://github.com/appscode/go-version.git
+  vcs: git
 - name: github.com/howeyc/gopass
   version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/imdario/mergo
@@ -269,8 +271,7 @@ imports:
 - name: github.com/russross/blackfriday
   version: 300106c228d52c8941d4b3de6054a6062a86dda3
 - name: github.com/sergi/go-diff
-  version: 24e2351369ec4949b2ed0dc5c477afdd4c4034e8
-  repo: https://github.com/sergi/go-diff
+  version: 97b2266dfe4bd4ea1b81a463322f04f8b724801e
   subpackages:
   - diffmatchpatch
 - name: github.com/shurcooL/sanitized_anchor_name
@@ -308,14 +309,13 @@ imports:
 - name: github.com/xeipuuv/gojsonreference
   version: e02fc20de94c78484cd5ffb007f8af96be030a45
 - name: github.com/xeipuuv/gojsonschema
-  version: 8bcffc811467a5f691810420385be6e66b35a317
+  version: 93e72a773fade158921402d6a24c819b48aba29d
 - name: github.com/yudai/gojsondiff
-  version: e21612694bdd50975f93cd5eaccb457477128e28
+  version: 7b1b7adf999dab73a6eb02669c3d82dbb27a3dd6
   subpackages:
   - formatter
 - name: github.com/yudai/golcs
   version: d1c525dea8ce39ea9a783d33cf08932305373f2c
-  repo: https://github.com/yudai/golcs
 - name: golang.org/x/crypto
   version: 81e90905daefcd6fd217b62423c0908922eadb30
   subpackages:
@@ -388,7 +388,7 @@ imports:
   - googleapi/internal/uritemplates
   - oauth2/v1
 - name: google.golang.org/appengine
-  version: 5bee14b453b4c71be47ec1781b0fa61c2ea182db
+  version: 4f7eeb5305a4ba1966344836ba4af9996b7b4e05
   subpackages:
   - internal
   - internal/app_identity
@@ -400,7 +400,7 @@ imports:
   - internal/urlfetch
   - urlfetch
 - name: google.golang.org/genproto
-  version: ab0870e398d5dd054b868c0db1481ab029b9a9f2
+  version: 09f6ed296fc66555a25fe4ce95173148778dfa85
   subpackages:
   - googleapis/api/annotations
   - googleapis/rpc/status
@@ -554,7 +554,7 @@ imports:
   - third_party/forked/golang/json
   - third_party/forked/golang/reflect
 - name: k8s.io/apiserver
-  version: 1270e9f1ad9eaf6127691df90af0836f7e152495
+  version: ac8d2245af4cbb47d4ee5e0a6088a7e2294eaa2f
   subpackages:
   - pkg/util/feature
 - name: k8s.io/client-go
