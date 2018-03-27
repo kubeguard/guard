@@ -14,8 +14,7 @@ import (
 )
 
 const (
-	TIMEOUT           = 20 * time.Minute
-	TestStashImageTag = "webhookOR"
+	TIMEOUT = 20 * time.Minute
 )
 
 var (

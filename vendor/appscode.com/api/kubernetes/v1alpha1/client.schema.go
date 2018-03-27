@@ -117,9 +117,6 @@ func init() {
     }
   },
   "properties": {
-    "api_version": {
-      "type": "string"
-    },
     "cluster": {
       "type": "string"
     },
@@ -155,19 +152,11 @@ func init() {
     }
   },
   "properties": {
-    "api_version": {
-      "type": "string"
-    },
     "cluster": {
       "type": "string"
     },
     "name": {
       "maxLength": 63,
-      "type": "string"
-    },
-    "namespace": {
-      "maxLength": 63,
-      "pattern": "^[a-z0-9](?:[a-z0-9\\-]{0,61}[a-z0-9])?$",
       "type": "string"
     },
     "raw": {
