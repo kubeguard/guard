@@ -210,8 +210,6 @@ func (o *Options) Validate() []error {
 }
 
 func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
-	container := d.Spec.Template.Spec.Containers[0]
-
 	// create auth secret
 	ldapData := map[string][]byte{
 		"bind-dn":       []byte(o.BindDN), // username kept in secret, since password is in secret
@@ -246,7 +244,7 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 		Name:      authSecret.Name,
 		MountPath: "/etc/guard/auth/ldap",
 	}
-	container.VolumeMounts = append(container.VolumeMounts, volMount)
+	d.Spec.Template.Spec.Containers[0].VolumeMounts = append(d.Spec.Template.Spec.Containers[0].VolumeMounts, volMount)
 
 	vol := core.Volume{
 		Name: authSecret.Name,
@@ -259,8 +257,8 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 	}
 	d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
 
-	// use auth secret in container[0] args
-	container.Env = append(container.Env,
+	// use auth secret in d.Spec.Template.Spec.Containers[0][0] args
+	d.Spec.Template.Spec.Containers[0].Env = append(d.Spec.Template.Spec.Containers[0].Env,
 		core.EnvVar{
 			Name: "LDAP_BIND_DN",
 			ValueFrom: &core.EnvVarSource{
@@ -285,7 +283,7 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 		},
 	)
 
-	args := container.Args
+	args := d.Spec.Template.Spec.Containers[0].Args
 	if o.ServerAddress != "" {
 		args = append(args, fmt.Sprintf("--ldap.server-address=%s", o.ServerAddress))
 	}
@@ -332,6 +330,8 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 		args = append(args, fmt.Sprintf("--ldap.keytab-file=/etc/guard/auth/ldap/krb5.keytab"))
 	}
 	args = append(args, fmt.Sprintf("--ldap.auth-choice=%v", o.AuthenticationChoice))
+
+	d.Spec.Template.Spec.Containers[0].Args = args
 
 	return extraObjs, nil
 }

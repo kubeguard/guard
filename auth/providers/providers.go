@@ -41,9 +41,8 @@ func (a *AuthProviders) Validate() []error {
 }
 
 func (a *AuthProviders) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
-	args := d.Spec.Template.Spec.Containers[0].Args
 	if len(a.Providers) > 0 {
-		args = append(args, fmt.Sprintf("--auth-providers=\"%s\"", strings.Join(a.Providers, " ")))
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--auth-providers=%s", strings.Join(a.Providers, " ")))
 	}
 
 	return nil, nil

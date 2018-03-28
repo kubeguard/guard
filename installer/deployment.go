@@ -22,7 +22,7 @@ func newDeployment(opts Options) (objects []runtime.Object, err error) {
 	d := &apps.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "guard",
-			Namespace: opts.namespace,
+			Namespace: opts.Namespace,
 			Labels:    labels,
 		},
 		Spec: apps.DeploymentSpec{
@@ -39,7 +39,7 @@ func newDeployment(opts Options) (objects []runtime.Object, err error) {
 					Containers: []core.Container{
 						{
 							Name:  "guard",
-							Image: fmt.Sprintf("%s/guard:%v", opts.privateRegistry, stringz.Val(v.Version.Version, "canary")),
+							Image: fmt.Sprintf("%s/guard:%v", opts.PrivateRegistry, stringz.Val(v.Version.Version, "canary")),
 							Args: []string{
 								"run",
 								"--v=3",
@@ -78,7 +78,7 @@ func newDeployment(opts Options) (objects []runtime.Object, err error) {
 			},
 		}
 	}
-	if opts.runOnMaster {
+	if opts.RunOnMaster {
 		d.Spec.Template.Spec.NodeSelector = map[string]string{
 			"node-role.kubernetes.io/master": "",
 		}
@@ -90,7 +90,7 @@ func newDeployment(opts Options) (objects []runtime.Object, err error) {
 	}
 	objects = append(objects, d)
 
-	servingOpts := server.NewSecureServingOptionsFromDir(opts.pkiDir)
+	servingOpts := server.NewSecureServingOptionsFromDir(opts.PkiDir)
 	if extras, err := servingOpts.Apply(d); err != nil {
 		return nil, err
 	} else {

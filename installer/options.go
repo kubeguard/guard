@@ -12,11 +12,11 @@ import (
 )
 
 type Options struct {
-	pkiDir          string
-	namespace       string
-	addr            string
-	runOnMaster     bool
-	privateRegistry string
+	PkiDir          string
+	Namespace       string
+	Addr            string
+	RunOnMaster     bool
+	PrivateRegistry string
 	imagePullSecret string
 
 	AuthProvider providers.AuthProviders
@@ -28,11 +28,11 @@ type Options struct {
 
 func New() Options {
 	return Options{
-		pkiDir:          auth.DefaultPKIDir,
-		namespace:       metav1.NamespaceSystem,
-		addr:            "10.96.10.96:443",
-		privateRegistry: "appscode",
-		runOnMaster:     true,
+		PkiDir:          auth.DefaultPKIDir,
+		Namespace:       metav1.NamespaceSystem,
+		Addr:            "10.96.10.96:443",
+		PrivateRegistry: "appscode",
+		RunOnMaster:     true,
 		Token:           token.NewOptions(),
 		Google:          google.NewOptions(),
 		Azure:           azure.NewOptions(),
@@ -41,11 +41,11 @@ func New() Options {
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&o.pkiDir, "pki-dir", o.pkiDir, "Path to directory where pki files are stored.")
-	fs.StringVarP(&o.namespace, "namespace", "n", o.namespace, "Name of Kubernetes namespace used to run guard server.")
-	fs.StringVar(&o.addr, "addr", o.addr, "Address (host:port) of guard server.")
-	fs.BoolVar(&o.runOnMaster, "run-on-master", o.runOnMaster, "If true, runs Guard server on master instances")
-	fs.StringVar(&o.privateRegistry, "private-registry", o.privateRegistry, "Private Docker registry")
+	fs.StringVar(&o.PkiDir, "pki-dir", o.PkiDir, "Path to directory where pki files are stored.")
+	fs.StringVarP(&o.Namespace, "namespace", "n", o.Namespace, "Name of Kubernetes namespace used to run guard server.")
+	fs.StringVar(&o.Addr, "addr", o.Addr, "Address (host:port) of guard server.")
+	fs.BoolVar(&o.RunOnMaster, "run-on-master", o.RunOnMaster, "If true, runs Guard server on master instances")
+	fs.StringVar(&o.PrivateRegistry, "private-registry", o.PrivateRegistry, "Private Docker registry")
 	fs.StringVar(&o.imagePullSecret, "image-pull-secret", o.imagePullSecret, "Name of image pull secret")
 	o.AuthProvider.AddFlags(fs)
 	o.Token.AddFlags(fs)

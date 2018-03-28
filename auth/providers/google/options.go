@@ -64,8 +64,6 @@ func (o *Options) Validate() []error {
 }
 
 func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
-	container := d.Spec.Template.Spec.Containers[0]
-
 	// create auth secret
 	sa, err := ioutil.ReadFile(o.ServiceAccountJsonFile)
 	if err != nil {
@@ -88,7 +86,7 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 		Name:      authSecret.Name,
 		MountPath: "/etc/guard/auth/google",
 	}
-	container.VolumeMounts = append(container.VolumeMounts, volMount)
+	d.Spec.Template.Spec.Containers[0].VolumeMounts = append(d.Spec.Template.Spec.Containers[0].VolumeMounts, volMount)
 
 	vol := core.Volume{
 		Name: authSecret.Name,
@@ -102,7 +100,7 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 	d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
 
 	// use auth secret in container[0] args
-	args := container.Args
+	args := d.Spec.Template.Spec.Containers[0].Args
 	if o.ServiceAccountJsonFile != "" {
 		args = append(args, "--google.sa-json-file=/etc/guard/auth/google/sa.json")
 	}
@@ -110,5 +108,6 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 		args = append(args, fmt.Sprintf("--google.admin-email=%s", o.AdminEmail))
 	}
 
+	d.Spec.Template.Spec.Containers[0].Args = args
 	return extraObjs, nil
 }

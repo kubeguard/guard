@@ -23,6 +23,10 @@ func NewRecommendedOptions() *RecommendedOptions {
 	return &RecommendedOptions{
 		SecureServing: NewSecureServingOptions(),
 		NTP:           NewNTPOptions(),
+		Azure:         azure.NewOptions(),
+		Token:         token.NewOptions(),
+		Google:        google.NewOptions(),
+		LDAP:          ldap.NewOptions(),
 	}
 }
 

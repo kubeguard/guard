@@ -45,8 +45,6 @@ func (o *Options) Validate() []error {
 }
 
 func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
-	container := d.Spec.Template.Spec.Containers[0]
-
 	// create auth secret
 	authSecret := &core.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -65,7 +63,7 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 		Name:      authSecret.Name,
 		MountPath: "/etc/guard/auth/azure",
 	}
-	container.VolumeMounts = append(container.VolumeMounts, volMount)
+	d.Spec.Template.Spec.Containers[0].VolumeMounts = append(d.Spec.Template.Spec.Containers[0].VolumeMounts, volMount)
 
 	vol := core.Volume{
 		Name: authSecret.Name,
@@ -79,7 +77,7 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 	d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
 
 	// use auth secret in container[0] args
-	container.Env = append(container.Env, core.EnvVar{
+	d.Spec.Template.Spec.Containers[0].Env = append(d.Spec.Template.Spec.Containers[0].Env, core.EnvVar{
 		Name: "AZURE_CLIENT_SECRET",
 		ValueFrom: &core.EnvVarSource{
 			SecretKeyRef: &core.SecretKeySelector{
@@ -91,13 +89,15 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 		},
 	})
 
-	args := container.Args
+	args := d.Spec.Template.Spec.Containers[0].Args
 	if o.ClientID != "" {
 		args = append(args, fmt.Sprintf("--azure.client-id=%s", o.ClientID))
 	}
 	if o.TenantID != "" {
 		args = append(args, fmt.Sprintf("--azure.tenant-id=%s", o.TenantID))
 	}
+
+	d.Spec.Template.Spec.Containers[0].Args = args
 
 	return extraObjs, nil
 }

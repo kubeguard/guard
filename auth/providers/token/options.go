@@ -33,8 +33,6 @@ func (o *Options) Validate() []error {
 }
 
 func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
-	container := d.Spec.Template.Spec.Containers[0]
-
 	// create auth secret
 	_, err = LoadTokenFile(o.AuthFile)
 	if err != nil {
@@ -61,7 +59,7 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 		Name:      authSecret.Name,
 		MountPath: "/etc/guard/auth/token",
 	}
-	container.VolumeMounts = append(container.VolumeMounts, volMount)
+	d.Spec.Template.Spec.Containers[0].VolumeMounts = append(d.Spec.Template.Spec.Containers[0].VolumeMounts, volMount)
 
 	vol := core.Volume{
 		Name: authSecret.Name,
@@ -75,9 +73,8 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 	d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
 
 	// use auth secret in container[0] args
-	args := container.Args
 	if o.AuthFile != "" {
-		args = append(args, "--token-auth-file=/etc/guard/auth/token/token.csv")
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, "--token-auth-file=/etc/guard/auth/token/token.csv")
 	}
 
 	return extraObjs, nil
