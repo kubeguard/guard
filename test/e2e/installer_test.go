@@ -70,6 +70,14 @@ var _ = Describe("Installer test", func() {
 	)
 
 	var (
+		githubOpts = github.Options{
+			BaseUrl:   "url",
+			UploadUrl: "url",
+		}
+
+		gitlabOpts = gitlab.Options{
+			BaseUrl: "url",
+		}
 		azureOpts = azure.Options{
 			ClientID:     "client_id",
 			ClientSecret: "client_secret",
@@ -329,6 +337,19 @@ var _ = Describe("Installer test", func() {
 				checkPodCreated()
 				checkSecretCreated(secretName)
 			})
+
+			It("Set up guard for github should be successful, provided base url, upload url", func() {
+				opts.Github = githubOpts
+
+				setupGuard(opts)
+
+				checkServiceCreated()
+				checkClusterRoleCreated()
+				checkClusterRoleBindingCreated()
+				checkDeploymentCreated()
+				checkPodCreated()
+				checkSecretCreated(secretName)
+			})
 		})
 
 		Context("Setting up guard for gitlab", func() {
@@ -337,6 +358,19 @@ var _ = Describe("Installer test", func() {
 			})
 
 			It("Set up guard for gitlab should be successful", func() {
+				setupGuard(opts)
+
+				checkServiceCreated()
+				checkClusterRoleCreated()
+				checkClusterRoleBindingCreated()
+				checkDeploymentCreated()
+				checkPodCreated()
+				checkSecretCreated(secretName)
+			})
+
+			It("Set up guard for gitlab should be successful, provided base url", func() {
+				opts.Gitlab = gitlabOpts
+
 				setupGuard(opts)
 
 				checkServiceCreated()

@@ -7,6 +7,8 @@ import (
 	"github.com/appscode/go/types"
 	v "github.com/appscode/go/version"
 	"github.com/appscode/guard/auth/providers/azure"
+	"github.com/appscode/guard/auth/providers/github"
+	"github.com/appscode/guard/auth/providers/gitlab"
 	"github.com/appscode/guard/auth/providers/google"
 	"github.com/appscode/guard/auth/providers/ldap"
 	"github.com/appscode/guard/auth/providers/token"
@@ -129,6 +131,22 @@ func newDeployment(opts Options) (objects []runtime.Object, err error) {
 
 	if opts.AuthProvider.Has(ldap.OrgType) {
 		if extras, err := opts.LDAP.Apply(d); err != nil {
+			return nil, err
+		} else {
+			objects = append(objects, extras...)
+		}
+	}
+
+	if opts.AuthProvider.Has(github.OrgType) {
+		if extras, err := opts.Github.Apply(d); err != nil {
+			return nil, err
+		} else {
+			objects = append(objects, extras...)
+		}
+	}
+
+	if opts.AuthProvider.Has(gitlab.OrgType) {
+		if extras, err := opts.Gitlab.Apply(d); err != nil {
 			return nil, err
 		} else {
 			objects = append(objects, extras...)

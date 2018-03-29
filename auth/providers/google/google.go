@@ -29,7 +29,6 @@ type Authenticator struct {
 	verifier   *oidc.IDTokenVerifier
 	ctx        context.Context
 	service    *gdir.Service
-	token      string
 	domainName string
 }
 
@@ -38,12 +37,11 @@ type TokenInfo struct {
 	HD string `json:"hd"`
 }
 
-func New(opts Options, domain, token string) (auth.Interface, error) {
+func New(opts Options, domain string) (auth.Interface, error) {
 	g := &Authenticator{
 		Options:    opts,
 		ctx:        context.Background(),
 		domainName: domain,
-		token:      token,
 	}
 
 	provider, err := oidc.NewProvider(g.ctx, googleIssuerUrl)
@@ -71,8 +69,8 @@ func (g Authenticator) UID() string {
 }
 
 // https://developers.google.com/identity/protocols/OpenIDConnect#validatinganidtoken
-func (g *Authenticator) Check() (*authv1.UserInfo, error) {
-	idToken, err := g.verifier.Verify(g.ctx, g.token)
+func (g *Authenticator) Check(token string) (*authv1.UserInfo, error) {
+	idToken, err := g.verifier.Verify(g.ctx, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to verify token for google")
 	}

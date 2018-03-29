@@ -50,31 +50,31 @@ func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	client, err := s.getAuthProviderClient(org, crt.Subject.CommonName, data.Spec.Token)
+	client, err := s.getAuthProviderClient(org, crt.Subject.CommonName)
 	if err != nil {
 		write(w, nil, err)
 		return
 	}
 
-	resp, err := client.Check()
+	resp, err := client.Check(data.Spec.Token)
 	write(w, resp, err)
 	return
 }
 
-func (s Server) getAuthProviderClient(org, commonName, token string) (auth.Interface, error) {
+func (s Server) getAuthProviderClient(org, commonName string) (auth.Interface, error) {
 	switch strings.ToLower(org) {
 	case github.OrgType:
-		return github.New(commonName, token), nil
+		return github.New(s.RecommendedOptions.Github, commonName), nil
 	case google.OrgType:
-		return google.New(s.RecommendedOptions.Google, commonName, token)
+		return google.New(s.RecommendedOptions.Google, commonName)
 	case appscode.OrgType:
-		return appscode.New(commonName, token), nil
+		return appscode.New(commonName), nil
 	case gitlab.OrgType:
-		return gitlab.New(token), nil
+		return gitlab.New(s.RecommendedOptions.Gitlab), nil
 	case azure.OrgType:
-		return azure.New(s.RecommendedOptions.Azure, token)
+		return azure.New(s.RecommendedOptions.Azure)
 	case ldap.OrgType:
-		return ldap.New(s.RecommendedOptions.LDAP, token), nil
+		return ldap.New(s.RecommendedOptions.LDAP), nil
 	}
 
 	return nil, errors.Errorf("Client is using unknown organization %s", org)

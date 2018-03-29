@@ -32,14 +32,12 @@ func init() {
 }
 
 type Authenticator struct {
-	opts  Options
-	token string
+	opts Options
 }
 
-func New(opts Options, token string) auth.Interface {
+func New(opts Options) auth.Interface {
 	return &Authenticator{
-		opts:  opts,
-		token: token,
+		opts: opts,
 	}
 }
 
@@ -47,7 +45,7 @@ func (g Authenticator) UID() string {
 	return OrgType
 }
 
-func (s Authenticator) Check() (*authv1.UserInfo, error) {
+func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 	var (
 		err  error
 		conn *ldap.Conn
@@ -86,7 +84,7 @@ func (s Authenticator) Check() (*authv1.UserInfo, error) {
 		}
 	}
 
-	username, err := s.authenticateUser(conn, s.token)
+	username, err := s.authenticateUser(conn, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "authentication failed")
 	}

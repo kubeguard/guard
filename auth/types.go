@@ -34,5 +34,5 @@ func (o orgs) String() string {
 
 type Interface interface {
 	UID() string
-	Check() (*authv1.UserInfo, error)
+	Check(token string) (*authv1.UserInfo, error)
 }

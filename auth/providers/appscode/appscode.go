@@ -52,14 +52,12 @@ type ConduitClient struct {
 }
 
 type Authenticator struct {
-	token string
-	name  string
+	name string
 }
 
-func New(name, token string) auth.Interface {
+func New(name string) auth.Interface {
 	return &Authenticator{
-		token: token,
-		name:  name,
+		name: name,
 	}
 }
 
@@ -67,7 +65,7 @@ func (a Authenticator) UID() string {
 	return OrgType
 }
 
-func (a Authenticator) Check() (*authv1.UserInfo, error) {
+func (a Authenticator) Check(token string) (*authv1.UserInfo, error) {
 	ctx := context.Background()
 	options := client.NewOption(_env.ProdApiServer)
 	options.UserAgent("appscode/guard")
@@ -75,7 +73,7 @@ func (a Authenticator) Check() (*authv1.UserInfo, error) {
 	if len(namespace) != 3 {
 		return Error(fmt.Sprintf("Failed to detect namespace from domain: %v", name)), http.StatusUnauthorized
 	}*/
-	options = options.BearerAuth(a.name, a.token)
+	options = options.BearerAuth(a.name, token)
 	c, err := client.New(options)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create oauth2/v1 api for domain %s", a.name)

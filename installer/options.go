@@ -4,6 +4,8 @@ import (
 	"github.com/appscode/guard/auth"
 	"github.com/appscode/guard/auth/providers"
 	"github.com/appscode/guard/auth/providers/azure"
+	"github.com/appscode/guard/auth/providers/github"
+	"github.com/appscode/guard/auth/providers/gitlab"
 	"github.com/appscode/guard/auth/providers/google"
 	"github.com/appscode/guard/auth/providers/ldap"
 	"github.com/appscode/guard/auth/providers/token"
@@ -24,6 +26,8 @@ type Options struct {
 	Google       google.Options
 	Azure        azure.Options
 	LDAP         ldap.Options
+	Github       github.Options
+	Gitlab       gitlab.Options
 }
 
 func New() Options {
@@ -37,6 +41,8 @@ func New() Options {
 		Google:          google.NewOptions(),
 		Azure:           azure.NewOptions(),
 		LDAP:            ldap.NewOptions(),
+		Github:          github.NewOptions(),
+		Gitlab:          gitlab.NewOptions(),
 	}
 }
 
@@ -52,6 +58,8 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	o.Google.AddFlags(fs)
 	o.Azure.AddFlags(fs)
 	o.LDAP.AddFlags(fs)
+	o.Github.AddFlags(fs)
+	o.Gitlab.AddFlags(fs)
 }
 
 func (o *Options) Validate() []error {
@@ -69,6 +77,12 @@ func (o *Options) Validate() []error {
 	}
 	if o.AuthProvider.Has(ldap.OrgType) {
 		errs = append(errs, o.LDAP.Validate()...)
+	}
+	if o.AuthProvider.Has(github.OrgType) {
+		errs = append(errs, o.Github.Validate()...)
+	}
+	if o.AuthProvider.Has(gitlab.OrgType) {
+		errs = append(errs, o.Gitlab.Validate()...)
 	}
 
 	return errs

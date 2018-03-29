@@ -12,7 +12,6 @@ import (
 	"github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"github.com/xanzy/go-gitlab"
 	"k8s.io/api/authentication/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -186,15 +185,14 @@ func gitlabServerSetup(userResp string, userStatusCode int, gengroupResp gitlabG
 	return srv
 }
 
-func gitlabClientSetup(serverUrl, token string) (*Authenticator, error) {
+func gitlabClientSetup(serverUrl string) *Authenticator {
 	g := &Authenticator{
-		Client: gitlab.NewClient(nil, token),
+		opts: Options{
+			BaseUrl: serverUrl,
+		},
 	}
-	err := g.Client.SetBaseURL(serverUrl)
-	if err != nil {
-		return nil, err
-	}
-	return g, nil
+
+	return g
 }
 
 func TestGitlab(t *testing.T) {
@@ -235,14 +233,11 @@ func TestGitlab(t *testing.T) {
 			srv := gitlabServerSetup(test.userResp, test.userStatusCode, gitlabGetGroupResp(groupSize))
 			defer srv.Close()
 
-			client, err := gitlabClientSetup(srv.URL, test.token)
-			if err != nil {
-				t.Errorf("Error when creating gitlab client. Reason %v", err)
-			} else {
-				resp, err := client.Check()
-				assert.NotNil(t, err)
-				assert.Nil(t, resp)
-			}
+			client := gitlabClientSetup(srv.URL)
+
+			resp, err := client.Check(test.token)
+			assert.NotNil(t, err)
+			assert.Nil(t, resp)
 		})
 	}
 }
@@ -256,14 +251,11 @@ func TestForDIfferentGroupSizes(t *testing.T) {
 			srv := gitlabServerSetup(gitlabUserRespBody, http.StatusOK, gitlabGetGroupResp(groupSize))
 			defer srv.Close()
 
-			client, err := gitlabClientSetup(srv.URL, gitlabGoodToken)
-			if err != nil {
-				t.Errorf("Error when creating gitlab client. Reason %v", err)
-			} else {
-				resp, err := client.Check()
-				assert.Nil(t, err)
-				assertUserInfo(t, resp, groupSize)
-			}
+			client := gitlabClientSetup(srv.URL)
+
+			resp, err := client.Check(gitlabGoodToken)
+			assert.Nil(t, err)
+			assertUserInfo(t, resp, groupSize)
 		})
 	}
 }
@@ -291,14 +283,10 @@ func TestGroupListErrorInDifferentPage(t *testing.T) {
 			})
 			defer srv.Close()
 
-			client, err := gitlabClientSetup(srv.URL, gitlabGoodToken)
-			if err != nil {
-				t.Errorf("Error when creating gitlab client. Reason %v", err)
-			} else {
-				resp, err := client.Check()
-				assert.NotNil(t, err)
-				assert.Nil(t, resp)
-			}
+			client := gitlabClientSetup(srv.URL)
+			resp, err := client.Check(gitlabGoodToken)
+			assert.NotNil(t, err)
+			assert.Nil(t, resp)
 		})
 	}
 }
