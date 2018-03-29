@@ -23,7 +23,7 @@ type AuthProviders struct {
 }
 
 func (a *AuthProviders) AddFlags(fs *pflag.FlagSet) {
-	fs.StringArrayVar(&a.Providers, "auth-providers", a.Providers, fmt.Sprintf("name of providers for which guard will provide authentication service (required), supported providers : %v", auth.SupportedOrgs.String()))
+	fs.StringSliceVar(&a.Providers, "auth-providers", a.Providers, fmt.Sprintf("name of providers for which guard will provide authentication service (required), supported providers : %v", auth.SupportedOrgs.String()))
 }
 
 func (a *AuthProviders) Validate() []error {
@@ -42,7 +42,7 @@ func (a *AuthProviders) Validate() []error {
 
 func (a *AuthProviders) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
 	if len(a.Providers) > 0 {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--auth-providers=%s", strings.Join(a.Providers, " ")))
+		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--auth-providers=%s", strings.Join(a.Providers, ",")))
 	}
 
 	return nil, nil

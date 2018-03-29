@@ -33,7 +33,7 @@ func New(kubeClient kubernetes.Interface) *Framework {
 func (f *Framework) Invoke() *Invocation {
 	return &Invocation{
 		Framework: f,
-		app:       rand.WithUniqSuffix("guard-e2e"),
+		app:       "guard",
 	}
 }
 

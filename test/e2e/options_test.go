@@ -16,7 +16,8 @@ type E2EOptions struct {
 
 var (
 	options = &E2EOptions{
-		KubeConfig: filepath.Join(homedir.HomeDir(), ".kube", "config"),
+		KubeConfig:  filepath.Join(homedir.HomeDir(), ".kube", "config"),
+		KubeContext: "minikube",
 	}
 )
 
