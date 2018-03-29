@@ -1,5 +1,5 @@
 hash: a179202a06f069924133267cdf9d6dd77d23a3dc5e2efb1e57dd0fb10c51c11d
-updated: 2018-03-28T23:51:32.665734686-07:00
+updated: 2018-03-29T00:52:21.675689925-07:00
 imports:
 - name: appscode.com/api
   version: 7785c23ee99112a78e7eab1a4f07b00242a10a1c
@@ -51,17 +51,11 @@ imports:
 - name: github.com/appscode/kutil
   version: 9618833b480d6b78f02121dc4d231a933e30a8cc
   subpackages:
-  - apps/v1beta1
-  - core/v1
-  - discovery
-  - extensions/v1beta1
   - meta
   - tools/analytics
   - tools/certstore
   - tools/clientcmd
   - tools/fsnotify
-- name: github.com/appscode/mergo
-  version: e3000cb3d28c72b837601cac94debd91032d19fe
 - name: github.com/appscode/pat
   version: 48ff78925b7955367d8a048fc2b5cec8efadf8d3
 - name: github.com/Azure/go-autorest
@@ -84,7 +78,7 @@ imports:
   subpackages:
   - md2man
 - name: github.com/davecgh/go-spew
-  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
+  version: 782f4967f2dc4564575ca782fe2d04090b5faca8
   subpackages:
   - spew
 - name: github.com/dgrijalva/jwt-go
@@ -237,10 +231,6 @@ imports:
   - apis/v1alpha1
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
-- name: github.com/pmezard/go-difflib
-  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
-  subpackages:
-  - difflib
 - name: github.com/pquerna/cachecontrol
   version: 525d0eb5f91d30e3b1548de401b7ef9ea6898520
   subpackages:
@@ -292,14 +282,6 @@ imports:
   - doc
 - name: github.com/spf13/pflag
   version: e57e3eeb33f795204c1ca35f56c44f83227c6e66
-- name: github.com/stretchr/testify
-  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
-  subpackages:
-  - assert
-- name: github.com/vjeantet/goldap
-  version: ea702ca12a40a2817b90d53ec7d4ebdcc5489570
-  subpackages:
-  - message
 - name: github.com/vjeantet/ldapserver
   version: 479fece7c5f15b209e2e3ba082a89d18cd2a8207
 - name: github.com/xanzy/go-gitlab
@@ -663,3 +645,15 @@ testImports:
   - reporters/stenographer/support/go-colorable
   - reporters/stenographer/support/go-isatty
   - types
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
+- name: github.com/stretchr/testify
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  subpackages:
+  - assert
+- name: github.com/vjeantet/goldap
+  version: ea702ca12a40a2817b90d53ec7d4ebdcc5489570
+  subpackages:
+  - message
