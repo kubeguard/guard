@@ -32,6 +32,7 @@ Now deploy Guard server so that your Kubernetes api server can access it. Use th
 ```console
      # generate Kubernetes YAMLs for deploying guard server
      $  guard get installer \
+            --auth-providers="ldap" \
             --ldap.server-address=[SERVER_ADDRESS] \
             --ldap.server-port=636 \
             --ldap.bind-dn=[BIND_DN] \

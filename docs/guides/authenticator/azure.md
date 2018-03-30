@@ -14,22 +14,29 @@ section_menu_id: guides
 
 # Azure Authenticator
 
-TO use Azure,
-
-1.  Create a client cert with `Organization` set to `Azure`.For Azure `CommonName` is optional. To ease this process, use the Guard cli to issue a client cert/key pair.
+Guard Installation guide can be found [here](/docs/setup/install.md). To use Azure, create a client cert with `Organization` set to `Azure`.For Azure `CommonName` is optional. To ease this process, use the Guard cli to issue a client cert/key pair.
     
-    ```console
+```console
     $ guard init client {common-name} -o Azure
-    ```
+```
 
-2.  Send additional `--azure.client-id`,`--azure.client-secret` and `--azure.tenant-id` flags to guard server. You can use following command to create YAMLs for this setup.
-     ```console
-     # generate Kubernetes YAMLs for deploying guard server
-     $ guard get installer --azure.client-id=[APPLICATION_ID] --azure.client-secret=[APPLICATION_SECRET] --azure.tenant-id=[TENANT_ID] > installer.yaml
-     $ kubectl apply -f installer.yaml
+### Deploy guard server
 
-     ```
-     Procedure to find `APPLICATION_ID`, `APPLICATION_SECRET` are given below. Replace the `TENANT_ID` with your azure tenant id.
+To generate installer YAMLs for guard server you can use the following command.
+```console
+# generate Kubernetes YAMLs for deploying guard server
+$ guard get installer \
+    --auth-providers = "azure" \
+    --azure.client-id=<application_id> \
+    --azure.tenant-id=<tenant_id> \
+    > installer.yaml
+    
+$ kubectl apply -f installer.yaml
+
+```
+> **Note:** guard take `<application_secret>` from environment variable **AZURE_CLIENT_SECRET**
+
+Procedure to find `<application_id>`, `<application_secret>` are given below. Replace the `<tenant_id>` with your azure tenant id.
 
 ### Configure Azure Active Directory App
 
@@ -39,11 +46,11 @@ TO use Azure,
 
     ![create-app-registration](/docs/images/azure/create-app-registration.png)
     
-3.  Use the **Application ID** as `APPLICATION_ID`
+3.  Use the **Application ID** as `<application_id>`
 
     ![application-id](/docs/images/azure/application-id.png)
 
-4.  Click on the **Settings**, click on the **key** , generate a key and use this key as `APPLICATION_SECRET`
+4.  Click on the **Settings**, click on the **key** , generate a key and use this key as `<application_secret>`
 
     ![secret-key](/docs/images/azure/secret-key.png)
     
@@ -59,38 +66,38 @@ TO use Azure,
 
     ![create-native-app](/docs/images/azure/create-native-app.png)
     
-8.  Use the **Application ID** of this native app as `CLIENT_ID`
+8.  Use the **Application ID** of this native app as `<client_id>`
 
     ![client-id](/docs/images/azure/client-id.png)
 
-9.  Add application created at step 2 with permission `Access [Application_Name_Created_At_Step_2]`
+9.  Add application created at step 2 with permission `Access <Application_Name_Created_At_Step_2>`
     
     ![add-guard-app](/docs/images/azure/add-guard-api.png)
 
 ## Configure kubectl
 
 ```console
-kubectl config set-credentials "USER_NAME" --auth-provider=azure \
+kubectl config set-credentials <user_name> --auth-provider=azure \
   --auth-provider-arg=environment=AzurePublicCloud \
-  --auth-provider-arg=client-id=CLIENT_ID \
-  --auth-provider-arg=tenant-id=TENANT_ID \
-  --auth-provider-arg=apiserver-id=APPLICATION_ID
+  --auth-provider-arg=client-id=<client_id> \
+  --auth-provider-arg=tenant-id=<tenant_id> \
+  --auth-provider-arg=apiserver-id=<application_id>
 ```
 
-Procedure to find `APPLICATION_ID`, `APPLICATION_SECRET` and `CLIENT_ID` are given above. Replace the USER_NAME and TENANT_ID with your azure username and tenant id.
+Procedure to find `<application_id>`, `<application_secret>` and `<client_id>` are given above. Replace the <user_name> and <tenant_id> with your azure username and tenant id.
 
 Or You can add user in `.kube/config` file
 
 ```yaml
 ...
 users:
-- name: USER_NAME
+- name: <user_name>
   user:
     auth-provider:
       config:
-        apiserver-id: APPLICATION_ID
-        client-id: CLIENT_ID
-        tenant-id: TENANT_ID
+        apiserver-id: <application_id>
+        client-id: <client_id>
+        tenant-id: <tenant_id>
         environment: AzurePublicCloud
       name: azure
 ```
@@ -98,7 +105,7 @@ users:
 The access token is acquired when first `kubectl` command is executed
 
    ```
-   kubectl get pods
+   $ kubectl get pods --user <user_name>
 
    To sign in, use a web browser to open the page https://aka.ms/devicelogin and enter the code DEC7D48GA to authenticate.
    ```

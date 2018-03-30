@@ -24,10 +24,10 @@ guard init server [flags]
 ### Options
 
 ```
-      --domains stringSlice   Alternative Domain names
-  -h, --help                  help for server
-      --ips ipSlice           Alternative IP addresses (default [127.0.0.1])
-      --pki-dir string        Path to directory where pki files are stored. (default "$HOME/.guard")
+      --domains strings   Alternative Domain names
+  -h, --help              help for server
+      --ips ipSlice       Alternative IP addresses (default [127.0.0.1])
+      --pki-dir string    Path to directory where pki files are stored. (default "$HOME/.guard")
 ```
 
 ### Options inherited from parent commands

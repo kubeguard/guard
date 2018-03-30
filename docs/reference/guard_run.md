@@ -24,10 +24,13 @@ guard run [flags]
 ### Options
 
 ```
+      --auth-providers strings               name of providers for which guard will provide authentication service (required), supported providers : Azure/Github/Gitlab/Google/Ldap/Token-Auth/Appscode
       --azure.client-id string               MS Graph application client ID to use
       --azure.client-secret string           MS Graph application client secret to use
       --azure.tenant-id string               MS Graph application tenant id to use
       --clock-check-interval duration        Interval between checking time against NTP servers (default 5m0s)
+      --github.base-url string               Base url for enterprise, keep empty to use default github base url
+      --gitlab.base-url string               Base url for enterprise, keep empty to use default gitlab base url
       --google.admin-email string            Email of G Suite administrator
       --google.sa-json-file string           Path to Google service account json file
   -h, --help                                 help for run
