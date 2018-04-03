@@ -2,11 +2,11 @@ package auth
 
 import (
 	"path/filepath"
+	"sort"
 	"strings"
 
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/client-go/util/homedir"
-	"sort"
 )
 
 var DefaultPKIDir = filepath.Join(homedir.HomeDir(), ".guard")

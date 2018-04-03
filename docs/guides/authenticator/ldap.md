@@ -44,7 +44,7 @@ $  guard get installer \
         --ldap.start-tls=<true/false>\
         --ldap.is-secure-ldap=<true/false>\
         --ldap.ca-cert-file=<path_to_the_ca_cert_file>
-        --ldap.auth-choice=<simple_authentication/kerberos>
+        --ldap.auth-choice=<Simple/Kerberos>
         > installer.yaml
 
 $ kubectl apply -f installer.yaml
@@ -101,7 +101,7 @@ Additional flags for LDAP:
 # Ca cert file that used for self signed LDAP server certificate
 --ldap.ca-cert-file=<path_to_the_ca_cert_file>
 
-# LDAP user authentication mechanism, 0 for simple authentication, 1 for kerberos(via GSSAPI)
+# LDAP user authentication mechanism, Simple or Kerberos
 --ldap.auth-choice=<0/1>
 
 # path to the keytab file, it's contain LDAP service principal keys
@@ -129,14 +129,14 @@ $ export LDAP_BIND_PASSWORD=<bind_password>
 ```console
 $ guard get token \
     -o ldap \
-    --ldap.auth-choice=0 \
+    --ldap.auth-choice=Simple \
     --ldap.username=<user_name> \
     --ldap.password=<password>
 
 I0330 11:37:12.375526   24687 logs.go:19] FLAG: --alsologtostderr="false"
 I0330 11:37:12.376448   24687 logs.go:19] FLAG: --analytics="true"
 I0330 11:37:12.376465   24687 logs.go:19] FLAG: --help="false"
-I0330 11:37:12.376476   24687 logs.go:19] FLAG: --ldap.auth-choice="0"
+I0330 11:37:12.376476   24687 logs.go:19] FLAG: --ldap.auth-choice="Simple"
 I0330 11:37:12.376497   24687 logs.go:19] FLAG: --ldap.disable-pa-fx-fast="true"
 I0330 11:37:12.376518   24687 logs.go:19] FLAG: --ldap.krb5-config="/etc/krb5.conf"
 I0330 11:37:12.376534   24687 logs.go:19] FLAG: --ldap.password=<password>
@@ -174,7 +174,7 @@ kube-system   kube-dns-6f4fd4bdf-f7csh           3/3       Running   0          
 ```console
 $ guard get token \
     -o ldap \
-    --ldap.auth-choice=1 \
+    --ldap.auth-choice=Kerberos \
     --ldap.username=<user_name> \
     --ldap.password=<password> \
     --ldap.krb5-config=<path_to_the_krb5_config_file> \
@@ -185,7 +185,7 @@ $ guard get token \
 I0330 11:37:12.375526   24687 logs.go:19] FLAG: --alsologtostderr="false"
 I0330 11:37:12.376448   24687 logs.go:19] FLAG: --analytics="true"
 I0330 11:37:12.376465   24687 logs.go:19] FLAG: --help="false"
-I0330 11:37:12.376476   24687 logs.go:19] FLAG: --ldap.auth-choice="1"
+I0330 11:37:12.376476   24687 logs.go:19] FLAG: --ldap.auth-choice="Kerberos"
 I0330 11:37:12.376497   24687 logs.go:19] FLAG: --ldap.disable-pa-fx-fast=<true/false>
 I0330 11:37:12.376518   24687 logs.go:19] FLAG: --ldap.krb5-config=<path_to_the_krb5_config_file>
 I0330 11:37:12.376534   24687 logs.go:19] FLAG: --ldap.password=<password>
@@ -223,7 +223,7 @@ kube-system   kube-dns-6f4fd4bdf-f7csh           3/3       Running   0          
 # LDAP user authentication mechanism
 #   - 0 for simple authentication
 #   - 1 for kerberos(via GSSAPI)
---ldap.auth-choice=<0/1>
+--ldap.auth-choice=<Simple/Kerberos>
 
 # Username
 --ldap.username=<user_name>

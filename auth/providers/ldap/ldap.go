@@ -22,9 +22,6 @@ const (
 	DefaultUserAttribute        = "uid"
 	DefaultGroupMemberAttribute = "member"
 	DefaultGroupNameAttribute   = "cn"
-
-	AuthChoiceSimpleAuthentication = 0
-	AuthChoiceKerberos             = 1
 )
 
 func init() {
@@ -89,7 +86,7 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 		return nil, errors.Wrap(err, "authentication failed")
 	}
 
-	if s.opts.AuthenticationChoice == AuthChoiceSimpleAuthentication {
+	if s.opts.AuthenticationChoice == AuthChoiceSimple {
 		// rebind, as in simple authentication we bind using username, password
 		if s.opts.BindDN != "" && s.opts.BindPassword != "" {
 			err = conn.Bind(s.opts.BindDN, s.opts.BindPassword)
@@ -132,7 +129,7 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 }
 
 func (s Authenticator) authenticateUser(conn *ldap.Conn, token string) (string, error) {
-	if s.opts.AuthenticationChoice == AuthChoiceSimpleAuthentication {
+	if s.opts.AuthenticationChoice == AuthChoiceSimple {
 		//simple authentication
 		username, password, ok := parseEncodedToken(token)
 		if !ok {

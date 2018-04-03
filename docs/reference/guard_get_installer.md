@@ -35,7 +35,7 @@ guard get installer [flags]
       --google.sa-json-file string           Path to Google service account json file
   -h, --help                                 help for installer
       --image-pull-secret string             Name of image pull secret
-      --ldap.auth-choice int                 LDAP user authentication mechanism, 0 for simple authentication, 1 for kerberos(via GSSAPI)
+      --ldap.auth-choice AuthChoice          LDAP user authentication mechanisms Simple/Kerberos(via GSSAPI) (default Simple)
       --ldap.bind-dn string                  The connector uses this DN in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
       --ldap.bind-password string            The connector uses this password in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.
       --ldap.ca-cert-file string             ca cert file that used for self signed server certificate
