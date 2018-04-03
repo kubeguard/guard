@@ -29,7 +29,7 @@ import (
 var _ = Describe("Installer test", func() {
 
 	const (
-		privateRegistryName    = "nightfury1204"
+		privateRegistryName    = "appscode"
 		serverAddr             = "10.96.10.96"
 		yamlDir                = "test-guard/yaml"
 		certDir                = "test-guard/certs"
@@ -71,8 +71,7 @@ var _ = Describe("Installer test", func() {
 
 	var (
 		githubOpts = github.Options{
-			BaseUrl:   "url",
-			UploadUrl: "url",
+			BaseUrl: "url",
 		}
 
 		gitlabOpts = gitlab.Options{
@@ -338,7 +337,7 @@ var _ = Describe("Installer test", func() {
 				checkSecretCreated(secretName)
 			})
 
-			It("Set up guard for github should be successful, provided base url, upload url", func() {
+			It("Set up guard for github should be successful, provided base url", func() {
 				opts.Github = githubOpts
 
 				setupGuard(opts)

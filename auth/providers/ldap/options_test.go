@@ -33,7 +33,7 @@ var (
 				o.ServerAddress = empty
 				return o
 			},
-			errors.New("ldap.server-address must be non empty"),
+			errors.New("ldap.server-address must be non-empty"),
 		},
 		{
 			"ldap.server-port is empty",
@@ -41,7 +41,7 @@ var (
 				o.ServerPort = empty
 				return o
 			},
-			errors.New("ldap.server-port must be non empty"),
+			errors.New("ldap.server-port must be non-empty"),
 		},
 		{
 			"ldap.user-search-dn is empty",
@@ -49,7 +49,7 @@ var (
 				o.UserSearchDN = empty
 				return o
 			},
-			errors.New("ldap.user-search-dn must be non empty"),
+			errors.New("ldap.user-search-dn must be non-empty"),
 		},
 		{
 			"ldap.user-attribute is empty",
@@ -57,7 +57,7 @@ var (
 				o.UserAttribute = empty
 				return o
 			},
-			errors.New("ldap.user-attribute must be non empty"),
+			errors.New("ldap.user-attribute must be non-empty"),
 		},
 		{
 			"ldap.group-search-dn is empty",
@@ -65,7 +65,7 @@ var (
 				o.GroupSearchDN = empty
 				return o
 			},
-			errors.New("ldap.group-search-dn must be non empty"),
+			errors.New("ldap.group-search-dn must be non-empty"),
 		},
 		{
 			"ldap.group-member-attribute is empty",
@@ -73,7 +73,7 @@ var (
 				o.GroupMemberAttribute = empty
 				return o
 			},
-			errors.New("ldap.group-member-attribute must be non empty"),
+			errors.New("ldap.group-member-attribute must be non-empty"),
 		},
 		{
 			"ldap.group-name-attribute is empty",
@@ -81,7 +81,7 @@ var (
 				o.GroupNameAttribute = empty
 				return o
 			},
-			errors.New("ldap.group-name-attribute must be non empty"),
+			errors.New("ldap.group-name-attribute must be non-empty"),
 		},
 		{
 			"ldap.is-secure-ldap and ldap.start-tls both are true",
@@ -99,7 +99,7 @@ var (
 				o.AuthenticationChoice = AuthChoiceKerberos
 				return o
 			},
-			errors.New("for kerberos ldap.keytab-file must be non empty"),
+			errors.New("for kerberos ldap.keytab-file must be non-empty"),
 		},
 	}
 )

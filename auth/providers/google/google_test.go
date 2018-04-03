@@ -145,7 +145,7 @@ func googleGetGroupResp(totalGroups, groupPerPage, totalPage int) googleGroupRes
 // groups search url parameter
 // domain, pageToken, userKey
 //
-// domain, userKey must be non empty
+// domain, userKey must be non-empty
 func googleVerifyUrlParams(u *url.URL) error {
 	urlParams := u.Query()
 	queryParams := []string{"domain", "pageToken", "userKey"}

@@ -46,8 +46,8 @@ func (g *Authenticator) Check(token string) (*authv1.UserInfo, error) {
 		err    error
 	)
 
-	if g.opts.BaseUrl != "" && g.opts.UploadUrl != "" {
-		client, err = github.NewEnterpriseClient(g.opts.BaseUrl, g.opts.UploadUrl, oauth2.NewClient(g.ctx, oauth2.StaticTokenSource(
+	if g.opts.BaseUrl != "" {
+		client, err = github.NewEnterpriseClient(g.opts.BaseUrl, "", oauth2.NewClient(g.ctx, oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: token},
 		)))
 	} else {

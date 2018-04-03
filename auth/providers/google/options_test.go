@@ -33,7 +33,7 @@ var (
 				o.ServiceAccountJsonFile = empty
 				return o
 			},
-			errors.New("google.sa-json-file must be non empty"),
+			errors.New("google.sa-json-file must be non-empty"),
 		},
 		{
 			"google.admin-email is empty",
@@ -41,7 +41,7 @@ var (
 				o.AdminEmail = empty
 				return o
 			},
-			errors.New("google.admin-email must be non empty"),
+			errors.New("google.admin-email must be non-empty"),
 		},
 	}
 )

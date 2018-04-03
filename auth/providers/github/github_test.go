@@ -226,8 +226,7 @@ func githubServerSetup(githubOrg string, memberResp string, memberStatusCode int
 func githubClientSetup(serverUrl, githubOrg string) *Authenticator {
 	g := &Authenticator{
 		opts: Options{
-			BaseUrl:   serverUrl,
-			UploadUrl: serverUrl,
+			BaseUrl: serverUrl,
 		},
 		ctx:     context.Background(),
 		OrgName: githubOrg,

@@ -29,7 +29,7 @@ func (a *AuthProviders) AddFlags(fs *pflag.FlagSet) {
 func (a *AuthProviders) Validate() []error {
 	var errs []error
 	if len(a.Providers) == 0 {
-		errs = append(errs, errors.New("auth-providers must be non empty"))
+		errs = append(errs, errors.New("auth-providers must be non-empty"))
 	}
 
 	for _, p := range a.Providers {

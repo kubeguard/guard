@@ -19,7 +19,7 @@ func TestOptionsValidate(t *testing.T) {
 		err      error
 	}{
 		flagName: "token-auth-file",
-		err:      errors.New("token-auth-file must be non empty"),
+		err:      errors.New("token-auth-file must be non-empty"),
 	}
 
 	testdata := []struct {
@@ -40,7 +40,7 @@ func TestOptionsValidate(t *testing.T) {
 		if test.opts.AuthFile == empty {
 			testName = validateData.flagName + "empty"
 		} else {
-			testName = validateData.flagName + "non empty"
+			testName = validateData.flagName + "non-empty"
 		}
 
 		t.Run(testName, func(t *testing.T) {

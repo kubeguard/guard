@@ -28,12 +28,12 @@ var (
 		expectedErr error
 	}{
 		{
-			"environment variable AZURE_CLIENT_SECRET is empty",
+			"azure.client-secret must be non-empty",
 			func(o Options) Options {
 				o.ClientSecret = empty
 				return o
 			},
-			errors.New("environment variable AZURE_CLIENT_SECRET must be set"),
+			errors.New("client secret must be non-empty"),
 		},
 		{
 			"azure.client-id is empty",
@@ -41,7 +41,7 @@ var (
 				o.ClientID = empty
 				return o
 			},
-			errors.New("azure.client-id must be non empty"),
+			errors.New("azure.client-id must be non-empty"),
 		},
 		{
 			"azure.tenant-id is empty",
@@ -49,7 +49,7 @@ var (
 				o.TenantID = empty
 				return o
 			},
-			errors.New("azure.tenant-id must be non empty"),
+			errors.New("azure.tenant-id must be non-empty"),
 		},
 	}
 )
