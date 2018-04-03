@@ -29,9 +29,11 @@ func (o *Options) Validate() []error {
 }
 
 func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
+	args := d.Spec.Template.Spec.Containers[0].Args
 	if o.BaseUrl != "" {
-		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--gitlab.base-url=%s", o.BaseUrl))
+		args = append(args, fmt.Sprintf("--gitlab.base-url=%s", o.BaseUrl))
 	}
+	d.Spec.Template.Spec.Containers[0].Args = args
 
 	return extraObjs, nil
 }

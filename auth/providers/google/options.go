@@ -55,15 +55,17 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 func (o *Options) Validate() []error {
 	var errs []error
 	if o.ServiceAccountJsonFile == "" {
-		errs = append(errs, errors.New("google.sa-json-file must be non empty"))
+		errs = append(errs, errors.New("google.sa-json-file must be non-empty"))
 	}
 	if o.AdminEmail == "" {
-		errs = append(errs, errors.New("google.admin-email must be non empty"))
+		errs = append(errs, errors.New("google.admin-email must be non-empty"))
 	}
 	return errs
 }
 
 func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
+	container := d.Spec.Template.Spec.Containers[0]
+
 	// create auth secret
 	sa, err := ioutil.ReadFile(o.ServiceAccountJsonFile)
 	if err != nil {
@@ -86,7 +88,7 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 		Name:      authSecret.Name,
 		MountPath: "/etc/guard/auth/google",
 	}
-	d.Spec.Template.Spec.Containers[0].VolumeMounts = append(d.Spec.Template.Spec.Containers[0].VolumeMounts, volMount)
+	container.VolumeMounts = append(container.VolumeMounts, volMount)
 
 	vol := core.Volume{
 		Name: authSecret.Name,
@@ -100,7 +102,7 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 	d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
 
 	// use auth secret in container[0] args
-	args := d.Spec.Template.Spec.Containers[0].Args
+	args := container.Args
 	if o.ServiceAccountJsonFile != "" {
 		args = append(args, "--google.sa-json-file=/etc/guard/auth/google/sa.json")
 	}
@@ -108,6 +110,8 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 		args = append(args, fmt.Sprintf("--google.admin-email=%s", o.AdminEmail))
 	}
 
-	d.Spec.Template.Spec.Containers[0].Args = args
+	container.Args = args
+	d.Spec.Template.Spec.Containers[0] = container
+
 	return extraObjs, nil
 }

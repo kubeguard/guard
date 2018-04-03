@@ -27,24 +27,27 @@ func NewOptions() Options {
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.ClientID, "azure.client-id", o.ClientID, "MS Graph application client ID to use")
+	fs.StringVar(&o.ClientSecret, "azure.client-secret", o.ClientSecret, "MS Graph application client secret to use")
 	fs.StringVar(&o.TenantID, "azure.tenant-id", o.TenantID, "MS Graph application tenant id to use")
 }
 
 func (o *Options) Validate() []error {
 	var errs []error
 	if o.ClientSecret == "" {
-		errs = append(errs, errors.New("environment variable AZURE_CLIENT_SECRET must be set"))
+		errs = append(errs, errors.New("client secret must be non-empty"))
 	}
 	if o.ClientID == "" {
-		errs = append(errs, errors.New("azure.client-id must be non empty"))
+		errs = append(errs, errors.New("azure.client-id must be non-empty"))
 	}
 	if o.TenantID == "" {
-		errs = append(errs, errors.New("azure.tenant-id must be non empty"))
+		errs = append(errs, errors.New("azure.tenant-id must be non-empty"))
 	}
 	return errs
 }
 
 func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
+	container := d.Spec.Template.Spec.Containers[0]
+
 	// create auth secret
 	authSecret := &core.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -63,7 +66,7 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 		Name:      authSecret.Name,
 		MountPath: "/etc/guard/auth/azure",
 	}
-	d.Spec.Template.Spec.Containers[0].VolumeMounts = append(d.Spec.Template.Spec.Containers[0].VolumeMounts, volMount)
+	container.VolumeMounts = append(container.VolumeMounts, volMount)
 
 	vol := core.Volume{
 		Name: authSecret.Name,
@@ -77,7 +80,7 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 	d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
 
 	// use auth secret in container[0] args
-	d.Spec.Template.Spec.Containers[0].Env = append(d.Spec.Template.Spec.Containers[0].Env, core.EnvVar{
+	container.Env = append(container.Env, core.EnvVar{
 		Name: "AZURE_CLIENT_SECRET",
 		ValueFrom: &core.EnvVarSource{
 			SecretKeyRef: &core.SecretKeySelector{
@@ -89,7 +92,7 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 		},
 	})
 
-	args := d.Spec.Template.Spec.Containers[0].Args
+	args := container.Args
 	if o.ClientID != "" {
 		args = append(args, fmt.Sprintf("--azure.client-id=%s", o.ClientID))
 	}
@@ -97,7 +100,8 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 		args = append(args, fmt.Sprintf("--azure.tenant-id=%s", o.TenantID))
 	}
 
-	d.Spec.Template.Spec.Containers[0].Args = args
+	container.Args = args
+	d.Spec.Template.Spec.Containers[0] = container
 
 	return extraObjs, nil
 }

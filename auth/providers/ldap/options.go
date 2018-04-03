@@ -132,6 +132,8 @@ func (o *Options) Configure() error {
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.ServerAddress, "ldap.server-address", o.ServerAddress, "Host or IP of the LDAP server")
 	fs.StringVar(&o.ServerPort, "ldap.server-port", "389", "LDAP server port")
+	fs.StringVar(&o.BindDN, "ldap.bind-dn", o.BindDN, "The connector uses this DN in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.")
+	fs.StringVar(&o.BindPassword, "ldap.bind-password", o.BindPassword, "The connector uses this password in credentials to search for users and groups. Not required if the LDAP server provides access for anonymous auth.")
 	fs.StringVar(&o.UserSearchDN, "ldap.user-search-dn", o.UserSearchDN, "BaseDN to start the search user")
 	fs.StringVar(&o.UserSearchFilter, "ldap.user-search-filter", DefaultUserSearchFilter, "Filter to apply when searching user")
 	fs.StringVar(&o.UserAttribute, "ldap.user-attribute", DefaultUserAttribute, "Ldap username attribute")
@@ -180,36 +182,38 @@ func (o *Options) newGroupSearchRequest(userDN string) *ldap.SearchRequest {
 func (o *Options) Validate() []error {
 	var errs []error
 	if o.ServerAddress == "" {
-		errs = append(errs, errors.New("ldap.server-address must be non empty"))
+		errs = append(errs, errors.New("ldap.server-address must be non-empty"))
 	}
 	if o.ServerPort == "" {
-		errs = append(errs, errors.New("ldap.server-port must be non empty"))
+		errs = append(errs, errors.New("ldap.server-port must be non-empty"))
 	}
 	if o.UserSearchDN == "" {
-		errs = append(errs, errors.New("ldap.user-search-dn must be non empty"))
+		errs = append(errs, errors.New("ldap.user-search-dn must be non-empty"))
 	}
 	if o.UserAttribute == "" {
-		errs = append(errs, errors.New("ldap.user-attribute must be non empty"))
+		errs = append(errs, errors.New("ldap.user-attribute must be non-empty"))
 	}
 	if o.GroupSearchDN == "" {
-		errs = append(errs, errors.New("ldap.group-search-dn must be non empty"))
+		errs = append(errs, errors.New("ldap.group-search-dn must be non-empty"))
 	}
 	if o.GroupMemberAttribute == "" {
-		errs = append(errs, errors.New("ldap.group-member-attribute must be non empty"))
+		errs = append(errs, errors.New("ldap.group-member-attribute must be non-empty"))
 	}
 	if o.GroupNameAttribute == "" {
-		errs = append(errs, errors.New("ldap.group-name-attribute must be non empty"))
+		errs = append(errs, errors.New("ldap.group-name-attribute must be non-empty"))
 	}
 	if o.IsSecureLDAP && o.StartTLS {
 		errs = append(errs, errors.New("ldap.is-secure-ldap and ldap.start-tls both can not be true at the same time"))
 	}
 	if o.AuthenticationChoice == AuthChoiceKerberos && o.KeytabFile == "" {
-		errs = append(errs, errors.New("for kerberos ldap.keytab-file must be non empty"))
+		errs = append(errs, errors.New("for kerberos ldap.keytab-file must be non-empty"))
 	}
 	return errs
 }
 
 func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
+	container := d.Spec.Template.Spec.Containers[0]
+
 	// create auth secret
 	ldapData := map[string][]byte{
 		"bind-dn":       []byte(o.BindDN), // username kept in secret, since password is in secret
@@ -244,7 +248,7 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 		Name:      authSecret.Name,
 		MountPath: "/etc/guard/auth/ldap",
 	}
-	d.Spec.Template.Spec.Containers[0].VolumeMounts = append(d.Spec.Template.Spec.Containers[0].VolumeMounts, volMount)
+	container.VolumeMounts = append(container.VolumeMounts, volMount)
 
 	vol := core.Volume{
 		Name: authSecret.Name,
@@ -257,8 +261,8 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 	}
 	d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
 
-	// use auth secret in d.Spec.Template.Spec.Containers[0][0] args
-	d.Spec.Template.Spec.Containers[0].Env = append(d.Spec.Template.Spec.Containers[0].Env,
+	// use auth secret in container[0] args
+	container.Env = append(container.Env,
 		core.EnvVar{
 			Name: "LDAP_BIND_DN",
 			ValueFrom: &core.EnvVarSource{
@@ -283,7 +287,7 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 		},
 	)
 
-	args := d.Spec.Template.Spec.Containers[0].Args
+	args := container.Args
 	if o.ServerAddress != "" {
 		args = append(args, fmt.Sprintf("--ldap.server-address=%s", o.ServerAddress))
 	}
@@ -331,7 +335,8 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 	}
 	args = append(args, fmt.Sprintf("--ldap.auth-choice=%v", o.AuthenticationChoice))
 
-	d.Spec.Template.Spec.Containers[0].Args = args
+	container.Args = args
+	d.Spec.Template.Spec.Containers[0] = container
 
 	return extraObjs, nil
 }
