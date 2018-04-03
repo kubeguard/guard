@@ -26,7 +26,7 @@ guard get webhook-config [flags]
 ```
       --addr string           Address (host:port) of guard server. (default "10.96.10.96:443")
   -h, --help                  help for webhook-config
-  -o, --organization string   Name of Organization (Azure/Github/Gitlab/Google/Ldap/Token-Auth/Appscode).
+  -o, --organization string   Name of Organization (Appscode/Azure/Github/Gitlab/Google/Ldap/Token-Auth).
       --pki-dir string        Path to directory where pki files are stored. (default "$HOME/.guard")
 ```
 

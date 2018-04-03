@@ -14,15 +14,16 @@ section_menu_id: guides
 
 # Azure Authenticator
 
-Guard Installation guide can be found [here](/docs/setup/install.md). To use Azure, create a client cert with `Organization` set to `Azure`.For Azure `CommonName` is optional. To ease this process, use the Guard cli to issue a client cert/key pair.
-    
+Guard installation guide can be found [here](/docs/setup/install.md). To use Azure, create a client cert with `Organization` set to `Azure`.For Azure `CommonName` is optional. To ease this process, use the Guard cli to issue a client cert/key pair.
+
 ```console
-    $ guard init client {common-name} -o Azure
+$ guard init client [CommonName] -o Azure
 ```
 
 ### Deploy guard server
 
 To generate installer YAMLs for guard server you can use the following command.
+
 ```console
 # generate Kubernetes YAMLs for deploying guard server
 $ guard get installer \
@@ -30,9 +31,8 @@ $ guard get installer \
     --azure.client-id=<application_id> \
     --azure.tenant-id=<tenant_id> \
     > installer.yaml
-    
-$ kubectl apply -f installer.yaml
 
+$ kubectl apply -f installer.yaml
 ```
 > **Note:** guard take `<application_secret>` from environment variable **AZURE_CLIENT_SECRET**
 
@@ -45,7 +45,7 @@ Procedure to find `<application_id>`, `<application_secret>` are given below. Re
 2.  Create an Azure Active Directory Web App / API application
 
     ![create-app-registration](/docs/images/azure/create-app-registration.png)
-    
+
 3.  Use the **Application ID** as `<application_id>`
 
     ![application-id](/docs/images/azure/application-id.png)
@@ -53,25 +53,25 @@ Procedure to find `<application_id>`, `<application_secret>` are given below. Re
 4.  Click on the **Settings**, click on the **key** , generate a key and use this key as `<application_secret>`
 
     ![secret-key](/docs/images/azure/secret-key.png)
-    
+
 5.  Click on the **Manifest** , set `groupMembershipClaims` to `All` and **save** the mainfest
 
     ![update-manifest](/docs/images/azure/update-manifest.png)
-    
+
 6.  Add **Microsoft graph** api with permission `Read directory data` and `Sign in and read user profile`.
-    
+
     ![add-api](/docs/images/azure/add-api.png)
-    
+
 7.  Create a second Azure Active Directory native application
 
     ![create-native-app](/docs/images/azure/create-native-app.png)
-    
+
 8.  Use the **Application ID** of this native app as `<client_id>`
 
     ![client-id](/docs/images/azure/client-id.png)
 
 9.  Add application created at step 2 with permission `Access <Application_Name_Created_At_Step_2>`
-    
+
     ![add-guard-app](/docs/images/azure/add-guard-api.png)
 
 ## Configure kubectl

@@ -14,7 +14,7 @@ section_menu_id: guides
 
 # Gitlab Authenticator
 
-Guard Installation guide can be found [here](/docs/setup/install.md). To use Gitlab, you need a client cert with `Organization` set to `Gitlab`. To ease this process, use the Guard cli to issue a client cert/key pair.
+Guard installation guide can be found [here](/docs/setup/install.md). To use Gitlab, you need a client cert with `Organization` set to `Gitlab`. To ease this process, use the Guard cli to issue a client cert/key pair.
 
 ```console
 $ guard init client {common-name} -o Gitlab
@@ -70,6 +70,7 @@ $ guard get token -o gitlab
 Guard uses the token found in `TokenReview` request object to read user's profile information and list of groups this user is member of. In the `TokenReview` response, `status.user.username` is set to user's Gitlab login, `status.user.groups` is set to the list of the groups where this user is a member.
 
 ### Configure Kubectl
+
 ```console
 kubectl config set-credentials <user_name> --token=<token>
 ```

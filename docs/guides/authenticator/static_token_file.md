@@ -87,6 +87,6 @@ kube-system   kube-addon-manager-minikube        1/1       Running   0          
 kube-system   kube-apiserver-minikube            1/1       Running   1          7h
 kube-system   kube-controller-manager-minikube   1/1       Running   0          7h
 kube-system   kube-dns-6f4fd4bdf-f7csh           3/3       Running   0          7h
-
 ```
-> **Note:** If you set up guard only for static token authentication , then you will need a client cert with `Organization` set to `token-auth`. if you set up guard for static token authentication and other auth provider (for example, `--auth-providers="token-auth,github"`), then at first guard will check for static token authentication if not succeeded then it will check for other provider. And for multiple auth providers, if you set rbac based on group name, then please be aware about same group name. 
+
+> **Note:** If you set up guard only for static token authentication , then you will need a client cert with `Organization` set to `token-auth`. if you set up guard for static token authentication and other auth provider (for example, `--auth-providers="token-auth,github"`), then at first guard will check for static token authentication if not succeeded then it will check for other provider. And for multiple auth providers, if you set permissions based on group names, then please be aware of same group name from different authenticators.

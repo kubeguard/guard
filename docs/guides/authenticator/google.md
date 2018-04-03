@@ -14,6 +14,7 @@ section_menu_id: guides
 
 # Google Authenticator
 To use Google, you need a client cert with `CommonName` set to Google Apps (now G Suite) domain and `Organization` set to `Google`. To ease this process, use the Guard cli to issue a client cert/key pair.
+
 ```console
 $ guard init client {domain-name} -o Google
 ```
@@ -50,7 +51,7 @@ $ guard get installer \
   --google.admin-email=<email-of-a-g-suite-admin> \
   --google.sa-json-file=<path-json-key-file> \
   > installer.yaml
-  
+
 $ kubectl apply -f installer.yaml
 ```
 
@@ -109,7 +110,7 @@ users:
       config:
         client-id: REDACTED
         client-secret: REDACTED
-        id-token: REDACTED 
+        id-token: REDACTED
         idp-issuer-url: https://accounts.google.com
         refresh-token: REDACTED
 

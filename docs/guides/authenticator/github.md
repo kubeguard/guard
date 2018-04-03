@@ -14,7 +14,7 @@ section_menu_id: guides
 
 # Github Authenticator
 
-Guard Installation guide can be found [here](/docs/setup/install.md). To use Github, you need a client cert with `CommonName` set to Github organization name and `Organization` set to `Github`. To ease this process, use the Guard cli to issue a client cert/key pair.
+Guard installation guide can be found [here](/docs/setup/install.md). To use Github, you need a client cert with `CommonName` set to Github organization name and `Organization` set to `Github`. To ease this process, use the Guard cli to issue a client cert/key pair.
 
 ```console
 $ guard init client {common-name} -o Github
@@ -38,10 +38,6 @@ Additional flags for github:
 ```console
 # Base url for enterprise, keep empty to use default github base url
 --github.base-url=<base_url>
-
-# Upload url for enterprise, keep empty to use default github upload url
---github.upload-url=<upload_url>
-
 ```
 
 ### Issue Token

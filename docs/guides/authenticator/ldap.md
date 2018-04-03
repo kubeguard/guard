@@ -14,11 +14,11 @@ section_menu_id: guides
 
 # LDAP Authenticator
 
-Guard Installation guide can be found [here](/docs/setup/install.md). To use LDAP, create a client cert with `Organization` set to `Ldap`.For LDAP `COMMON-NAME` is optional. To ease this process, use the Guard cli to issue a client cert/key pair.
-    
+Guard installation guide can be found [here](/docs/setup/install.md). To use LDAP, create a client cert with `Organization` set to `Ldap`. For LDAP `CommonName` is optional. To ease this process, use the Guard cli to issue a client cert/key pair.
+
 ```console
-# If COMMON-NAME is not provided, then default COMMON-NAME `ldap` is used
-$ guard init client {common-name} -o Ldap
+# If CommonName is not provided, then default CommonName `ldap` is used
+$ guard init client [CommonName] -o Ldap
 ```
 
 ### Deploy Guard Server
@@ -54,50 +54,50 @@ Additional flags for LDAP:
 
 ```console
 --ldap.server-address=<server_address>
-    
+
 # If the port is not supplied, then default port `389` is used
 --ldap.server-port=<server_port>
-    
+
 # To start tls connection
 --ldap.start-tls
-    
+
 # For secure LDAP (LDAPS)
 --ldap.is-secure-ldap
-    
+
 # The connector uses bind DN and password as credential to search for users and groups.
 # Not required if the LDAP server provides access for anonymous auth.
 --ldap.bind-dn=<bind_dn>
 --ldap.bind-password=<bind_password>
-    
+
 # BaseDN to start the user search
 --ldap.user-search-dn=<user_search_dn>
-    
+
 # Filter to apply when searching user
 # If the filter is not supplied, then default filter `(objectClass=person)` is used
 --ldap.user-search-filter=<user_search_filter>
-    
+
 # LDAP username attribute
 # If the attribute is not supplied, then default attribute `uid` is used
 --ldap.user-attribute=<user_attribute>
-    
+
 # BaseDN to start the group search
 --ldap.group-search-dn=<group_search_dn>
-    
+
 # Filter to apply when searching the group
 # If the filter is not supplied, then default filter `(objectClass=groupOfNames)` is used
 --ldap.group-search-filter=<group_search_filter>
-    
+
 # LDAP group name attribute
 # If the attribute is not supplied, then default attribute `cn` is used
 --ldap.group-name-attribute=<group_name_attribute>
-    
+
 # LDAP group member attribute
 # If the attribute is not supplied, then default attribute `member` is used
---ldap.group-member-attribute=<group_member_attribute>  
-    
+--ldap.group-member-attribute=<group_member_attribute>
+
 # To skip LDAP server TLS verification, provide this flag
 --ldap.skip-tls-verification=<true/false>
-    
+
 # Ca cert file that used for self signed LDAP server certificate
 --ldap.ca-cert-file=<path_to_the_ca_cert_file>
 
@@ -112,16 +112,16 @@ Additional flags for LDAP:
 ```
 
 Environment variable needed to set for LDAP:
+
 ```console
 # The connector uses bind DN and password as credential to search for users and groups.
 # Not required if the LDAP server provides access for anonymous auth.
 $ export LDAP_BIND_DN=<bind_dn>
 $ export LDAP_BIND_PASSWORD=<bind_password>
-
 ```
 
 > **Note:** User search filter is applied in this form : `(&<user_search_filter>(<user_attribute>=<user_name>))` and group search filter is applied in this form : `(&<group_search_filter>(<group_member_attribute>=<user_dn>))`
-     
+
 ### Issue Token
 
 **Simple authentication:** Use following guard command to get token:
@@ -235,16 +235,16 @@ kube-system   kube-dns-6f4fd4bdf-f7csh           3/3       Running   0          
 -ldap.krb5-config=<path_to_the_krb5_config_file>
 
 # Realm, set the realm to empty string to use the default realm from config
---ldap.realm=<realm>         
+--ldap.realm=<realm>
 
 # Service principal name
 --ldap.spn=<service_principle_name>
 
 # Disable PA-FX-Fast, Active Directory does not commonly support FAST negotiation
-# so you will need to disable this on the client (default true) 
---ldap.disable-pa-fx-fast=<true/false> 
+# so you will need to disable this on the client (default true)
+--ldap.disable-pa-fx-fast=<true/false>
 
-``` 
+```
 
 ### How guard generate token for simple authentication
 

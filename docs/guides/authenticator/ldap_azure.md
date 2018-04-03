@@ -2,7 +2,7 @@
 
 There is a nice documentation about how to enable secure LDAP for the managed domain using Azure portal [here](https://docs.microsoft.com/en-us/azure/active-directory-domain-services/active-directory-ds-admin-guide-configure-secure-ldap-enable-ldaps). If you configured DNS to access the managed domain, then use it as `SERVER_ADDRESS`. If not configured, then you can use **EXTERNAL IP ADDRESS FOR LDAPS ACCESS** as `SERVER_ADDRESS`. For LDAPS use `636` as server `PORT`. Procedure to find **EXTERNAL IP ADDRESS FOR LDAPS ACCESS** is given below:
 
-1.  Write `domain services` in the Search resources search box. Select Azure AD Domain Services from the search result. 
+1.  Write `domain services` in the Search resources search box. Select Azure AD Domain Services from the search result.
 
 ![azure-azure-ADDS](/docs/images/ldap-azure/azure-ADDS.png)
 
@@ -20,7 +20,7 @@ There is a nice documentation about how to enable secure LDAP for the managed do
 
 Guide for Guard installation and PKI initialization are given [here](/docs/setup/install.md).
 Create a client cert with `Organization` set to `Ldap`.For LDAP `COMMON_NAME` is optional. To ease this process, use the Guard cli to issue a client cert/key pair.
-    
+
 ```console
     # If COMMON_NAME is not provided, then default COMMON_NAME `ldap` is used
     $ guard init client [COMMON_NAME] -o Ldap

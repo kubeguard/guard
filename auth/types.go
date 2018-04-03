@@ -6,6 +6,7 @@ import (
 
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/client-go/util/homedir"
+	"sort"
 )
 
 var DefaultPKIDir = filepath.Join(homedir.HomeDir(), ".guard")
@@ -29,6 +30,7 @@ func (o orgs) String() string {
 	for i, org := range o {
 		names[i] = strings.Title(org)
 	}
+	sort.Strings(names)
 	return strings.Join(names, "/")
 }
 

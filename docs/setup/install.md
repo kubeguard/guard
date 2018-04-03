@@ -51,35 +51,35 @@ Guard uses TLS client certs to secure the communication between guard server and
 ```console
 # initialize self signed ca
 $ guard init ca
-Wrote ca certificates in  $HOME/.guard/pki
+Wrote ca certificates in  /home/tamal/.guard/pki
 
 # generate server certificate pair
 $ guard init server --ips=10.96.10.96
-Wrote server certificates in  $HOME/.guard/pki
+Wrote server certificates in  /home/tamal/.guard/pki
 
 # generate client certificate pair for Github organization `appscode`
 $ guard init client appscode -o github
-Wrote client certificates in  $HOME/.guard/pki
+Wrote client certificates in  /home/tamal/.guard/pki
 
 $ guard init client appscode.com -o google
-Wrote client certificates in  $HOME/.guard/pki
+Wrote client certificates in  /home/tamal/.guard/pki
 
 $ guard init client qacode -o appscode
-Wrote client certificates in  $HOME/.guard/pki
+Wrote client certificates in  /home/tamal/.guard/pki
 
 # generate client certificate pair for Gitlab
 $ guard init client -o gitlab
-Wrote client certificates in  $HOME/.guard/pki
+Wrote client certificates in  /home/tamal/.guard/pki
 
 # for azure, commonName is optional
 $ guard init client -o azure
-Wrote client certificates in  $HOME/.guard/pki
+Wrote client certificates in  /home/tamal/.guard/pki
 
 # generate client certificate pair for LDAP
 $ guard init client appscode -o ldap
-Wrote client certificates in  $HOME/.guard/pki
+Wrote client certificates in  /home/tamal/.guard/pki
 
-$ ls -l $HOME/.guard/pki
+$ ls -l /home/tamal/.guard/pki
 total 32
 -rwxr-xr-- 1 tamal tamal 1054 Aug 28 07:42 qacode@appscode.crt
 -rw------- 1 tamal tamal 1679 Aug 28 07:42 qacode@appscode.key
