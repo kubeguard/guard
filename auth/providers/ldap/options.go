@@ -72,7 +72,7 @@ type Options struct {
 	// LDAP user authentication mechanism
 	// 0 for simple authentication
 	// 1 for kerberos(via GSSAPI)
-	AuthenticationChoice int
+	AuthenticationChoice AuthChoice
 
 	// path to the keytab file
 	// it's contain LDAP service principal keys
@@ -145,7 +145,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.IsSecureLDAP, "ldap.is-secure-ldap", false, "Secure LDAP (LDAPS)")
 	fs.BoolVar(&o.StartTLS, "ldap.start-tls", false, "Start tls connection")
 	fs.StringVar(&o.CaCertFile, "ldap.ca-cert-file", "", "ca cert file that used for self signed server certificate")
-	fs.IntVar(&o.AuthenticationChoice, "ldap.auth-choice", 0, "LDAP user authentication mechanism, 0 for simple authentication, 1 for kerberos(via GSSAPI)")
+	fs.Var(&o.AuthenticationChoice, "ldap.auth-choice", "LDAP user authentication mechanisms Simple/Kerberos(via GSSAPI)")
 	fs.StringVar(&o.KeytabFile, "ldap.keytab-file", "", "path to the keytab file, it's contain LDAP service principal keys")
 	fs.StringVar(&o.ServiceAccountName, "ldap.service-account", "", "service account name")
 }

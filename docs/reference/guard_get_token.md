@@ -11,11 +11,11 @@ section_menu_id: reference
 ---
 ## guard get token
 
-Get tokens for Appscode/Azure/Github/Gitlab/Google/Ldap
+Get tokens for Appscode/Azure/Github/Gitlab/Google/Ldap/Token-Auth
 
 ### Synopsis
 
-Get tokens for Appscode/Azure/Github/Gitlab/Google/Ldap
+Get tokens for Appscode/Azure/Github/Gitlab/Google/Ldap/Token-Auth
 
 ```
 guard get token [flags]
@@ -32,7 +32,7 @@ guard get token [flags]
       --ldap.realm string         Realm, set the realm to empty string to use the default realm from config
       --ldap.spn string           Service principal name
       --ldap.username string      Username
-  -o, --organization string       Name of Organization (Appscode/Azure/Github/Gitlab/Google/Ldap).
+  -o, --organization string       Name of Organization (Appscode/Azure/Github/Gitlab/Google/Ldap/Token-Auth).
 ```
 
 ### Options inherited from parent commands

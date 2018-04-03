@@ -19,7 +19,12 @@ TO use static token file authentication, you need to set `--token-auth-file` fla
 You can use the following command with `--token-auth-file` to generate YAMLs for deploying guard server with static token file authentication.
 
 ```console
-$ guard get installer --token-auth-file=[PATH_TO_TOKEN_FILE]
+$ guard get installer \
+    --auth-providers="token-auth" \
+    --token-auth-file=<path_to_the_token_file> \
+    > installer.yaml
+
+$ kubectl apply -f installer.yaml
 ```
 ![github-webhook-flow](/docs/images/token-auth-webhook-flow.png)
 
@@ -62,7 +67,7 @@ lskdfjldskfnkjhf,user3,7654,
 ```
 ### Configure Kubectl
 ```console
-kubectl config set-credentials [USERNAME] --token=[TOKEN]
+kubectl config set-credentials <user_name> --token=<token>
 ```
 
 Or You can add user in .kube/config file
@@ -70,7 +75,18 @@ Or You can add user in .kube/config file
 ```yaml
 ...
 users:
-- name: [USERNAME]
+- name: <user_name>
   user:
-    token: [TOKEN]
+    token: <token>
 ```
+```console
+$ kubectl get pods --all-namespaces --user <user_name>
+NAMESPACE     NAME                               READY     STATUS    RESTARTS   AGE
+kube-system   etcd-minikube                      1/1       Running   0          7h
+kube-system   kube-addon-manager-minikube        1/1       Running   0          7h
+kube-system   kube-apiserver-minikube            1/1       Running   1          7h
+kube-system   kube-controller-manager-minikube   1/1       Running   0          7h
+kube-system   kube-dns-6f4fd4bdf-f7csh           3/3       Running   0          7h
+```
+
+> **Note:** If you set up guard only for static token authentication , then you will need a client cert with `Organization` set to `token-auth`. if you set up guard for static token authentication and other auth provider (for example, `--auth-providers="token-auth,github"`), then at first guard will check for static token authentication if not succeeded then it will check for other provider. And for multiple auth providers, if you set permissions based on group names, then please be aware of same group name from different authenticators.

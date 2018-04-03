@@ -14,6 +14,7 @@ section_menu_id: guides
 
 # Google Authenticator
 To use Google, you need a client cert with `CommonName` set to Google Apps (now G Suite) domain and `Organization` set to `Google`. To ease this process, use the Guard cli to issue a client cert/key pair.
+
 ```console
 $ guard init client {domain-name} -o Google
 ```
@@ -46,8 +47,11 @@ For detailed instructions follow the guide [here](/docs/setup/install.md). To ge
 ```console
 # generate Kubernetes YAMLs for deploying guard server
 $ guard get installer \
+  --auth-providers="google" \
   --google.admin-email=<email-of-a-g-suite-admin> \
-  --google.sa-json-file=<path-json-key-file> > installer.yaml
+  --google.sa-json-file=<path-json-key-file> \
+  > installer.yaml
+
 $ kubectl apply -f installer.yaml
 ```
 
@@ -69,6 +73,7 @@ $ kubectl apply -f installer.yaml
   }
 }
 ```
+Guard uses the token found in `TokenReview` request object to read user's profile information and list of Google Groups this user is member of. In the `TokenReview` response, `status.user.username` is set to user's Google email, `status.user.groups` is set to email of Google groups under the domain found in client cert of which this user is a member of.
 
 ## Configure kubectl
 
@@ -99,20 +104,19 @@ Configuration has been written to /home/ac/.kube/config
 $ cat ~/.kube/config
 ...
 users:
-- name: [YOUR_EMAIL]
+- name: <your_email>
   user:
     auth-provider:
       config:
         client-id: REDACTED
         client-secret: REDACTED
-        id-token: REDACTED 
+        id-token: REDACTED
         idp-issuer-url: https://accounts.google.com
         refresh-token: REDACTED
 
-# using this [YOUR_EMAIL] for authenticaiton
-$ kubeclt get pods --user [YOUR_EMAIL]
+# using this <your_email> user for authenticaiton
+$ kubeclt get pods --user <your_email>
 NAMESPACE     NAME                                    READY     STATUS    RESTARTS   AGE
 kube-system   kube-dns-54cccfbdf8-jf9p2               3/3       Running   0          6h
-
 ```
-Guard uses the token found in `TokenReview` request object to read user's profile information and list of Google Groups this user is member of. In the `TokenReview` response, `status.user.username` is set to user's Google email, `status.user.groups` is set to email of Google groups under the domain found in client cert of which this user is a member of.
+

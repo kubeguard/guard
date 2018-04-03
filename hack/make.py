@@ -95,7 +95,7 @@ def lint():
 
 
 def gen():
-    return
+    die(call('go generate auth/providers/ldap/authchoice.go'))
 
 
 def build_cmd(name):
