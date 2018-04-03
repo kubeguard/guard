@@ -1,8 +1,8 @@
-hash: a179202a06f069924133267cdf9d6dd77d23a3dc5e2efb1e57dd0fb10c51c11d
-updated: 2018-03-29T00:52:21.675689925-07:00
+hash: 985979b10e93dec5096f2c8a21ca289874f8add7379504c477b0ae6c22fe5a01
+updated: 2018-04-02T18:46:31.429247219-07:00
 imports:
 - name: appscode.com/api
-  version: 7785c23ee99112a78e7eab1a4f07b00242a10a1c
+  version: 1496b09f7765e5deac607c7f08ae1d088bf1bcbf
   repo: https://bitbucket.org/appscode/api.git
   subpackages:
   - auth/v1alpha1
@@ -47,9 +47,9 @@ imports:
   - util/errors
   - version
 - name: github.com/appscode/jsonpatch
-  version: d1ada3d25b084ae42746377df856bbc74a901503
+  version: 58a38a46ddb591a543c6b1003213353e29331c5a
 - name: github.com/appscode/kutil
-  version: 9618833b480d6b78f02121dc4d231a933e30a8cc
+  version: 83f1a2ee558a663702929a15ff7cfdfbfef331f1
   subpackages:
   - meta
   - tools/analytics
@@ -277,11 +277,11 @@ imports:
   subpackages:
   - mem
 - name: github.com/spf13/cobra
-  version: a1f051bc3eba734da4772d60e2d677f47cf93ef4
+  version: 4dab30cb33e6633c33c787106bafbfbfdde7842d
   subpackages:
   - doc
 - name: github.com/spf13/pflag
-  version: e57e3eeb33f795204c1ca35f56c44f83227c6e66
+  version: 1cd4a0c365d95803411bec89fb7b76bade17053b
 - name: github.com/vjeantet/ldapserver
   version: 479fece7c5f15b209e2e3ba082a89d18cd2a8207
 - name: github.com/xanzy/go-gitlab
@@ -536,7 +536,7 @@ imports:
   - third_party/forked/golang/json
   - third_party/forked/golang/reflect
 - name: k8s.io/apiserver
-  version: ac8d2245af4cbb47d4ee5e0a6088a7e2294eaa2f
+  version: 1270e9f1ad9eaf6127691df90af0836f7e152495
   subpackages:
   - pkg/util/feature
 - name: k8s.io/client-go
@@ -650,7 +650,7 @@ testImports:
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  version: b91bfb9ebec76498946beb6af7c0230c7cc7ba6c
   subpackages:
   - assert
 - name: github.com/vjeantet/goldap

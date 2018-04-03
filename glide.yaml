@@ -31,7 +31,7 @@ import:
 - package: github.com/spf13/cobra
   version: master
 - package: github.com/spf13/pflag
-  version: v1.0.0
+  version: master
 - package: github.com/xanzy/go-gitlab
   version: v0.8.0
 - package: golang.org/x/net
