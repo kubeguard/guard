@@ -8,7 +8,9 @@ import (
 
 	"github.com/appscode/go/types"
 	"github.com/go-ldap/ldap"
+	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
+	"gopkg.in/jcmturner/gokrb5.v4/keytab"
 	"k8s.io/api/apps/v1beta1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -78,6 +80,9 @@ type Options struct {
 	// default : 0
 	KeytabFile string
 
+	// keytab contains service principal and encryption key
+	keytab keytab.Keytab
+
 	// The serviceAccountName needs to be defined when using Active Directory
 	// where the SPN is mapped to a user account. If this is not required it
 	// should be set to an empty string ""
@@ -90,6 +95,38 @@ func NewOptions() Options {
 		BindDN:       os.Getenv("LDAP_BIND_DN"),
 		BindPassword: os.Getenv("LDAP_BIND_PASSWORD"),
 	}
+}
+
+// if ca cert is provided then create CA Cert Pool
+// if keytab file is provides then load it
+func (o *Options) Configure() error {
+	// caCertPool for self signed LDAP sever certificate
+	if o.CaCertFile != "" {
+		caCert, err := ioutil.ReadFile(o.CaCertFile)
+		if err != nil {
+			return errors.Wrap(err, "unable to read ca cert file")
+		}
+		o.CaCertPool = x509.NewCertPool()
+		o.CaCertPool.AppendCertsFromPEM(caCert)
+		ok := o.CaCertPool.AppendCertsFromPEM(caCert)
+		if !ok {
+			return errors.New("Failed to add CA cert in CertPool for LDAP")
+		}
+	}
+
+	// keytab required for kerberos
+	if o.AuthenticationChoice == AuthChoiceKerberos {
+		var err error
+		if o.KeytabFile != "" {
+			return errors.New("keytab not provided")
+		}
+
+		o.keytab, err = keytab.Load(o.KeytabFile)
+		if err != nil {
+			return errors.Wrap(err, "unable to parse keytab file")
+		}
+	}
+	return nil
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
@@ -143,18 +180,38 @@ func (o *Options) newGroupSearchRequest(userDN string) *ldap.SearchRequest {
 }
 
 func (o *Options) Validate() []error {
-	return nil
-}
-
-func (o Options) IsSet() bool {
-	return o.BindDN != "" || o.BindPassword != ""
+	var errs []error
+	if o.ServerAddress == "" {
+		errs = append(errs, errors.New("ldap.server-address must be non-empty"))
+	}
+	if o.ServerPort == "" {
+		errs = append(errs, errors.New("ldap.server-port must be non-empty"))
+	}
+	if o.UserSearchDN == "" {
+		errs = append(errs, errors.New("ldap.user-search-dn must be non-empty"))
+	}
+	if o.UserAttribute == "" {
+		errs = append(errs, errors.New("ldap.user-attribute must be non-empty"))
+	}
+	if o.GroupSearchDN == "" {
+		errs = append(errs, errors.New("ldap.group-search-dn must be non-empty"))
+	}
+	if o.GroupMemberAttribute == "" {
+		errs = append(errs, errors.New("ldap.group-member-attribute must be non-empty"))
+	}
+	if o.GroupNameAttribute == "" {
+		errs = append(errs, errors.New("ldap.group-name-attribute must be non-empty"))
+	}
+	if o.IsSecureLDAP && o.StartTLS {
+		errs = append(errs, errors.New("ldap.is-secure-ldap and ldap.start-tls both can not be true at the same time"))
+	}
+	if o.AuthenticationChoice == AuthChoiceKerberos && o.KeytabFile == "" {
+		errs = append(errs, errors.New("for kerberos ldap.keytab-file must be non-empty"))
+	}
+	return errs
 }
 
 func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
-	if !o.IsSet() {
-		return nil, nil // nothing to apply
-	}
-
 	container := d.Spec.Template.Spec.Containers[0]
 
 	// create auth secret
@@ -277,6 +334,9 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 		args = append(args, fmt.Sprintf("--ldap.keytab-file=/etc/guard/auth/ldap/krb5.keytab"))
 	}
 	args = append(args, fmt.Sprintf("--ldap.auth-choice=%v", o.AuthenticationChoice))
+
+	container.Args = args
+	d.Spec.Template.Spec.Containers[0] = container
 
 	return extraObjs, nil
 }

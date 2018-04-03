@@ -1181,7 +1181,7 @@ var (
 
 	pattern_Clients_UnregisterPersistentVolumeClaim_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7, 2, 8, 2, 9, 2, 10}, []string{"_appscode", "api", "kubernetes", "v1alpha1", "clusters", "cluster", "persistentvolumeclaims", "name", "actions", "unregister", "json"}, ""))
 
-	pattern_Clients_ReverseIndex_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4, 1, 0, 4, 1, 5, 5, 1, 0, 4, 1, 5, 6, 1, 0, 4, 1, 5, 7, 1, 0, 4, 1, 5, 8, 2, 9, 2, 10}, []string{"_appscode", "api", "kubernetes", "v1alpha1", "clusters", "cluster", "type", "name", "targetType", "reverseindex", "json"}, ""))
+	pattern_Clients_ReverseIndex_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4, 1, 0, 4, 1, 5, 5, 1, 0, 4, 1, 5, 6, 1, 0, 4, 1, 5, 7, 2, 8, 1, 0, 4, 1, 5, 9, 2, 10}, []string{"_appscode", "api", "kubernetes", "v1alpha1", "clusters", "cluster", "type", "name", "reverse", "targetType", "json"}, ""))
 )
 
 var (

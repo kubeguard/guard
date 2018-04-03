@@ -11,10 +11,8 @@ import (
 	"testing"
 
 	"github.com/appscode/pat"
-	"github.com/google/go-github/github"
 	"github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/oauth2"
 	"k8s.io/api/authentication/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -225,17 +223,15 @@ func githubServerSetup(githubOrg string, memberResp string, memberStatusCode int
 	return srv
 }
 
-func githubClientSetup(serverUrl, githubOrg string, ctx context.Context, httpClient *http.Client) (*Authenticator, error) {
+func githubClientSetup(serverUrl, githubOrg string) *Authenticator {
 	g := &Authenticator{
-		ctx:     ctx,
+		opts: Options{
+			BaseUrl: serverUrl,
+		},
+		ctx:     context.Background(),
 		OrgName: githubOrg,
 	}
-	var err error
-	g.Client, err = github.NewEnterpriseClient(serverUrl, serverUrl, httpClient)
-	if err != nil {
-		return nil, err
-	}
-	return g, nil
+	return g
 }
 
 func TestCheckGithub(t *testing.T) {
@@ -285,18 +281,11 @@ func TestCheckGithub(t *testing.T) {
 			srv := githubServerSetup(test.org, test.memRespBody, test.memStatusCode, getTeamRespFunc(teamSize))
 			defer srv.Close()
 
-			ctx := context.Background()
-			client, err := githubClientSetup(srv.URL, test.reqOrg, ctx, oauth2.NewClient(ctx, oauth2.StaticTokenSource(
-				&oauth2.Token{AccessToken: test.accessToken},
-			)))
+			client := githubClientSetup(srv.URL, test.reqOrg)
 
-			if err != nil {
-				t.Errorf("Error when creating github client. Reason %v", err)
-			} else {
-				resp, err := client.Check()
-				assert.NotNil(t, err)
-				assert.Nil(t, resp)
-			}
+			resp, err := client.Check(test.accessToken)
+			assert.NotNil(t, err)
+			assert.Nil(t, resp)
 		})
 	}
 }
@@ -311,17 +300,12 @@ func TestForDifferentTeamSizes(t *testing.T) {
 			teamSize := size
 			srv := githubServerSetup(githubOrganization, githubMemRespBody, http.StatusOK, getTeamRespFunc(teamSize))
 			defer srv.Close()
-			ctx := context.Background()
-			client, err := githubClientSetup(srv.URL, githubOrganization, ctx, oauth2.NewClient(ctx, oauth2.StaticTokenSource(
-				&oauth2.Token{AccessToken: githubGoodToken},
-			)))
-			if err != nil {
-				t.Errorf("Error when creating github client. Reason %v", err)
-			} else {
-				resp, err := client.Check()
-				assert.Nil(t, err)
-				assertUserInfo(t, resp, teamSize)
-			}
+
+			client := githubClientSetup(srv.URL, githubOrganization)
+
+			resp, err := client.Check(githubGoodToken)
+			assert.Nil(t, err)
+			assertUserInfo(t, resp, teamSize)
 		})
 	}
 }
@@ -330,15 +314,12 @@ func TestAuthorizationHeader(t *testing.T) {
 	teamSize := 1
 	srv := githubServerSetup(githubOrganization, githubMemRespBody, http.StatusOK, getTeamRespFunc(teamSize))
 	defer srv.Close()
-	ctx := context.Background()
-	client, err := githubClientSetup(srv.URL, githubOrganization, ctx, nil)
-	if err != nil {
-		t.Errorf("Error when creating github client. Reason %v", err)
-	} else {
-		resp, err := client.Check()
-		assert.NotNil(t, err)
-		assert.Nil(t, resp)
-	}
+
+	client := githubClientSetup(srv.URL, githubOrganization)
+
+	resp, err := client.Check("")
+	assert.NotNil(t, err)
+	assert.Nil(t, resp)
 }
 
 func TestTeamListErrorAtDifferentPage(t *testing.T) {
@@ -366,17 +347,11 @@ func TestTeamListErrorAtDifferentPage(t *testing.T) {
 			})
 			defer srv.Close()
 
-			ctx := context.Background()
-			client, err := githubClientSetup(srv.URL, githubOrganization, ctx, oauth2.NewClient(ctx, oauth2.StaticTokenSource(
-				&oauth2.Token{AccessToken: githubGoodToken},
-			)))
-			if err != nil {
-				t.Errorf("Error when creating github client. Reason %v", err)
-			} else {
-				resp, err := client.Check()
-				assert.NotNil(t, err)
-				assert.Nil(t, resp)
-			}
+			client := githubClientSetup(srv.URL, githubOrganization)
+
+			resp, err := client.Check(githubGoodToken)
+			assert.NotNil(t, err)
+			assert.Nil(t, resp)
 		})
 	}
 }

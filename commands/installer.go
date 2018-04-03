@@ -15,6 +15,11 @@ func NewCmdInstaller() *cobra.Command {
 		Short:             "Prints Kubernetes objects for deploying guard server",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
+			errs := opts.Validate()
+			if errs != nil {
+				log.Fatal(errs)
+			}
+
 			data, err := installer.Generate(opts)
 			if err != nil {
 				log.Fatal(err)

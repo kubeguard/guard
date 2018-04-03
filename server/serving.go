@@ -47,21 +47,31 @@ func (o *SecureServingOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.KeyFile, "tls-private-key-file", o.KeyFile, "File containing server TLS private key")
 }
 
-func (o *SecureServingOptions) Validate() []error {
-	return nil
-}
-
 func (o SecureServingOptions) UseTLS() bool {
 	return o.CACertFile != "" && o.CertFile != "" && o.KeyFile != ""
 }
 
-func (o SecureServingOptions) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
-	if !o.UseTLS() {
-		return nil, nil // nothing to apply
+func (o *SecureServingOptions) Validate() []error {
+	var errs []error
+	if o.SecureAddr == "" {
+		errs = append(errs, errors.New("server address is empty"))
 	}
+	if o.CACertFile == "" {
+		errs = append(errs, errors.New("CA cert is empty"))
+	}
+	if o.CACertFile == "" {
+		errs = append(errs, errors.New("CA cert is empty"))
+	}
+	if o.CertFile == "" {
+		errs = append(errs, errors.New("server certificate is empty"))
+	}
+	if o.KeyFile == "" {
+		errs = append(errs, errors.New("server key is empty"))
+	}
+	return errs
+}
 
-	container := d.Spec.Template.Spec.Containers[0]
-
+func (o SecureServingOptions) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
 	// create auth secret
 	store, err := certstore.NewCertStore(afero.NewOsFs(), filepath.Join(o.pkiDir, "pki"))
 	if err != nil {
@@ -102,7 +112,7 @@ func (o SecureServingOptions) Apply(d *v1beta1.Deployment) (extraObjs []runtime.
 		Name:      authSecret.Name,
 		MountPath: "/etc/guard/pki",
 	}
-	container.VolumeMounts = append(container.VolumeMounts, volMount)
+	d.Spec.Template.Spec.Containers[0].VolumeMounts = append(d.Spec.Template.Spec.Containers[0].VolumeMounts, volMount)
 
 	vol := core.Volume{
 		Name: authSecret.Name,
@@ -116,10 +126,11 @@ func (o SecureServingOptions) Apply(d *v1beta1.Deployment) (extraObjs []runtime.
 	d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
 
 	// use auth secret in container[0] args
-	args := container.Args
+	args := d.Spec.Template.Spec.Containers[0].Args
 	args = append(args, "--tls-ca-file=/etc/guard/pki/ca.crt")
 	args = append(args, "--tls-cert-file=/etc/guard/pki/tls.crt")
 	args = append(args, "--tls-private-key-file=/etc/guard/pki/tls.key")
+	d.Spec.Template.Spec.Containers[0].Args = args
 
 	return extraObjs, nil
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/appscode/guard/auth"
 	"github.com/go-ldap/ldap"
 	"github.com/pkg/errors"
-	"gopkg.in/jcmturner/gokrb5.v4/keytab"
 	"gopkg.in/jcmturner/gokrb5.v4/messages"
 	"gopkg.in/jcmturner/gokrb5.v4/service"
 	authv1 "k8s.io/api/authentication/v1"
@@ -23,6 +22,9 @@ const (
 	DefaultUserAttribute        = "uid"
 	DefaultGroupMemberAttribute = "member"
 	DefaultGroupNameAttribute   = "cn"
+
+	AuthChoiceSimpleAuthentication = 0
+	AuthChoiceKerberos             = 1
 )
 
 func init() {
@@ -30,22 +32,17 @@ func init() {
 }
 
 type Authenticator struct {
-	opts   Options
-	keyTab keytab.Keytab
+	opts Options
 }
 
-func New(opts Options) (*Authenticator, error) {
-	au := &Authenticator{
+func New(opts Options) auth.Interface {
+	return &Authenticator{
 		opts: opts,
 	}
+}
 
-	var err error
-	au.keyTab, err = keytab.Load(opts.KeytabFile)
-	if err != nil {
-		return nil, errors.Wrap(err, "unabele to parse keytab file")
-	}
-
-	return au, nil
+func (g Authenticator) UID() string {
+	return OrgType
 }
 
 func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
@@ -92,7 +89,7 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 		return nil, errors.Wrap(err, "authentication failed")
 	}
 
-	if s.opts.AuthenticationChoice == 0 {
+	if s.opts.AuthenticationChoice == AuthChoiceSimpleAuthentication {
 		// rebind, as in simple authentication we bind using username, password
 		if s.opts.BindDN != "" && s.opts.BindPassword != "" {
 			err = conn.Bind(s.opts.BindDN, s.opts.BindPassword)
@@ -135,7 +132,7 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 }
 
 func (s Authenticator) authenticateUser(conn *ldap.Conn, token string) (string, error) {
-	if s.opts.AuthenticationChoice == 0 {
+	if s.opts.AuthenticationChoice == AuthChoiceSimpleAuthentication {
 		//simple authentication
 		username, password, ok := parseEncodedToken(token)
 		if !ok {
@@ -154,7 +151,7 @@ func (s Authenticator) authenticateUser(conn *ldap.Conn, token string) (string, 
 		}
 		return username, nil
 
-	} else if s.opts.AuthenticationChoice == 1 {
+	} else if s.opts.AuthenticationChoice == AuthChoiceKerberos {
 		// kerberos
 		data, err := base64.StdEncoding.DecodeString(token)
 		if err != nil {
@@ -167,7 +164,7 @@ func (s Authenticator) authenticateUser(conn *ldap.Conn, token string) (string, 
 			return "", errors.Wrap(err, "unable to unmarshall")
 		}
 
-		if ok, creds, err := service.ValidateAPREQ(*apReq, s.keyTab, s.opts.ServiceAccountName, "", false); ok {
+		if ok, creds, err := service.ValidateAPREQ(*apReq, s.opts.keytab, s.opts.ServiceAccountName, "", false); ok {
 			return creds.Username, nil
 		} else {
 			return "", err

@@ -81,9 +81,9 @@ def version():
 
 
 def fmt():
-    libbuild.ungroup_go_imports('*.go', 'auth', 'commands', 'docs', 'installer', 'server', 'util')
-    die(call('goimports -w *.go auth commands docs installer server util'))
-    call('gofmt -s -w *.go auth commands docs installer server util')
+    libbuild.ungroup_go_imports('*.go', 'auth', 'commands', 'docs', 'installer', 'server', 'test', 'util')
+    die(call('goimports -w *.go auth commands docs installer server test util'))
+    call('gofmt -s -w *.go auth commands docs installer server test util')
 
 
 def vet():
@@ -132,7 +132,17 @@ def install():
 def default():
     gen()
     fmt()
-    die(call('GO15VENDOREXPERIMENT=1 ' + libbuild.GOC + ' install .'))
+    die(call('GO15VENDOREXPERIMENT=1 ' + libbuild.GOC + ' install ./...'))
+
+
+def test(type, *args):
+    pydotenv.load_dotenv(join(libbuild.REPO_ROOT, 'hack/config/.env'))
+    if type == 'unit':
+        die(call(libbuild.GOC + ' test -v ./pkg/...'))
+    elif type == 'e2e':
+        die(call('ginkgo -r --v --progress --trace -- ' + " ".join(args)))
+    else:
+        print '{test unit|e2e}'
 
 
 if __name__ == "__main__":

@@ -2,12 +2,10 @@ package google
 
 import (
 	"context"
-	"io/ioutil"
 
 	"github.com/appscode/guard/auth"
 	"github.com/coreos/go-oidc"
 	"github.com/pkg/errors"
-	"golang.org/x/oauth2/google"
 	gdir "google.golang.org/api/admin/directory/v1"
 	gauth "google.golang.org/api/oauth2/v1"
 	authv1 "k8s.io/api/authentication/v1"
@@ -28,9 +26,10 @@ func init() {
 
 type Authenticator struct {
 	Options
-	verifier *oidc.IDTokenVerifier
-	ctx      context.Context
-	service  *gdir.Service
+	verifier   *oidc.IDTokenVerifier
+	ctx        context.Context
+	service    *gdir.Service
+	domainName string
 }
 
 type TokenInfo struct {
@@ -38,10 +37,11 @@ type TokenInfo struct {
 	HD string `json:"hd"`
 }
 
-func New(opts Options, domain string) (*Authenticator, error) {
+func New(opts Options, domain string) (auth.Interface, error) {
 	g := &Authenticator{
-		Options: opts,
-		ctx:     context.Background(),
+		Options:    opts,
+		ctx:        context.Background(),
+		domainName: domain,
 	}
 
 	provider, err := oidc.NewProvider(g.ctx, googleIssuerUrl)
@@ -54,21 +54,7 @@ func New(opts Options, domain string) (*Authenticator, error) {
 	})
 
 	if opts.ServiceAccountJsonFile != "" {
-		sa, err := ioutil.ReadFile(opts.ServiceAccountJsonFile)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to load service account json file %s", opts.ServiceAccountJsonFile)
-		}
-
-		cfg, err := google.JWTConfigFromJSON(sa, gdir.AdminDirectoryGroupReadonlyScope)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to create JWT config from service account json file %s", opts.ServiceAccountJsonFile)
-		}
-
-		// https://admin.google.com/ManageOauthClients
-		// ref: https://developers.google.com/admin-sdk/directory/v1/guides/delegation
-		// Note: Only users with access to the Admin APIs can access the Admin SDK Directory API, therefore your service account needs to impersonate one of those users to access the Admin SDK Directory API.
-		cfg.Subject = opts.AdminEmail
-		client := cfg.Client(context.Background())
+		client := opts.jwtConfig.Client(context.Background())
 
 		g.service, err = gdir.New(client)
 		if err != nil {
@@ -78,8 +64,12 @@ func New(opts Options, domain string) (*Authenticator, error) {
 	return g, nil
 }
 
+func (g Authenticator) UID() string {
+	return OrgType
+}
+
 // https://developers.google.com/identity/protocols/OpenIDConnect#validatinganidtoken
-func (g *Authenticator) Check(name, token string) (*authv1.UserInfo, error) {
+func (g *Authenticator) Check(token string) (*authv1.UserInfo, error) {
 	idToken, err := g.verifier.Verify(g.ctx, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to verify token for google")
@@ -92,8 +82,8 @@ func (g *Authenticator) Check(name, token string) (*authv1.UserInfo, error) {
 		return nil, errors.Wrap(err, "failed to get claim from token")
 	}
 
-	if info.HD != name {
-		return nil, errors.Errorf("user is not a member of domain %s", name)
+	if info.HD != g.domainName {
+		return nil, errors.Errorf("user is not a member of domain %s", g.domainName)
 	}
 
 	resp := &authv1.UserInfo{
@@ -106,9 +96,9 @@ func (g *Authenticator) Check(name, token string) (*authv1.UserInfo, error) {
 		var pageToken string
 
 		for {
-			r2, err := g.service.Groups.List().UserKey(info.Email).Domain(name).PageToken(pageToken).Do()
+			r2, err := g.service.Groups.List().UserKey(info.Email).Domain(g.domainName).PageToken(pageToken).Do()
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to load user's groups for domain %s", name)
+				return nil, errors.Wrapf(err, "failed to load user's groups for domain %s", g.domainName)
 			}
 			for _, group := range r2.Groups {
 				groups = append(groups, group.Email)

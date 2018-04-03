@@ -17,18 +17,18 @@ var labels = map[string]string{
 func Generate(opts Options) ([]byte, error) {
 	var objects []runtime.Object
 
-	if opts.namespace != metav1.NamespaceSystem && opts.namespace != metav1.NamespaceDefault {
-		objects = append(objects, newNamespace(opts.namespace))
+	if opts.Namespace != metav1.NamespaceSystem && opts.Namespace != metav1.NamespaceDefault {
+		objects = append(objects, newNamespace(opts.Namespace))
 	}
-	objects = append(objects, newServiceAccount(opts.namespace))
-	objects = append(objects, newClusterRole(opts.namespace))
-	objects = append(objects, newClusterRoleBinding(opts.namespace))
+	objects = append(objects, newServiceAccount(opts.Namespace))
+	objects = append(objects, newClusterRole(opts.Namespace))
+	objects = append(objects, newClusterRoleBinding(opts.Namespace))
 	if deployObjects, err := newDeployment(opts); err != nil {
 		return nil, err
 	} else {
 		objects = append(objects, deployObjects...)
 	}
-	if svc, err := newService(opts.namespace, opts.addr); err != nil {
+	if svc, err := newService(opts.Namespace, opts.Addr); err != nil {
 		return nil, err
 	} else {
 		objects = append(objects, svc)

@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/appscode/go/types"
+	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"k8s.io/api/apps/v1beta1"
 	core "k8s.io/api/core/v1"
@@ -31,18 +32,20 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 }
 
 func (o *Options) Validate() []error {
-	return nil
-}
-
-func (o Options) IsSet() bool {
-	return o.ClientID != "" || o.ClientSecret != "" || o.TenantID != ""
+	var errs []error
+	if o.ClientSecret == "" {
+		errs = append(errs, errors.New("client secret must be non-empty"))
+	}
+	if o.ClientID == "" {
+		errs = append(errs, errors.New("azure.client-id must be non-empty"))
+	}
+	if o.TenantID == "" {
+		errs = append(errs, errors.New("azure.tenant-id must be non-empty"))
+	}
+	return errs
 }
 
 func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
-	if !o.IsSet() {
-		return nil, nil // nothing to apply
-	}
-
 	container := d.Spec.Template.Spec.Containers[0]
 
 	// create auth secret
@@ -96,6 +99,9 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 	if o.TenantID != "" {
 		args = append(args, fmt.Sprintf("--azure.tenant-id=%s", o.TenantID))
 	}
+
+	container.Args = args
+	d.Spec.Template.Spec.Containers[0] = container
 
 	return extraObjs, nil
 }

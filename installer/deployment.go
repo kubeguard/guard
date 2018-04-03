@@ -6,6 +6,12 @@ import (
 	stringz "github.com/appscode/go/strings"
 	"github.com/appscode/go/types"
 	v "github.com/appscode/go/version"
+	"github.com/appscode/guard/auth/providers/azure"
+	"github.com/appscode/guard/auth/providers/github"
+	"github.com/appscode/guard/auth/providers/gitlab"
+	"github.com/appscode/guard/auth/providers/google"
+	"github.com/appscode/guard/auth/providers/ldap"
+	"github.com/appscode/guard/auth/providers/token"
 	"github.com/appscode/guard/server"
 	apps "k8s.io/api/apps/v1beta1"
 	core "k8s.io/api/core/v1"
@@ -18,7 +24,7 @@ func newDeployment(opts Options) (objects []runtime.Object, err error) {
 	d := &apps.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "guard",
-			Namespace: opts.namespace,
+			Namespace: opts.Namespace,
 			Labels:    labels,
 		},
 		Spec: apps.DeploymentSpec{
@@ -35,7 +41,7 @@ func newDeployment(opts Options) (objects []runtime.Object, err error) {
 					Containers: []core.Container{
 						{
 							Name:  "guard",
-							Image: fmt.Sprintf("%s/guard:%v", opts.privateRegistry, stringz.Val(v.Version.Version, "canary")),
+							Image: fmt.Sprintf("%s/guard:%v", opts.PrivateRegistry, stringz.Val(v.Version.Version, "canary")),
 							Args: []string{
 								"run",
 								"--v=3",
@@ -74,7 +80,7 @@ func newDeployment(opts Options) (objects []runtime.Object, err error) {
 			},
 		}
 	}
-	if opts.runOnMaster {
+	if opts.RunOnMaster {
 		d.Spec.Template.Spec.NodeSelector = map[string]string{
 			"node-role.kubernetes.io/master": "",
 		}
@@ -86,35 +92,65 @@ func newDeployment(opts Options) (objects []runtime.Object, err error) {
 	}
 	objects = append(objects, d)
 
-	servingOpts := server.NewSecureServingOptionsFromDir(opts.pkiDir)
+	servingOpts := server.NewSecureServingOptionsFromDir(opts.PkiDir)
 	if extras, err := servingOpts.Apply(d); err != nil {
 		return nil, err
 	} else {
 		objects = append(objects, extras...)
 	}
 
-	if extras, err := opts.Token.Apply(d); err != nil {
+	if extras, err := opts.AuthProvider.Apply(d); err != nil {
 		return nil, err
 	} else {
 		objects = append(objects, extras...)
 	}
 
-	if extras, err := opts.Google.Apply(d); err != nil {
-		return nil, err
-	} else {
-		objects = append(objects, extras...)
+	if opts.AuthProvider.Has(token.OrgType) {
+		if extras, err := opts.Token.Apply(d); err != nil {
+			return nil, err
+		} else {
+			objects = append(objects, extras...)
+		}
 	}
 
-	if extras, err := opts.Azure.Apply(d); err != nil {
-		return nil, err
-	} else {
-		objects = append(objects, extras...)
+	if opts.AuthProvider.Has(google.OrgType) {
+		if extras, err := opts.Google.Apply(d); err != nil {
+			return nil, err
+		} else {
+			objects = append(objects, extras...)
+		}
 	}
 
-	if extras, err := opts.LDAP.Apply(d); err != nil {
-		return nil, err
-	} else {
-		objects = append(objects, extras...)
+	if opts.AuthProvider.Has(azure.OrgType) {
+		if extras, err := opts.Azure.Apply(d); err != nil {
+			return nil, err
+		} else {
+			objects = append(objects, extras...)
+		}
+	}
+
+	if opts.AuthProvider.Has(ldap.OrgType) {
+		if extras, err := opts.LDAP.Apply(d); err != nil {
+			return nil, err
+		} else {
+			objects = append(objects, extras...)
+		}
+	}
+
+	if opts.AuthProvider.Has(github.OrgType) {
+		if extras, err := opts.Github.Apply(d); err != nil {
+			return nil, err
+		} else {
+			objects = append(objects, extras...)
+		}
+	}
+
+	if opts.AuthProvider.Has(gitlab.OrgType) {
+		if extras, err := opts.Gitlab.Apply(d); err != nil {
+			return nil, err
+		} else {
+			objects = append(objects, extras...)
+		}
 	}
 
 	return

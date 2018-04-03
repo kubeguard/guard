@@ -1,8 +1,8 @@
-hash: 3be3a1514c65c8432448361c4fd0f062126412529412e26d13c932ce27af8044
-updated: 2018-03-21T00:32:23.464177319-07:00
+hash: 985979b10e93dec5096f2c8a21ca289874f8add7379504c477b0ae6c22fe5a01
+updated: 2018-04-02T18:46:31.429247219-07:00
 imports:
 - name: appscode.com/api
-  version: a87c2861c187a10b79b6e49f523233cbbd8bb009
+  version: 1496b09f7765e5deac607c7f08ae1d088bf1bcbf
   repo: https://bitbucket.org/appscode/api.git
   subpackages:
   - auth/v1alpha1
@@ -29,7 +29,9 @@ imports:
   subpackages:
   - analytics
   - context
+  - crypto/rand
   - env
+  - flags
   - homedir
   - ioutil
   - log
@@ -42,18 +44,27 @@ imports:
   - strings
   - term
   - types
+  - util/errors
   - version
 - name: github.com/appscode/jsonpatch
-  version: ee757872f6aca6d412d0d80543725bd4cf48f793
+  version: 58a38a46ddb591a543c6b1003213353e29331c5a
 - name: github.com/appscode/kutil
-  version: 436b54978ae275a61a06baa3f0a119864691cf12
+  version: 83f1a2ee558a663702929a15ff7cfdfbfef331f1
   subpackages:
   - meta
   - tools/analytics
   - tools/certstore
+  - tools/clientcmd
   - tools/fsnotify
 - name: github.com/appscode/pat
   version: 48ff78925b7955367d8a048fc2b5cec8efadf8d3
+- name: github.com/Azure/go-autorest
+  version: e14a70c556c8e0db173358d1a903dca345a8e75e
+  subpackages:
+  - autorest
+  - autorest/adal
+  - autorest/azure
+  - autorest/date
 - name: github.com/beevik/ntp
   version: 802074b1b037c59dbdbee7e196ad91b51d0ec844
 - name: github.com/beorn7/perks
@@ -67,9 +78,11 @@ imports:
   subpackages:
   - md2man
 - name: github.com/davecgh/go-spew
-  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
+  version: 782f4967f2dc4564575ca782fe2d04090b5faca8
   subpackages:
   - spew
+- name: github.com/dgrijalva/jwt-go
+  version: 01aeca54ebda6e0fbfafd0a524d234159c05ec20
 - name: github.com/emicklei/go-restful
   version: ff4f55a206334ef123e4f79bbf348980da81ca46
   subpackages:
@@ -113,7 +126,7 @@ imports:
 - name: github.com/google/btree
   version: 7d79101e329e5a3adf994758c578dab82b90c017
 - name: github.com/google/go-cmp
-  version: 0c93777250bd58222171888d1651979319d8b381
+  version: 5411ab924f9ffa6566244a9e504bc347edacffd3
   subpackages:
   - cmp
   - cmp/internal/diff
@@ -137,6 +150,15 @@ imports:
   - OpenAPIv2
   - compiler
   - extensions
+- name: github.com/gophercloud/gophercloud
+  version: 8183543f90d1aef267a5ecc209f2e0715b355acb
+  subpackages:
+  - openstack
+  - openstack/identity/v2/tenants
+  - openstack/identity/v2/tokens
+  - openstack/identity/v3/tokens
+  - openstack/utils
+  - pagination
 - name: github.com/gregjones/httpcache
   version: 787624de3eb7bd915c329cba748687a3b22666a6
   subpackages:
@@ -187,18 +209,28 @@ imports:
   version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
   subpackages:
   - pbutil
+- name: github.com/onsi/gomega
+  version: dcabb60a477c2b6f456df65037cb6708210fbb02
+  subpackages:
+  - format
+  - internal/assertion
+  - internal/asyncassertion
+  - internal/oraclematcher
+  - internal/testingtsupport
+  - matchers
+  - matchers/support/goraph/bipartitegraph
+  - matchers/support/goraph/edge
+  - matchers/support/goraph/node
+  - matchers/support/goraph/util
+  - types
 - name: github.com/peterbourgon/diskv
   version: 5f041e8faa004a95c88a202771f4cc3e991971e6
 - name: github.com/pharmer/pharmer
-  version: 9b0d9ff112041d85a706af71d0e8f3ba2d4c66a4
+  version: 26db66d5f6d88fecd2098a79f17e32b15ed0e875
   subpackages:
   - apis/v1alpha1
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
-- name: github.com/pmezard/go-difflib
-  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
-  subpackages:
-  - difflib
 - name: github.com/pquerna/cachecontrol
   version: 525d0eb5f91d30e3b1548de401b7ef9ea6898520
   subpackages:
@@ -245,19 +277,11 @@ imports:
   subpackages:
   - mem
 - name: github.com/spf13/cobra
-  version: c439c4fa093711d42e1b01acb1235b52004753c1
+  version: 4dab30cb33e6633c33c787106bafbfbfdde7842d
   subpackages:
   - doc
 - name: github.com/spf13/pflag
-  version: e57e3eeb33f795204c1ca35f56c44f83227c6e66
-- name: github.com/stretchr/testify
-  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
-  subpackages:
-  - assert
-- name: github.com/vjeantet/goldap
-  version: ea702ca12a40a2817b90d53ec7d4ebdcc5489570
-  subpackages:
-  - message
+  version: 1cd4a0c365d95803411bec89fb7b76bade17053b
 - name: github.com/vjeantet/ldapserver
   version: 479fece7c5f15b209e2e3ba082a89d18cd2a8207
 - name: github.com/xanzy/go-gitlab
@@ -283,16 +307,19 @@ imports:
   - pbkdf2
   - ssh/terminal
 - name: golang.org/x/net
-  version: da118f7b8e5954f39d0d2130ab35d4bf0e3cb344
+  version: 1c05540f6879653db88113bc4a2b70aec4bd491f
   subpackages:
   - bpf
   - context
   - context/ctxhttp
+  - html
+  - html/atom
+  - html/charset
   - http2
   - http2/hpack
   - idna
   - internal/iana
-  - internal/netreflect
+  - internal/socket
   - internal/timeseries
   - ipv4
   - lex/httplex
@@ -310,11 +337,22 @@ imports:
   - unix
   - windows
 - name: golang.org/x/text
-  version: 470f45bf29f4147d6fbd7dfd0a02a848e49f5bf4
+  version: b19bf474d317b857955b12035d2c5acb57ce8b01
   subpackages:
   - cases
+  - encoding
+  - encoding/charmap
+  - encoding/htmlindex
+  - encoding/internal
+  - encoding/internal/identifier
+  - encoding/japanese
+  - encoding/korean
+  - encoding/simplifiedchinese
+  - encoding/traditionalchinese
+  - encoding/unicode
   - internal
   - internal/tag
+  - internal/utf8internal
   - language
   - runes
   - secure/bidirule
@@ -418,7 +456,7 @@ imports:
   - service
   - types
 - name: gopkg.in/square/go-jose.v2
-  version: 6ee92191fea850cdcab9a18867abf5f521cdbadb
+  version: 76dd09796242edb5b897103a75df2645c028c960
   subpackages:
   - cipher
   - json
@@ -498,7 +536,7 @@ imports:
   - third_party/forked/golang/json
   - third_party/forked/golang/reflect
 - name: k8s.io/apiserver
-  version: ac8d2245af4cbb47d4ee5e0a6088a7e2294eaa2f
+  version: 1270e9f1ad9eaf6127691df90af0836f7e152495
   subpackages:
   - pkg/util/feature
 - name: k8s.io/client-go
@@ -536,8 +574,14 @@ imports:
   - kubernetes/typed/storage/v1alpha1
   - kubernetes/typed/storage/v1beta1
   - pkg/version
+  - plugin/pkg/client/auth
+  - plugin/pkg/client/auth/azure
+  - plugin/pkg/client/auth/gcp
+  - plugin/pkg/client/auth/oidc
+  - plugin/pkg/client/auth/openstack
   - rest
   - rest/watch
+  - third_party/forked/golang/template
   - tools/auth
   - tools/clientcmd
   - tools/clientcmd/api
@@ -550,6 +594,7 @@ imports:
   - util/flowcontrol
   - util/homedir
   - util/integer
+  - util/jsonpath
 - name: k8s.io/kube-openapi
   version: 39a7bf85c140f972372c2a0d1ee40adbf0c8bfe1
   subpackages:
@@ -579,4 +624,36 @@ imports:
   - pkg/registry/core/service/ipallocator
   - pkg/util/pointer
   - pkg/util/version
-testImports: []
+testImports:
+- name: github.com/onsi/ginkgo
+  version: 11459a886d9cd66b319dac7ef1e917ee221372c9
+  subpackages:
+  - config
+  - internal/codelocation
+  - internal/containernode
+  - internal/failer
+  - internal/leafnodes
+  - internal/remote
+  - internal/spec
+  - internal/spec_iterator
+  - internal/specrunner
+  - internal/suite
+  - internal/testingtproxy
+  - internal/writer
+  - reporters
+  - reporters/stenographer
+  - reporters/stenographer/support/go-colorable
+  - reporters/stenographer/support/go-isatty
+  - types
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
+- name: github.com/stretchr/testify
+  version: b91bfb9ebec76498946beb6af7c0230c7cc7ba6c
+  subpackages:
+  - assert
+- name: github.com/vjeantet/goldap
+  version: ea702ca12a40a2817b90d53ec7d4ebdcc5489570
+  subpackages:
+  - message

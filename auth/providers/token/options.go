@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 
 	"github.com/appscode/go/types"
+	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"k8s.io/api/apps/v1beta1"
 	core "k8s.io/api/core/v1"
@@ -24,18 +25,14 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 }
 
 func (o *Options) Validate() []error {
-	return nil
-}
-
-func (o Options) IsSet() bool {
-	return o.AuthFile != ""
+	var errs []error
+	if o.AuthFile == "" {
+		errs = append(errs, errors.New("token-auth-file must be non-empty"))
+	}
+	return errs
 }
 
 func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
-	if !o.IsSet() {
-		return nil, nil // nothing to apply
-	}
-
 	container := d.Spec.Template.Spec.Containers[0]
 
 	// create auth secret
@@ -78,10 +75,10 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 	d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
 
 	// use auth secret in container[0] args
-	args := container.Args
 	if o.AuthFile != "" {
-		args = append(args, "--token-auth-file=/etc/guard/auth/token/token.csv")
+		container.Args = append(container.Args, "--token-auth-file=/etc/guard/auth/token/token.csv")
 	}
+	d.Spec.Template.Spec.Containers[0] = container
 
 	return extraObjs, nil
 }

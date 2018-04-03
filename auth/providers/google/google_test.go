@@ -145,7 +145,7 @@ func googleGetGroupResp(totalGroups, groupPerPage, totalPage int) googleGroupRes
 // groups search url parameter
 // domain, pageToken, userKey
 //
-// domain, userKey must be non empty
+// domain, userKey must be non-empty
 func googleVerifyUrlParams(u *url.URL) error {
 	urlParams := u.Query()
 	queryParams := []string{"domain", "pageToken", "userKey"}
@@ -294,7 +294,10 @@ func TestCheckGoogleAuthenticationSuccess(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Error when signing token. reason: %v", err)
 			}
-			resp, err := client.Check(domain, token)
+			// set client domain
+			client.domainName = domain
+
+			resp, err := client.Check(token)
 			assert.Nil(t, err)
 			assertUserInfo(t, resp, test.groupSize)
 		})
@@ -385,7 +388,11 @@ func TestCheckGoogleAuthenticationFailed(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Error when signing token. reason: %v", err)
 			}
-			resp, err := client.Check(domain, token)
+
+			// set client domain
+			client.domainName = domain
+
+			resp, err := client.Check(token)
 			//t.Log(test)
 			assert.NotNil(t, err)
 			assert.Nil(t, resp)

@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/client-go/util/homedir"
 )
 
@@ -29,4 +30,9 @@ func (o orgs) String() string {
 		names[i] = strings.Title(org)
 	}
 	return strings.Join(names, "/")
+}
+
+type Interface interface {
+	UID() string
+	Check(token string) (*authv1.UserInfo, error)
 }

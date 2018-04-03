@@ -8,14 +8,23 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/appscode/guard/auth"
 	"github.com/pkg/errors"
 	authv1 "k8s.io/api/authentication/v1"
+)
+
+const (
+	OrgType = "token-auth"
 )
 
 type Authenticator struct {
 	options  Options
 	tokenMap map[string]authv1.UserInfo
 	lock     sync.RWMutex
+}
+
+func init() {
+	auth.SupportedOrgs = append(auth.SupportedOrgs, OrgType)
 }
 
 func New(opts Options) *Authenticator {
@@ -35,6 +44,10 @@ func (s *Authenticator) Configure() error {
 	}
 	s.tokenMap = data
 	return nil
+}
+
+func (s *Authenticator) UID() string {
+	return OrgType
 }
 
 func (s *Authenticator) Check(token string) (*authv1.UserInfo, error) {
