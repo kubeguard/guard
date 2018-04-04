@@ -5,6 +5,7 @@ package ldap
 
 import (
 	"fmt"
+	"strings"
 )
 
 const (
@@ -29,8 +30,10 @@ func (i AuthChoice) String() string {
 }
 
 var _AuthChoiceValue = map[string]AuthChoice{
-	_AuthChoiceName[0:6]:  0,
-	_AuthChoiceName[6:14]: 1,
+	_AuthChoiceName[0:6]:                   0,
+	strings.ToLower(_AuthChoiceName[0:6]):  0,
+	_AuthChoiceName[6:14]:                  1,
+	strings.ToLower(_AuthChoiceName[6:14]): 1,
 }
 
 // ParseAuthChoice attempts to convert a string to a AuthChoice

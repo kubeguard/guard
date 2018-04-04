@@ -1,4 +1,4 @@
-//go:generate go-enum -f=authchoice.go
+//go:generate go-enum -f=authchoice.go --lower
 package ldap
 
 // AuthChoice x ENUM(
