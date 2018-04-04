@@ -12,13 +12,13 @@
 Kubernetes 1.8+
 
 ## Installation
-To install Guard, please follow the guide [here](https://appscode.com/products/guard/0.1.0-rc.5/setup/install/).
+To install Guard, please follow the guide [here](https://appscode.com/products/guard/0.1.0/setup/install/).
 
 ## Using Guard
-Want to learn how to use Guard? Please start [here](https://appscode.com/products/guard/0.1.0-rc.5/).
+Want to learn how to use Guard? Please start [here](https://appscode.com/products/guard/0.1.0/).
 
 ## Contribution guidelines
-Want to help improve Guard? Please start [here](https://appscode.com/products/guard/0.1.0-rc.5/welcome/contributing/).
+Want to help improve Guard? Please start [here](https://appscode.com/products/guard/0.1.0/welcome/contributing/).
 
 ---
 
