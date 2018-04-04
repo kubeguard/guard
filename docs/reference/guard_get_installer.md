@@ -1,12 +1,12 @@
 ---
 title: Guard Get Installer
 menu:
-  product_guard_0.1.0-rc.5:
+  product_guard_0.1.0:
     identifier: guard-get-installer
     name: Guard Get Installer
     parent: reference
 product_name: guard
-menu_name: product_guard_0.1.0-rc.5
+menu_name: product_guard_0.1.0
 section_menu_id: reference
 ---
 ## guard get installer

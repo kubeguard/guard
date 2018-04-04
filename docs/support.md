@@ -2,18 +2,19 @@
 title: Support | Guard
 description: Support
 menu:
-  product_guard_0.1.0-rc.5:
+  product_guard_0.1.0:
     identifier: support-guard
     name: Support
     parent: welcome
     weight: 25
 product_name: guard
-menu_name: product_guard_0.1.0-rc.5
+menu_name: product_guard_0.1.0
 section_menu_id: welcome
-url: /products/guard/0.1.0-rc.5/welcome/support/
+url: /products/guard/0.1.0/welcome/support/
 aliases:
-  - /products/guard/0.1.0-rc.5/support/
+  - /products/guard/0.1.0/support/
 ---
+
 # Support
 
 We use Slack for public discussions. To chit chat with us or the rest of the community, join us in the [AppsCode Slack team](https://appscode.slack.com/messages/C8M8HANQ0/details/) channel `#guard`. To sign up, use our [Slack inviter](https://slack.appscode.com/).
