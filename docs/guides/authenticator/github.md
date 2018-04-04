@@ -47,6 +47,10 @@ To use Github authentication, you can use your personal access token with permis
 $ guard get token -o github
 ```
 
+![github-token](/docs/images/github-token.png)
+
+Guard uses the token found in `TokenReview` request object to read user's profile information and list of teams this user is member of. In the `TokenReview` response, `status.user.username` is set to user's Github login, `status.user.groups` is set to teams of the organization in client cert of which this user is a member of.
+
 ![github-webhook-flow](/docs/images/github-webhook-flow.png)
 
 ```json
@@ -66,8 +70,6 @@ $ guard get token -o github
   }
 }
 ```
-
-Guard uses the token found in `TokenReview` request object to read user's profile information and list of teams this user is member of. In the `TokenReview` response, `status.user.username` is set to user's Github login, `status.user.groups` is set to teams of the organization in client cert of which this user is a member of.
 
 ### Configure Kubectl
 ```console

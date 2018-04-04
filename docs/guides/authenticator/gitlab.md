@@ -47,6 +47,10 @@ To use Gitlab authentication, you can use your personal access token with scope 
 $ guard get token -o gitlab
 ```
 
+![gitlab-token](/docs/images/gitlab-token.png)
+
+Guard uses the token found in `TokenReview` request object to read user's profile information and list of groups this user is member of. In the `TokenReview` response, `status.user.username` is set to user's Gitlab login, `status.user.groups` is set to the list of the groups where this user is a member.
+
 ![gitlab-webhook-flow](/docs/images/gitlab-webhook-flow.png)
 
 ```json
@@ -66,8 +70,6 @@ $ guard get token -o gitlab
   }
 }
 ```
-
-Guard uses the token found in `TokenReview` request object to read user's profile information and list of groups this user is member of. In the `TokenReview` response, `status.user.username` is set to user's Gitlab login, `status.user.groups` is set to the list of the groups where this user is a member.
 
 ### Configure Kubectl
 

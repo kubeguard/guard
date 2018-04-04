@@ -109,7 +109,7 @@ Now deploy Guard server so that your Kubernetes api server can access it. Use th
 $ guard get installer \
     --auth-providers=<auth_providers_name> \
     > installer.yaml
-    
+
 $ kubectl apply -f installer.yaml
 ```
 
@@ -141,50 +141,23 @@ users:
     client-key-data: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcFFJQkFBS0NBUUVBNzRuZ3NuSHJXZHh6L2VDVnRFcFVHVXJkNXVpMElYbXhhZGZVbjN4aVU3bmR3bGM4CnNpaE9YS0NqRGljOXI2cHltejEyeUcvd1grWTNXYjlFOWtFcUM4OS9qMkdGa0hTVTlONFRZbEJWZGtKUkVENnQKMko2aVZzT2RPQXhPTHgzYnRuUEd0WDYvSkU2Uk1RQi84ZHFGMnpxVGZuUk9xRTRRNDdNcC9DSmJnZHBKY25vZgpnSlczeWdqSWJPelh4SGVTTXI5SHJYb3hkS2xhT1ZNYVNwZmNEVURGa0F1dTBERGQrM094cGxtN05TaUtiaW51CjNHd1Q3OGJEbTc2QkwrRDloSnlwdjlWQ0xZMjFQd1pwd3oyZmk4WHczdlgzN1VXT3pwNDl5QjMrbWJ1Y1pKRkoKQkUzTkVScmRVb1hYcnlCa3Q4RHV6dEs4WDN3YThMRnZrLzlsVndJREFRQUJBb0lCQVFDam9LdTlPZFJyTGd5TwpBRHhEVEFMbXhCMlEvcVVOdVBOWU9mY2tldk12L21kZHVmbmNPV3hPR2UxSVhjWGxtYWx3SWl4aC94VlViUTZpClgrWGIwZWZHNlpkWmVtU2lxUUNYeEp1NUxPYzBRVmplbi9KaFp2dStDU0g4aDJ0aEJDUnlIZVEvVnJWN043QTIKcVFDOVZXamF1TWpJT09zQ1RWRjhPWWNVbE9PdGJ2MFFRSUFNRDdxak1jcTdIRlJMbjlHSXJjSGVZWTd2RTdONQpucFdOMWZOT25BZXNnaVNRcGYxdGNYcmJUckNkb1JweExlU2RFUngyVnBkdFE1V3hFTm9YYURJT3FJVXB2anJaCjIwSUZqazY3eVVOTlBCLzJkU3VmZzVaekxEYWNGUy9lenYvUDVJYnVEazBHZWQyZGhkT2t3K2duVFNabjg0Sk4KMDg4TlMvVUJBb0dCQVBGOG44dEVmTURDNjlTc1RGWWh4NUc2aE1PWThlS0kxTDJQeTVVaEN4WCtXUlpoQndaVQpWaGhVMVpOcTgvUXkwb201WEQyT1UwR0tGQjY3aE9kU1l6TUc3a0NqKzl3bHZDM0loRmxLd2R1ZC8relBWTFkvCngxRjFtVnA3aTllZXZiZmdZdUQxdDRvTDVxc2lveldGZ2g2UndSZzVWTXpGd0N2WXZwUk9CcGZUQW9HQkFQM3YKUjNyRit1cW96YU9IcldrUjFEL3E5MHlRd3ZpamlRWDhyNEg3QVZTVVpnQmhwbEpmUDRTVU84NWdUbmhBLzl4ZQp3R1NTQzFGWkpVeDRmOW41MFN0dFlkNFhIMTZiU1lyOEpWQWxVRWY5QWR1czBkc1pKdkZLSEM5S3VjNEFPeUFPClYvUGR0Rk1FV2J5WERSQXdBTTVwNzZsU1pZVXA5cDFLVTZ6SndHM3RBb0dCQUlmdzdRK0RmV3NTRDZwSVdDekEKbFZUL0Y4LzRZR3B6TnJlRHBFcE9NS3h2NDN6S29DYTdBVUJ2T1Uva2pISnl6YnlFSVYzeHFnS2lGVk43b29TSwpCNWZwRmVSRHEvdXhMbTdqaTBXczVOYVo2a0ZJTWRycXFteTc4OWxRNVZjN1lIZUxsSDRwTk9vOGF0ejZBY0NXCmFMcUd1Sm5IWkdwbUJCbHF5Vlk1V2xMTEFvR0FPWVlBelVFWURCeGRLUlJOSmlZUnpNRHZjSHJDa0F5THQ3MTgKREpmTnYxazJtaE9FMTlnWHpYSys4WXREZTE1T0Y1K25PYUVUeTBQRWZVUTJ3aXdqUkJFdFFHQkFqTy9rZ3dXSApkbFpkajFFeklJNVBvN0JZOEFQM3lvYkUvSE4wOFZnT2VJSGFuWXU0d0UzL2VaRkdQWHdsL0ZkY0JBUnpoMElWCkhtazluQ2tDZ1lFQXJyNGQ3WFBUNlBvTTA5TjFSYnVtQnROUW96cGxpb0wwb0tqZUxHL0RHcUd5Q3lpcDVsNnMKUW5vblpPcW9BVzdqZlRiMThvVVVzVkJTdDJvd20zempac05XZFdZcEptL1ZCSDQvY0dOeFJuSXN1OFNsdFdBZAp1YjVZQS9YcnEvUTRNcUJnZEVwYm9HTnlzUVlscE0rMmxHZWpiZ0pDUTI4b3dJYndLQ3JSY2t3PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
 ```
 
-## Issue Token
 
-To use Github authentication, you can use your personal access token with permissions to read `public_repo` and `read:org`. You can use the following command to issue a token:
-```
-$ guard get token -o github
-```
-![github-token](/docs/images/github-token.png)
+## Using Guard service name instead of IP in authentication webhook config file
 
+So far, we have used a preset ClusterIP address in Guard service. This cluster ip was used in the authentication webhook config file and used by Kubernetes api server to connect to guard server.
 
-To use Gitlab authentication, you can use your personal access token with scope `api`. You can use the following command to issue a token:
-```
-$ guard get token -o gitlab
-```
-![gitlab-token](/docs/images/gitlab-token.png)
+It is possible to use Guard service name in authentication webhook config file so that Kubernetes api server connects to Guard using its domain name. This requires the following additional steps:
 
+- Since Kubernetes api server pod uses `HostNetwok`, change the DNS policy for Kubernetes api server to [`ClusterFirstWithHostNet`](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pods-dns-policy). The actual process depends on your cluster provisioning process. Usually this involves updating the kube-apiserver manifest file in /etc/kubernetes/manifests folder in Master machines.
 
-To use Google authentication, you need a token with the following OAuth scopes:
- - https://www.googleapis.com/auth/userinfo.email
- - https://www.googleapis.com/auth/admin.directory.group.readonly
-
-You can use the following command to issue a token:
-```
-$ guard get token -o google
-```
-This will run a local HTTP server to issue a token with appropriate OAuth2 scopes.
-
-You can use the following command to issue a token from your appscode organization.
-```
-$ guard get token -o appscode
-```
-![guard-appscode](/docs/images/guard-appscode.png)
-
-After this run you have to provide your team id to get your token and paste it to verify.
-
-With this team id a browser page will open containing token information.
-![appscode-token](/docs/images/appscode-token.png)
-
-
-## Configure kubectl
+- When issuing server certificate for Guard server, provide the domain name so that it is included in CN/SANS for server cert.
 
 ```console
-$ kubectl config set-cluster NAME [--server=server] [--certificate-authority=path/to/certificate/authority] [--insecure-skip-tls-verify=true]
-$ kubectl config set-credentials NAME [--token=bearer_token]
-$ kubectl config set-context NAME [--cluster=cluster_nickname] [--user=user_nickname] [--namespace=namespace]
-$ kubectl config use-context CONTEXT_NAME
-$ kubectl config view
+$ guard init server --domains=guard.<namespace>.svc
 ```
+
+- Now, pass the Guard service name when generating webhook config.
+
+```console
+$ guard get webhook-config appscode -o github --addr=guard.<namespace>.svc:443
+``
