@@ -6,7 +6,7 @@ menu:
     identifier: ldap-authenticator
     parent: authenticator-guides
     name: LDAP
-    weight: 10
+    weight: 35
 product_name: guard
 menu_name: product_guard_0.1.0-rc.5
 section_menu_id: guides

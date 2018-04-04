@@ -1,4 +1,18 @@
-# How to configure guard for secure LDAP (LDAPS) of an Azure AD Domain Services managed domain
+---
+title: Azure Active Directory | Guard
+description: Authenticate into Kubernetes using Azure Active Directory
+menu:
+  product_guard_0.1.0-rc.5:
+    identifier: azure-ad-authenticator
+    parent: authenticator-guides
+    name: Azure AD
+    weight: 40
+product_name: guard
+menu_name: product_guard_0.1.0-rc.5
+section_menu_id: guides
+---
+
+# Authenticate using secure LDAP of Azure Active Directory Domain Services
 
 There is a nice documentation about how to enable secure LDAP for the managed domain using Azure portal [here](https://docs.microsoft.com/en-us/azure/active-directory-domain-services/active-directory-ds-admin-guide-configure-secure-ldap-enable-ldaps). If you configured DNS to access the managed domain, then use it as `SERVER_ADDRESS`. If not configured, then you can use **EXTERNAL IP ADDRESS FOR LDAPS ACCESS** as `SERVER_ADDRESS`. For LDAPS use `636` as server `PORT`. Procedure to find **EXTERNAL IP ADDRESS FOR LDAPS ACCESS** is given below:
 

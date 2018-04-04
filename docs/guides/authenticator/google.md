@@ -6,7 +6,7 @@ menu:
     identifier: google-authenticator
     parent: authenticator-guides
     name: Google
-    weight: 15
+    weight: 20
 product_name: guard
 menu_name: product_guard_0.1.0-rc.5
 section_menu_id: guides
