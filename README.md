@@ -6,7 +6,15 @@
 [![Twitter](https://img.shields.io/twitter/follow/appscodehq.svg?style=social&logo=twitter&label=Follow)](https://twitter.com/intent/follow?screen_name=AppsCodeHQ)
 
 # Guard
- Guard by AppsCode is a [Kubernetes Webhook Authentication](https://kubernetes.io/docs/admin/authentication/#webhook-token-authentication) server. Using guard, you can log into your Kubernetes cluster using your Github or Google authentication token. Guard also sets authenticated user's groups to his Github teams or Google groups. This allows cluster administrator to setup RBAC rules based on membership in Github teams or Google groups.
+Guard by AppsCode is a [Kubernetes Webhook Authentication](https://kubernetes.io/docs/admin/authentication/#webhook-token-authentication) server. Using guard, you can log into your Kubernetes cluster using various auth providers. Guard also configures groups of authenticated user appropriately. This allows cluster administrator to setup RBAC rules based on membership in groups. Guard supports following auth providers:
+
+- [Static Token File](https://appscode.com/products/guard/0.1.0/guides/authenticator/static_token_file/)
+- [Github](https://appscode.com/products/guard/0.1.0/guides/authenticator/github/)
+- [Gitlab](https://appscode.com/products/guard/0.1.0/guides/authenticator/gitlab/)
+- [Google](https://appscode.com/products/guard/0.1.0/guides/authenticator/google/)
+- [Azure](https://appscode.com/products/guard/0.1.0/guides/authenticator/azure/)
+- [LDAP using Simple or Kerberos authentication](https://appscode.com/products/guard/0.1.0/guides/authenticator/ldap/)
+- [Azure Active Directory via LDAP](https://appscode.com/products/guard/0.1.0/guides/authenticator/ldap_azure/)
 
 ## Supported Versions
 Kubernetes 1.8+
