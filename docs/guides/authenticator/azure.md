@@ -6,7 +6,7 @@ menu:
     identifier: azure-authenticator
     parent: authenticator-guides
     name: Azure
-    weight: 10
+    weight: 25
 product_name: guard
 menu_name: product_guard_0.1.0-rc.5
 section_menu_id: guides

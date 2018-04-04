@@ -6,7 +6,7 @@ menu:
     identifier: github-authenticator
     parent: authenticator-guides
     name: Github
-    weight: 10
+    weight: 15
 product_name: guard
 menu_name: product_guard_0.1.0-rc.5
 section_menu_id: guides

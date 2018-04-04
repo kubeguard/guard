@@ -6,7 +6,7 @@ menu:
     identifier: gitlab-authenticator
     parent: authenticator-guides
     name: Gitlab
-    weight: 20
+    weight: 30
 product_name: guard
 menu_name: product_guard_0.1.0-rc.5
 section_menu_id: guides
