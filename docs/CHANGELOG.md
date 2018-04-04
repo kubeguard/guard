@@ -17,32 +17,33 @@ aliases:
 
 # Change Log
 
-## [Unreleased](https://github.com/appscode/guard/tree/HEAD)
-
-[Full Changelog](https://github.com/appscode/guard/compare/0.1.0-rc.5...HEAD)
+## [0.1.0](https://github.com/appscode/guard/tree/0.1.0) (2018-04-04)
+[Full Changelog](https://github.com/appscode/guard/compare/0.1.0-rc.5...0.1.0)
 
 **Closed issues:**
 
-- Test the big switch statement in server handler [\#96](https://github.com/appscode/guard/issues/96)
 - Refactor token command [\#92](https://github.com/appscode/guard/issues/92)
-- Fix installer [\#91](https://github.com/appscode/guard/issues/91)
 - Enable code coverage tests [\#84](https://github.com/appscode/guard/issues/84)
 - Check NTP perodically [\#83](https://github.com/appscode/guard/issues/83)
-- Kerberos [\#58](https://github.com/appscode/guard/issues/58)
 - Gitlab [\#53](https://github.com/appscode/guard/issues/53)
 - Expose metrics via Prometheus [\#52](https://github.com/appscode/guard/issues/52)
-- Is the google auth actually working/tested? [\#36](https://github.com/appscode/guard/issues/36)
 - Run guard in its own namespace [\#29](https://github.com/appscode/guard/issues/29)
 - Support basic auth / token auth [\#28](https://github.com/appscode/guard/issues/28)
-- Document how to fix bad certificate issue [\#21](https://github.com/appscode/guard/issues/21)
 - Run guard on master by default [\#19](https://github.com/appscode/guard/issues/19)
 - Installer.yaml should use /healthz checks. [\#17](https://github.com/appscode/guard/issues/17)
-- Fuzz server [\#14](https://github.com/appscode/guard/issues/14)
 - Support LDAP [\#11](https://github.com/appscode/guard/issues/11)
 - Support Active Directory / Office365 [\#10](https://github.com/appscode/guard/issues/10)
+- Test the big switch statement in server handler [\#96](https://github.com/appscode/guard/issues/96)
+- Fix installer [\#91](https://github.com/appscode/guard/issues/91)
+- Kerberos [\#58](https://github.com/appscode/guard/issues/58)
+- Is the google auth actually working/tested? [\#36](https://github.com/appscode/guard/issues/36)
+- Document how to fix bad certificate issue [\#21](https://github.com/appscode/guard/issues/21)
+- Fuzz server [\#14](https://github.com/appscode/guard/issues/14)
 
 **Merged pull requests:**
 
+- Update readme. [\#107](https://github.com/appscode/guard/pull/107) ([tamalsaha](https://github.com/tamalsaha))
+- Prepare docs for 0.1.0 [\#106](https://github.com/appscode/guard/pull/106) ([tamalsaha](https://github.com/tamalsaha))
 - Reorder auth providers [\#105](https://github.com/appscode/guard/pull/105) ([tamalsaha](https://github.com/tamalsaha))
 - Update docs [\#104](https://github.com/appscode/guard/pull/104) ([nightfury1204](https://github.com/nightfury1204))
 - Add e2e tests [\#103](https://github.com/appscode/guard/pull/103) ([tamalsaha](https://github.com/tamalsaha))
