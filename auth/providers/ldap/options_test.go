@@ -117,7 +117,7 @@ func getNonEmptyOptions() Options {
 		GroupNameAttribute:   nonempty,
 		IsSecureLDAP:         false,
 		StartTLS:             false,
-		AuthenticationChoice: AuthChoiceSimpleAuthentication,
+		AuthenticationChoice: AuthChoiceSimple,
 		KeytabFile:           nonempty,
 	}
 }
