@@ -35,9 +35,12 @@ $ kubectl apply -f installer.yaml
 Additional flags for gitlab:
 
 ```console
-# Base url for enterprise, keep empty to use default gitlab base url
+# Base url for GitLab, keep empty to use default gitlab base url
 --gitlab.base-url=<base_url>
 ```
+
+The GitLab base-url needs to include the path to the API. For example
+`https://<base-url>/api/v4`
 
 ### Issue Token
 
