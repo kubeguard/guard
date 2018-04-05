@@ -47,3 +47,7 @@ prometheus:
       namespaceSelector:
         any: true
 ```
+
+# Grafana Dashboard for Guard
+
+A simple Grafana dashbord for Guard can be found [here](../../contrib/Guard-grafana-dashboard.json)
