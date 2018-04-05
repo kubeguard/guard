@@ -30,7 +30,7 @@ guard run [flags]
       --azure.tenant-id string               MS Graph application tenant id to use
       --clock-check-interval duration        Interval between checking time against NTP servers (default 5m0s)
       --github.base-url string               Base url for enterprise, keep empty to use default github base url
-      --gitlab.base-url string               Base url for enterprise, keep empty to use default gitlab base url
+      --gitlab.base-url string               Base url for GitLab, including the API path, keep empty to use default gitlab base url.
       --google.admin-email string            Email of G Suite administrator
       --google.sa-json-file string           Path to Google service account json file
   -h, --help                                 help for run

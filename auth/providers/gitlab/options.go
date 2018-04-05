@@ -21,7 +21,7 @@ func (o *Options) Configure() error {
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&o.BaseUrl, "gitlab.base-url", o.BaseUrl, "Base url for GitLab, including the API path, keep empty to use default gitlab base url. ")
+	fs.StringVar(&o.BaseUrl, "gitlab.base-url", o.BaseUrl, "Base url for GitLab, including the API path, keep empty to use default gitlab base url.")
 }
 
 func (o *Options) Validate() []error {
