@@ -21,7 +21,7 @@ var (
 
 	counter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "tokenreviews_hendler_requests_total",
+			Name: "tokenreviews_handler_requests_total",
 			Help: "A counter for requests to the tokenreviews handler.",
 		},
 		[]string{"code", "method"},
