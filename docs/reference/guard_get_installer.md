@@ -30,7 +30,7 @@ guard get installer [flags]
       --azure.client-secret string           MS Graph application client secret to use
       --azure.tenant-id string               MS Graph application tenant id to use
       --github.base-url string               Base url for enterprise, keep empty to use default github base url
-      --gitlab.base-url string               Base url for enterprise, keep empty to use default gitlab base url
+      --gitlab.base-url string               Base url for GitLab, including the API path, keep empty to use default gitlab base url.
       --google.admin-email string            Email of G Suite administrator
       --google.sa-json-file string           Path to Google service account json file
   -h, --help                                 help for installer
