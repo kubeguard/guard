@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/appscode/go/log"
 	"github.com/appscode/guard/util/kubeconfig"
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
 	"golang.org/x/net/context"
@@ -26,7 +26,7 @@ func IssueToken() error {
 		return err
 	}
 	defer listener.Close()
-	log.Infoln("Oauth2 callback receiver listening on", listener.Addr())
+	glog.Infoln("Oauth2 callback receiver listening on", listener.Addr())
 
 	// https://developers.google.com/identity/protocols/OpenIDConnect#validatinganidtoken
 	gauthConfig = oauth2.Config{
@@ -42,7 +42,7 @@ func IssueToken() error {
 	promptSelectAccount := oauth2.SetAuthURLParam("prompt", "select_account")
 	codeURL := gauthConfig.AuthCodeURL("/", promptSelectAccount)
 
-	log.Infoln("Auhtorization code URL:", codeURL)
+	glog.Infoln("Auhtorization code URL:", codeURL)
 	open.Start(codeURL)
 
 	http.HandleFunc("/", handleGoogleAuth)

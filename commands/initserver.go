@@ -7,10 +7,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/appscode/go/log"
 	"github.com/appscode/go/term"
 	"github.com/appscode/guard/auth"
 	"github.com/appscode/kutil/tools/certstore"
+	"github.com/golang/glog"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/util/cert"
@@ -36,7 +36,7 @@ func NewCmdInitServer() *cobra.Command {
 
 			store, err := certstore.NewCertStore(afero.NewOsFs(), filepath.Join(rootDir, "pki"), cfg.Organization...)
 			if err != nil {
-				log.Fatalf("Failed to create certificate store. Reason: %v.", err)
+				glog.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}
 			if store.IsExists(filename(cfg)) {
 				if !term.Ask(fmt.Sprintf("Server certificate found at %s. Do you want to overwrite?", store.Location()), false) {
@@ -45,16 +45,16 @@ func NewCmdInitServer() *cobra.Command {
 			}
 
 			if err = store.LoadCA(); err != nil {
-				log.Fatalf("Failed to load ca certificate. Reason: %v.", err)
+				glog.Fatalf("Failed to load ca certificate. Reason: %v.", err)
 			}
 
 			crt, key, err := store.NewServerCertPair(cfg.CommonName, cfg.AltNames)
 			if err != nil {
-				log.Fatalf("Failed to generate certificate pair. Reason: %v.", err)
+				glog.Fatalf("Failed to generate certificate pair. Reason: %v.", err)
 			}
 			err = store.WriteBytes(filename(cfg), crt, key)
 			if err != nil {
-				log.Fatalf("Failed to init server certificate pair. Reason: %v.", err)
+				glog.Fatalf("Failed to init server certificate pair. Reason: %v.", err)
 			}
 			term.Successln("Wrote server certificates in ", store.Location())
 		},

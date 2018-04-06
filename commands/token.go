@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/appscode/go/log"
 	"github.com/appscode/guard/auth"
 	"github.com/appscode/guard/auth/providers/appscode"
 	"github.com/appscode/guard/auth/providers/github"
 	"github.com/appscode/guard/auth/providers/gitlab"
 	"github.com/appscode/guard/auth/providers/google"
 	"github.com/appscode/guard/auth/providers/ldap"
+	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 )
 
@@ -38,25 +38,25 @@ func NewCmdGetToken() *cobra.Command {
 			case google.OrgType:
 				err := google.IssueToken()
 				if err != nil {
-					log.Fatal(err)
+					glog.Fatal(err)
 				}
 				return
 			case appscode.OrgType:
 				err := appscode.IssueToken()
 				if err != nil {
-					log.Fatal(err)
+					glog.Fatal(err)
 				}
 				return
 			case ldap.OrgType:
 				err := opts.LDAP.IssueToken()
 				if err != nil {
-					log.Fatal("For LDAP:", err)
+					glog.Fatal("For LDAP:", err)
 				}
 				return
 			case "":
-				log.Fatalln("Missing organization name. Set flag -o Google|Github.")
+				glog.Fatalln("Missing organization name. Set flag -o Google|Github.")
 			default:
-				log.Fatalf("Unknown organization %s.", opts.Org)
+				glog.Fatalf("Unknown organization %s.", opts.Org)
 			}
 		},
 	}

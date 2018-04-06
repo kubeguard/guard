@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
-	"log"
 	"net"
 	"os"
 	"path/filepath"
@@ -46,7 +45,7 @@ func (s *ldapServer) start() {
 		} else {
 			err = s.server.ListenAndServe(serverAddr + ":" + inSecurePort)
 		}
-		log.Println("LDAP Server: ", err)
+		glog.Println("LDAP Server: ", err)
 	}()
 
 	<-s.stopCh
@@ -123,7 +122,7 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 	r := m.GetBindRequest()
 	res := ldapserver.NewBindResponse(ldapserver.LDAPResultSuccess)
 
-	log.Println("Bind :", r.Name(), r.AuthenticationSimple())
+	glog.Println("Bind :", r.Name(), r.AuthenticationSimple())
 
 	// for baseDN
 	if string(r.Name()) == "uid=admin,ou=system" && string(r.AuthenticationSimple()) == "secret" {
@@ -143,7 +142,7 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 		return
 	}
 
-	log.Printf("Bind failed User=%s, Pass=%s", string(r.Name()), string(r.AuthenticationSimple()))
+	glog.Printf("Bind failed User=%s, Pass=%s", string(r.Name()), string(r.AuthenticationSimple()))
 	res.SetResultCode(ldapserver.LDAPResultInvalidCredentials)
 	res.SetDiagnosticMessage("invalid credentials")
 	w.Write(res)
@@ -151,7 +150,7 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 
 func handleUserSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 	r := m.GetSearchRequest()
-	log.Println("User search filter", r.FilterString())
+	glog.Println("User search filter", r.FilterString())
 
 	// one entry
 	if r.FilterString() == "(&(objectClass=person)(uid=nahid))" {
@@ -189,7 +188,7 @@ func handleUserSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 
 func handleGroupSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 	r := m.GetSearchRequest()
-	log.Println("Group search filter", r.FilterString())
+	glog.Println("Group search filter", r.FilterString())
 
 	// one entry
 	if r.FilterString() == "(&(objectClass=groupOfNames)(member=uid=nahid,ou=users,o=Company))" {
