@@ -150,10 +150,8 @@ func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
 // Generally in federated directories the email address is the userPrincipalName
 func (u *UserInfo) GetGroups(userPrincipal string) ([]string, error) {
 	// Make sure things are logged in before continuing
-	if u.isExpired() {
-		if err := u.login(); err != nil {
-			return nil, err
-		}
+	if err := u.login(); err != nil {
+		return nil, err
 	}
 
 	// Get the group IDs for the user
@@ -181,8 +179,7 @@ func (u *UserInfo) Name() string {
 	return getterName
 }
 
-// New returns a new UserInfo object that is authenticated to the MS Graph API.
-// If authentication fails, an error will be returned
+// New returns a new UserInfo object
 func New(clientID, clientSecret, tenantName string) (*UserInfo, error) {
 	parsedLogin, err := url.Parse(fmt.Sprintf(loginURL, tenantName))
 	if err != nil {
@@ -197,10 +194,6 @@ func New(clientID, clientSecret, tenantName string) (*UserInfo, error) {
 		loginURL:     parsedLogin,
 		clientID:     clientID,
 		clientSecret: clientSecret,
-	}
-	err = u.login()
-	if err != nil {
-		return nil, err
 	}
 
 	return u, nil

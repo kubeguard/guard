@@ -248,6 +248,10 @@ func TestGetGroups(t *testing.T) {
 	]
 }`
 	mux := http.NewServeMux()
+	mux.Handle("/login", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		w.Write([]byte(`{ "token_type": "Bearer", "expires_in": 8459, "access_token": "secret"}`))
+	}))
 	mux.Handle("/users/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
 		w.Write([]byte(validBody1))
@@ -258,9 +262,12 @@ func TestGetGroups(t *testing.T) {
 	}))
 	ts := httptest.NewServer(mux)
 	apiURL, _ := url.Parse(ts.URL)
+	loginURL, _ := url.Parse(ts.URL + "/login")
+
 	u := &UserInfo{
 		client:       http.DefaultClient,
 		apiURL:       apiURL,
+		loginURL:     loginURL,
 		headers:      http.Header{},
 		clientID:     "jason",
 		clientSecret: "bourne",
