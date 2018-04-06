@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/appscode/go/log"
 	"github.com/appscode/go/util/errors"
 	"github.com/appscode/guard/auth/providers"
 	"github.com/appscode/guard/auth/providers/appscode"
@@ -18,6 +17,7 @@ import (
 	"github.com/appscode/guard/auth/providers/token"
 	"github.com/appscode/guard/installer"
 	"github.com/appscode/guard/test/e2e/framework"
+	"github.com/golang/glog"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/afero"
@@ -120,7 +120,7 @@ var _ = Describe("Installer test", func() {
 			data, err := installer.Generate(opts)
 			Expect(err).NotTo(HaveOccurred())
 
-			log.Info(string(data))
+			glog.Info(string(data))
 
 			file := filepath.Join(yamlDir, installerfileName)
 			By("Writing installer yaml in " + file)

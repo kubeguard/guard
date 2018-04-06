@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/appscode/go/log"
 	"github.com/appscode/go/ntp"
 	"github.com/appscode/go/signals"
 	v "github.com/appscode/go/version"
@@ -17,6 +16,7 @@ import (
 	"github.com/appscode/kutil/meta"
 	"github.com/appscode/kutil/tools/fsnotify"
 	"github.com/appscode/pat"
+	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
@@ -33,7 +33,7 @@ func (s *Server) AddFlags(fs *pflag.FlagSet) {
 
 func (s Server) ListenAndServe() {
 	if errs := s.RecommendedOptions.Validate(); errs != nil {
-		log.Fatal(errs)
+		glog.Fatal(errs)
 	}
 
 	if s.RecommendedOptions.NTP.Enabled() {
@@ -41,7 +41,7 @@ func (s Server) ListenAndServe() {
 		go func() {
 			for range ticker.C {
 				if err := ntp.CheckSkew(s.RecommendedOptions.NTP.MaxClodkSkew); err != nil {
-					log.Fatal(err)
+					glog.Fatal(err)
 				}
 			}
 		}()
@@ -52,7 +52,7 @@ func (s Server) ListenAndServe() {
 
 		err := s.TokenAuthenticator.Configure()
 		if err != nil {
-			log.Fatalln(err)
+			glog.Fatalln(err)
 		}
 		if meta.PossiblyInCluster() {
 			w := fsnotify.Watcher{
@@ -68,10 +68,10 @@ func (s Server) ListenAndServe() {
 
 	// loading file read related data
 	if err := s.RecommendedOptions.LDAP.Configure(); err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 	if err := s.RecommendedOptions.Google.Configure(); err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	/*
@@ -83,12 +83,12 @@ func (s Server) ListenAndServe() {
 	*/
 	caCert, err := ioutil.ReadFile(s.RecommendedOptions.SecureServing.CACertFile)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 	caCertPool := x509.NewCertPool()
 	ok := caCertPool.AppendCertsFromPEM(caCert)
 	if !ok {
-		log.Fatal("Failed to add CA cert in CertPool for guard server")
+		glog.Fatal("Failed to add CA cert in CertPool for guard server")
 	}
 
 	tlsConfig := &tls.Config{
@@ -138,5 +138,5 @@ func (s Server) ListenAndServe() {
 		Handler:      m,
 		TLSConfig:    tlsConfig,
 	}
-	log.Fatalln(srv.ListenAndServeTLS(s.RecommendedOptions.SecureServing.CertFile, s.RecommendedOptions.SecureServing.KeyFile))
+	glog.Fatalln(srv.ListenAndServeTLS(s.RecommendedOptions.SecureServing.CertFile, s.RecommendedOptions.SecureServing.KeyFile))
 }

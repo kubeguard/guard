@@ -2,9 +2,9 @@ package commands
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/appscode/guard/installer"
+	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 )
 
@@ -17,12 +17,12 @@ func NewCmdInstaller() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			errs := opts.Validate()
 			if errs != nil {
-				log.Fatal(errs)
+				glog.Fatal(errs)
 			}
 
 			data, err := installer.Generate(opts)
 			if err != nil {
-				log.Fatal(err)
+				glog.Fatal(err)
 			}
 			fmt.Println(string(data))
 		},

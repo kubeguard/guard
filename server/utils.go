@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/appscode/go/log"
+	"github.com/golang/glog"
 	"github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	auth "k8s.io/api/authentication/v1"
@@ -62,11 +62,11 @@ type httpStatusCode interface {
 }
 
 func printStackTrace(err error) {
-	log.Errorln(err)
+	glog.Errorln(err)
 
 	if c, ok := errors.Cause(err).(stackTracer); ok {
 		st := c.StackTrace()
-		log.Debugf("Stacktrace: %+v", err.Error(), st) // top two frames
+		glog.V(5).Infof("Stacktrace: %+v", err.Error(), st) // top two frames
 	}
 }
 
