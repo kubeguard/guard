@@ -43,3 +43,20 @@ func ParseAuthChoice(name string) (AuthChoice, error) {
 	}
 	return AuthChoice(0), fmt.Errorf("%s is not a valid AuthChoice", name)
 }
+
+// Set implements the Golang flag.Value interface func
+func (x *AuthChoice) Set(val string) error {
+	v, err := ParseAuthChoice(val)
+	*x = v
+	return err
+}
+
+// Get implements the Golang flag.Getter interface func
+func (x *AuthChoice) Get() interface{} {
+	return *x
+}
+
+// Type implements the github.com/spf13/pFlag Value interface
+func (x *AuthChoice) Type() string {
+	return "AuthChoice"
+}
