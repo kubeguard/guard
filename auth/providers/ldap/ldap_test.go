@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/vjeantet/ldapserver"
 	"k8s.io/client-go/util/cert"
+	"github.com/golang/glog"
 )
 
 const (
@@ -45,7 +46,7 @@ func (s *ldapServer) start() {
 		} else {
 			err = s.server.ListenAndServe(serverAddr + ":" + inSecurePort)
 		}
-		glog.Println("LDAP Server: ", err)
+		glog.Infoln("LDAP Server: ", err)
 	}()
 
 	<-s.stopCh
@@ -122,7 +123,7 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 	r := m.GetBindRequest()
 	res := ldapserver.NewBindResponse(ldapserver.LDAPResultSuccess)
 
-	glog.Println("Bind :", r.Name(), r.AuthenticationSimple())
+	glog.Infoln("Bind :", r.Name(), r.AuthenticationSimple())
 
 	// for baseDN
 	if string(r.Name()) == "uid=admin,ou=system" && string(r.AuthenticationSimple()) == "secret" {
@@ -142,7 +143,7 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 		return
 	}
 
-	glog.Printf("Bind failed User=%s, Pass=%s", string(r.Name()), string(r.AuthenticationSimple()))
+	glog.Infoln("Bind failed User=%s, Pass=%s", string(r.Name()), string(r.AuthenticationSimple()))
 	res.SetResultCode(ldapserver.LDAPResultInvalidCredentials)
 	res.SetDiagnosticMessage("invalid credentials")
 	w.Write(res)
@@ -150,7 +151,7 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 
 func handleUserSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 	r := m.GetSearchRequest()
-	glog.Println("User search filter", r.FilterString())
+	glog.Infoln("User search filter", r.FilterString())
 
 	// one entry
 	if r.FilterString() == "(&(objectClass=person)(uid=nahid))" {
@@ -188,7 +189,7 @@ func handleUserSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 
 func handleGroupSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 	r := m.GetSearchRequest()
-	glog.Println("Group search filter", r.FilterString())
+	glog.Infoln("Group search filter", r.FilterString())
 
 	// one entry
 	if r.FilterString() == "(&(objectClass=groupOfNames)(member=uid=nahid,ou=users,o=Company))" {
