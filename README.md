@@ -4,6 +4,7 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/appscode/guard.svg)](https://hub.docker.com/r/appscode/guard/)
 [![Slack](https://slack.appscode.com/badge.svg)](https://slack.appscode.com)
 [![Twitter](https://img.shields.io/twitter/follow/appscodehq.svg?style=social&logo=twitter&label=Follow)](https://twitter.com/intent/follow?screen_name=AppsCodeHQ)
+[![Concourse](https://concourse.appscode.com/api/v1/teams/main/pipelines/guard/jobs/test-guard/badge)](https://concourse.appscode.com/teams/main/pipelines/guard)
 
 # Guard
 Guard by AppsCode is a [Kubernetes Webhook Authentication](https://kubernetes.io/docs/admin/authentication/#webhook-token-authentication) server. Using guard, you can log into your Kubernetes cluster using various auth providers. Guard also configures groups of authenticated user appropriately. This allows cluster administrator to setup RBAC rules based on membership in groups. Guard supports following auth providers:
