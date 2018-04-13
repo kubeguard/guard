@@ -113,6 +113,9 @@ $ guard get installer \
 $ kubectl apply -f installer.yaml
 ```
 
+By default, the installer.yaml will deploy Guard server on master instances. If your cluster is provisioned by Kubespray, change
+the node selector in installer.yaml to `"node-role.kubernetes.io/master": "true"` due to [kubernetes-incubator/kubespray#2108](https://github.com/kubernetes-incubator/kubespray/issues/2108).
+
 ## Configure Kubernetes API Server
 To use webhook authentication, you need to set `--authentication-token-webhook-config-file` flag of your Kubernetes api server to a [kubeconfig file](https://kubernetes.io/docs/admin/authentication/#webhook-token-authentication) describing how to access the Guard webhook service. You can use the following command to generate a sample `kubeconfig` file.
 
