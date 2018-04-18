@@ -41,7 +41,7 @@ func newDeployment(opts Options) (objects []runtime.Object, err error) {
 					Containers: []core.Container{
 						{
 							Name:  "guard",
-							Image: fmt.Sprintf("%s/guard:%v", opts.PrivateRegistry, stringz.Val(v.Version.Version, "canary")),
+							Image: fmt.Sprintf("%s/guard:%v", opts.PrivateRegistry, stringz.Val(v.Version.Version, "0.1.0")),
 							Args: []string{
 								"run",
 								"--v=3",
