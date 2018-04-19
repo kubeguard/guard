@@ -111,3 +111,7 @@ The access token is acquired when first `kubectl` command is executed
    ```
 
 After signing in a web browser, the token is stored in the configuration, and it will be reused when executing next commands.
+
+## Further Reading:
+- https://github.com/kubernetes/client-go/blob/master/plugin/pkg/client/auth/azure/README.md
+- https://docs.microsoft.com/en-us/azure/active-directory/active-directory-application-proxy-native-client
