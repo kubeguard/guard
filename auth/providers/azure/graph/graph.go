@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/json-iterator/go"
+	"github.com/moul/http2curl"
+	"github.com/pkg/errors"
 )
 
 // These are the base URL endpoints for MS graph
@@ -49,20 +51,23 @@ func (u *UserInfo) login() error {
 
 	req, err := http.NewRequest(http.MethodPost, u.loginURL.String(), strings.NewReader(form.Encode()))
 	if err != nil {
-		return fmt.Errorf("Error creating login request: %s", err)
+		return errors.Wrap(err, "error creating login request")
 	}
+	cmd, _ := http2curl.GetCurlCommand(req)
+	fmt.Println("Request: ", cmd)
+
 	resp, err := u.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("Error performing login: %s", err)
+		return errors.Wrap(err, "error performing login")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Request error. Got response code: %d", resp.StatusCode)
+		return errors.Errorf("request error. Got response code: %d", resp.StatusCode)
 	}
 	// Decode the response
 	var authResp = &AuthResponse{}
 	err = json.NewDecoder(resp.Body).Decode(authResp)
 	if err != nil {
-		return fmt.Errorf("Error decoding body: %s", err)
+		return errors.Wrap(err, "error decoding body")
 	}
 
 	// Set the authorization headers for future requests
@@ -86,23 +91,27 @@ func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
 	// The body being sent makes sure that all groups are returned, not just security groups
 	req, err := http.NewRequest(http.MethodPost, userSearchURL.String(), bytes.NewBuffer([]byte(`{"securityEnabledOnly": false}`)))
 	if err != nil {
-		return nil, fmt.Errorf("Error creating group IDs request: %s", err)
+		return nil, errors.Wrap(err, "error creating group IDs request")
 	}
 	// Set the auth headers for the request
 	req.Header = u.headers
+
+	cmd, _ := http2curl.GetCurlCommand(req)
+	fmt.Println("Request: ", cmd)
+
 	resp, err := u.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("Error listing users: %s", err)
+		return nil, errors.Wrap(err, "error listing users")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Request error. Got response code: %d", resp.StatusCode)
+		return nil, errors.Errorf("request error. Got response code: %d", resp.StatusCode)
 	}
 
 	// Decode the group response
 	var objects = ObjectList{}
 	err = json.NewDecoder(resp.Body).Decode(&objects)
 	if err != nil {
-		return nil, fmt.Errorf("Error decoding body: %s", err)
+		return nil, errors.Wrap(err, "error decoding body")
 	}
 	return objects.Value, nil
 }
@@ -115,7 +124,7 @@ func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
 		Types: []string{"group"},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Error encoding body: %s", err)
+		return nil, errors.Wrap(err, "error encoding body")
 	}
 
 	// Set up the request
@@ -125,23 +134,27 @@ func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
 	groupObjectsURL.Path = path.Join(groupObjectsURL.Path, "/directoryObjects/getByIds")
 	req, err := http.NewRequest(http.MethodPost, groupObjectsURL.String(), body)
 	if err != nil {
-		return nil, fmt.Errorf("Error creating group expansion request: %s", err)
+		return nil, errors.Wrap(err, "error creating group expansion request")
 	}
 	// Set the auth headers
 	req.Header = u.headers
+
+	cmd, _ := http2curl.GetCurlCommand(req)
+	fmt.Println("Request: ", cmd)
+
 	resp, err := u.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("Error expanding groups: %s", err)
+		return nil, errors.Wrap(err, "error expanding groups")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Request error. Got response code: %d", resp.StatusCode)
+		return nil, errors.Errorf("request error. Got response code: %d", resp.StatusCode)
 	}
 
 	// Decode the response
 	var groups = &GroupList{}
 	err = json.NewDecoder(resp.Body).Decode(groups)
 	if err != nil {
-		return nil, fmt.Errorf("Error encoding body: %s", err)
+		return nil, errors.Wrap(err, "error encoding body")
 	}
 	return groups, nil
 }
