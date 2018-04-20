@@ -2,9 +2,9 @@
 title: Reference
 description: Guard CLI Reference
 menu:
-  product_guard_0.1.0:
+  product_guard_0.1.1:
     identifier: reference
     name: Reference
     weight: 1000
-menu_name: product_guard_0.1.0
+menu_name: product_guard_0.1.1
 ---
