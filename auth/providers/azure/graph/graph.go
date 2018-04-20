@@ -61,13 +61,13 @@ func (u *UserInfo) login() error {
 		return errors.Wrap(err, "error performing login")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("request error. Got response code: %d", resp.StatusCode)
+		return errors.Errorf("request %s failed with response code: %d", req.URL.Path, resp.StatusCode)
 	}
 	// Decode the response
 	var authResp = &AuthResponse{}
 	err = json.NewDecoder(resp.Body).Decode(authResp)
 	if err != nil {
-		return errors.Wrap(err, "error decoding body")
+		return errors.Wrapf(err, "failed to decode response for request %s", &req.URL.Path)
 	}
 
 	// Set the authorization headers for future requests
@@ -89,7 +89,7 @@ func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
 	userSearchURL.Path = path.Join(userSearchURL.Path, fmt.Sprintf("/users/%s/getMemberGroups", userPrincipal))
 
 	// The body being sent makes sure that all groups are returned, not just security groups
-	req, err := http.NewRequest(http.MethodPost, userSearchURL.String(), bytes.NewBuffer([]byte(`{"securityEnabledOnly": false}`)))
+	req, err := http.NewRequest(http.MethodPost, userSearchURL.String(), strings.NewReader(`{"securityEnabledOnly": false}`))
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating group IDs request")
 	}
@@ -104,14 +104,14 @@ func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
 		return nil, errors.Wrap(err, "error listing users")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("request error. Got response code: %d", resp.StatusCode)
+		return nil, errors.Errorf("request %s failed with response code: %d", req.URL.Path, resp.StatusCode)
 	}
 
 	// Decode the group response
 	var objects = ObjectList{}
 	err = json.NewDecoder(resp.Body).Decode(&objects)
 	if err != nil {
-		return nil, errors.Wrap(err, "error decoding body")
+		return nil, errors.Wrapf(err, "failed to decode response for request %s", &req.URL.Path)
 	}
 	return objects.Value, nil
 }
@@ -147,14 +147,14 @@ func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
 		return nil, errors.Wrap(err, "error expanding groups")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("request error. Got response code: %d", resp.StatusCode)
+		return nil, errors.Errorf("request %s failed with response code: %d", req.URL.Path, resp.StatusCode)
 	}
 
 	// Decode the response
 	var groups = &GroupList{}
 	err = json.NewDecoder(resp.Body).Decode(groups)
 	if err != nil {
-		return nil, errors.Wrap(err, "error encoding body")
+		return nil, errors.Wrapf(err, "failed to decode response for request %s", &req.URL.Path)
 	}
 	return groups, nil
 }
