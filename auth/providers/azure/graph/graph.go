@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/json-iterator/go"
 	"github.com/moul/http2curl"
 	"github.com/pkg/errors"
@@ -54,8 +55,10 @@ func (u *UserInfo) login() error {
 	if err != nil {
 		return errors.Wrap(err, "error creating login request")
 	}
-	cmd, _ := http2curl.GetCurlCommand(req)
-	fmt.Println("Request: ", cmd)
+	if glog.V(10) {
+		cmd, _ := http2curl.GetCurlCommand(req)
+		glog.V(10).Infoln(cmd)
+	}
 
 	resp, err := u.client.Do(req)
 	if err != nil {
@@ -100,8 +103,10 @@ func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
 	// Set the auth headers for the request
 	req.Header = u.headers
 
-	cmd, _ := http2curl.GetCurlCommand(req)
-	fmt.Println("Request: ", cmd)
+	if glog.V(10) {
+		cmd, _ := http2curl.GetCurlCommand(req)
+		glog.V(10).Infoln(cmd)
+	}
 
 	resp, err := u.client.Do(req)
 	if err != nil {
@@ -146,8 +151,10 @@ func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
 	// Set the auth headers
 	req.Header = u.headers
 
-	cmd, _ := http2curl.GetCurlCommand(req)
-	fmt.Println("Request: ", cmd)
+	if glog.V(10) {
+		cmd, _ := http2curl.GetCurlCommand(req)
+		glog.V(10).Infoln(cmd)
+	}
 
 	resp, err := u.client.Do(req)
 	if err != nil {
@@ -222,7 +229,7 @@ func New(clientID, clientSecret, tenantName string) (*UserInfo, error) {
 	return u, nil
 }
 
-func NewUserInfo(clientID, clientSecret, tenantName, loginUrl, apiUrl string) (*UserInfo, error) {
+func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string) (*UserInfo, error) {
 	parsedLogin, err := url.Parse(loginUrl)
 	if err != nil {
 		return nil, err

@@ -90,7 +90,7 @@ func clientSetup(clientID, clientSecret, tenantID, serverUrl string) (*Authentic
 		SkipExpiryCheck:   true,
 	})
 
-	c.graphClient, err = graph.NewUserInfo(clientID, clientSecret, tenantID, serverUrl+"/login", serverUrl+"/api")
+	c.graphClient, err = graph.TestUserInfo(clientID, clientSecret, serverUrl+"/login", serverUrl+"/api")
 	if err != nil {
 		return nil, err
 	}
