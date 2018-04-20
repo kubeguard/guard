@@ -13,11 +13,11 @@ import (
 
 	"github.com/appscode/kutil/tools/certstore"
 	"github.com/go-ldap/ldap"
+	"github.com/golang/glog"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/vjeantet/ldapserver"
 	"k8s.io/client-go/util/cert"
-	"github.com/golang/glog"
 )
 
 const (

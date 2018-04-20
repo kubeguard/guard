@@ -19,10 +19,10 @@ type CertStore struct {
 	fs           afero.Fs
 	dir          string
 	organization []string
-
-	ca     string
-	caKey  *rsa.PrivateKey
-	caCert *x509.Certificate
+	prefix       string
+	ca           string
+	caKey        *rsa.PrivateKey
+	caCert       *x509.Certificate
 }
 
 func NewCertStore(fs afero.Fs, dir string, organization ...string) (*CertStore, error) {
@@ -30,25 +30,20 @@ func NewCertStore(fs afero.Fs, dir string, organization ...string) (*CertStore, 
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create dir `%s`", dir)
 	}
-	return &CertStore{fs: fs, dir: dir, organization: append([]string(nil), organization...)}, nil
+	return &CertStore{fs: fs, dir: dir, ca: "ca", organization: append([]string(nil), organization...)}, nil
 }
 
-func (s *CertStore) InitCA(ca ...string) error {
-	err := s.LoadCA(ca...)
+func (s *CertStore) InitCA(prefix ...string) error {
+	err := s.LoadCA(prefix...)
 	if err == nil {
 		return nil
 	}
-	return s.NewCA(ca...)
+	return s.NewCA(prefix...)
 }
 
-func (s *CertStore) LoadCA(ca ...string) error {
-	switch len(ca) {
-	case 0:
-		s.ca = "ca"
-	case 1:
-		s.ca = ca[0]
-	default:
-		return fmt.Errorf("multiple ca given: %v", ca)
+func (s *CertStore) LoadCA(prefix ...string) error {
+	if err := s.prep(prefix...); err != nil {
+		return err
 	}
 
 	if s.PairExists(s.ca) {
@@ -77,14 +72,9 @@ func (s *CertStore) LoadCA(ca ...string) error {
 	return os.ErrNotExist
 }
 
-func (s *CertStore) NewCA(ca ...string) error {
-	switch len(ca) {
-	case 0:
-		s.ca = "ca"
-	case 1:
-		s.ca = ca[0]
-	default:
-		return fmt.Errorf("multiple ca given: %v", ca)
+func (s *CertStore) NewCA(prefix ...string) error {
+	if err := s.prep(prefix...); err != nil {
+		return err
 	}
 
 	key, err := cert.NewPrivateKey()
@@ -92,6 +82,18 @@ func (s *CertStore) NewCA(ca ...string) error {
 		return errors.Wrap(err, "failed to generate private key")
 	}
 	return s.createCAFromKey(key)
+}
+
+func (s *CertStore) prep(prefix ...string) error {
+	switch len(prefix) {
+	case 0:
+		s.prefix = ""
+	case 1:
+		s.prefix = strings.ToLower(strings.Trim(strings.TrimSpace(prefix[0]), "-")) + "-"
+	default:
+		return fmt.Errorf("multiple ca prefix given: %v", prefix)
+	}
+	return nil
 }
 
 func (s *CertStore) createCAFromKey(key *rsa.PrivateKey) error {
@@ -164,6 +166,26 @@ func (s *CertStore) NewServerCertPair(cn string, sans cert.AltNames) ([]byte, []
 	return cert.EncodeCertPEM(crt), cert.EncodePrivateKeyPEM(key), nil
 }
 
+// NewPeerCertPair is used to create cert pair that can serve as both server and client.
+// This is used to issue peer certificates for etcd.
+func (s *CertStore) NewPeerCertPair(cn string, sans cert.AltNames) ([]byte, []byte, error) {
+	cfg := cert.Config{
+		CommonName:   cn,
+		Organization: s.organization,
+		AltNames:     sans,
+		Usages:       []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+	}
+	key, err := cert.NewPrivateKey()
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to generate private key")
+	}
+	crt, err := cert.NewSignedCert(cfg, key, s.caCert, s.caKey)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to generate peer certificate")
+	}
+	return cert.EncodeCertPEM(crt), cert.EncodePrivateKeyPEM(key), nil
+}
+
 func (s *CertStore) NewClientCertPair(cn string, organization ...string) ([]byte, []byte, error) {
 	cfg := cert.Config{
 		CommonName:   cn,
@@ -176,7 +198,7 @@ func (s *CertStore) NewClientCertPair(cn string, organization ...string) ([]byte
 	}
 	crt, err := cert.NewSignedCert(cfg, key, s.caCert, s.caKey)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to generate server certificate")
+		return nil, nil, errors.Wrap(err, "failed to generate client certificate")
 	}
 	return cert.EncodeCertPEM(crt), cert.EncodePrivateKeyPEM(key), nil
 }
@@ -201,11 +223,19 @@ func (s *CertStore) PairExists(name string) bool {
 }
 
 func (s *CertStore) CertFile(name string) string {
-	return filepath.Join(s.dir, strings.ToLower(name)+".crt")
+	filename := strings.ToLower(name) + ".crt"
+	if s.prefix != "" {
+		filename = s.prefix + filename
+	}
+	return filepath.Join(s.dir, filename)
 }
 
 func (s *CertStore) KeyFile(name string) string {
-	return filepath.Join(s.dir, strings.ToLower(name)+".key")
+	filename := strings.ToLower(name) + ".key"
+	if s.prefix != "" {
+		filename = s.prefix + filename
+	}
+	return filepath.Join(s.dir, filename)
 }
 
 func (s *CertStore) Write(name string, crt *x509.Certificate, key *rsa.PrivateKey) error {
