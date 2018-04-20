@@ -1,5 +1,5 @@
 hash: 985979b10e93dec5096f2c8a21ca289874f8add7379504c477b0ae6c22fe5a01
-updated: 2018-04-19T23:51:26.997203701-07:00
+updated: 2018-04-19T23:59:59.741990366-07:00
 imports:
 - name: appscode.com/api
   version: 829de6245588ae7ad8d55abc87ac43c9da9a18bb
@@ -209,6 +209,8 @@ imports:
   version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
   subpackages:
   - pbutil
+- name: github.com/moul/http2curl
+  version: 9ac6cf4d929b2fa8fd2d2e6dec5bb0feb4f4911d
 - name: github.com/onsi/gomega
   version: dcabb60a477c2b6f456df65037cb6708210fbb02
   subpackages:
