@@ -40,7 +40,13 @@ Procedure to find `<application_id>`, `<application_secret>` are given below. Re
 
 ### Configure Azure Active Directory App
 
-1.  Sign in to the [Azure portal](https://portal.azure.com/)
+[![Configuring Microsoft Azure auth provider for Kubernetes using Guard](https://img.youtube.com/vi/n2kKwAFYuiM/0.jpg)](https://www.youtube-nocookie.com/embed/n2kKwAFYuiM)
+
+Configuring Azure AD as a auth provider requires an initial setup by `Global Administrator` of such AD. This involves a complex multi-step process. Please see the video above to setup your Azure AD.
+
+1.  Sign in to the [Azure portal](https://portal.azure.com/). Please make sure that you are a `Global Administrator` of your Azure AD. If not, please contact your Azure AD administrator to perform these steps.
+
+    ![aad-dir-role](/docs/images/azure/dir-role.png)
 
 2.  Create an Azure Active Directory Web App / API application
 
@@ -54,13 +60,15 @@ Procedure to find `<application_id>`, `<application_secret>` are given below. Re
 
     ![secret-key](/docs/images/azure/secret-key.png)
 
-5.  Click on the **Manifest** , set `groupMembershipClaims` to `All` and **save** the mainfest
-
-    ![update-manifest](/docs/images/azure/update-manifest.png)
-
-6.  Add **Microsoft graph** api with permission `Read directory data` and `Sign in and read user profile`.
+5.  Add **Microsoft Graph** api with _application permission_ `Read directory data` and _delegated permission_ `Read directory data` and `Sign in and read user profile`.
 
     ![add-api](/docs/images/azure/add-api.png)
+    ![add-api-2](/docs/images/azure/add-api-2.png)
+
+6. Now grant grant the permission from step 5 for all account to this application by clicking the `Grant Permissions` button. Afterwards, check the permissions for this application to confirm that grant operation was successful.
+
+    ![guard-grant-perm](/docs/images/azure/guard-grant-perm.png)
+    ![guard-permissions](/docs/images/azure/guard-permissions.png)
 
 7.  Create a second Azure Active Directory native application
 
