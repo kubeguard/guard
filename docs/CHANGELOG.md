@@ -2,20 +2,47 @@
 title: Changelog | Guard
 description: Changelog
 menu:
-  product_stash_0.1.0:
+  product_stash_0.1.1:
     identifier: changelog-guard
     name: Changelog
     parent: welcome
     weight: 10
 product_name: guard
-menu_name: product_guard_0.1.0
+menu_name: product_guard_0.1.1
 section_menu_id: welcome
-url: /products/guard/0.1.0/welcome/changelog/
+url: /products/guard/0.1.1/welcome/changelog/
 aliases:
-  - /products/guard/0.1.0/CHANGELOG/
+  - /products/guard/0.1.1/CHANGELOG/
 ---
 
 # Change Log
+
+## [Unreleased](https://github.com/appscode/guard/tree/HEAD)
+
+[Full Changelog](https://github.com/appscode/guard/compare/0.1.0...HEAD)
+
+**Closed issues:**
+
+- Test the big switch statement in server handler [\#96](https://github.com/appscode/guard/issues/96)
+
+**Merged pull requests:**
+
+- Revendor dependencies [\#129](https://github.com/appscode/guard/pull/129) ([tamalsaha](https://github.com/tamalsaha))
+- Add auth provider case insensitive check [\#128](https://github.com/appscode/guard/pull/128) ([nightfury1204](https://github.com/nightfury1204))
+- Improve azure auth provider docs [\#126](https://github.com/appscode/guard/pull/126) ([tamalsaha](https://github.com/tamalsaha))
+- Revert "Use image with tag 0.1.0 not canary" [\#125](https://github.com/appscode/guard/pull/125) ([tamalsaha](https://github.com/tamalsaha))
+- Use image with tag 0.1.0 not canary [\#124](https://github.com/appscode/guard/pull/124) ([potsbo](https://github.com/potsbo))
+- Guard Installation guide for Kubernetes Clusters built with Kubespray [\#123](https://github.com/appscode/guard/pull/123) ([vikas027](https://github.com/vikas027))
+- Update docs to indicate node selector bug in Kubespray [\#122](https://github.com/appscode/guard/pull/122) ([tamalsaha](https://github.com/tamalsaha))
+- fix error glog undefined [\#119](https://github.com/appscode/guard/pull/119) ([nightfury1204](https://github.com/nightfury1204))
+- Generate flag methods using go-enum [\#118](https://github.com/appscode/guard/pull/118) ([tamalsaha](https://github.com/tamalsaha))
+- Use github.com/golang/glog library [\#117](https://github.com/appscode/guard/pull/117) ([tamalsaha](https://github.com/tamalsaha))
+- Add simple Grafana Dashboard for Guard [\#116](https://github.com/appscode/guard/pull/116) ([alexanderdavidsen](https://github.com/alexanderdavidsen))
+- Documentation: how to create serviceMonitors for prometheus-operator [\#115](https://github.com/appscode/guard/pull/115) ([alexanderdavidsen](https://github.com/alexanderdavidsen))
+- Add test for auth provider client [\#114](https://github.com/appscode/guard/pull/114) ([nightfury1204](https://github.com/nightfury1204))
+- Fix metrics spelling [\#113](https://github.com/appscode/guard/pull/113) ([tamalsaha](https://github.com/tamalsaha))
+- Update cli reference docs [\#112](https://github.com/appscode/guard/pull/112) ([tamalsaha](https://github.com/tamalsaha))
+- Update GitLab documentation to clarify the usage of base-url [\#111](https://github.com/appscode/guard/pull/111) ([alexanderdavidsen](https://github.com/alexanderdavidsen))
 
 ## [0.1.0](https://github.com/appscode/guard/tree/0.1.0) (2018-04-04)
 [Full Changelog](https://github.com/appscode/guard/compare/0.1.0-rc.5...0.1.0)
@@ -32,8 +59,7 @@ aliases:
 - Run guard on master by default [\#19](https://github.com/appscode/guard/issues/19)
 - Installer.yaml should use /healthz checks. [\#17](https://github.com/appscode/guard/issues/17)
 - Support LDAP [\#11](https://github.com/appscode/guard/issues/11)
-- Support Active Directory / Office365 [\#10](https://github.com/appscode/guard/issues/10)
-- Test the big switch statement in server handler [\#96](https://github.com/appscode/guard/issues/96)
+- Support Azure Active Directory / Office365 [\#10](https://github.com/appscode/guard/issues/10)
 - Fix installer [\#91](https://github.com/appscode/guard/issues/91)
 - Kerberos [\#58](https://github.com/appscode/guard/issues/58)
 - Is the google auth actually working/tested? [\#36](https://github.com/appscode/guard/issues/36)
@@ -42,6 +68,8 @@ aliases:
 
 **Merged pull requests:**
 
+- Support lowercase match for LDAP auth choice [\#110](https://github.com/appscode/guard/pull/110) ([tamalsaha](https://github.com/tamalsaha))
+- Update changelog [\#108](https://github.com/appscode/guard/pull/108) ([tamalsaha](https://github.com/tamalsaha))
 - Update readme. [\#107](https://github.com/appscode/guard/pull/107) ([tamalsaha](https://github.com/tamalsaha))
 - Prepare docs for 0.1.0 [\#106](https://github.com/appscode/guard/pull/106) ([tamalsaha](https://github.com/tamalsaha))
 - Reorder auth providers [\#105](https://github.com/appscode/guard/pull/105) ([tamalsaha](https://github.com/tamalsaha))

@@ -1,12 +1,12 @@
 ---
 title: Guard Get Token
 menu:
-  product_guard_0.1.0:
+  product_guard_0.1.1:
     identifier: guard-get-token
     name: Guard Get Token
     parent: reference
 product_name: guard
-menu_name: product_guard_0.1.0
+menu_name: product_guard_0.1.1
 section_menu_id: reference
 ---
 ## guard get token
