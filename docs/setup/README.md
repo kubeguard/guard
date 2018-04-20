@@ -21,6 +21,7 @@ Setup contains instructions for installing the Guard and its various components 
 
 - [Install](/docs/setup/install.md). Installation instructions for Guard.
 - [Install in Kops](/docs/setup/install-kops.md). Installation instructions for Kops.
+- [Install in Kubespray](/docs/setup/install-kubespray.md). Installation instructions for Kubespray.
 - [Uninstall Guard](/docs/setup/uninstall.md). Instructions for uninstallating Guard.
 - Developer Guide
   - [Overview](/docs/setup/developer-guide/overview.md). Outlines everything you need to know from setting up your dev environment to how to build and test Guard.

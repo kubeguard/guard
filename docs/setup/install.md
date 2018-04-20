@@ -18,8 +18,10 @@ section_menu_id: setup
 
 Guard binary works as a cli and server. In cli mode, you can use `guard` to generate various configuration to easily deploy Guard server. Guard server uses TLS client auth to secure the communication channel between Kubernetes api server and Guard server. You can run Guard server external to a Kubernetes cluster. This document shows you how to `self-host` Guard server in a Kubernetes cluster. To that end, we run Guard server using a predefined Service ClusterIP `10.96.10.96` and port `443`. This ClusterIP is chosen so that it falls in the default --service-cidr range for [Kubeadm](https://kubernetes.io/docs/admin/kubeadm/). If the service CIDR range for your cluster is different, please pick an appropriate ClusterIP.
 
-If you want to set up guard via [kops](https://github.com/kubernetes/kops) use [this
-documentation](/docs/setup/install-kops.md) to see differences in setup.
+If you want to set up guard via [__Kops__](https://github.com/kubernetes/kops) visit [here](/docs/setup/install-kops.md) to see differences in setup.
+
+If you want to set up guard via [__Kubespray__](https://github.com/kubernetes-incubator/kubespray) visit [here](/docs/setup/install-kubespray.md).
+
 
 ## Install Guard as CLI
 Download pre-built binaries from [appscode/guard Github releases](https://github.com/appscode/guard/releases) and put the binary to some directory in your `PATH`. To install on Linux 64-bit and MacOS 64-bit you can run the following commands:
