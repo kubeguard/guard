@@ -3,6 +3,7 @@ package graph
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -60,8 +61,11 @@ func (u *UserInfo) login() error {
 	if err != nil {
 		return errors.Wrap(err, "error performing login")
 	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("request %s failed with response code: %d", req.URL.Path, resp.StatusCode)
+		data, _ := ioutil.ReadAll(resp.Body)
+		return errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data))
 	}
 	// Decode the response
 	var authResp = &AuthResponse{}
@@ -103,8 +107,11 @@ func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error listing users")
 	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("request %s failed with response code: %d", req.URL.Path, resp.StatusCode)
+		data, _ := ioutil.ReadAll(resp.Body)
+		return nil, errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data))
 	}
 
 	// Decode the group response
@@ -146,8 +153,11 @@ func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error expanding groups")
 	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("request %s failed with response code: %d", req.URL.Path, resp.StatusCode)
+		data, _ := ioutil.ReadAll(resp.Body)
+		return nil, errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data))
 	}
 
 	// Decode the response
