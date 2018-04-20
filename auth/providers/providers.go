@@ -49,9 +49,9 @@ func (a *AuthProviders) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object
 }
 
 func (a *AuthProviders) Has(name string) bool {
-	name = strings.TrimSpace(strings.ToLower(name))
+	name = strings.TrimSpace(name)
 	for _, p := range a.Providers {
-		if strings.ToLower(p) == name {
+		if strings.EqualFold(p, name) {
 			return true
 		}
 	}
