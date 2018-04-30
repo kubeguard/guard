@@ -18,9 +18,10 @@ import (
 
 // These are the base URL endpoints for MS graph
 var (
-	baseAPIURL, _ = url.Parse("https://graph.microsoft.com/v1.0")
-	loginURL      = "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
-	json          = jsoniter.ConfigCompatibleWithStandardLibrary
+	baseAPIURL, _         = url.Parse("https://graph.microsoft.com/v1.0")
+	loginURL              = "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
+	json                  = jsoniter.ConfigCompatibleWithStandardLibrary
+	expandedGroupsPerCall = 500
 )
 
 const (
@@ -40,6 +41,8 @@ type UserInfo struct {
 	// These allow us to mock out the URL for testing
 	apiURL   *url.URL
 	loginURL *url.URL
+
+	groupsPerCall int
 }
 
 func (u *UserInfo) login() error {
@@ -128,6 +131,21 @@ func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
 	return objects.Value, nil
 }
 
+func (u *UserInfo) getAndCreateExpandedGroupsList(finalGroupNameList []string, partialGroupList []string) ([]string, error) {
+	// Expand the group IDs
+	groups, err := u.getExpandedGroups(partialGroupList)
+	if err != nil {
+		return finalGroupNameList, err
+	}
+
+	// Extract out the Group objects into a list of strings
+	for i := 0; i < len(groups.Value); i++ {
+		finalGroupNameList = append(finalGroupNameList, groups.Value[i].Name)
+	}
+
+	return finalGroupNameList, nil
+}
+
 func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
 	// Encode the ids into the request body
 	body := &bytes.Buffer{}
@@ -190,17 +208,37 @@ func (u *UserInfo) GetGroups(userPrincipal string) ([]string, error) {
 		return nil, err
 	}
 
-	// Expand the group IDs
-	groups, err := u.getExpandedGroups(objIDs)
-	if err != nil {
-		return nil, err
+	totalGroupIDCount := len(objIDs)
+	totalFullGets := totalGroupIDCount / u.groupsPerCall
+	totalIDsInPartialGets := totalGroupIDCount % u.groupsPerCall
+
+	glog.V(10).Infof("totalGroupIDCount: %d, totalFullGets: %d, totalIDsInPartialGets: %d \n", totalGroupIDCount, totalFullGets, totalIDsInPartialGets)
+
+	finalList := make([]string, 0)
+	for i := 0; i < totalFullGets; i++ {
+		startIndex := i * u.groupsPerCall
+		endIndex := startIndex + u.groupsPerCall
+
+		glog.V(10).Infof("Getting group names for IDs between startIndex: %d and endIndex: %d \n", startIndex, endIndex)
+
+		partialObjIDList := objIDs[startIndex:endIndex]
+		finalList, err = u.getAndCreateExpandedGroupsList(finalList, partialObjIDList)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// Extract out the Group objects into a list of strings
-	var finalList = make([]string, len(groups.Value))
-	for i := 0; i < len(groups.Value); i++ {
-		finalList[i] = groups.Value[i].Name
+	if totalIDsInPartialGets > 0 {
+		startIndex := totalFullGets * u.groupsPerCall
+		glog.V(10).Infof("Getting group names for IDs from startIndex: %d \n", startIndex)
+
+		partialObjIDList := objIDs[startIndex:]
+		finalList, err = u.getAndCreateExpandedGroupsList(finalList, partialObjIDList)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	return finalList, nil
 }
 
@@ -220,10 +258,11 @@ func New(clientID, clientSecret, tenantName string) (*UserInfo, error) {
 		headers: http.Header{
 			"Content-Type": []string{"application/json"},
 		},
-		apiURL:       baseAPIURL,
-		loginURL:     parsedLogin,
-		clientID:     clientID,
-		clientSecret: clientSecret,
+		apiURL:        baseAPIURL,
+		loginURL:      parsedLogin,
+		clientID:      clientID,
+		clientSecret:  clientSecret,
+		groupsPerCall: expandedGroupsPerCall,
 	}
 
 	return u, nil
@@ -243,10 +282,11 @@ func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string) (*UserInfo, e
 		headers: http.Header{
 			"Content-Type": []string{"application/json"},
 		},
-		apiURL:       parsedApi,
-		loginURL:     parsedLogin,
-		clientID:     clientID,
-		clientSecret: clientSecret,
+		apiURL:        parsedApi,
+		loginURL:      parsedLogin,
+		clientID:      clientID,
+		clientSecret:  clientSecret,
+		groupsPerCall: expandedGroupsPerCall,
 	}
 	err = u.login()
 	if err != nil {
