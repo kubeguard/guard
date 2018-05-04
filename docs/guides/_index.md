@@ -1,9 +1,9 @@
 ---
 title: Guides | Guard
 menu:
-  product_guard_0.1.1:
+  product_guard_0.1.2:
     identifier: guides
     name: Guides
     weight: 40
-menu_name: product_guard_0.1.1
+menu_name: product_guard_0.1.2
 ---
