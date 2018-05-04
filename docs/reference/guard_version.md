@@ -1,12 +1,12 @@
 ---
 title: Guard Version
 menu:
-  product_guard_0.1.1:
+  product_guard_0.1.2:
     identifier: guard-version
     name: Guard Version
     parent: reference
 product_name: guard
-menu_name: product_guard_0.1.1
+menu_name: product_guard_0.1.2
 section_menu_id: reference
 ---
 ## guard version

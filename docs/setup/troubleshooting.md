@@ -1,13 +1,13 @@
 ---
 title: Troubleshoot Guard Installer
 menu:
-  product_guard_0.1.1:
+  product_guard_0.1.2:
     identifier: troubleshoot-guard
     name: Troubleshooting
     parent: setup
     weight: 25
 product_name: guard
-menu_name: product_guard_0.1.1
+menu_name: product_guard_0.1.2
 section_menu_id: setup
 ---
 

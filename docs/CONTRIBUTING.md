@@ -2,17 +2,17 @@
 title: Contributing | Guard
 description: Contributing
 menu:
-  product_guard_0.1.1:
+  product_guard_0.1.2:
     identifier: contributing-guard
     name: Contributing
     parent: welcome
     weight: 10
 product_name: guard
-menu_name: product_guard_0.1.1
+menu_name: product_guard_0.1.2
 section_menu_id: welcome
-url: /products/guard/0.1.1/welcome/contributing/
+url: /products/guard/0.1.2/welcome/contributing/
 aliases:
-  - /products/guard/0.1.1/CONTRIBUTING/
+  - /products/guard/0.1.2/CONTRIBUTING/
 ---
 
 # Contribution Guidelines
