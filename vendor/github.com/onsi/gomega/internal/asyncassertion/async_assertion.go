@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/onsi/gomega/internal/oraclematcher"
 	"github.com/onsi/gomega/types"
 )
 
@@ -87,12 +86,21 @@ func (assertion *AsyncAssertion) pollActual() (interface{}, error) {
 	return assertion.actualInput, nil
 }
 
+type oracleMatcher interface {
+	MatchMayChangeInTheFuture(actual interface{}) bool
+}
+
 func (assertion *AsyncAssertion) matcherMayChange(matcher types.GomegaMatcher, value interface{}) bool {
 	if assertion.actualInputIsAFunction() {
 		return true
 	}
 
-	return oraclematcher.MatchMayChangeInTheFuture(matcher, value)
+	oracleMatcher, ok := matcher.(oracleMatcher)
+	if !ok {
+		return true
+	}
+
+	return oracleMatcher.MatchMayChangeInTheFuture(value)
 }
 
 func (assertion *AsyncAssertion) match(matcher types.GomegaMatcher, desiredMatch bool, optionalDescription ...interface{}) bool {

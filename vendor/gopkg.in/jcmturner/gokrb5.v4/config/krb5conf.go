@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/user"
 	"regexp"
@@ -16,7 +17,6 @@ import (
 
 	"github.com/jcmturner/gofork/encoding/asn1"
 	"gopkg.in/jcmturner/gokrb5.v4/iana/etypeID"
-	"net"
 )
 
 // Config represents the KRB5 configuration.
@@ -84,29 +84,35 @@ type LibDefaults struct {
 
 // Create a new LibDefaults struct.
 func newLibDefaults() *LibDefaults {
+	uid := "0"
+	var hdir string
 	usr, _ := user.Current()
+	if usr != nil {
+		uid = usr.Uid
+		hdir = usr.HomeDir
+	}
 	opts := asn1.BitString{}
 	opts.Bytes, _ = hex.DecodeString("00000010")
 	opts.BitLength = len(opts.Bytes) * 8
 	return &LibDefaults{
 		CCacheType:              4,
 		Clockskew:               time.Duration(300) * time.Second,
-		DefaultClientKeytabName: fmt.Sprintf("/usr/local/var/krb5/user/%v/client.keytab", usr.Uid),
+		DefaultClientKeytabName: fmt.Sprintf("/usr/local/var/krb5/user/%s/client.keytab", uid),
 		DefaultKeytabName:       "/etc/krb5.keytab",
 		DefaultTGSEnctypes:      []string{"aes256-cts-hmac-sha1-96", "aes128-cts-hmac-sha1-96", "des3-cbc-sha1", "arcfour-hmac-md5", "camellia256-cts-cmac", "camellia128-cts-cmac", "des-cbc-crc", "des-cbc-md5", "des-cbc-md4"},
 		DefaultTktEnctypes:      []string{"aes256-cts-hmac-sha1-96", "aes128-cts-hmac-sha1-96", "des3-cbc-sha1", "arcfour-hmac-md5", "camellia256-cts-cmac", "camellia128-cts-cmac", "des-cbc-crc", "des-cbc-md5", "des-cbc-md4"},
 		DNSCanonicalizeHostname: true,
-		K5LoginDirectory:        usr.HomeDir,
+		K5LoginDirectory:        hdir,
 		KDCDefaultOptions:       opts,
 		KDCTimeSync:             1,
 		NoAddresses:             true,
 		PermittedEnctypes:       []string{"aes256-cts-hmac-sha1-96", "aes128-cts-hmac-sha1-96", "des3-cbc-sha1", "arcfour-hmac-md5", "camellia256-cts-cmac", "camellia128-cts-cmac", "des-cbc-crc", "des-cbc-md5", "des-cbc-md4"},
+		RDNS:                    true,
+		RealmTryDomains:         -1,
+		SafeChecksumType:        8,
+		TicketLifetime:          time.Duration(24) * time.Hour,
+		UDPPreferenceLimit:      1465,
 		PreferredPreauthTypes:   []int{17, 16, 15, 14},
-		RDNS:               true,
-		RealmTryDomains:    -1,
-		SafeChecksumType:   8,
-		TicketLifetime:     time.Duration(24) * time.Hour,
-		UDPPreferenceLimit: 1465,
 	}
 }
 
@@ -329,7 +335,7 @@ func (r *Realm) parseLines(name string, lines []string) error {
 			continue
 		}
 		if !strings.Contains(line, "=") {
-			return fmt.Errorf("Realm configuration line invalid: %s", line)
+			return fmt.Errorf("realm configuration line invalid: %s", line)
 		}
 
 		p := strings.Split(line, "=")
@@ -384,11 +390,11 @@ func parseRealms(lines []string) ([]Realm, error) {
 		if strings.Contains(l, "{") {
 			if start >= 0 {
 				// already started a block!!!
-				return nil, errors.New("Invalid Realms section in configuration")
+				return nil, errors.New("invalid Realms section in configuration")
 			}
 			start = i
 			if !strings.Contains(l, "=") {
-				return nil, fmt.Errorf("Realm configuration line invalid: %s", l)
+				return nil, fmt.Errorf("realm configuration line invalid: %s", l)
 			}
 			p := strings.Split(l, "=")
 			name = strings.TrimSpace(p[0])
@@ -396,7 +402,7 @@ func parseRealms(lines []string) ([]Realm, error) {
 		if strings.Contains(l, "}") {
 			if start < 0 {
 				// but not started a block!!!
-				return nil, errors.New("Invalid Realms section in configuration")
+				return nil, errors.New("invalid Realms section in configuration")
 			}
 			var r Realm
 			r.parseLines(name, lines[start+1:i])
@@ -417,7 +423,7 @@ func (d *DomainRealm) parseLines(lines []string) error {
 			continue
 		}
 		if !strings.Contains(line, "=") {
-			return fmt.Errorf("Realm configuration line invalid: %s", line)
+			return fmt.Errorf("realm configuration line invalid: %s", line)
 		}
 		p := strings.Split(line, "=")
 		domain := strings.TrimSpace(strings.ToLower(p[0]))
@@ -462,7 +468,7 @@ func (c *Config) ResolveRealm(domainName string) string {
 func Load(cfgPath string) (*Config, error) {
 	fh, err := os.Open(cfgPath)
 	if err != nil {
-		return nil, errors.New("Configuration file could not be openned: " + cfgPath + " " + err.Error())
+		return nil, errors.New("configuration file could not be openned: " + cfgPath + " " + err.Error())
 	}
 	defer fh.Close()
 	scanner := bufio.NewScanner(fh)
@@ -525,18 +531,18 @@ func NewConfigFromScanner(scanner *bufio.Scanner) (*Config, error) {
 		case "libdefaults":
 			err := c.LibDefaults.parseLines(lines[start:end])
 			if err != nil {
-				return nil, fmt.Errorf("Error processing libdefaults section: %v", err)
+				return nil, fmt.Errorf("error processing libdefaults section: %v", err)
 			}
 		case "realms":
 			realms, err := parseRealms(lines[start:end])
 			if err != nil {
-				return nil, fmt.Errorf("Error processing realms section: %v", err)
+				return nil, fmt.Errorf("error processing realms section: %v", err)
 			}
 			c.Realms = realms
 		case "domain_realm":
 			err := c.DomainRealm.parseLines(lines[start:end])
 			if err != nil {
-				return nil, fmt.Errorf("Error processing domaain_realm section: %v", err)
+				return nil, fmt.Errorf("error processing domaain_realm section: %v", err)
 			}
 		default:
 			continue
@@ -578,13 +584,13 @@ func parseDuration(s string) (time.Duration, error) {
 		ds := strings.SplitN(s, "d", 2)
 		dn, err := strconv.ParseUint(ds[0], 10, 32)
 		if err != nil {
-			return time.Duration(0), errors.New("invalid time duration.")
+			return time.Duration(0), errors.New("invalid time duration")
 		}
 		d := time.Duration(dn*24) * time.Hour
 		if ds[1] != "" {
 			dp, err := time.ParseDuration(ds[1])
 			if err != nil {
-				return time.Duration(0), errors.New("invalid time duration.")
+				return time.Duration(0), errors.New("invalid time duration")
 			}
 			d = d + dp
 		}
@@ -607,13 +613,13 @@ func parseDuration(s string) (time.Duration, error) {
 	if strings.Contains(s, ":") {
 		t := strings.Split(s, ":")
 		if 2 > len(t) || len(t) > 3 {
-			return time.Duration(0), errors.New("Invalid time duration value")
+			return time.Duration(0), errors.New("invalid time duration value")
 		}
 		var i []int
 		for _, n := range t {
 			j, err := strconv.ParseInt(n, 10, 16)
 			if err != nil {
-				return time.Duration(0), errors.New("Invalid time duration value")
+				return time.Duration(0), errors.New("invalid time duration value")
 			}
 			i = append(i, int(j))
 		}
@@ -623,7 +629,7 @@ func parseDuration(s string) (time.Duration, error) {
 		}
 		return d, nil
 	}
-	return time.Duration(0), errors.New("Invalid time duration value")
+	return time.Duration(0), errors.New("invalid time duration value")
 }
 
 // Parse possible boolean values to golang bool.
@@ -643,7 +649,7 @@ func parseBoolean(s string) (bool, error) {
 	case "n":
 		return false, nil
 	}
-	return false, errors.New("Invalid boolean value")
+	return false, errors.New("invalid boolean value")
 }
 
 // Parse array of strings but stop if an asterisk is placed at the end of a line.

@@ -2,6 +2,7 @@ package pac
 
 import (
 	"fmt"
+
 	"gopkg.in/jcmturner/gokrb5.v4/mstypes"
 	"gopkg.in/jcmturner/gokrb5.v4/ndr"
 )
@@ -15,7 +16,7 @@ type DeviceClaimsInfo struct {
 func (k *DeviceClaimsInfo) Unmarshal(b []byte) error {
 	ch, _, p, err := ndr.ReadHeaders(&b)
 	if err != nil {
-		return fmt.Errorf("Error parsing byte stream headers: %v", err)
+		return fmt.Errorf("error parsing byte stream headers: %v", err)
 	}
 	e := &ch.Endianness
 
@@ -28,7 +29,7 @@ func (k *DeviceClaimsInfo) Unmarshal(b []byte) error {
 	if len(b) >= p {
 		for _, v := range b[p:] {
 			if v != 0 {
-				return ndr.Malformed{EText: "Non-zero padding left over at end of data stream"}
+				return ndr.Malformed{EText: "non-zero padding left over at end of data stream"}
 			}
 		}
 	}
