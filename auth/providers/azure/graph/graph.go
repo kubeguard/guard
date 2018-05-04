@@ -18,9 +18,10 @@ import (
 
 // These are the base URL endpoints for MS graph
 var (
-	baseAPIURL, _ = url.Parse("https://graph.microsoft.com/v1.0")
-	loginURL      = "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
-	json          = jsoniter.ConfigCompatibleWithStandardLibrary
+	baseAPIURL, _         = url.Parse("https://graph.microsoft.com/v1.0")
+	loginURL              = "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
+	json                  = jsoniter.ConfigCompatibleWithStandardLibrary
+	expandedGroupsPerCall = 500
 )
 
 const (
@@ -40,6 +41,8 @@ type UserInfo struct {
 	// These allow us to mock out the URL for testing
 	apiURL   *url.URL
 	loginURL *url.URL
+
+	groupsPerCall int
 }
 
 func (u *UserInfo) login() error {
@@ -185,23 +188,39 @@ func (u *UserInfo) GetGroups(userPrincipal string) ([]string, error) {
 	}
 
 	// Get the group IDs for the user
-	objIDs, err := u.getGroupIDs(userPrincipal)
+	groupIDs, err := u.getGroupIDs(userPrincipal)
 	if err != nil {
 		return nil, err
 	}
 
-	// Expand the group IDs
-	groups, err := u.getExpandedGroups(objIDs)
-	if err != nil {
-		return nil, err
+	totalGroups := len(groupIDs)
+	glog.V(10).Infof("totalGroups: %d", totalGroups)
+
+	groupNames := make([]string, 0, totalGroups)
+	for i := 0; i < totalGroups; i += u.groupsPerCall {
+		startIndex := i
+		endIndex := min(i+u.groupsPerCall, totalGroups)
+		glog.V(10).Infof("Getting group names for IDs between startIndex: %d and endIndex: %d", startIndex, endIndex)
+
+		// Expand the group IDs
+		groups, err := u.getExpandedGroups(groupIDs[startIndex:endIndex])
+		if err != nil {
+			return nil, err
+		}
+		// Extract out the Group objects into a list of strings
+		for i := 0; i < len(groups.Value); i++ {
+			groupNames = append(groupNames, groups.Value[i].Name)
+		}
 	}
 
-	// Extract out the Group objects into a list of strings
-	var finalList = make([]string, len(groups.Value))
-	for i := 0; i < len(groups.Value); i++ {
-		finalList[i] = groups.Value[i].Name
+	return groupNames, nil
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
 	}
-	return finalList, nil
+	return b
 }
 
 // Name returns the name of this getter
@@ -220,10 +239,11 @@ func New(clientID, clientSecret, tenantName string) (*UserInfo, error) {
 		headers: http.Header{
 			"Content-Type": []string{"application/json"},
 		},
-		apiURL:       baseAPIURL,
-		loginURL:     parsedLogin,
-		clientID:     clientID,
-		clientSecret: clientSecret,
+		apiURL:        baseAPIURL,
+		loginURL:      parsedLogin,
+		clientID:      clientID,
+		clientSecret:  clientSecret,
+		groupsPerCall: expandedGroupsPerCall,
 	}
 
 	return u, nil
@@ -243,10 +263,11 @@ func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string) (*UserInfo, e
 		headers: http.Header{
 			"Content-Type": []string{"application/json"},
 		},
-		apiURL:       parsedApi,
-		loginURL:     parsedLogin,
-		clientID:     clientID,
-		clientSecret: clientSecret,
+		apiURL:        parsedApi,
+		loginURL:      parsedLogin,
+		clientID:      clientID,
+		clientSecret:  clientSecret,
+		groupsPerCall: expandedGroupsPerCall,
 	}
 	err = u.login()
 	if err != nil {
