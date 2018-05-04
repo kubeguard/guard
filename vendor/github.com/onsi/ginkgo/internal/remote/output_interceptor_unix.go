@@ -1,4 +1,4 @@
-// +build freebsd openbsd netbsd dragonfly darwin linux solaris
+// +build freebsd openbsd netbsd dragonfly darwin linux
 
 package remote
 
@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
+	"syscall"
 )
 
 func NewOutputInterceptor() OutputInterceptor {
@@ -13,8 +14,10 @@ func NewOutputInterceptor() OutputInterceptor {
 }
 
 type outputInterceptor struct {
-	redirectFile *os.File
-	intercepting bool
+	stdoutPlaceholder *os.File
+	stderrPlaceholder *os.File
+	redirectFile      *os.File
+	intercepting      bool
 }
 
 func (interceptor *outputInterceptor) StartInterceptingOutput() error {
@@ -30,12 +33,21 @@ func (interceptor *outputInterceptor) StartInterceptingOutput() error {
 		return err
 	}
 
-	// Call a function in ./syscall_dup_*.go
-	// If building for everything other than linux_arm64,
-	// use a "normal" syscall.Dup2(oldfd, newfd) call. If building for linux_arm64 (which doesn't have syscall.Dup2)
-	// call syscall.Dup3(oldfd, newfd, 0). They are nearly identical, see: http://linux.die.net/man/2/dup3
-	syscallDup(int(interceptor.redirectFile.Fd()), 1)
-	syscallDup(int(interceptor.redirectFile.Fd()), 2)
+	interceptor.stdoutPlaceholder, err = ioutil.TempFile("", "ginkgo-output")
+	if err != nil {
+		return err
+	}
+
+	interceptor.stderrPlaceholder, err = ioutil.TempFile("", "ginkgo-output")
+	if err != nil {
+		return err
+	}
+
+	syscall.Dup2(1, int(interceptor.stdoutPlaceholder.Fd()))
+	syscall.Dup2(2, int(interceptor.stderrPlaceholder.Fd()))
+
+	syscall.Dup2(int(interceptor.redirectFile.Fd()), 1)
+	syscall.Dup2(int(interceptor.redirectFile.Fd()), 2)
 
 	return nil
 }
@@ -45,9 +57,18 @@ func (interceptor *outputInterceptor) StopInterceptingAndReturnOutput() (string,
 		return "", errors.New("Not intercepting output!")
 	}
 
-	interceptor.redirectFile.Close()
+	syscall.Dup2(int(interceptor.stdoutPlaceholder.Fd()), 1)
+	syscall.Dup2(int(interceptor.stderrPlaceholder.Fd()), 2)
+
+	for _, f := range []*os.File{interceptor.redirectFile, interceptor.stdoutPlaceholder, interceptor.stderrPlaceholder} {
+		f.Close()
+	}
+
 	output, err := ioutil.ReadFile(interceptor.redirectFile.Name())
-	os.Remove(interceptor.redirectFile.Name())
+
+	for _, f := range []*os.File{interceptor.redirectFile, interceptor.stdoutPlaceholder, interceptor.stderrPlaceholder} {
+		os.Remove(f.Name())
+	}
 
 	interceptor.intercepting = false
 

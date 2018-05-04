@@ -2,9 +2,8 @@ package matchers
 
 import (
 	"fmt"
-	"reflect"
-
 	"github.com/onsi/gomega/format"
+	"reflect"
 )
 
 type AssignableToTypeOfMatcher struct {
@@ -13,7 +12,7 @@ type AssignableToTypeOfMatcher struct {
 
 func (matcher *AssignableToTypeOfMatcher) Match(actual interface{}) (success bool, err error) {
 	if actual == nil || matcher.Expected == nil {
-		return false, fmt.Errorf("Refusing to compare <nil> to <nil>.\nBe explicit and use BeNil() instead.  This is to avoid mistakes where both sides of an assertion are erroneously uninitialized.")
+		return false, fmt.Errorf("Refusing to compare <nil> to <nil>.")
 	}
 
 	actualType := reflect.TypeOf(actual)

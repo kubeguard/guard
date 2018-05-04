@@ -8,11 +8,8 @@ package stenographer
 
 import (
 	"fmt"
-	"io"
-	"runtime"
 	"strings"
 
-	"github.com/onsi/ginkgo/reporters/stenographer/support/go-colorable"
 	"github.com/onsi/ginkgo/types"
 )
 
@@ -37,8 +34,7 @@ const (
 type Stenographer interface {
 	AnnounceSuite(description string, randomSeed int64, randomizingAll bool, succinct bool)
 	AnnounceAggregatedParallelRun(nodes int, succinct bool)
-	AnnounceParallelRun(node int, nodes int, succinct bool)
-	AnnounceTotalNumberOfSpecs(total int, succinct bool)
+	AnnounceParallelRun(node int, nodes int, specsToRun int, totalSpecs int, succinct bool)
 	AnnounceNumberOfSpecs(specsToRun int, total int, succinct bool)
 	AnnounceSpecRunCompletion(summary *types.SuiteSummary, succinct bool)
 
@@ -53,7 +49,7 @@ type Stenographer interface {
 	AnnounceSuccesfulMeasurement(spec *types.SpecSummary, succinct bool)
 
 	AnnouncePendingSpec(spec *types.SpecSummary, noisy bool)
-	AnnounceSkippedSpec(spec *types.SpecSummary, succinct bool, fullTrace bool)
+	AnnounceSkippedSpec(spec *types.SpecSummary)
 
 	AnnounceSpecTimedOut(spec *types.SpecSummary, succinct bool, fullTrace bool)
 	AnnounceSpecPanicked(spec *types.SpecSummary, succinct bool, fullTrace bool)
@@ -62,26 +58,16 @@ type Stenographer interface {
 	SummarizeFailures(summaries []*types.SpecSummary)
 }
 
-func New(color bool, enableFlakes bool) Stenographer {
-	denoter := "•"
-	if runtime.GOOS == "windows" {
-		denoter = "+"
-	}
+func New(color bool) Stenographer {
 	return &consoleStenographer{
-		color:        color,
-		denoter:      denoter,
-		cursorState:  cursorStateTop,
-		enableFlakes: enableFlakes,
-		w:            colorable.NewColorableStdout(),
+		color:       color,
+		cursorState: cursorStateTop,
 	}
 }
 
 type consoleStenographer struct {
-	color        bool
-	denoter      string
-	cursorState  cursorStateType
-	enableFlakes bool
-	w            io.Writer
+	color       bool
+	cursorState cursorStateType
 }
 
 var alternatingColors = []string{defaultStyle, grayColor}
@@ -99,15 +85,17 @@ func (s *consoleStenographer) AnnounceSuite(description string, randomSeed int64
 	s.printNewLine()
 }
 
-func (s *consoleStenographer) AnnounceParallelRun(node int, nodes int, succinct bool) {
+func (s *consoleStenographer) AnnounceParallelRun(node int, nodes int, specsToRun int, totalSpecs int, succinct bool) {
 	if succinct {
 		s.print(0, "- node #%d ", node)
 		return
 	}
 	s.println(0,
-		"Parallel test node %s/%s.",
+		"Parallel test node %s/%s. Assigned %s of %s specs.",
 		s.colorize(boldStyle, "%d", node),
 		s.colorize(boldStyle, "%d", nodes),
+		s.colorize(boldStyle, "%d", specsToRun),
+		s.colorize(boldStyle, "%d", totalSpecs),
 	)
 	s.printNewLine()
 }
@@ -139,20 +127,6 @@ func (s *consoleStenographer) AnnounceNumberOfSpecs(specsToRun int, total int, s
 	s.printNewLine()
 }
 
-func (s *consoleStenographer) AnnounceTotalNumberOfSpecs(total int, succinct bool) {
-	if succinct {
-		s.print(0, "- %d specs ", total)
-		s.stream()
-		return
-	}
-	s.println(0,
-		"Will run %s specs",
-		s.colorize(boldStyle, "%d", total),
-	)
-
-	s.printNewLine()
-}
-
 func (s *consoleStenographer) AnnounceSpecRunCompletion(summary *types.SuiteSummary, succinct bool) {
 	if succinct && summary.SuiteSucceeded {
 		s.print(0, " %s %s ", s.colorize(greenColor, "SUCCESS!"), summary.RunTime)
@@ -172,16 +146,11 @@ func (s *consoleStenographer) AnnounceSpecRunCompletion(summary *types.SuiteSumm
 		status = s.colorize(boldStyle+redColor, "FAIL!")
 	}
 
-	flakes := ""
-	if s.enableFlakes {
-		flakes = " | " + s.colorize(yellowColor+boldStyle, "%d Flaked", summary.NumberOfFlakedSpecs)
-	}
-
 	s.print(0,
 		"%s -- %s | %s | %s | %s ",
 		status,
 		s.colorize(greenColor+boldStyle, "%d Passed", summary.NumberOfPassedSpecs),
-		s.colorize(redColor+boldStyle, "%d Failed", summary.NumberOfFailedSpecs)+flakes,
+		s.colorize(redColor+boldStyle, "%d Failed", summary.NumberOfFailedSpecs),
 		s.colorize(yellowColor+boldStyle, "%d Pending", summary.NumberOfPendingSpecs),
 		s.colorize(cyanColor+boldStyle, "%d Skipped", summary.NumberOfSkippedSpecs),
 	)
@@ -228,7 +197,7 @@ func (s *consoleStenographer) announceSetupFailure(name string, summary *types.S
 
 	s.println(0, s.colorize(redColor+boldStyle, "%s [%.3f seconds]", message, summary.RunTime.Seconds()))
 
-	indentation := s.printCodeLocationBlock([]string{name}, []types.CodeLocation{summary.CodeLocation}, summary.ComponentType, 0, summary.State, true)
+	indentation := s.printCodeLocationBlock([]string{name}, []types.CodeLocation{summary.CodeLocation}, summary.ComponentType, 0, true, true)
 
 	s.printNewLine()
 	s.printFailure(indentation, summary.State, summary.Failure, fullTrace)
@@ -247,13 +216,13 @@ func (s *consoleStenographer) AnnounceCapturedOutput(output string) {
 }
 
 func (s *consoleStenographer) AnnounceSuccesfulSpec(spec *types.SpecSummary) {
-	s.print(0, s.colorize(greenColor, s.denoter))
+	s.print(0, s.colorize(greenColor, "•"))
 	s.stream()
 }
 
 func (s *consoleStenographer) AnnounceSuccesfulSlowSpec(spec *types.SpecSummary, succinct bool) {
 	s.printBlockWithMessage(
-		s.colorize(greenColor, "%s [SLOW TEST:%.3f seconds]", s.denoter, spec.RunTime.Seconds()),
+		s.colorize(greenColor, "• [SLOW TEST:%.3f seconds]", spec.RunTime.Seconds()),
 		"",
 		spec,
 		succinct,
@@ -262,7 +231,7 @@ func (s *consoleStenographer) AnnounceSuccesfulSlowSpec(spec *types.SpecSummary,
 
 func (s *consoleStenographer) AnnounceSuccesfulMeasurement(spec *types.SpecSummary, succinct bool) {
 	s.printBlockWithMessage(
-		s.colorize(greenColor, "%s [MEASUREMENT]", s.denoter),
+		s.colorize(greenColor, "• [MEASUREMENT]"),
 		s.measurementReport(spec, succinct),
 		spec,
 		succinct,
@@ -283,33 +252,21 @@ func (s *consoleStenographer) AnnouncePendingSpec(spec *types.SpecSummary, noisy
 	}
 }
 
-func (s *consoleStenographer) AnnounceSkippedSpec(spec *types.SpecSummary, succinct bool, fullTrace bool) {
-	// Skips at runtime will have a non-empty spec.Failure. All others should be succinct.
-	if succinct || spec.Failure == (types.SpecFailure{}) {
-		s.print(0, s.colorize(cyanColor, "S"))
-		s.stream()
-	} else {
-		s.startBlock()
-		s.println(0, s.colorize(cyanColor+boldStyle, "S [SKIPPING]%s [%.3f seconds]", s.failureContext(spec.Failure.ComponentType), spec.RunTime.Seconds()))
-
-		indentation := s.printCodeLocationBlock(spec.ComponentTexts, spec.ComponentCodeLocations, spec.Failure.ComponentType, spec.Failure.ComponentIndex, spec.State, succinct)
-
-		s.printNewLine()
-		s.printSkip(indentation, spec.Failure)
-		s.endBlock()
-	}
+func (s *consoleStenographer) AnnounceSkippedSpec(spec *types.SpecSummary) {
+	s.print(0, s.colorize(cyanColor, "S"))
+	s.stream()
 }
 
 func (s *consoleStenographer) AnnounceSpecTimedOut(spec *types.SpecSummary, succinct bool, fullTrace bool) {
-	s.printSpecFailure(fmt.Sprintf("%s... Timeout", s.denoter), spec, succinct, fullTrace)
+	s.printSpecFailure("•... Timeout", spec, succinct, fullTrace)
 }
 
 func (s *consoleStenographer) AnnounceSpecPanicked(spec *types.SpecSummary, succinct bool, fullTrace bool) {
-	s.printSpecFailure(fmt.Sprintf("%s! Panic", s.denoter), spec, succinct, fullTrace)
+	s.printSpecFailure("•! Panic", spec, succinct, fullTrace)
 }
 
 func (s *consoleStenographer) AnnounceSpecFailed(spec *types.SpecSummary, succinct bool, fullTrace bool) {
-	s.printSpecFailure(fmt.Sprintf("%s Failure", s.denoter), spec, succinct, fullTrace)
+	s.printSpecFailure("• Failure", spec, succinct, fullTrace)
 }
 
 func (s *consoleStenographer) SummarizeFailures(summaries []*types.SpecSummary) {
@@ -342,7 +299,7 @@ func (s *consoleStenographer) SummarizeFailures(summaries []*types.SpecSummary) 
 			} else if summary.Failed() {
 				s.print(0, s.colorize(redColor+boldStyle, "[Fail] "))
 			}
-			s.printSpecContext(summary.ComponentTexts, summary.ComponentCodeLocations, summary.Failure.ComponentType, summary.Failure.ComponentIndex, summary.State, true)
+			s.printSpecContext(summary.ComponentTexts, summary.ComponentCodeLocations, summary.Failure.ComponentType, summary.Failure.ComponentIndex, true, true)
 			s.printNewLine()
 			s.println(0, s.colorize(lightGrayColor, summary.Failure.Location.String()))
 		}
@@ -375,7 +332,7 @@ func (s *consoleStenographer) printBlockWithMessage(header string, message strin
 	s.startBlock()
 	s.println(0, header)
 
-	indentation := s.printCodeLocationBlock(spec.ComponentTexts, spec.ComponentCodeLocations, types.SpecComponentTypeInvalid, 0, spec.State, succinct)
+	indentation := s.printCodeLocationBlock(spec.ComponentTexts, spec.ComponentCodeLocations, types.SpecComponentTypeInvalid, 0, false, succinct)
 
 	if message != "" {
 		s.printNewLine()
@@ -389,7 +346,7 @@ func (s *consoleStenographer) printSpecFailure(message string, spec *types.SpecS
 	s.startBlock()
 	s.println(0, s.colorize(redColor+boldStyle, "%s%s [%.3f seconds]", message, s.failureContext(spec.Failure.ComponentType), spec.RunTime.Seconds()))
 
-	indentation := s.printCodeLocationBlock(spec.ComponentTexts, spec.ComponentCodeLocations, spec.Failure.ComponentType, spec.Failure.ComponentIndex, spec.State, succinct)
+	indentation := s.printCodeLocationBlock(spec.ComponentTexts, spec.ComponentCodeLocations, spec.Failure.ComponentType, spec.Failure.ComponentIndex, true, succinct)
 
 	s.printNewLine()
 	s.printFailure(indentation, spec.State, spec.Failure, fullTrace)
@@ -413,12 +370,6 @@ func (s *consoleStenographer) failureContext(failedComponentType types.SpecCompo
 	return ""
 }
 
-func (s *consoleStenographer) printSkip(indentation int, spec types.SpecFailure) {
-	s.println(indentation, s.colorize(cyanColor, spec.Message))
-	s.printNewLine()
-	s.println(indentation, spec.Location.String())
-}
-
 func (s *consoleStenographer) printFailure(indentation int, state types.SpecState, failure types.SpecFailure, fullTrace bool) {
 	if state == types.SpecStatePanicked {
 		s.println(indentation, s.colorize(redColor+boldStyle, failure.Message))
@@ -439,7 +390,7 @@ func (s *consoleStenographer) printFailure(indentation int, state types.SpecStat
 	}
 }
 
-func (s *consoleStenographer) printSpecContext(componentTexts []string, componentCodeLocations []types.CodeLocation, failedComponentType types.SpecComponentType, failedComponentIndex int, state types.SpecState, succinct bool) int {
+func (s *consoleStenographer) printSpecContext(componentTexts []string, componentCodeLocations []types.CodeLocation, failedComponentType types.SpecComponentType, failedComponentIndex int, failure bool, succinct bool) int {
 	startIndex := 1
 	indentation := 0
 
@@ -448,11 +399,7 @@ func (s *consoleStenographer) printSpecContext(componentTexts []string, componen
 	}
 
 	for i := startIndex; i < len(componentTexts); i++ {
-		if (state.IsFailure() || state == types.SpecStateSkipped) && i == failedComponentIndex {
-			color := redColor
-			if state == types.SpecStateSkipped {
-				color = cyanColor
-			}
+		if failure && i == failedComponentIndex {
 			blockType := ""
 			switch failedComponentType {
 			case types.SpecComponentTypeBeforeSuite:
@@ -471,9 +418,9 @@ func (s *consoleStenographer) printSpecContext(componentTexts []string, componen
 				blockType = "Measurement"
 			}
 			if succinct {
-				s.print(0, s.colorize(color+boldStyle, "[%s] %s ", blockType, componentTexts[i]))
+				s.print(0, s.colorize(redColor+boldStyle, "[%s] %s ", blockType, componentTexts[i]))
 			} else {
-				s.println(indentation, s.colorize(color+boldStyle, "%s [%s]", componentTexts[i], blockType))
+				s.println(indentation, s.colorize(redColor+boldStyle, "%s [%s]", componentTexts[i], blockType))
 				s.println(indentation, s.colorize(grayColor, "%s", componentCodeLocations[i]))
 			}
 		} else {
@@ -490,8 +437,8 @@ func (s *consoleStenographer) printSpecContext(componentTexts []string, componen
 	return indentation
 }
 
-func (s *consoleStenographer) printCodeLocationBlock(componentTexts []string, componentCodeLocations []types.CodeLocation, failedComponentType types.SpecComponentType, failedComponentIndex int, state types.SpecState, succinct bool) int {
-	indentation := s.printSpecContext(componentTexts, componentCodeLocations, failedComponentType, failedComponentIndex, state, succinct)
+func (s *consoleStenographer) printCodeLocationBlock(componentTexts []string, componentCodeLocations []types.CodeLocation, failedComponentType types.SpecComponentType, failedComponentIndex int, failure bool, succinct bool) int {
+	indentation := s.printSpecContext(componentTexts, componentCodeLocations, failedComponentType, failedComponentIndex, failure, succinct)
 
 	if succinct {
 		if len(componentTexts) > 0 {
@@ -530,15 +477,15 @@ func (s *consoleStenographer) measurementReport(spec *types.SpecSummary, succinc
 			message = append(message, fmt.Sprintf("  %s - %s: %s%s, %s: %s%s ± %s%s, %s: %s%s",
 				s.colorize(boldStyle, "%s", measurement.Name),
 				measurement.SmallestLabel,
-				s.colorize(greenColor, measurement.PrecisionFmt(), measurement.Smallest),
+				s.colorize(greenColor, "%.3f", measurement.Smallest),
 				measurement.Units,
 				measurement.AverageLabel,
-				s.colorize(cyanColor, measurement.PrecisionFmt(), measurement.Average),
+				s.colorize(cyanColor, "%.3f", measurement.Average),
 				measurement.Units,
-				s.colorize(cyanColor, measurement.PrecisionFmt(), measurement.StdDeviation),
+				s.colorize(cyanColor, "%.3f", measurement.StdDeviation),
 				measurement.Units,
 				measurement.LargestLabel,
-				s.colorize(redColor, measurement.PrecisionFmt(), measurement.Largest),
+				s.colorize(redColor, "%.3f", measurement.Largest),
 				measurement.Units,
 			))
 		}
@@ -555,15 +502,15 @@ func (s *consoleStenographer) measurementReport(spec *types.SpecSummary, succinc
 				s.colorize(boldStyle, "%s", measurement.Name),
 				info,
 				measurement.SmallestLabel,
-				s.colorize(greenColor, measurement.PrecisionFmt(), measurement.Smallest),
+				s.colorize(greenColor, "%.3f", measurement.Smallest),
 				measurement.Units,
 				measurement.LargestLabel,
-				s.colorize(redColor, measurement.PrecisionFmt(), measurement.Largest),
+				s.colorize(redColor, "%.3f", measurement.Largest),
 				measurement.Units,
 				measurement.AverageLabel,
-				s.colorize(cyanColor, measurement.PrecisionFmt(), measurement.Average),
+				s.colorize(cyanColor, "%.3f", measurement.Average),
 				measurement.Units,
-				s.colorize(cyanColor, measurement.PrecisionFmt(), measurement.StdDeviation),
+				s.colorize(cyanColor, "%.3f", measurement.StdDeviation),
 				measurement.Units,
 			))
 		}

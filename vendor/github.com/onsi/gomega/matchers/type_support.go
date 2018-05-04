@@ -53,8 +53,9 @@ func toInteger(a interface{}) int64 {
 		return int64(reflect.ValueOf(a).Uint())
 	} else if isFloat(a) {
 		return int64(reflect.ValueOf(a).Float())
+	} else {
+		panic(fmt.Sprintf("Expected a number!  Got <%T> %#v", a, a))
 	}
-	panic(fmt.Sprintf("Expected a number!  Got <%T> %#v", a, a))
 }
 
 func toUnsignedInteger(a interface{}) uint64 {
@@ -64,8 +65,9 @@ func toUnsignedInteger(a interface{}) uint64 {
 		return reflect.ValueOf(a).Uint()
 	} else if isFloat(a) {
 		return uint64(reflect.ValueOf(a).Float())
+	} else {
+		panic(fmt.Sprintf("Expected a number!  Got <%T> %#v", a, a))
 	}
-	panic(fmt.Sprintf("Expected a number!  Got <%T> %#v", a, a))
 }
 
 func toFloat(a interface{}) float64 {
@@ -75,8 +77,9 @@ func toFloat(a interface{}) float64 {
 		return float64(reflect.ValueOf(a).Uint())
 	} else if isFloat(a) {
 		return reflect.ValueOf(a).Float()
+	} else {
+		panic(fmt.Sprintf("Expected a number!  Got <%T> %#v", a, a))
 	}
-	panic(fmt.Sprintf("Expected a number!  Got <%T> %#v", a, a))
 }
 
 func isError(a interface{}) bool {
@@ -143,17 +146,6 @@ func lengthOf(a interface{}) (int, bool) {
 	switch reflect.TypeOf(a).Kind() {
 	case reflect.Map, reflect.Array, reflect.String, reflect.Chan, reflect.Slice:
 		return reflect.ValueOf(a).Len(), true
-	default:
-		return 0, false
-	}
-}
-func capOf(a interface{}) (int, bool) {
-	if a == nil {
-		return 0, false
-	}
-	switch reflect.TypeOf(a).Kind() {
-	case reflect.Array, reflect.Chan, reflect.Slice:
-		return reflect.ValueOf(a).Cap(), true
 	default:
 		return 0, false
 	}

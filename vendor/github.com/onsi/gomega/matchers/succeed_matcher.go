@@ -10,18 +10,15 @@ type SucceedMatcher struct {
 }
 
 func (matcher *SucceedMatcher) Match(actual interface{}) (success bool, err error) {
-	// is purely nil?
 	if actual == nil {
 		return true, nil
 	}
 
-	// must be an 'error' type
-	if !isError(actual) {
-		return false, fmt.Errorf("Expected an error-type.  Got:\n%s", format.Object(actual, 1))
+	if isError(actual) {
+		return false, nil
 	}
 
-	// must be nil (or a pointer to a nil)
-	return isNil(actual), nil
+	return false, fmt.Errorf("Expected an error-type.  Got:\n%s", format.Object(actual, 1))
 }
 
 func (matcher *SucceedMatcher) FailureMessage(actual interface{}) (message string) {

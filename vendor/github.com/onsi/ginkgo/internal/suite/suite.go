@@ -2,10 +2,7 @@ package suite
 
 import (
 	"math/rand"
-	"net/http"
 	"time"
-
-	"github.com/onsi/ginkgo/internal/spec_iterator"
 
 	"github.com/onsi/ginkgo/config"
 	"github.com/onsi/ginkgo/internal/containernode"
@@ -55,18 +52,18 @@ func (suite *Suite) Run(t ginkgoTestingT, description string, reporters []report
 
 	r := rand.New(rand.NewSource(config.RandomSeed))
 	suite.topLevelContainer.Shuffle(r)
-	iterator, hasProgrammaticFocus := suite.generateSpecsIterator(description, config)
-	suite.runner = specrunner.New(description, suite.beforeSuiteNode, iterator, suite.afterSuiteNode, reporters, writer, config)
+	specs := suite.generateSpecs(description, config)
+	suite.runner = specrunner.New(description, suite.beforeSuiteNode, specs, suite.afterSuiteNode, reporters, writer, config)
 
 	suite.running = true
 	success := suite.runner.Run()
 	if !success {
 		t.Fail()
 	}
-	return success, hasProgrammaticFocus
+	return success, specs.HasProgrammaticFocus()
 }
 
-func (suite *Suite) generateSpecsIterator(description string, config config.GinkgoConfigType) (spec_iterator.SpecIterator, bool) {
+func (suite *Suite) generateSpecs(description string, config config.GinkgoConfigType) *spec.Specs {
 	specsSlice := []*spec.Spec{}
 	suite.topLevelContainer.BackPropagateProgrammaticFocus()
 	for _, collatedNodes := range suite.topLevelContainer.Collate() {
@@ -74,7 +71,6 @@ func (suite *Suite) generateSpecsIterator(description string, config config.Gink
 	}
 
 	specs := spec.NewSpecs(specsSlice)
-	specs.RegexScansFilePath = config.RegexScansFilePath
 
 	if config.RandomizeAllSpecs {
 		specs.Shuffle(rand.New(rand.NewSource(config.RandomSeed)))
@@ -86,19 +82,11 @@ func (suite *Suite) generateSpecsIterator(description string, config config.Gink
 		specs.SkipMeasurements()
 	}
 
-	var iterator spec_iterator.SpecIterator
-
 	if config.ParallelTotal > 1 {
-		iterator = spec_iterator.NewParallelIterator(specs.Specs(), config.SyncHost)
-		resp, err := http.Get(config.SyncHost + "/has-counter")
-		if err != nil || resp.StatusCode != http.StatusOK {
-			iterator = spec_iterator.NewShardedParallelIterator(specs.Specs(), config.ParallelTotal, config.ParallelNode)
-		}
-	} else {
-		iterator = spec_iterator.NewSerialIterator(specs.Specs())
+		specs.TrimForParallelization(config.ParallelTotal, config.ParallelNode)
 	}
 
-	return iterator, specs.HasProgrammaticFocus()
+	return specs
 }
 
 func (suite *Suite) CurrentRunningSpecSummary() (*types.SpecSummary, bool) {
