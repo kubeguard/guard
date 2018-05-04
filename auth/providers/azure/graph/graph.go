@@ -131,21 +131,6 @@ func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
 	return objects.Value, nil
 }
 
-func (u *UserInfo) getAndCreateExpandedGroupsList(finalGroupNameList []string, partialGroupList []string) ([]string, error) {
-	// Expand the group IDs
-	groups, err := u.getExpandedGroups(partialGroupList)
-	if err != nil {
-		return finalGroupNameList, err
-	}
-
-	// Extract out the Group objects into a list of strings
-	for i := 0; i < len(groups.Value); i++ {
-		finalGroupNameList = append(finalGroupNameList, groups.Value[i].Name)
-	}
-
-	return finalGroupNameList, nil
-}
-
 func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
 	// Encode the ids into the request body
 	body := &bytes.Buffer{}
@@ -203,43 +188,39 @@ func (u *UserInfo) GetGroups(userPrincipal string) ([]string, error) {
 	}
 
 	// Get the group IDs for the user
-	objIDs, err := u.getGroupIDs(userPrincipal)
+	groupIDs, err := u.getGroupIDs(userPrincipal)
 	if err != nil {
 		return nil, err
 	}
 
-	totalGroupIDCount := len(objIDs)
-	totalFullGets := totalGroupIDCount / u.groupsPerCall
-	totalIDsInPartialGets := totalGroupIDCount % u.groupsPerCall
+	totalGroups := len(groupIDs)
+	glog.V(10).Infof("totalGroups: %d", totalGroups)
 
-	glog.V(10).Infof("totalGroupIDCount: %d, totalFullGets: %d, totalIDsInPartialGets: %d \n", totalGroupIDCount, totalFullGets, totalIDsInPartialGets)
+	groupNames := make([]string, 0, totalGroups)
+	for i := 0; i < totalGroups; i += u.groupsPerCall {
+		startIndex := i
+		endIndex := min(i+u.groupsPerCall, totalGroups)
+		glog.V(10).Infof("Getting group names for IDs between startIndex: %d and endIndex: %d", startIndex, endIndex)
 
-	finalList := make([]string, 0)
-	for i := 0; i < totalFullGets; i++ {
-		startIndex := i * u.groupsPerCall
-		endIndex := startIndex + u.groupsPerCall
-
-		glog.V(10).Infof("Getting group names for IDs between startIndex: %d and endIndex: %d \n", startIndex, endIndex)
-
-		partialObjIDList := objIDs[startIndex:endIndex]
-		finalList, err = u.getAndCreateExpandedGroupsList(finalList, partialObjIDList)
+		// Expand the group IDs
+		groups, err := u.getExpandedGroups(groupIDs[startIndex:endIndex])
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	if totalIDsInPartialGets > 0 {
-		startIndex := totalFullGets * u.groupsPerCall
-		glog.V(10).Infof("Getting group names for IDs from startIndex: %d \n", startIndex)
-
-		partialObjIDList := objIDs[startIndex:]
-		finalList, err = u.getAndCreateExpandedGroupsList(finalList, partialObjIDList)
-		if err != nil {
-			return nil, err
+		// Extract out the Group objects into a list of strings
+		for i := 0; i < len(groups.Value); i++ {
+			groupNames = append(groupNames, groups.Value[i].Name)
 		}
 	}
 
-	return finalList, nil
+	return groupNames, nil
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // Name returns the name of this getter
