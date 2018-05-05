@@ -115,7 +115,7 @@ users:
         refresh-token: REDACTED
 
 # using this <your_email> user for authenticaiton
-$ kubeclt get pods --user <your_email>
+$ kubectl get pods --user <your_email>
 NAMESPACE     NAME                                    READY     STATUS    RESTARTS   AGE
 kube-system   kube-dns-54cccfbdf8-jf9p2               3/3       Running   0          6h
 ```
