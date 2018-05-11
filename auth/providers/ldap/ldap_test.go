@@ -331,6 +331,8 @@ func runTest(t *testing.T, secureConn bool, s Authenticator, serverType string) 
 		},
 	}
 
+	endCh := make(chan bool, 1)
+
 	// This Run will not return until the parallel tests finish.
 	t.Run("ldap", func(t *testing.T) {
 		for _, tc := range dataset {
@@ -363,8 +365,12 @@ func runTest(t *testing.T, secureConn bool, s Authenticator, serverType string) 
 					assert.NotNil(t, err)
 					assert.Nil(t, resp)
 				}
+
+				endCh <- true
 			})
+			<-endCh
 		}
+
 	})
 }
 
