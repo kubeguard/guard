@@ -14,8 +14,8 @@ type NTPOptions struct {
 
 func NewNTPOptions() NTPOptions {
 	return NTPOptions{
-		MaxClodkSkew: 5 * time.Second,
-		Interval:     5 * time.Minute,
+		MaxClodkSkew: 2 * time.Minute,
+		Interval:     10 * time.Minute,
 	}
 }
 
