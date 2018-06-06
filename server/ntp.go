@@ -17,7 +17,7 @@ func NewNTPOptions() NTPOptions {
 	return NTPOptions{
 		NTPServer:    "0.pool.ntp.org",
 		MaxClodkSkew: 2 * time.Minute,
-		Interval:     10*time.Minute,
+		Interval:     10 * time.Minute,
 	}
 }
 
