@@ -8,20 +8,23 @@ import (
 )
 
 type NTPOptions struct {
+	NTPServer    string
 	MaxClodkSkew time.Duration
 	Interval     time.Duration
 }
 
 func NewNTPOptions() NTPOptions {
 	return NTPOptions{
+		NTPServer:    "0.pool.ntp.org",
 		MaxClodkSkew: 2 * time.Minute,
 		Interval:     10 * time.Minute,
 	}
 }
 
 func (o *NTPOptions) AddFlags(fs *pflag.FlagSet) {
+	fs.StringVar(&o.NTPServer, "ntp-server", o.NTPServer, "Address of NTP serer used to check clock skew")
 	fs.DurationVar(&o.MaxClodkSkew, "max-clock-skew", o.MaxClodkSkew, "Max acceptable clock skew for server clock")
-	fs.DurationVar(&o.Interval, "clock-check-interval", o.Interval, "Interval between checking time against NTP servers")
+	fs.DurationVar(&o.Interval, "clock-check-interval", o.Interval, "Interval between checking time against NTP servers, set to 0 to disable checks")
 }
 
 func (o NTPOptions) ToArgs() []string {

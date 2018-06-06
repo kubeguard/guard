@@ -18,10 +18,13 @@ type PagesDomainsService struct {
 //
 // GitLab API docs: https://docs.gitlab.com/ce/api/pages_domains.html
 type PagesDomain struct {
-	Domain      string `json:"domain"`
-	URL         string `json:"url"`
-	ProjectID   int    `json:"project_id"`
-	Certificate struct {
+	Domain           string     `json:"domain"`
+	URL              string     `json:"url"`
+	ProjectID        int        `json:"project_id"`
+	Verified         bool       `json:"verified"`
+	VerificationCode string     `json:"verification_code"`
+	EnabledUntil     *time.Time `json:"enabled_until"`
+	Certificate      struct {
 		Expired    bool       `json:"expired"`
 		Expiration *time.Time `json:"expiration"`
 	} `json:"certificate"`
@@ -30,10 +33,8 @@ type PagesDomain struct {
 // ListPagesDomainsOptions represents the available ListPagesDomains() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/pages_domais.html#list-pages-domains
-type ListPagesDomainsOptions struct {
-	ListOptions
-}
+// https://docs.gitlab.com/ce/api/pages_domains.html#list-pages-domains
+type ListPagesDomainsOptions ListOptions
 
 // ListPagesDomains gets a list of project pages domains.
 //

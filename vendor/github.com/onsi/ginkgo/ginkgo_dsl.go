@@ -68,6 +68,14 @@ type GinkgoTestingT interface {
 	Fail()
 }
 
+//GinkgoRandomSeed returns the seed used to randomize spec execution order.  It is
+//useful for seeding your own pseudorandom number generators (PRNGs) to ensure
+//consistent executions from run to run, where your tests contain variability (for
+//example, when selecting random test data).
+func GinkgoRandomSeed() int64 {
+	return config.GinkgoConfig.RandomSeed
+}
+
 //GinkgoParallelNode returns the parallel node number for the current ginkgo process
 //The node number is 1-indexed
 func GinkgoParallelNode() int {
@@ -130,6 +138,7 @@ type Done chan<- interface{}
 //	IsMeasurement: true if the current test is a measurement
 //	FileName: the name of the file containing the current test
 //	LineNumber: the line number for the current test
+//	Failed: if the current test has failed, this will be true (useful in an AfterEach)
 type GinkgoTestDescription struct {
 	FullTestText   string
 	ComponentTexts []string
@@ -139,6 +148,9 @@ type GinkgoTestDescription struct {
 
 	FileName   string
 	LineNumber int
+
+	Failed   bool
+	Duration time.Duration
 }
 
 //CurrentGinkgoTestDescripton returns information about the current running test.
@@ -157,6 +169,8 @@ func CurrentGinkgoTestDescription() GinkgoTestDescription {
 		IsMeasurement:  summary.IsMeasurement,
 		FileName:       subjectCodeLocation.FileName,
 		LineNumber:     subjectCodeLocation.LineNumber,
+		Failed:         summary.HasFailureState(),
+		Duration:       summary.RunTime,
 	}
 }
 
@@ -164,6 +178,8 @@ func CurrentGinkgoTestDescription() GinkgoTestDescription {
 //
 //You use the Time() function to time how long the passed in body function takes to run
 //You use the RecordValue() function to track arbitrary numerical measurements.
+//The RecordValueWithPrecision() function can be used alternatively to provide the unit
+//and resolution of the numeric measurement.
 //The optional info argument is passed to the test reporter and can be used to
 // provide the measurement data to a custom reporter with context.
 //
@@ -171,6 +187,7 @@ func CurrentGinkgoTestDescription() GinkgoTestDescription {
 type Benchmarker interface {
 	Time(name string, body func(), info ...interface{}) (elapsedTime time.Duration)
 	RecordValue(name string, value float64, info ...interface{})
+	RecordValueWithPrecision(name string, value float64, units string, precision int, info ...interface{})
 }
 
 //RunSpecs is the entry point for the Ginkgo test runner.
@@ -187,7 +204,7 @@ func RunSpecs(t GinkgoTestingT, description string) bool {
 //To run your tests with Ginkgo's default reporter and your custom reporter(s), replace
 //RunSpecs() with this method.
 func RunSpecsWithDefaultAndCustomReporters(t GinkgoTestingT, description string, specReporters []Reporter) bool {
-	specReporters = append([]Reporter{buildDefaultReporter()}, specReporters...)
+	specReporters = append(specReporters, buildDefaultReporter())
 	return RunSpecsWithCustomReporters(t, description, specReporters)
 }
 
@@ -201,7 +218,7 @@ func RunSpecsWithCustomReporters(t GinkgoTestingT, description string, specRepor
 		reporters[i] = reporter
 	}
 	passed, hasFocusedTests := globalSuite.Run(t, description, reporters, writer, config.GinkgoConfig)
-	if passed && hasFocusedTests {
+	if passed && hasFocusedTests && strings.TrimSpace(os.Getenv("GINKGO_EDITOR_INTEGRATION")) == "" {
 		fmt.Println("PASS | FOCUSED")
 		os.Exit(types.GINKGO_FOCUS_EXIT_CODE)
 	}
@@ -211,11 +228,22 @@ func RunSpecsWithCustomReporters(t GinkgoTestingT, description string, specRepor
 func buildDefaultReporter() Reporter {
 	remoteReportingServer := config.GinkgoConfig.StreamHost
 	if remoteReportingServer == "" {
-		stenographer := stenographer.New(!config.DefaultReporterConfig.NoColor)
+		stenographer := stenographer.New(!config.DefaultReporterConfig.NoColor, config.GinkgoConfig.FlakeAttempts > 1)
 		return reporters.NewDefaultReporter(config.DefaultReporterConfig, stenographer)
 	} else {
 		return remote.NewForwardingReporter(remoteReportingServer, &http.Client{}, remote.NewOutputInterceptor())
 	}
+}
+
+//Skip notifies Ginkgo that the current spec was skipped.
+func Skip(message string, callerSkip ...int) {
+	skip := 0
+	if len(callerSkip) > 0 {
+		skip = callerSkip[0]
+	}
+
+	globalFailer.Skip(message, codelocation.New(skip+1))
+	panic(GINKGO_PANIC)
 }
 
 //Fail notifies Ginkgo that the current spec has failed. (Gomega will call Fail for you automatically when an assertion fails.)
@@ -249,9 +277,9 @@ func GinkgoRecover() {
 //Describe blocks allow you to organize your specs.  A Describe block can contain any number of
 //BeforeEach, AfterEach, JustBeforeEach, It, and Measurement blocks.
 //
-//In addition you can nest Describe and Context blocks.  Describe and Context blocks are functionally
+//In addition you can nest Describe, Context and When blocks.  Describe, Context and When blocks are functionally
 //equivalent.  The difference is purely semantic -- you typical Describe the behavior of an object
-//or method and, within that Describe, outline a number of Contexts.
+//or method and, within that Describe, outline a number of Contexts and Whens.
 func Describe(text string, body func()) bool {
 	globalSuite.PushContainerNode(text, body, types.FlagTypeNone, codelocation.New(1))
 	return true
@@ -278,9 +306,9 @@ func XDescribe(text string, body func()) bool {
 //Context blocks allow you to organize your specs.  A Context block can contain any number of
 //BeforeEach, AfterEach, JustBeforeEach, It, and Measurement blocks.
 //
-//In addition you can nest Describe and Context blocks.  Describe and Context blocks are functionally
+//In addition you can nest Describe, Context and When blocks.  Describe, Context and When blocks are functionally
 //equivalent.  The difference is purely semantic -- you typical Describe the behavior of an object
-//or method and, within that Describe, outline a number of Contexts.
+//or method and, within that Describe, outline a number of Contexts and Whens.
 func Context(text string, body func()) bool {
 	globalSuite.PushContainerNode(text, body, types.FlagTypeNone, codelocation.New(1))
 	return true
@@ -301,6 +329,35 @@ func PContext(text string, body func()) bool {
 //You can mark the tests within a describe block as pending using XContext
 func XContext(text string, body func()) bool {
 	globalSuite.PushContainerNode(text, body, types.FlagTypePending, codelocation.New(1))
+	return true
+}
+
+//When blocks allow you to organize your specs.  A When block can contain any number of
+//BeforeEach, AfterEach, JustBeforeEach, It, and Measurement blocks.
+//
+//In addition you can nest Describe, Context and When blocks.  Describe, Context and When blocks are functionally
+//equivalent.  The difference is purely semantic -- you typical Describe the behavior of an object
+//or method and, within that Describe, outline a number of Contexts and Whens.
+func When(text string, body func()) bool {
+	globalSuite.PushContainerNode("when "+text, body, types.FlagTypeNone, codelocation.New(1))
+	return true
+}
+
+//You can focus the tests within a describe block using FWhen
+func FWhen(text string, body func()) bool {
+	globalSuite.PushContainerNode("when "+text, body, types.FlagTypeFocused, codelocation.New(1))
+	return true
+}
+
+//You can mark the tests within a describe block as pending using PWhen
+func PWhen(text string, body func()) bool {
+	globalSuite.PushContainerNode("when "+text, body, types.FlagTypePending, codelocation.New(1))
+	return true
+}
+
+//You can mark the tests within a describe block as pending using XWhen
+func XWhen(text string, body func()) bool {
+	globalSuite.PushContainerNode("when "+text, body, types.FlagTypePending, codelocation.New(1))
 	return true
 }
 
@@ -328,6 +385,32 @@ func PIt(text string, _ ...interface{}) bool {
 
 //You can mark Its as pending using XIt
 func XIt(text string, _ ...interface{}) bool {
+	globalSuite.PushItNode(text, func() {}, types.FlagTypePending, codelocation.New(1), 0)
+	return true
+}
+
+//Specify blocks are aliases for It blocks and allow for more natural wording in situations
+//which "It" does not fit into a natural sentence flow. All the same protocols apply for Specify blocks
+//which apply to It blocks.
+func Specify(text string, body interface{}, timeout ...float64) bool {
+	globalSuite.PushItNode(text, body, types.FlagTypeNone, codelocation.New(1), parseTimeout(timeout...))
+	return true
+}
+
+//You can focus individual Specifys using FSpecify
+func FSpecify(text string, body interface{}, timeout ...float64) bool {
+	globalSuite.PushItNode(text, body, types.FlagTypeFocused, codelocation.New(1), parseTimeout(timeout...))
+	return true
+}
+
+//You can mark Specifys as pending using PSpecify
+func PSpecify(text string, is ...interface{}) bool {
+	globalSuite.PushItNode(text, func() {}, types.FlagTypePending, codelocation.New(1), 0)
+	return true
+}
+
+//You can mark Specifys as pending using XSpecify
+func XSpecify(text string, is ...interface{}) bool {
 	globalSuite.PushItNode(text, func() {}, types.FlagTypePending, codelocation.New(1), 0)
 	return true
 }
