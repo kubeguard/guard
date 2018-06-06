@@ -2,17 +2,17 @@
 title: Table of Contents | Setup
 description: Table of Contents | Setup
 menu:
-  product_guard_0.1.2:
+  product_guard_0.1.3:
     identifier: setup-readme
     name: Readme
     parent: setup
     weight: -1
 product_name: guard
-menu_name: product_guard_0.1.2
+menu_name: product_guard_0.1.3
 section_menu_id: setup
-url: /products/guard/0.1.2/setup/
+url: /products/guard/0.1.3/setup/
 aliases:
-  - /products/guard/0.1.2/setup/README/
+  - /products/guard/0.1.3/setup/README/
 ---
 
 # Setup
