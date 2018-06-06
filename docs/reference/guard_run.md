@@ -28,7 +28,7 @@ guard run [flags]
       --azure.client-id string               MS Graph application client ID to use
       --azure.client-secret string           MS Graph application client secret to use
       --azure.tenant-id string               MS Graph application tenant id to use
-      --clock-check-interval duration        Interval between checking time against NTP servers (default 10m0s)
+      --clock-check-interval duration        Interval between checking time against NTP servers, set to 0 to disable checks (default 10m0s)
       --github.base-url string               Base url for enterprise, keep empty to use default github base url
       --gitlab.base-url string               Base url for GitLab, including the API path, keep empty to use default gitlab base url.
       --google.admin-email string            Email of G Suite administrator
@@ -53,6 +53,7 @@ guard run [flags]
       --ldap.user-search-dn string           BaseDN to start the search user
       --ldap.user-search-filter string       Filter to apply when searching user (default "(objectClass=person)")
       --max-clock-skew duration              Max acceptable clock skew for server clock (default 2m0s)
+      --ntp-server string                    Address of NTP serer used to check clock skew (default "0.pool.ntp.org")
       --secure-addr string                   host:port used to serve secure apis (default ":8443")
       --tls-ca-file string                   File containing CA certificate
       --tls-cert-file string                 File container server TLS certificate
