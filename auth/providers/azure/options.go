@@ -30,7 +30,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.ClientID, "azure.client-id", o.ClientID, "MS Graph application client ID to use")
 	fs.StringVar(&o.ClientSecret, "azure.client-secret", o.ClientSecret, "MS Graph application client secret to use")
 	fs.StringVar(&o.TenantID, "azure.tenant-id", o.TenantID, "MS Graph application tenant id to use")
-	fs.BoolVar(&o.UseGroupUID, "azure.use-group-uid", false, "MS Graph application tenant id to use")
+	fs.BoolVar(&o.UseGroupUID, "azure.use-group-uid", false, "Use group UID for authentication instead of group display name")
 }
 
 func (o *Options) Validate() []error {
