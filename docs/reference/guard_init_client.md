@@ -1,12 +1,12 @@
 ---
 title: Guard Init Client
 menu:
-  product_guard_0.1.3:
+  product_guard_0.1.4:
     identifier: guard-init-client
     name: Guard Init Client
     parent: reference
 product_name: guard
-menu_name: product_guard_0.1.3
+menu_name: product_guard_0.1.4
 section_menu_id: reference
 ---
 ## guard init client
