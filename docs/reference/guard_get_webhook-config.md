@@ -1,12 +1,12 @@
 ---
 title: Guard Get Webhook-Config
 menu:
-  product_guard_0.1.1:
+  product_guard_0.1.3:
     identifier: guard-get-webhook-config
     name: Guard Get Webhook-Config
     parent: reference
 product_name: guard
-menu_name: product_guard_0.1.1
+menu_name: product_guard_0.1.3
 section_menu_id: reference
 ---
 ## guard get webhook-config

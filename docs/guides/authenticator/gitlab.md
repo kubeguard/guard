@@ -2,13 +2,13 @@
 title: Gitlab Authenticator | Guard
 description: Authenticate into Kubernetes using Gitlab
 menu:
-  product_guard_0.1.1:
+  product_guard_0.1.3:
     identifier: gitlab-authenticator
     parent: authenticator-guides
     name: Gitlab
     weight: 30
 product_name: guard
-menu_name: product_guard_0.1.1
+menu_name: product_guard_0.1.3
 section_menu_id: guides
 ---
 

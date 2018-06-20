@@ -1,12 +1,12 @@
 ---
 title: Guard Init Server
 menu:
-  product_guard_0.1.1:
+  product_guard_0.1.3:
     identifier: guard-init-server
     name: Guard Init Server
     parent: reference
 product_name: guard
-menu_name: product_guard_0.1.1
+menu_name: product_guard_0.1.3
 section_menu_id: reference
 ---
 ## guard init server

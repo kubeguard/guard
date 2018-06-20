@@ -3,13 +3,14 @@ package client
 import (
 	"encoding/base64"
 	"fmt"
+	"net/http"
+	"strings"
+
 	"gopkg.in/jcmturner/gokrb5.v4/credentials"
 	"gopkg.in/jcmturner/gokrb5.v4/gssapi"
 	"gopkg.in/jcmturner/gokrb5.v4/krberror"
 	"gopkg.in/jcmturner/gokrb5.v4/messages"
 	"gopkg.in/jcmturner/gokrb5.v4/types"
-	"net/http"
-	"strings"
 )
 
 // SetSPNEGOHeader gets the service ticket and sets it as the SPNEGO authorization header on HTTP request object.
@@ -20,7 +21,7 @@ func (cl *Client) SetSPNEGOHeader(r *http.Request, spn string) error {
 	}
 	tkt, skey, err := cl.GetServiceTicket(spn)
 	if err != nil {
-		return fmt.Errorf("Could not get service ticket: %v", err)
+		return fmt.Errorf("could not get service ticket: %v", err)
 	}
 	err = SetSPNEGOHeader(*cl.Credentials, tkt, skey, r)
 	if err != nil {
@@ -33,7 +34,7 @@ func (cl *Client) SetSPNEGOHeader(r *http.Request, spn string) error {
 func SetSPNEGOHeader(creds credentials.Credentials, tkt messages.Ticket, sessionKey types.EncryptionKey, r *http.Request) error {
 	SPNEGOToken, err := gssapi.GetSPNEGOKrbNegTokenInit(creds, tkt, sessionKey)
 	if err != nil {
-		return krberror.Errorf(err, krberror.EncodingError, "cound not generate SPNEGO negotiation token")
+		return krberror.Errorf(err, krberror.EncodingError, "could not generate SPNEGO negotiation token")
 	}
 	nb, err := SPNEGOToken.Marshal()
 	if err != nil {
