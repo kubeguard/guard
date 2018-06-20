@@ -28,6 +28,7 @@ guard run [flags]
       --azure.client-id string               MS Graph application client ID to use
       --azure.client-secret string           MS Graph application client secret to use
       --azure.tenant-id string               MS Graph application tenant id to use
+      --azure.use-group-uid                  Use group UID for authentication instead of group display name (default true)
       --clock-check-interval duration        Interval between checking time against NTP servers, set to 0 to disable checks (default 10m0s)
       --github.base-url string               Base url for enterprise, keep empty to use default github base url
       --gitlab.base-url string               Base url for GitLab, including the API path, keep empty to use default gitlab base url.

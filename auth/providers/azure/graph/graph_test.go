@@ -288,6 +288,30 @@ func TestGetGroups(t *testing.T) {
 	if len(groups) != 1 {
 		t.Errorf("Should have gotten a list of groups with 1 entry. Got: %d", len(groups))
 	}
+
+	uWithGroupID := &UserInfo{
+		client:        http.DefaultClient,
+		apiURL:        apiURL,
+		loginURL:      loginURL,
+		headers:       http.Header{},
+		clientID:      "jason",
+		clientSecret:  "bourne",
+		expires:       time.Now().Add(time.Hour),
+		groupsPerCall: expandedGroupsPerCall,
+		useGroupUID:   true,
+	}
+	defer ts.Close()
+
+	groups, err = uWithGroupID.GetGroups("blackbriar@cia.gov")
+	if err != nil {
+		t.Errorf("Should not have gotten error: %s", err)
+	}
+	if len(groups) != 1 {
+		t.Errorf("Should have gotten a list of groups with 1 entry. Got: %d", len(groups))
+	}
+	if groups[0] != "f36ec2c5-fa5t-4f05-b87f-deadbeef" {
+		t.Errorf("Should have gotten one group ID in the list. Got: %s", groups[0])
+	}
 }
 
 func TestGetGroupsPaging(t *testing.T) {
