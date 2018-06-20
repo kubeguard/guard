@@ -43,6 +43,7 @@ type UserInfo struct {
 	loginURL *url.URL
 
 	groupsPerCall int
+	useGroupUID   bool
 }
 
 func (u *UserInfo) login() error {
@@ -193,6 +194,10 @@ func (u *UserInfo) GetGroups(userPrincipal string) ([]string, error) {
 		return nil, err
 	}
 
+	if u.useGroupUID {
+		return groupIDs, nil
+	}
+
 	totalGroups := len(groupIDs)
 	glog.V(10).Infof("totalGroups: %d", totalGroups)
 
@@ -229,7 +234,7 @@ func (u *UserInfo) Name() string {
 }
 
 // New returns a new UserInfo object
-func New(clientID, clientSecret, tenantName string) (*UserInfo, error) {
+func New(clientID, clientSecret, tenantName string, useGroupUID bool) (*UserInfo, error) {
 	parsedLogin, err := url.Parse(fmt.Sprintf(loginURL, tenantName))
 	if err != nil {
 		return nil, err
@@ -244,12 +249,13 @@ func New(clientID, clientSecret, tenantName string) (*UserInfo, error) {
 		clientID:      clientID,
 		clientSecret:  clientSecret,
 		groupsPerCall: expandedGroupsPerCall,
+		useGroupUID:   useGroupUID,
 	}
 
 	return u, nil
 }
 
-func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string) (*UserInfo, error) {
+func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string, useGroupUID bool) (*UserInfo, error) {
 	parsedLogin, err := url.Parse(loginUrl)
 	if err != nil {
 		return nil, err
@@ -268,6 +274,7 @@ func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string) (*UserInfo, e
 		clientID:      clientID,
 		clientSecret:  clientSecret,
 		groupsPerCall: expandedGroupsPerCall,
+		useGroupUID:   useGroupUID,
 	}
 	err = u.login()
 	if err != nil {
