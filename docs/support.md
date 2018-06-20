@@ -2,17 +2,17 @@
 title: Support | Guard
 description: Support
 menu:
-  product_guard_0.1.3:
+  product_guard_0.1.4:
     identifier: support-guard
     name: Support
     parent: welcome
     weight: 25
 product_name: guard
-menu_name: product_guard_0.1.3
+menu_name: product_guard_0.1.4
 section_menu_id: welcome
-url: /products/guard/0.1.3/welcome/support/
+url: /products/guard/0.1.4/welcome/support/
 aliases:
-  - /products/guard/0.1.3/support/
+  - /products/guard/0.1.4/support/
 ---
 
 # Support

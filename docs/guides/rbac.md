@@ -2,13 +2,13 @@
 title: RBAC Roles | Guard
 description: RBAC Roles
 menu:
-  product_guard_0.1.3:
+  product_guard_0.1.4:
     identifier: rbac-guides
     name: RBAC Roles
     parent: guides
     weight: 15
 product_name: guard
-menu_name: product_guard_0.1.3
+menu_name: product_guard_0.1.4
 section_menu_id: guides
 ---
 
