@@ -9,8 +9,15 @@ import:
 - package: github.com/appscode/go
   version: master
 - package: github.com/appscode/kutil
-  version: release-6.0
+  version: release-7.0
 - package: github.com/appscode/pat
+- package: github.com/coreos/go-oidc
+  version: a4973d9a4225417aecf5d450a9522f00c1f7130f
+- package: github.com/go-ldap/ldap
+  version: v2.5.1
+- package: github.com/golang/glog
+- package: github.com/google/gofuzz
+  version: master
 - package: github.com/google/go-github
   version: v15.0.0
 - package: github.com/hashicorp/go-version
@@ -19,33 +26,40 @@ import:
   version: master
 - package: github.com/howeyc/gopass
 - package: github.com/jpillora/go-ogle-analytics
+- package: github.com/json-iterator/go
+  version: 1.1.3
+- package: github.com/moul/http2curl
+- package: github.com/onsi/gomega
+  version: v1.4.0
+- package: github.com/pkg/errors
+  version: v0.8.0
 - package: github.com/prometheus/client_golang
   version: c3324c1198cf3374996e9d3098edd46a6b55afc9
 - package: github.com/prometheus/common
   version: 3233b24a36715a2fe36d162260457857a56d672d
 - package: github.com/sirupsen/logrus
-  version: v1.0.3
+  version: v1.0.5
 - package: github.com/skratchdot/open-golang
 - package: github.com/spf13/afero
-  version: v1.0.2
+  version: v1.1.0
 - package: github.com/spf13/cobra
-  version: master
+  version: v0.0.3
 - package: github.com/spf13/pflag
-  version: master
+  version: v1.0.1
 - package: github.com/xanzy/go-gitlab
-  version: v0.8.0
+  version: v0.10.5
 - package: golang.org/x/net
 - package: golang.org/x/oauth2
 - package: google.golang.org/api
   version: 98825bb0065da4054e5da6db34f5fc598e50bc24
+- package: gopkg.in/jcmturner/gokrb5.v4
+  version: v4.1.2
 - package: k8s.io/api
-  version: kubernetes-1.9.0
+  version: kubernetes-1.10.0
 - package: k8s.io/apimachinery
-  version: kubernetes-1.9.0
+  version: kubernetes-1.10.0
 - package: k8s.io/client-go
-  version: v6.0.0
-- package: github.com/appscode/kutil
-  version: release-6.0
+  version: v7.0.0
 - package: github.com/golang/protobuf
   version: 6e4cc92cc905d5f4a73041c1b8228ea08f4c6147
 - package: google.golang.org/grpc
@@ -56,15 +70,11 @@ import:
   version: v1.3.1-ac
 - package: github.com/imdario/mergo
   version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
-- package: github.com/pkg/errors
-  version: v0.8.0
-- package: github.com/fsnotify/fsnotify
-  version: v1.4.7
-- package: github.com/coreos/go-oidc
-  version: a4973d9a4225417aecf5d450a9522f00c1f7130f
-- package: github.com/go-ldap/ldap
-  version: v2.5.1
+- package: github.com/onsi/ginkgo
+  version: v1.5.0
+- package: github.com/stretchr/testify
+  version: v1.2.1
 - package: github.com/vjeantet/ldapserver
-  version: master
-- package: gopkg.in/yaml.v2
-  version: v2.1.1
+  version: 479fece7c5f15b209e2e3ba082a89d18cd2a8207
+- package: gopkg.in/square/go-jose.v2
+  version: v2.1.6

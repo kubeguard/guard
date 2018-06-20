@@ -2,13 +2,13 @@
 title: Install
 description: Guard Install
 menu:
-  product_guard_0.1.1:
+  product_guard_0.1.3:
     identifier: install-guard
     name: Install
     parent: setup
     weight: 10
 product_name: guard
-menu_name: product_guard_0.1.1
+menu_name: product_guard_0.1.3
 section_menu_id: setup
 ---
 
@@ -28,12 +28,12 @@ Download pre-built binaries from [appscode/guard Github releases](https://github
 
 ```console
 # Linux amd 64-bit:
-wget -O guard https://github.com/appscode/guard/releases/download/0.1.1/guard-linux-amd64 \
+wget -O guard https://github.com/appscode/guard/releases/download/0.1.3/guard-linux-amd64 \
   && chmod +x guard \
   && sudo mv guard /usr/local/bin/
 
 # Mac 64-bit
-wget -O guard https://github.com/appscode/guard/releases/download/0.1.1/guard-darwin-amd64 \
+wget -O guard https://github.com/appscode/guard/releases/download/0.1.3/guard-darwin-amd64 \
   && chmod +x guard \
   && sudo mv guard /usr/local/bin/
 ```

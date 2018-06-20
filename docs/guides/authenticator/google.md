@@ -2,13 +2,13 @@
 title: Google Authenticator | Guard
 description: Authenticate into Kubernetes using Google
 menu:
-  product_guard_0.1.1:
+  product_guard_0.1.3:
     identifier: google-authenticator
     parent: authenticator-guides
     name: Google
     weight: 20
 product_name: guard
-menu_name: product_guard_0.1.1
+menu_name: product_guard_0.1.3
 section_menu_id: guides
 ---
 
@@ -115,7 +115,7 @@ users:
         refresh-token: REDACTED
 
 # using this <your_email> user for authenticaiton
-$ kubeclt get pods --user <your_email>
+$ kubectl get pods --user <your_email>
 NAMESPACE     NAME                                    READY     STATUS    RESTARTS   AGE
 kube-system   kube-dns-54cccfbdf8-jf9p2               3/3       Running   0          6h
 ```

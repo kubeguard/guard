@@ -4,6 +4,7 @@ package crypto
 import (
 	"encoding/hex"
 	"fmt"
+
 	"gopkg.in/jcmturner/gokrb5.v4/crypto/etype"
 	"gopkg.in/jcmturner/gokrb5.v4/iana/chksumtype"
 	"gopkg.in/jcmturner/gokrb5.v4/iana/etypeID"
@@ -33,7 +34,7 @@ func GetEtype(id int32) (etype.EType, error) {
 		var et RC4HMAC
 		return et, nil
 	default:
-		return nil, fmt.Errorf("Unknown or unsupported EType: %d", id)
+		return nil, fmt.Errorf("unknown or unsupported EType: %d", id)
 	}
 }
 
@@ -62,7 +63,7 @@ func GetChksumEtype(id int32) (etype.EType, error) {
 	//	var et RC4HMAC
 	//	return et, nil
 	default:
-		return nil, fmt.Errorf("Unknown or unsupported checksum type: %d", id)
+		return nil, fmt.Errorf("unknown or unsupported checksum type: %d", id)
 	}
 }
 
@@ -71,7 +72,7 @@ func GetKeyFromPassword(passwd string, cname types.PrincipalName, realm string, 
 	var key types.EncryptionKey
 	et, err := GetEtype(etypeID)
 	if err != nil {
-		return key, et, fmt.Errorf("Error getting encryption type: %v", err)
+		return key, et, fmt.Errorf("error getting encryption type: %v", err)
 	}
 	sk2p := et.GetDefaultStringToKeyParams()
 	var salt string
@@ -90,12 +91,12 @@ func GetKeyFromPassword(passwd string, cname types.PrincipalName, realm string, 
 			var eti types.ETypeInfo
 			err := eti.Unmarshal(pa.PADataValue)
 			if err != nil {
-				return key, et, fmt.Errorf("Error unmashaling PA Data to PA-ETYPE-INFO2: %v", err)
+				return key, et, fmt.Errorf("error unmashaling PA Data to PA-ETYPE-INFO2: %v", err)
 			}
 			if etypeID != eti[0].EType {
 				et, err = GetEtype(eti[0].EType)
 				if err != nil {
-					return key, et, fmt.Errorf("Error getting encryption type: %v", err)
+					return key, et, fmt.Errorf("error getting encryption type: %v", err)
 				}
 			}
 			salt = string(eti[0].Salt)
@@ -106,12 +107,12 @@ func GetKeyFromPassword(passwd string, cname types.PrincipalName, realm string, 
 			var et2 types.ETypeInfo2
 			err := et2.Unmarshal(pa.PADataValue)
 			if err != nil {
-				return key, et, fmt.Errorf("Error unmashalling PA Data to PA-ETYPE-INFO2: %v", err)
+				return key, et, fmt.Errorf("error unmashalling PA Data to PA-ETYPE-INFO2: %v", err)
 			}
 			if etypeID != et2[0].EType {
 				et, err = GetEtype(et2[0].EType)
 				if err != nil {
-					return key, et, fmt.Errorf("Error getting encryption type: %v", err)
+					return key, et, fmt.Errorf("error getting encryption type: %v", err)
 				}
 			}
 			if len(et2[0].S2KParams) == 4 {
@@ -125,7 +126,7 @@ func GetKeyFromPassword(passwd string, cname types.PrincipalName, realm string, 
 	}
 	k, err := et.StringToKey(passwd, salt, sk2p)
 	if err != nil {
-		return key, et, fmt.Errorf("Error deriving key from string: %+v", err)
+		return key, et, fmt.Errorf("error deriving key from string: %+v", err)
 	}
 	key = types.EncryptionKey{
 		KeyType:  etypeID,
@@ -140,7 +141,7 @@ func GetEncryptedData(plainBytes []byte, key types.EncryptionKey, usage uint32, 
 	var ed types.EncryptedData
 	et, err := GetEtype(key.KeyType)
 	if err != nil {
-		return ed, fmt.Errorf("Error getting etype: %v", err)
+		return ed, fmt.Errorf("error getting etype: %v", err)
 	}
 	_, b, err := et.EncryptMessage(key.KeyValue, plainBytes, usage)
 	if err != nil {
@@ -164,11 +165,11 @@ func DecryptEncPart(ed types.EncryptedData, key types.EncryptionKey, usage uint3
 func DecryptMessage(ciphertext []byte, key types.EncryptionKey, usage uint32) ([]byte, error) {
 	et, err := GetEtype(key.KeyType)
 	if err != nil {
-		return []byte{}, fmt.Errorf("Error decrypting: %v", err)
+		return []byte{}, fmt.Errorf("error decrypting: %v", err)
 	}
 	b, err := et.DecryptMessage(key.KeyValue, ciphertext, usage)
 	if err != nil {
-		return nil, fmt.Errorf("Error decrypting: %v", err)
+		return nil, fmt.Errorf("error decrypting: %v", err)
 	}
 	return b, nil
 }

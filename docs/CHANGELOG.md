@@ -2,24 +2,47 @@
 title: Changelog | Guard
 description: Changelog
 menu:
-  product_stash_0.1.1:
+  product_stash_0.1.3:
     identifier: changelog-guard
     name: Changelog
     parent: welcome
     weight: 10
 product_name: guard
-menu_name: product_guard_0.1.1
+menu_name: product_guard_0.1.3
 section_menu_id: welcome
-url: /products/guard/0.1.1/welcome/changelog/
+url: /products/guard/0.1.3/welcome/changelog/
 aliases:
-  - /products/guard/0.1.1/CHANGELOG/
+  - /products/guard/0.1.3/CHANGELOG/
 ---
 
 # Change Log
 
 ## [Unreleased](https://github.com/appscode/guard/tree/HEAD)
 
-[Full Changelog](https://github.com/appscode/guard/compare/0.1.0...HEAD)
+[Full Changelog](https://github.com/appscode/guard/compare/0.1.2...HEAD)
+
+**Merged pull requests:**
+
+- Support ntp server as flag [\#145](https://github.com/appscode/guard/pull/145) ([tamalsaha](https://github.com/tamalsaha))
+- Increase NTP clock skew to 2 min and check every 10 min [\#144](https://github.com/appscode/guard/pull/144) ([tamalsaha](https://github.com/tamalsaha))
+- Fix typo [\#141](https://github.com/appscode/guard/pull/141) ([ryuheechul](https://github.com/ryuheechul))
+- Fix a typo in kubectl invocation [\#137](https://github.com/appscode/guard/pull/137) ([farcaller](https://github.com/farcaller))
+
+## [0.1.2](https://github.com/appscode/guard/tree/0.1.2) (2018-05-04)
+[Full Changelog](https://github.com/appscode/guard/compare/0.1.1...0.1.2)
+
+**Merged pull requests:**
+
+- Update docs for 0.1.2 release [\#136](https://github.com/appscode/guard/pull/136) ([tamalsaha](https://github.com/tamalsaha))
+- Update client-go to 7.0.0 \(Kubernetes 1.10\) [\#135](https://github.com/appscode/guard/pull/135) ([tamalsaha](https://github.com/tamalsaha))
+- Add paging to get around directoryObjects.getByIds limit of 1000 [\#133](https://github.com/appscode/guard/pull/133) ([amanohar](https://github.com/amanohar))
+
+## [0.1.1](https://github.com/appscode/guard/tree/0.1.1) (2018-04-20)
+[Full Changelog](https://github.com/appscode/guard/compare/0.1.0...0.1.1)
+
+**Fixed bugs:**
+
+- Error: guard does not provide service for github [\#127](https://github.com/appscode/guard/issues/127)
 
 **Closed issues:**
 
@@ -27,6 +50,7 @@ aliases:
 
 **Merged pull requests:**
 
+- Prepare docs for 0.1.1 release [\#130](https://github.com/appscode/guard/pull/130) ([tamalsaha](https://github.com/tamalsaha))
 - Revendor dependencies [\#129](https://github.com/appscode/guard/pull/129) ([tamalsaha](https://github.com/tamalsaha))
 - Add auth provider case insensitive check [\#128](https://github.com/appscode/guard/pull/128) ([nightfury1204](https://github.com/nightfury1204))
 - Improve azure auth provider docs [\#126](https://github.com/appscode/guard/pull/126) ([tamalsaha](https://github.com/tamalsaha))

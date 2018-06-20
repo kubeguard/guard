@@ -2,13 +2,13 @@
 title: Install Kops
 description: Kops Guard Install
 menu:
-  product_guard_0.1.1:
+  product_guard_0.1.3:
     identifier: install-kops
     name: Install in Kops
     parent: setup
     weight: 15
 product_name: guard
-menu_name: product_guard_0.1.1
+menu_name: product_guard_0.1.3
 section_menu_id: setup
 ---
 
@@ -54,7 +54,7 @@ spec:
 
 After you saved your config, you have to exchange your k8s master nodes. If you have a three
 master HA cluster, i recommend that you exchange one server with command: `kops rolling-update
-cluster <cluster_name> --instance-group master-eu-west-1a--yes`. Now theoretically every third
+cluster <cluster_name> --instance-group master-eu-west-1a --yes`. Now theoretically every third
 request could work after your master node is online again. If the node does not join your cluster
 or things do not work, ssh to this master node and verify kubernetes api server logs in `/var/log/`.
 If some requests are working, exchange the other master nodes. This keeps your cluster working all

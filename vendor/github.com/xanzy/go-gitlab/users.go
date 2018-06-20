@@ -50,6 +50,7 @@ type User struct {
 	ExternUID        string          `json:"extern_uid"`
 	Provider         string          `json:"provider"`
 	ThemeID          int             `json:"theme_id"`
+	LastActivityOn   *ISOTime        `json:"last_activity_on"`
 	ColorSchemeID    int             `json:"color_scheme_id"`
 	IsAdmin          bool            `json:"is_admin"`
 	AvatarURL        string          `json:"avatar_url"`
@@ -63,7 +64,7 @@ type User struct {
 	External         bool            `json:"external"`
 }
 
-// UserIdentity represents a user identity
+// UserIdentity represents a user identity.
 type UserIdentity struct {
 	Provider  string `json:"provider"`
 	ExternUID string `json:"extern_uid"`
@@ -74,10 +75,18 @@ type UserIdentity struct {
 // GitLab API docs: https://docs.gitlab.com/ce/api/users.html#list-users
 type ListUsersOptions struct {
 	ListOptions
-	Active   *bool   `url:"active,omitempty" json:"active,omitempty"`
-	Blocked  *bool   `url:"blocked,omitempty" json:"blocked,omitempty"`
-	Search   *string `url:"search,omitempty" json:"search,omitempty"`
-	Username *string `url:"username,omitempty" json:"username,omitempty"`
+	Active  *bool `url:"active,omitempty" json:"active,omitempty"`
+	Blocked *bool `url:"blocked,omitempty" json:"blocked,omitempty"`
+
+	// The options below are only available for admins.
+	Search        *string    `url:"search,omitempty" json:"search,omitempty"`
+	Username      *string    `url:"username,omitempty" json:"username,omitempty"`
+	ExternalUID   *string    `url:"extern_uid,omitempty" json:"extern_uid,omitempty"`
+	Provider      *string    `url:"provider,omitempty" json:"provider,omitempty"`
+	CreatedBefore *time.Time `url:"created_before,omitempty" json:"created_before,omitempty"`
+	CreatedAfter  *time.Time `url:"created_after,omitempty" json:"created_after,omitempty"`
+	OrderBy       *string    `url:"order_by,omitempty" json:"order_by,omitempty"`
+	Sort          *string    `url:"sort,omitempty" json:"sort,omitempty"`
 }
 
 // ListUsers gets a list of users.
@@ -268,15 +277,21 @@ func (s *UsersService) ListSSHKeys(options ...OptionFunc) ([]*SSHKey, *Response,
 	return k, resp, err
 }
 
+// ListSSHKeysForUserOptions represents the available ListSSHKeysForUser() options.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/ce/api/users.html#list-ssh-keys-for-user
+type ListSSHKeysForUserOptions ListOptions
+
 // ListSSHKeysForUser gets a list of a specified user's SSH keys. Available
 // only for admin
 //
 // GitLab API docs:
 // https://docs.gitlab.com/ce/api/users.html#list-ssh-keys-for-user
-func (s *UsersService) ListSSHKeysForUser(user int, options ...OptionFunc) ([]*SSHKey, *Response, error) {
+func (s *UsersService) ListSSHKeysForUser(user int, opt *ListSSHKeysForUserOptions, options ...OptionFunc) ([]*SSHKey, *Response, error) {
 	u := fmt.Sprintf("users/%d/keys", user)
 
-	req, err := s.client.NewRequest("GET", u, nil, options)
+	req, err := s.client.NewRequest("GET", u, opt, options)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -472,15 +487,21 @@ func (s *UsersService) ListEmails(options ...OptionFunc) ([]*Email, *Response, e
 	return e, resp, err
 }
 
+// ListEmailsForUserOptions represents the available ListEmailsForUser() options.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/ce/api/users.html#list-emails-for-user
+type ListEmailsForUserOptions ListOptions
+
 // ListEmailsForUser gets a list of a specified user's Emails. Available
 // only for admin
 //
 // GitLab API docs:
 // https://docs.gitlab.com/ce/api/users.html#list-emails-for-user
-func (s *UsersService) ListEmailsForUser(user int, options ...OptionFunc) ([]*Email, *Response, error) {
+func (s *UsersService) ListEmailsForUser(user int, opt *ListEmailsForUserOptions, options ...OptionFunc) ([]*Email, *Response, error) {
 	u := fmt.Sprintf("users/%d/emails", user)
 
-	req, err := s.client.NewRequest("GET", u, nil, options)
+	req, err := s.client.NewRequest("GET", u, opt, options)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -614,6 +635,7 @@ type ImpersonationToken struct {
 // GitLab API docs:
 // https://docs.gitlab.com/ce/api/users.html#get-all-impersonation-tokens-of-a-user
 type GetAllImpersonationTokensOptions struct {
+	ListOptions
 	State *string `url:"state,omitempty" json:"state,omitempty"`
 }
 
