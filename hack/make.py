@@ -136,13 +136,26 @@ def default():
 
 
 def test(type, *args):
-    pydotenv.load_dotenv(join(libbuild.REPO_ROOT, 'hack/config/.env'))
+    die(call(libbuild.GOC + ' install ./...'))
+
+    if os.path.exists(libbuild.REPO_ROOT + "/hack/configs/.env"):
+        print 'Loading env file'
+        pydotenv.load_dotenv(libbuild.REPO_ROOT + "/hack/configs/.env")
+
     if type == 'unit':
-        die(call(libbuild.GOC + ' test -v ./pkg/...'))
+        unit_test(args)
     elif type == 'e2e':
-        die(call('ginkgo -r --v --progress --trace -- ' + " ".join(args)))
+        e2e_test(args)
     else:
         print '{test unit|e2e}'
+
+def unit_test(args):
+    st = ' '.join(args)
+    die(call(libbuild.GOC + ' test -v . ./auth/... ./commands/... ./installer/... ./server/... ./util/...' + st))
+
+def e2e_test(args):
+    st = ' '.join(args)
+    die(call(libbuild.GOC + ' test -v ./test/e2e/... -timeout 10h -args -ginkgo.v -ginkgo.progress -ginkgo.trace -v=3 ' + st))
 
 
 if __name__ == "__main__":
