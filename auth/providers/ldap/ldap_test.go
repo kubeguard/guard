@@ -34,8 +34,8 @@ type ldapServer struct {
 }
 
 func (s *ldapServer) start() {
-	var err error
 	go func() {
+		var err error
 		if s.secureConn {
 			tlsConfig, err := s.getTLSconfig()
 			if err == nil {
@@ -46,7 +46,9 @@ func (s *ldapServer) start() {
 		} else {
 			err = s.server.ListenAndServe(serverAddr + ":" + inSecurePort)
 		}
-		glog.Infoln("LDAP Server: ", err)
+		if err != nil {
+			glog.Fatalln("LDAP Server: ", err)
+		}
 	}()
 
 	<-s.stopCh
@@ -169,7 +171,7 @@ func handleUserSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 		w.Write(e)
 	}
 
-	// mutliple entry
+	// multiple entry
 	if r.FilterString() == "(&(objectClass=person)(id=nahid))" {
 		e := ldapserver.NewSearchResultEntry("uid=nahid,ou=users,o=Company")
 		e.AddAttribute("cn", "nahid")
@@ -371,7 +373,7 @@ func runTest(t *testing.T, secureConn bool, s Authenticator, serverType string) 
 func TestParseEncodedToken(t *testing.T) {
 	user, pass, ok := parseEncodedToken(base64.StdEncoding.EncodeToString([]byte("user1:12345")))
 	if !ok {
-		t.Error("Expected: parsing successfull, got parsing unsuccessfull")
+		t.Error("Expected: parsing successful, got parsing unsuccessful")
 	}
 	if user != "user1" {
 		t.Error("Expected: user: user1, got user:", user)

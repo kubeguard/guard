@@ -212,7 +212,7 @@ func TestGitlab(t *testing.T) {
 			"{{{PRIVATE-TOKEN: invalid token}}}",
 		},
 		{
-			"authentication unsuccessful, reason emtpy token",
+			"authentication unsuccessful, reason empty token",
 			gitlabUserRespBody,
 			http.StatusOK,
 			gitlabEmptyToken,
