@@ -78,7 +78,7 @@ func (u *UserInfo) login() error {
 	var authResp = &AuthResponse{}
 	err = json.NewDecoder(resp.Body).Decode(authResp)
 	if err != nil {
-		return errors.Wrapf(err, "failed to decode response for request %s", &req.URL.Path)
+		return errors.Wrapf(err, "failed to decode response for request %s", req.URL.Path)
 	}
 
 	// Set the authorization headers for future requests
@@ -127,7 +127,7 @@ func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
 	var objects = ObjectList{}
 	err = json.NewDecoder(resp.Body).Decode(&objects)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to decode response for request %s", &req.URL.Path)
+		return nil, errors.Wrapf(err, "failed to decode response for request %s", req.URL.Path)
 	}
 	return objects.Value, nil
 }
@@ -175,7 +175,7 @@ func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
 	var groups = &GroupList{}
 	err = json.NewDecoder(resp.Body).Decode(groups)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to decode response for request %s", &req.URL.Path)
+		return nil, errors.Wrapf(err, "failed to decode response for request %s", req.URL.Path)
 	}
 	return groups, nil
 }
