@@ -1,33 +1,39 @@
 ---
-title: Guard
+title: Guard Login
 menu:
   product_guard_0.1.3:
-    identifier: guard
-    name: Guard
+    identifier: guard-login
+    name: Guard Login
     parent: reference
-    weight: 0
-
 product_name: guard
 menu_name: product_guard_0.1.3
 section_menu_id: reference
-aliases:
-  - products/guard/0.1.3/reference/
-
 ---
-## guard
+## guard login
 
-Guard by AppsCode - Kubernetes Authentication WebHook Server
+Kubectl credential plugin
 
 ### Synopsis
 
-Guard by AppsCode - Kubernetes Authentication WebHook Server
+Kubectl credential plugin. Visit here for more info: https://kubernetes.io/docs/reference/access-authn-authz/authentication/#client-go-credential-plugins
+
+```
+guard login [flags]
+```
 
 ### Options
 
 ```
+  -k, --cluster string    Name of cluster
+  -h, --help              help for login
+  -p, --provider string   Name of cloud provider
+```
+
+### Options inherited from parent commands
+
+```
       --alsologtostderr                  log to standard error as well as files
       --analytics                        Send analytical events to Google Guard (default true)
-  -h, --help                             help for guard
       --log_backtrace_at traceLocation   when logging hits line file:N, emit a stack trace (default :0)
       --log_dir string                   If non-empty, write log files in this directory
       --logtostderr                      log to standard error instead of files
@@ -38,9 +44,5 @@ Guard by AppsCode - Kubernetes Authentication WebHook Server
 
 ### SEE ALSO
 
-* [guard get](/docs/reference/guard_get.md)	 - Get PKI
-* [guard init](/docs/reference/guard_init.md)	 - Init PKI
-* [guard login](/docs/reference/guard_login.md)	 - Kubectl credential plugin
-* [guard run](/docs/reference/guard_run.md)	 - Run server
-* [guard version](/docs/reference/guard_version.md)	 - Prints binary version number.
+* [guard](/docs/reference/guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
 

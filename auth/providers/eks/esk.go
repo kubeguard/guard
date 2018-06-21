@@ -1,4 +1,4 @@
-package aws
+package eks
 
 import (
 	"encoding/base64"
@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/appscode/guard/auth"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/pkg/errors"
@@ -18,9 +17,10 @@ const (
 	clusterIDHeader = "x-k8s-aws-id"
 )
 
-func init() {
-	auth.SupportedOrgs = append(auth.SupportedOrgs, OrgType)
-}
+// "EKS" provider is not supported like other ones.
+//func init() {
+//	auth.SupportedOrgs = append(auth.SupportedOrgs, OrgType)
+//}
 
 // https://github.com/heptio/aws-iam-authenticator/blob/master/pkg/token/token.go#L196
 func Get(clusterID string) (string, error) {

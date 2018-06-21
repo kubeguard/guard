@@ -13,6 +13,5 @@ func NewCmdGet() *cobra.Command {
 	cmd.AddCommand(NewCmdGetWebhookConfig())
 	cmd.AddCommand(NewCmdGetToken())
 	cmd.AddCommand(NewCmdInstaller())
-	cmd.AddCommand(NewCmdGetClusterToken())
 	return cmd
 }
