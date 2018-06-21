@@ -23,7 +23,7 @@ type Options struct {
 func NewOptions() Options {
 	return Options{
 		ClientSecret: os.Getenv("AZURE_CLIENT_SECRET"),
-		UseGroupUID: true,
+		UseGroupUID:  true,
 	}
 }
 
