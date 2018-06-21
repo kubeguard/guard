@@ -18,7 +18,7 @@ import (
 
 func NewCmdInitClient() *cobra.Command {
 	var (
-		rootDir = auth.DefaultPKIDir
+		rootDir = auth.DefaultDataDir
 		org     string
 	)
 	cmd := &cobra.Command{
