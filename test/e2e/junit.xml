@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+  <testsuite name="e2e Suite" tests="10" failures="0" time="571.677005453">
+      <testcase name="Installer test Set up guard for individual auth provider Setting up guard for appscode Set up guard for appscode should be successful" classname="e2e Suite" time="51.343773507"></testcase>
+      <testcase name="Installer test Set up guard for individual auth provider Setting up guard for github Set up guard for github should be successful" classname="e2e Suite" time="51.807932203"></testcase>
+      <testcase name="Installer test Set up guard for individual auth provider Setting up guard for github Set up guard for github should be successful, provided base url" classname="e2e Suite" time="51.303250814"></testcase>
+      <testcase name="Installer test Set up guard for individual auth provider Setting up guard for gitlab Set up guard for gitlab should be successful" classname="e2e Suite" time="50.925705798"></testcase>
+      <testcase name="Installer test Set up guard for individual auth provider Setting up guard for gitlab Set up guard for gitlab should be successful, provided base url" classname="e2e Suite" time="60.89855021"></testcase>
+      <testcase name="Installer test Set up guard for individual auth provider Setting up guard for azure Set up guard for azure should be successful" classname="e2e Suite" time="60.916727168"></testcase>
+      <testcase name="Installer test Set up guard for individual auth provider Setting up guard for LDAP Set up guard for LDAP should be successful" classname="e2e Suite" time="50.907171918"></testcase>
+      <testcase name="Installer test Set up guard for individual auth provider Setting up guard for token auth Set up guard for token auth should be successful" classname="e2e Suite" time="51.260738828"></testcase>
+      <testcase name="Installer test Set up guard for individual auth provider Setting up guard for google Set up guard for google should be successful" classname="e2e Suite" time="90.893004798"></testcase>
+      <testcase name="Installer test Setting up guard for all providers Set up guard for all providers should be successful" classname="e2e Suite" time="51.075806162"></testcase>
+  </testsuite>
