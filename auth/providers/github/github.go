@@ -40,7 +40,6 @@ func (g Authenticator) UID() string {
 }
 
 func (g *Authenticator) Check(token string) (*authv1.UserInfo, error) {
-
 	var (
 		client *github.Client
 		err    error
@@ -50,6 +49,9 @@ func (g *Authenticator) Check(token string) (*authv1.UserInfo, error) {
 		client, err = github.NewEnterpriseClient(g.opts.BaseUrl, "", oauth2.NewClient(g.ctx, oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: token},
 		)))
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create Github enterprise client")
+		}
 	} else {
 		client = github.NewClient(oauth2.NewClient(g.ctx, oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: token},

@@ -13,6 +13,9 @@ func IssueToken() error {
 	teamId := term.Read("Team Id:")
 	endpoint := fmt.Sprintf("https://%v.appscode.io", teamId)
 	err := open.Start(strings.Join([]string{endpoint, "conduit", "login"}, "/"))
+	if err != nil {
+		term.Fatalln("Failed to create conduit client", err)
+	}
 
 	term.Print("Paste the token here: ")
 	tokenBytes, err := gopass.GetPasswdMasked()
