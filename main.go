@@ -11,7 +11,7 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	if err := commands.NewRootCmd(Version).Execute(); err != nil {
+	if err := commands.NewRootCmd().Execute(); err != nil {
 		os.Exit(1)
 	}
 	os.Exit(0)

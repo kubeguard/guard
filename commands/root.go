@@ -19,7 +19,7 @@ const (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-func NewRootCmd(version string) *cobra.Command {
+func NewRootCmd() *cobra.Command {
 	var (
 		enableAnalytics = true
 	)
@@ -49,6 +49,7 @@ func NewRootCmd(version string) *cobra.Command {
 	cmd.AddCommand(NewCmdInit())
 	cmd.AddCommand(NewCmdGet())
 	cmd.AddCommand(NewCmdRun())
+	cmd.AddCommand(NewCmdLogin())
 	cmd.AddCommand(v.NewCmdVersion())
 	return cmd
 }
