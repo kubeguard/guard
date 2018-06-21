@@ -197,10 +197,12 @@ func (c *client) close() {
 }
 
 func (c *client) writeMessage(m *ldap.LDAPMessage) {
-	data, _ := m.Write()
-	Logger.Printf(">>> %d - %s - hex=%x", c.Numero, m.ProtocolOpName(), data.Bytes())
-	c.bw.Write(data.Bytes())
-	c.bw.Flush()
+	data, err := m.Write()
+	if err == nil {
+		Logger.Printf(">>> %d - %s - hex=%x", c.Numero, m.ProtocolOpName(), data.Bytes())
+		c.bw.Write(data.Bytes())
+		c.bw.Flush()
+	}
 }
 
 // ResponseWriter interface is used by an LDAP handler to
