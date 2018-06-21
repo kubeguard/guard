@@ -17,7 +17,7 @@ import (
 
 func NewCmdGetWebhookConfig() *cobra.Command {
 	var (
-		rootDir = auth.DefaultPKIDir
+		rootDir = auth.DefaultDataDir
 		org     string
 		addr    string
 	)

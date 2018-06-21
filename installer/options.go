@@ -32,7 +32,7 @@ type Options struct {
 
 func New() Options {
 	return Options{
-		PkiDir:          auth.DefaultPKIDir,
+		PkiDir:          auth.DefaultDataDir,
 		Namespace:       metav1.NamespaceSystem,
 		Addr:            "10.96.10.96:443",
 		PrivateRegistry: "appscode",
