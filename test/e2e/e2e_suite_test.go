@@ -40,6 +40,27 @@ var _ = BeforeSuite(func() {
 	err = root.CreateNamespace()
 	Expect(err).NotTo(HaveOccurred())
 	By("Using test namespace " + root.Namespace())
+
+	// clean up before test starts
+	_, err = root.GetService("guard", root.Namespace())
+	if err == nil {
+		Expect(root.DeleteService("guard", root.Namespace())).NotTo(HaveOccurred())
+	}
+
+	_, err = root.GetDeployment("guard", root.Namespace())
+	if err == nil {
+		Expect(root.DeleteDeployment("guard", root.Namespace())).NotTo(HaveOccurred())
+	}
+
+	_, err = root.GetClusterRole("guard")
+	if err == nil {
+		Expect(root.DeleteClusterRole("guard")).NotTo(HaveOccurred())
+	}
+
+	_, err = root.GetClusterRoleBinding("guard")
+	if err == nil {
+		Expect(root.DeleteClusterRoleBinding("guard")).NotTo(HaveOccurred())
+	}
 })
 
 var _ = AfterSuite(func() {
