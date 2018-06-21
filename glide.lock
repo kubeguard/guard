@@ -1,5 +1,5 @@
-hash: 2d149fb06574174a099b30daf4bd3a7bbc3c9aa8a3f2be254ff4abf5c37d65a5
-updated: 2018-06-21T02:12:45.62174126-07:00
+hash: 256031b804ff80e086379dca004cfafc5190a386b35aee023138427f937023af
+updated: 2018-06-21T16:38:13.657366189-07:00
 imports:
 - name: appscode.com/api
   version: fba2ed5c99e7b2f1cd46368b0152085a5ad09b35
@@ -254,7 +254,7 @@ imports:
   - matchers/support/goraph/util
   - types
 - name: github.com/pharmer/pharmer
-  version: 1844419e5a38967b6729d85e1cd637658af9e27b
+  version: e96f8ba6461f0d4857e64553921f1cef754e3bcf
   subpackages:
   - apis/v1alpha1
 - name: github.com/pkg/errors
@@ -311,7 +311,9 @@ imports:
   subpackages:
   - assert
 - name: github.com/vjeantet/ldapserver
-  version: 479fece7c5f15b209e2e3ba082a89d18cd2a8207
+  version: accfdfa35083b2ba591ebd295e8177cd316ad15f
+  repo: https://github.com/appscode/ldapserver.git
+  vcs: git
 - name: github.com/xanzy/go-gitlab
   version: 26ea551e8c159cea42a9f206bc18ae5884d44d0c
 - name: github.com/xeipuuv/gojsonpointer

@@ -59,6 +59,43 @@ type NamedAuthInfo struct {
 	// Token is the bearer token for authentication to the kubernetes cluster.
 	// +optional
 	Token string `json:"token,omitempty" protobuf:"bytes,4,opt,name=token"`
+	// Username is the username for basic authentication to the kubernetes cluster.
+	// +optional
+	Username string `json:"username,omitempty" protobuf:"bytes,5,opt,name=username"`
+	// Password is the password for basic authentication to the kubernetes cluster.
+	// +optional
+	Password string `json:"password,omitempty" protobuf:"bytes,6,opt,name=password"`
+	// +optional
+	Exec *ExecConfig `json:"exec,omitempty" protobuf:"bytes,7,opt,name=exec"`
+}
+
+// ExecConfig specifies a command to provide client credentials. The command is exec'd
+// and outputs structured stdout holding credentials.
+//
+// See the client.authentiction.k8s.io API group for specifications of the exact input
+// and output format
+type ExecConfig struct {
+	// Command to execute.
+	Command string `json:"command" protobuf:"bytes,1,opt,name=command"`
+	// Arguments to pass to the command when executing it.
+	// +optional
+	Args []string `json:"args" protobuf:"bytes,2,rep,name=args"`
+	// Env defines additional environment variables to expose to the process. These
+	// are unioned with the host's environment, as well as variables client-go uses
+	// to pass argument to the plugin.
+	// +optional
+	Env []ExecEnvVar `json:"env" protobuf:"bytes,3,rep,name=env"`
+
+	// Preferred input version of the ExecInfo. The returned ExecCredentials MUST use
+	// the same encoding version as the input.
+	APIVersion string `json:"apiVersion,omitempty" protobuf:"bytes,4,opt,name=apiVersion"`
+}
+
+// ExecEnvVar is used for setting environment variables when executing an exec-based
+// credential plugin.
+type ExecEnvVar struct {
+	Name  string `json:"name" protobuf:"bytes,1,opt,name=name"`
+	Value string `json:"value" protobuf:"bytes,2,opt,name=value"`
 }
 
 func Convert_KubeConfig_To_Config(in *KubeConfig) *clientcmdapi.Config {
@@ -79,6 +116,9 @@ func Convert_KubeConfig_To_Config(in *KubeConfig) *clientcmdapi.Config {
 				Token: in.AuthInfo.Token,
 				ClientCertificateData: append([]byte(nil), in.AuthInfo.ClientCertificateData...),
 				ClientKeyData:         append([]byte(nil), in.AuthInfo.ClientKeyData...),
+				Username:              in.AuthInfo.Username,
+				Password:              in.AuthInfo.Password,
+				Exec:                  ConvertExecConfig(in.AuthInfo.Exec),
 			},
 		},
 		Contexts: map[string]*clientcmdapi.Context{
@@ -91,6 +131,27 @@ func Convert_KubeConfig_To_Config(in *KubeConfig) *clientcmdapi.Config {
 	}
 }
 
+func ConvertExecConfig(exec *ExecConfig) *clientcmdapi.ExecConfig {
+	if exec == nil {
+		return nil
+	}
+	config := &clientcmdapi.ExecConfig{
+		Command:    exec.Command,
+		Args:       exec.Args,
+		APIVersion: exec.APIVersion,
+	}
+
+	if exec.Env != nil {
+		config.Env = make([]clientcmdapi.ExecEnvVar, len(exec.Env))
+		for key, val := range exec.Env {
+			config.Env[key].Name = val.Name
+			config.Env[key].Value = val.Value
+		}
+	}
+
+	return config
+}
+
 func NewRestConfig(in *KubeConfig) *rest.Config {
 	out := &rest.Config{
 		Host: in.Cluster.Server,
@@ -101,6 +162,8 @@ func NewRestConfig(in *KubeConfig) *rest.Config {
 	if in.AuthInfo.Token == "" {
 		out.TLSClientConfig.CertData = append([]byte(nil), in.AuthInfo.ClientCertificateData...)
 		out.TLSClientConfig.KeyData = append([]byte(nil), in.AuthInfo.ClientKeyData...)
+	} else if in.AuthInfo.Exec != nil {
+		out.ExecProvider = ConvertExecConfig(in.AuthInfo.Exec)
 	} else {
 		out.BearerToken = in.AuthInfo.Token
 	}

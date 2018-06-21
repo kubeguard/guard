@@ -16,6 +16,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	ldapmsg "github.com/vjeantet/goldap/message"
 	"github.com/vjeantet/ldapserver"
 	"k8s.io/client-go/util/cert"
 )
@@ -122,11 +123,16 @@ func ldapServerSetup(secureConn bool, userSearchDN, groupSearchDN string) (*ldap
 
 // handleBind return Success if username and password matched
 func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
-	r := m.GetBindRequest()
-	res := ldapserver.NewBindResponse(ldapserver.LDAPResultSuccess)
-
+	if m == nil || m.ProtocolOp() == nil {
+		return
+	}
+	r, ok := m.ProtocolOp().(ldapmsg.BindRequest)
+	if !ok {
+		return
+	}
 	glog.Infoln("Bind :", r.Name(), r.AuthenticationSimple())
 
+	res := ldapserver.NewBindResponse(ldapserver.LDAPResultSuccess)
 	// for baseDN
 	if string(r.Name()) == "uid=admin,ou=system" && string(r.AuthenticationSimple()) == "secret" {
 		w.Write(res)

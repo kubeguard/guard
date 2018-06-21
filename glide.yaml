@@ -77,6 +77,8 @@ import:
 - package: github.com/stretchr/testify
   version: v1.2.1
 - package: github.com/vjeantet/ldapserver
-  version: 479fece7c5f15b209e2e3ba082a89d18cd2a8207
+  repo: https://github.com/appscode/ldapserver.git
+  vcs: git
+  version: master
 - package: gopkg.in/square/go-jose.v2
   version: v2.1.6

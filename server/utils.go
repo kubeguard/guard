@@ -66,7 +66,7 @@ func printStackTrace(err error) {
 
 	if c, ok := errors.Cause(err).(stackTracer); ok {
 		st := c.StackTrace()
-		glog.V(5).Infof("Stacktrace: %+v", err.Error(), st) // top two frames
+		glog.V(5).Infof("Stacktrace: %+v", st) // top two frames
 	}
 }
 
