@@ -1,5 +1,5 @@
-hash: 0d2360fa14f00ef065a181919bd8695ed9acf0deb220a5a5344955cd434ed850
-updated: 2018-06-06T05:03:11.158683316-07:00
+hash: 2d149fb06574174a099b30daf4bd3a7bbc3c9aa8a3f2be254ff4abf5c37d65a5
+updated: 2018-06-21T02:12:45.62174126-07:00
 imports:
 - name: appscode.com/api
   version: fba2ed5c99e7b2f1cd46368b0152085a5ad09b35
@@ -47,9 +47,9 @@ imports:
   - util/errors
   - version
 - name: github.com/appscode/jsonpatch
-  version: 58a38a46ddb591a543c6b1003213353e29331c5a
+  version: 1359b374de83fa14fd58ab10aa8ea4935f84d249
 - name: github.com/appscode/kutil
-  version: 5fbfa91a3f029faeda0520507a7bfe07df3eedbd
+  version: 85abe6c009de4b732e5963cb1ec82950efd2fdda
   subpackages:
   - meta
   - tools/analytics
@@ -58,6 +58,32 @@ imports:
   - tools/fsnotify
 - name: github.com/appscode/pat
   version: 48ff78925b7955367d8a048fc2b5cec8efadf8d3
+- name: github.com/aws/aws-sdk-go
+  version: 760741802ad40f49ae9fc4a69ef6706d2527d62e
+  subpackages:
+  - aws
+  - aws/awserr
+  - aws/awsutil
+  - aws/client
+  - aws/client/metadata
+  - aws/corehandlers
+  - aws/credentials
+  - aws/credentials/ec2rolecreds
+  - aws/credentials/endpointcreds
+  - aws/credentials/stscreds
+  - aws/defaults
+  - aws/ec2metadata
+  - aws/endpoints
+  - aws/request
+  - aws/session
+  - aws/signer/v4
+  - internal/shareddefaults
+  - private/protocol
+  - private/protocol/query
+  - private/protocol/query/queryutil
+  - private/protocol/rest
+  - private/protocol/xml/xmlutil
+  - service/sts
 - name: github.com/Azure/go-autorest
   version: d4e6b95c12a08b4de2d48b45d5b4d594e5d32fab
   subpackages:
@@ -66,7 +92,7 @@ imports:
   - autorest/azure
   - autorest/date
 - name: github.com/beevik/ntp
-  version: 802074b1b037c59dbdbee7e196ad91b51d0ec844
+  version: 68f85807c2ee1e34097f9fcce627f020607be19d
 - name: github.com/beorn7/perks
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
@@ -86,11 +112,13 @@ imports:
 - name: github.com/evanphx/json-patch
   version: 944e07253867aacae43c04b2e6a239005443f33a
 - name: github.com/fatih/color
-  version: 9aae6aaa22315390f03959adca2c4d395b02fcef
+  version: 2d684516a8861da43017284349b7e303e809ac21
 - name: github.com/fsnotify/fsnotify
   version: c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
+- name: github.com/go-ini/ini
+  version: 300e940a926eb277d3901b20bdfcc54928ad3642
 - name: github.com/go-ldap/ldap
   version: bb7a9ca6e4fbc2129e3db588a34bc970ffe811a9
 - name: github.com/gogo/protobuf
@@ -171,12 +199,14 @@ imports:
   subpackages:
   - encoding/asn1
   - x/crypto/pbkdf2
+- name: github.com/jmespath/go-jmespath
+  version: 0b12d6b521d83fc7f755e7cfc1b1fbdd35a01a74
 - name: github.com/jpillora/go-ogle-analytics
   version: 14b04e0594ef6a9fd943363b135656f0ec8c9d0e
 - name: github.com/json-iterator/go
   version: ca39e5af3ece67bbcda3d0f4f56a8e24d9f2dad4
 - name: github.com/mattn/go-colorable
-  version: 5411d3eea5978e6cdc258b30de592b60df6aba96
+  version: efa589957cd060542a26d2dd7832fd6a6c6c3ade
 - name: github.com/mattn/go-isatty
   version: 57fdcb988a5c543893cc61bce354a6e24ab70022
 - name: github.com/matttproud/golang_protobuf_extensions
@@ -224,7 +254,7 @@ imports:
   - matchers/support/goraph/util
   - types
 - name: github.com/pharmer/pharmer
-  version: 5bfb4738e702c4c2b82eec7688c9100b89ea2545
+  version: 1844419e5a38967b6729d85e1cd637658af9e27b
   subpackages:
   - apis/v1alpha1
 - name: github.com/pkg/errors
@@ -289,7 +319,7 @@ imports:
 - name: github.com/xeipuuv/gojsonreference
   version: e02fc20de94c78484cd5ffb007f8af96be030a45
 - name: github.com/xeipuuv/gojsonschema
-  version: 93e72a773fade158921402d6a24c819b48aba29d
+  version: 1d523034197ff1f222f6429836dd36a2457a1874
 - name: github.com/yudai/gojsondiff
   version: 7b1b7adf999dab73a6eb02669c3d82dbb27a3dd6
   subpackages:
