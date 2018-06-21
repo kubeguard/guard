@@ -143,7 +143,7 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 		return
 	}
 
-	glog.Infoln("Bind failed User=%s, Pass=%s", string(r.Name()), string(r.AuthenticationSimple()))
+	glog.Infof("Bind failed User=%s, Pass=%s", string(r.Name()), string(r.AuthenticationSimple()))
 	res.SetResultCode(ldapserver.LDAPResultInvalidCredentials)
 	res.SetDiagnosticMessage("invalid credentials")
 	w.Write(res)
