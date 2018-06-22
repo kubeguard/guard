@@ -2,13 +2,13 @@
 title: Overview | Developer Guide
 description: Developer Guide Overview
 menu:
-  product_guard_0.1.4:
+  product_guard_0.2.0:
     identifier: overview-developer-guide
     name: Overview
     parent: developer-guide
     weight: 15
 product_name: guard
-menu_name: product_guard_0.1.4
+menu_name: product_guard_0.2.0
 section_menu_id: setup
 ---
 

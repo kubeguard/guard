@@ -2,20 +2,43 @@
 title: Changelog | Guard
 description: Changelog
 menu:
-  product_stash_0.1.4:
+  product_stash_0.2.0:
     identifier: changelog-guard
     name: Changelog
     parent: welcome
     weight: 10
 product_name: guard
-menu_name: product_guard_0.1.4
+menu_name: product_guard_0.2.0
 section_menu_id: welcome
-url: /products/guard/0.1.4/welcome/changelog/
+url: /products/guard/0.2.0/welcome/changelog/
 aliases:
-  - /products/guard/0.1.4/CHANGELOG/
+  - /products/guard/0.2.0/CHANGELOG/
 ---
 
 # Change Log
+
+## [Unreleased](https://github.com/appscode/guard/tree/HEAD)
+
+[Full Changelog](https://github.com/appscode/guard/compare/0.1.4...HEAD)
+
+**Closed issues:**
+
+- Use a GUARD\_PKI\_DIR env variable [\#158](https://github.com/appscode/guard/issues/158)
+- Azure AAD auth provider is using AAD group's displayName instead of unique objectId for auth [\#153](https://github.com/appscode/guard/issues/153)
+
+**Merged pull requests:**
+
+- Fix flaky LDAP tests [\#167](https://github.com/appscode/guard/pull/167) ([tamalsaha](https://github.com/tamalsaha))
+- Fix bad pointer in frame ldap.handleBind [\#166](https://github.com/appscode/guard/pull/166) ([tamalsaha](https://github.com/tamalsaha))
+- Document --azure.use-group-uid flag [\#165](https://github.com/appscode/guard/pull/165) ([tamalsaha](https://github.com/tamalsaha))
+- Add GUARD\_DATA\_DIR env variable [\#164](https://github.com/appscode/guard/pull/164) ([tamalsaha](https://github.com/tamalsaha))
+- Various fixed based on goreportcard [\#163](https://github.com/appscode/guard/pull/163) ([tamalsaha](https://github.com/tamalsaha))
+- Fix test command in make.py [\#162](https://github.com/appscode/guard/pull/162) ([tamalsaha](https://github.com/tamalsaha))
+- Skip e2e tests from travis. [\#161](https://github.com/appscode/guard/pull/161) ([tamalsaha](https://github.com/tamalsaha))
+- Fix formatting error [\#160](https://github.com/appscode/guard/pull/160) ([tamalsaha](https://github.com/tamalsaha))
+- Fix test [\#159](https://github.com/appscode/guard/pull/159) ([nightfury1204](https://github.com/nightfury1204))
+- Vendor aws sdk [\#157](https://github.com/appscode/guard/pull/157) ([tamalsaha](https://github.com/tamalsaha))
+- User auth info added for AWS EKS [\#150](https://github.com/appscode/guard/pull/150) ([sanjid133](https://github.com/sanjid133))
 
 ## [0.1.4](https://github.com/appscode/guard/tree/0.1.4) (2018-06-20)
 [Full Changelog](https://github.com/appscode/guard/compare/0.1.3...0.1.4)
