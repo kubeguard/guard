@@ -50,8 +50,7 @@ users:
       apiVersion: client.authentication.k8s.io/v1alpha1
       command: guard
       args:
-        - "get"
-        - "cluster-token"
+        - "login"
         - "-k"
         - "<cluster-name>"
         - "-p"
