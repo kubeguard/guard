@@ -17,9 +17,8 @@ aliases:
 
 # Change Log
 
-## [Unreleased](https://github.com/appscode/guard/tree/HEAD)
-
-[Full Changelog](https://github.com/appscode/guard/compare/0.1.4...HEAD)
+## [0.2.0](https://github.com/appscode/guard/tree/0.2.0) (2018-06-22)
+[Full Changelog](https://github.com/appscode/guard/compare/0.1.4...0.2.0)
 
 **Closed issues:**
 
@@ -28,6 +27,7 @@ aliases:
 
 **Merged pull requests:**
 
+- Prepare 0.2.0 release [\#168](https://github.com/appscode/guard/pull/168) ([tamalsaha](https://github.com/tamalsaha))
 - Fix flaky LDAP tests [\#167](https://github.com/appscode/guard/pull/167) ([tamalsaha](https://github.com/tamalsaha))
 - Fix bad pointer in frame ldap.handleBind [\#166](https://github.com/appscode/guard/pull/166) ([tamalsaha](https://github.com/tamalsaha))
 - Document --azure.use-group-uid flag [\#165](https://github.com/appscode/guard/pull/165) ([tamalsaha](https://github.com/tamalsaha))
