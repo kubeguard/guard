@@ -2,23 +2,23 @@
 title: Changelog | Guard
 description: Changelog
 menu:
-  product_stash_0.1.4:
+  product_stash_0.2.0:
     identifier: changelog-guard
     name: Changelog
     parent: welcome
     weight: 10
 product_name: guard
-menu_name: product_guard_0.1.4
+menu_name: product_guard_0.2.0
 section_menu_id: welcome
-url: /products/guard/0.1.4/welcome/changelog/
+url: /products/guard/0.2.0/welcome/changelog/
 aliases:
-  - /products/guard/0.1.4/CHANGELOG/
+  - /products/guard/0.2.0/CHANGELOG/
 ---
 
 # Change Log
 
-## [0.1.4](https://github.com/appscode/guard/tree/0.1.4) (2018-06-20)
-[Full Changelog](https://github.com/appscode/guard/compare/0.1.3...0.1.4)
+## [0.2.0](https://github.com/appscode/guard/tree/0.2.0) (2018-06-20)
+[Full Changelog](https://github.com/appscode/guard/compare/0.1.3...0.2.0)
 
 **Closed issues:**
 
@@ -28,7 +28,7 @@ aliases:
 
 **Merged pull requests:**
 
-- Prepare docs for 0.1.4 release [\#155](https://github.com/appscode/guard/pull/155) ([tamalsaha](https://github.com/tamalsaha))
+- Prepare docs for 0.2.0 release [\#155](https://github.com/appscode/guard/pull/155) ([tamalsaha](https://github.com/tamalsaha))
 - Allow Azure AAD auth provider to use AAD group ids instead of display name for authn/authz [\#154](https://github.com/appscode/guard/pull/154) ([amanohar](https://github.com/amanohar))
 
 ## [0.1.3](https://github.com/appscode/guard/tree/0.1.3) (2018-06-06)

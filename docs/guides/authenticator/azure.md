@@ -2,13 +2,13 @@
 title: Azure Authenticator | Guard
 description: Authenticate into Kubernetes using Azure
 menu:
-  product_guard_0.1.4:
+  product_guard_0.2.0:
     identifier: azure-authenticator
     parent: authenticator-guides
     name: Azure
     weight: 25
 product_name: guard
-menu_name: product_guard_0.1.4
+menu_name: product_guard_0.2.0
 section_menu_id: guides
 ---
 
@@ -38,7 +38,7 @@ $ kubectl apply -f installer.yaml
 
 Procedure to find `<application_id>`, `<application_secret>` are given below. Replace the `<tenant_id>` with your azure tenant id.
 
-Please note that, since 0.1.4 release, Guard server will return AAD group uid as groups in `UserInfo`. To use AAD group names, set the `--azure.use-group-uid=false` flag to Guard server binary. _Please note that multiple AAD groups can use the same name._ Consider the potential securtiy implications of using group names in `UserInfo`.
+Please note that, since 0.2.0 release, Guard server will return AAD group uid as groups in `UserInfo`. To use AAD group names, set the `--azure.use-group-uid=false` flag to Guard server binary. _Please note that multiple AAD groups can use the same name._ Consider the potential securtiy implications of using group names in `UserInfo`.
 
 ```console
 # generate Kubernetes YAMLs for deploying guard server

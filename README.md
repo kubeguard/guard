@@ -8,25 +8,25 @@
 # Guard
 Guard by AppsCode is a [Kubernetes Webhook Authentication](https://kubernetes.io/docs/admin/authentication/#webhook-token-authentication) server. Using guard, you can log into your Kubernetes cluster using various auth providers. Guard also configures groups of authenticated user appropriately. This allows cluster administrator to setup RBAC rules based on membership in groups. Guard supports following auth providers:
 
-- [Static Token File](https://appscode.com/products/guard/0.1.4/guides/authenticator/static_token_file/)
-- [Github](https://appscode.com/products/guard/0.1.4/guides/authenticator/github/)
-- [Gitlab](https://appscode.com/products/guard/0.1.4/guides/authenticator/gitlab/)
-- [Google](https://appscode.com/products/guard/0.1.4/guides/authenticator/google/)
-- [Azure](https://appscode.com/products/guard/0.1.4/guides/authenticator/azure/)
-- [LDAP using Simple or Kerberos authentication](https://appscode.com/products/guard/0.1.4/guides/authenticator/ldap/)
-- [Azure Active Directory via LDAP](https://appscode.com/products/guard/0.1.4/guides/authenticator/ldap_azure/)
+- [Static Token File](https://appscode.com/products/guard/0.2.0/guides/authenticator/static_token_file/)
+- [Github](https://appscode.com/products/guard/0.2.0/guides/authenticator/github/)
+- [Gitlab](https://appscode.com/products/guard/0.2.0/guides/authenticator/gitlab/)
+- [Google](https://appscode.com/products/guard/0.2.0/guides/authenticator/google/)
+- [Azure](https://appscode.com/products/guard/0.2.0/guides/authenticator/azure/)
+- [LDAP using Simple or Kerberos authentication](https://appscode.com/products/guard/0.2.0/guides/authenticator/ldap/)
+- [Azure Active Directory via LDAP](https://appscode.com/products/guard/0.2.0/guides/authenticator/ldap_azure/)
 
 ## Supported Versions
 Kubernetes 1.8+
 
 ## Installation
-To install Guard, please follow the guide [here](https://appscode.com/products/guard/0.1.4/setup/install/).
+To install Guard, please follow the guide [here](https://appscode.com/products/guard/0.2.0/setup/install/).
 
 ## Using Guard
-Want to learn how to use Guard? Please start [here](https://appscode.com/products/guard/0.1.4/).
+Want to learn how to use Guard? Please start [here](https://appscode.com/products/guard/0.2.0/).
 
 ## Contribution guidelines
-Want to help improve Guard? Please start [here](https://appscode.com/products/guard/0.1.4/welcome/contributing/).
+Want to help improve Guard? Please start [here](https://appscode.com/products/guard/0.2.0/welcome/contributing/).
 
 ---
 
