@@ -30,35 +30,28 @@ const (
 type ldapServer struct {
 	server     *ldapserver.Server
 	secureConn bool
-	stopCh     chan bool
 	certStore  *certstore.CertStore
 }
 
 func (s *ldapServer) start() {
-	go func() {
-		var err error
-		if s.secureConn {
-			tlsConfig, err := s.getTLSconfig()
-			if err == nil {
-				err = s.server.ListenAndServe(serverAddr+":"+securePort, func(s *ldapserver.Server) {
-					s.Listener = tls.NewListener(s.Listener, tlsConfig)
-				})
-			}
-		} else {
-			err = s.server.ListenAndServe(serverAddr + ":" + inSecurePort)
+	var err error
+	if s.secureConn {
+		tlsConfig, err := s.getTLSconfig()
+		if err == nil {
+			err = s.server.ListenAndServe(serverAddr+":"+securePort, func(s *ldapserver.Server) {
+				s.Listener = tls.NewListener(s.Listener, tlsConfig)
+			})
 		}
-		if err != nil {
-			glog.Fatalln("LDAP Server: ", err)
-		}
-	}()
-
-	<-s.stopCh
-	close(s.stopCh)
-	s.server.Stop()
+	} else {
+		err = s.server.ListenAndServe(serverAddr + ":" + inSecurePort)
+	}
+	if err != nil {
+		glog.Fatalln("LDAP Server: ", err)
+	}
 }
 
 func (s *ldapServer) stop() {
-	s.stopCh <- true
+	s.server.Stop()
 	if s.certStore != nil {
 		os.RemoveAll(s.certStore.Location())
 	}
@@ -101,7 +94,6 @@ func ldapServerSetup(secureConn bool, userSearchDN, groupSearchDN string) (*ldap
 
 	srv := &ldapServer{
 		server:     server,
-		stopCh:     make(chan bool),
 		secureConn: secureConn,
 	}
 
@@ -271,8 +263,9 @@ func runTest(t *testing.T, secureConn bool, s Authenticator, serverType string) 
 	}
 
 	go srv.start()
-	time.Sleep(2 * time.Second)
 	defer srv.stop()
+	// wait for server to start
+	time.Sleep(10 * time.Second)
 
 	if secureConn {
 		caCertPool := x509.NewCertPool()
