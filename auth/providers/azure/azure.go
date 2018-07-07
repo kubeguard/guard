@@ -116,7 +116,7 @@ func (c claims) getUserInfo(usernameClaim, userObjectIDClaim string) (*authv1.Us
 	}
 	if err != nil {
 		if err == ErrorClaimNotFound {
-			return nil, errors.Errorf("username claim: %s and objectID: %s not found", usernameClaim, userObjectIDClaim)
+			return nil, errors.Errorf("username: %s and objectID: %s claims not found", usernameClaim, userObjectIDClaim)
 		}
 		return nil, errors.Wrap(err, "unable to get username claim")
 	}
