@@ -17,11 +17,13 @@ type Options struct {
 	ClientID     string
 	ClientSecret string
 	TenantID     string
+	UseGroupUID  bool
 }
 
 func NewOptions() Options {
 	return Options{
 		ClientSecret: os.Getenv("AZURE_CLIENT_SECRET"),
+		UseGroupUID: true,
 	}
 }
 
@@ -29,6 +31,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.ClientID, "azure.client-id", o.ClientID, "MS Graph application client ID to use")
 	fs.StringVar(&o.ClientSecret, "azure.client-secret", o.ClientSecret, "MS Graph application client secret to use")
 	fs.StringVar(&o.TenantID, "azure.tenant-id", o.TenantID, "MS Graph application tenant id to use")
+	fs.BoolVar(&o.UseGroupUID, "azure.use-group-uid", o.UseGroupUID, "Use group UID for authentication instead of group display name")
 }
 
 func (o *Options) Validate() []error {
@@ -99,6 +102,8 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 	if o.TenantID != "" {
 		args = append(args, fmt.Sprintf("--azure.tenant-id=%s", o.TenantID))
 	}
+
+	args = append(args, fmt.Sprintf("--azure.use-group-uid=%t", o.UseGroupUID))
 
 	container.Args = args
 	d.Spec.Template.Spec.Containers[0] = container

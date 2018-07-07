@@ -61,7 +61,7 @@ func New(opts Options) (auth.Interface, error) {
 
 	c.verifier = provider.Verifier(&oidc.Config{SkipClientIDCheck: true})
 
-	c.graphClient, err = graph.New(c.ClientID, c.ClientSecret, c.TenantID)
+	c.graphClient, err = graph.New(c.ClientID, c.ClientSecret, c.TenantID, c.UseGroupUID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create ms graph client")
 	}

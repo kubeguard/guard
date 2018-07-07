@@ -2,27 +2,41 @@
 title: Changelog | Guard
 description: Changelog
 menu:
-  product_stash_0.1.3:
+  product_stash_0.1.4:
     identifier: changelog-guard
     name: Changelog
     parent: welcome
     weight: 10
 product_name: guard
-menu_name: product_guard_0.1.3
+menu_name: product_guard_0.1.4
 section_menu_id: welcome
-url: /products/guard/0.1.3/welcome/changelog/
+url: /products/guard/0.1.4/welcome/changelog/
 aliases:
-  - /products/guard/0.1.3/CHANGELOG/
+  - /products/guard/0.1.4/CHANGELOG/
 ---
 
 # Change Log
 
-## [Unreleased](https://github.com/appscode/guard/tree/HEAD)
+## [0.1.4](https://github.com/appscode/guard/tree/0.1.4) (2018-06-20)
+[Full Changelog](https://github.com/appscode/guard/compare/0.1.3...0.1.4)
 
-[Full Changelog](https://github.com/appscode/guard/compare/0.1.2...HEAD)
+**Closed issues:**
+
+- NTP sync causing periodic crashes [\#143](https://github.com/appscode/guard/issues/143)
+- Hardcoded Oauth client/secret for google? [\#138](https://github.com/appscode/guard/issues/138)
+- Add paging to get around directoryObjects.getByIds limit of 1000 [\#132](https://github.com/appscode/guard/issues/132)
 
 **Merged pull requests:**
 
+- Prepare docs for 0.1.4 release [\#155](https://github.com/appscode/guard/pull/155) ([tamalsaha](https://github.com/tamalsaha))
+- Allow Azure AAD auth provider to use AAD group ids instead of display name for authn/authz [\#154](https://github.com/appscode/guard/pull/154) ([amanohar](https://github.com/amanohar))
+
+## [0.1.3](https://github.com/appscode/guard/tree/0.1.3) (2018-06-06)
+[Full Changelog](https://github.com/appscode/guard/compare/0.1.2...0.1.3)
+
+**Merged pull requests:**
+
+- Prepare docs for 0.1.3 [\#147](https://github.com/appscode/guard/pull/147) ([tamalsaha](https://github.com/tamalsaha))
 - Support ntp server as flag [\#145](https://github.com/appscode/guard/pull/145) ([tamalsaha](https://github.com/tamalsaha))
 - Increase NTP clock skew to 2 min and check every 10 min [\#144](https://github.com/appscode/guard/pull/144) ([tamalsaha](https://github.com/tamalsaha))
 - Fix typo [\#141](https://github.com/appscode/guard/pull/141) ([ryuheechul](https://github.com/ryuheechul))

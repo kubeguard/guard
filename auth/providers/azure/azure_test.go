@@ -74,9 +74,9 @@ func newRSAKey(t *testing.T) (*signingKey, error) {
 	return &signingKey{"", priv, priv.Public(), jose.RS256}, nil
 }
 
-func clientSetup(clientID, clientSecret, tenantID, serverUrl string) (*Authenticator, error) {
+func clientSetup(clientID, clientSecret, tenantID, serverUrl string, useGroupUID bool) (*Authenticator, error) {
 	c := &Authenticator{
-		Options: Options{clientID, clientSecret, tenantID},
+		Options: Options{clientID, clientSecret, tenantID, useGroupUID},
 		ctx:     context.Background(),
 	}
 
@@ -90,7 +90,7 @@ func clientSetup(clientID, clientSecret, tenantID, serverUrl string) (*Authentic
 		SkipExpiryCheck:   true,
 	})
 
-	c.graphClient, err = graph.TestUserInfo(clientID, clientSecret, serverUrl+"/login", serverUrl+"/api")
+	c.graphClient, err = graph.TestUserInfo(clientID, clientSecret, serverUrl+"/login", serverUrl+"/api", useGroupUID)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +193,7 @@ func getGroupsAndIds(t *testing.T, groupSz int) ([]byte, []byte) {
 	return gId, gList
 }
 
-func assertUserInfo(t *testing.T, info *authv1.UserInfo, groupSize int) {
+func assertUserInfo(t *testing.T, info *authv1.UserInfo, groupSize int, useGroupUID bool) {
 	if info.Username != username {
 		t.Errorf("expected username %v, got %v", username, info.Username)
 	}
@@ -202,14 +202,20 @@ func assertUserInfo(t *testing.T, info *authv1.UserInfo, groupSize int) {
 
 	groups := sets.NewString(info.Groups...)
 	for i := 1; i <= groupSize; i++ {
-		group := "group" + strconv.Itoa(i)
+		var group string
+		if useGroupUID {
+			group = strconv.Itoa(i)
+		} else {
+			group = "group" + strconv.Itoa(i)
+		}
+
 		if !groups.Has(group) {
 			t.Errorf("group %v is missing", group)
 		}
 	}
 }
 
-func getServerAndClient(t *testing.T, signKey *signingKey, loginResp string, groupSize int, groupStatus ...int) (*httptest.Server, *Authenticator) {
+func getServerAndClient(t *testing.T, signKey *signingKey, loginResp string, groupSize int, useGroupUID bool, groupStatus ...int) (*httptest.Server, *Authenticator) {
 	jwkSet := signKey.jwk()
 	jwkResp, err := json.Marshal(jwkSet)
 	if err != nil {
@@ -224,7 +230,7 @@ func getServerAndClient(t *testing.T, signKey *signingKey, loginResp string, gro
 		t.Fatalf("Error when creating server, reason: %v", err)
 	}
 
-	client, err := clientSetup("client_id", "client_secret", "tenant_id", srv.URL)
+	client, err := clientSetup("client_id", "client_secret", "tenant_id", srv.URL, useGroupUID)
 	if err != nil {
 		t.Fatalf("Error when creatidng azure client. reason : %v", err)
 	}
@@ -252,7 +258,7 @@ func TestCheckAzureAuthenticationSuccess(t *testing.T) {
 		// authenticated : true
 		t.Run(fmt.Sprintf("authentication successful, group size %v", test.groupSize), func(t *testing.T) {
 
-			srv, client := getServerAndClient(t, signKey, loginResp, test.groupSize)
+			srv, client := getServerAndClient(t, signKey, loginResp, test.groupSize, false)
 			defer srv.Close()
 
 			token, err := signKey.sign([]byte(fmt.Sprintf(test.token, srv.URL)))
@@ -262,7 +268,25 @@ func TestCheckAzureAuthenticationSuccess(t *testing.T) {
 
 			resp, err := client.Check(token)
 			assert.Nil(t, err)
-			assertUserInfo(t, resp, test.groupSize)
+			assertUserInfo(t, resp, test.groupSize, client.UseGroupUID)
+		})
+	}
+
+	for _, test := range dataset {
+		// authenticated : true
+		t.Run(fmt.Sprintf("authentication (with group IDs) successful, group size %v", test.groupSize), func(t *testing.T) {
+
+			srv, client := getServerAndClient(t, signKey, loginResp, test.groupSize, true)
+			defer srv.Close()
+
+			token, err := signKey.sign([]byte(fmt.Sprintf(test.token, srv.URL)))
+			if err != nil {
+				t.Fatalf("Error when signing token. reason: %v", err)
+			}
+
+			resp, err := client.Check(token)
+			assert.Nil(t, err)
+			assertUserInfo(t, resp, test.groupSize, client.UseGroupUID)
 		})
 	}
 }
@@ -298,7 +322,7 @@ func TestCheckAzureAuthenticationFailed(t *testing.T) {
 	for _, test := range dataset {
 		t.Run(test.testName, func(t *testing.T) {
 			t.Log(test)
-			srv, client := getServerAndClient(t, signKey, loginResp, 5, test.groupRespStatus...)
+			srv, client := getServerAndClient(t, signKey, loginResp, 5, false, test.groupRespStatus...)
 			defer srv.Close()
 
 			var token string
