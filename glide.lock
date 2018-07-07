@@ -1,5 +1,5 @@
-hash: f11b1d1195b67debec2a844d4464c089a9c3e171125f7c901c0c010c82190021
-updated: 2018-07-07T08:53:32.829896797-07:00
+hash: 009e137c7b6fa401542a589afa4bbaac67d0d7c4c8e6415a4c9ddd2a29e28022
+updated: 2018-07-07T09:07:30.462542055-07:00
 imports:
 - name: appscode.com/api
   version: fba2ed5c99e7b2f1cd46368b0152085a5ad09b35
@@ -86,6 +86,8 @@ imports:
   - private/protocol/rest
   - private/protocol/xml/xmlutil
   - service/sts
+- name: github.com/Azure/azure-sdk-for-go
+  version: 56a0b1d2af3b65d5f1f7a330e02faaf48b473c5a
 - name: github.com/Azure/go-autorest
   version: 1ff28809256a84bb6966640ff3d0371af82ccba4
   subpackages:
