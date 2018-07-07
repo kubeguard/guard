@@ -24,12 +24,16 @@ import (
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 const (
-	username    = "nahid"
-	loginResp   = `{ "token_type": "Bearer", "expires_in": 8459, "access_token": "%v"}`
-	accessToken = `{ "iss" : "%v", "upn": "nahid", "groups": [ "1", "2", "3"] }`
-	emptyUpn    = `{ "iss" : "%v",	"groups": [ "1", "2", "3"] }`
-	emptyGroup  = `{	"iss" : "%v", "upn": "nahid" }`
-	badToken    = "bad_token"
+	username                 = "nahid"
+	objectID                 = "abc-123d4"
+	loginResp                = `{ "token_type": "Bearer", "expires_in": 8459, "access_token": "%v"}`
+	accessToken              = `{ "iss" : "%v", "upn": "nahid", "groups": [ "1", "2", "3"] }`
+	accessTokenWithOid       = `{ "iss" : "%v", "oid": "abc-123d4", "groups": [ "1", "2", "3"] }`
+	accessTokenWithUpnAndOid = `{ "iss" : "%v", "upn": "nahid", "oid": "abc-123d4", "groups": [ "1", "2", "3"] }`
+	emptyUpn                 = `{ "iss" : "%v",	"groups": [ "1", "2", "3"] }`
+	emptyGroup               = `{	"iss" : "%v", "upn": "nahid" }`
+	emptyGroupOid            = `{	"iss" : "%v","oid": "abc-123d4" }`
+	badToken                 = "bad_token"
 )
 
 type signingKey struct {
@@ -121,6 +125,15 @@ func serverSetup(loginResp string, loginStatus int, jwkResp, groupIds, groupList
 		w.Write(groupIds)
 	}))
 
+	m.Post("/api/users/abc-123d4/getMemberGroups", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if len(groupStatus) > 0 {
+			w.WriteHeader(groupStatus[0])
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
+		w.Write(groupIds)
+	}))
+
 	m.Post("/api/directoryObjects/getByIds", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(groupList)
@@ -194,7 +207,7 @@ func getGroupsAndIds(t *testing.T, groupSz int) ([]byte, []byte) {
 }
 
 func assertUserInfo(t *testing.T, info *authv1.UserInfo, groupSize int, useGroupUID bool) {
-	if info.Username != username {
+	if info.Username != username && info.Username != objectID {
 		t.Errorf("expected username %v, got %v", username, info.Username)
 	}
 
@@ -251,7 +264,14 @@ func TestCheckAzureAuthenticationSuccess(t *testing.T) {
 		{1, accessToken},
 		{11, accessToken},
 		{233, accessToken},
+		{0, accessTokenWithOid},
+		{1, accessTokenWithOid},
+		{15, accessTokenWithOid},
+		{0, accessTokenWithUpnAndOid},
+		{1, accessTokenWithUpnAndOid},
+		{115, accessTokenWithUpnAndOid},
 		{5, emptyGroup},
+		{5, emptyGroupOid},
 	}
 
 	for _, test := range dataset {
@@ -313,6 +333,11 @@ func TestCheckAzureAuthenticationFailed(t *testing.T) {
 			[]int{http.StatusInternalServerError},
 		},
 		{
+			"error when getting groups",
+			accessTokenWithOid,
+			[]int{http.StatusInternalServerError},
+		},
+		{
 			"authentication unsuccessful, reason empty username claim",
 			emptyUpn,
 			nil,
@@ -344,6 +369,7 @@ func TestCheckAzureAuthenticationFailed(t *testing.T) {
 
 var testClaims = claims{
 	"upn":     username,
+	"oid":     objectID,
 	"bad_upn": 1204,
 }
 
@@ -354,14 +380,14 @@ func TestReviewFromClaims(t *testing.T) {
 			Username: username,
 		}
 
-		resp, err := testClaims.getUserInfo("upn")
+		resp, err := testClaims.getUserInfo("upn", "oid")
 		assert.Nil(t, err)
 		assert.Equal(t, validUserInfo, resp)
 	})
 
 	// invalid claim should error
 	t.Run("invalid claim should error", func(t *testing.T) {
-		resp, err := testClaims.getUserInfo("bad_upn")
+		resp, err := testClaims.getUserInfo("bad_upn", "")
 		assert.NotNil(t, err)
 		assert.Nil(t, resp)
 	})
@@ -373,6 +399,13 @@ func TestString(t *testing.T) {
 		v, err := testClaims.String("upn")
 		assert.Nil(t, err)
 		assert.Equal(t, username, v)
+	})
+
+	// valid claim key should return value
+	t.Run("valid claim key should return value", func(t *testing.T) {
+		v, err := testClaims.String("oid")
+		assert.Nil(t, err)
+		assert.Equal(t, objectID, v)
 	})
 
 	// non-existent claim key should error

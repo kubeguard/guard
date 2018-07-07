@@ -26,6 +26,7 @@ const (
 	OrgType            = "azure"
 	azureIssuerURL     = "https://sts.windows.net/"
 	azureUsernameClaim = "upn"
+	azureObjectIDClaim = "oid"
 )
 
 func init() {
@@ -83,7 +84,7 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 		return nil, errors.Wrap(err, "error parsing claims")
 	}
 
-	resp, err := claims.getUserInfo(azureUsernameClaim)
+	resp, err := claims.getUserInfo(azureUsernameClaim, azureObjectIDClaim)
 	if err != nil {
 		return nil, err
 	}
@@ -106,13 +107,16 @@ func getClaims(token *oidc.IDToken) (claims, error) {
 
 // ReviewFromClaims creates a new TokenReview object from the claims object
 // the claims object
-func (c claims) getUserInfo(usernameClaim string) (*authv1.UserInfo, error) {
+func (c claims) getUserInfo(usernameClaim, userObjectIDClaim string) (*authv1.UserInfo, error) {
 	var resp = &authv1.UserInfo{}
 
 	username, err := c.String(usernameClaim)
 	if err != nil {
+		username, err = c.String(userObjectIDClaim)
+	}
+	if err != nil {
 		if err == ErrorClaimNotFound {
-			return nil, errors.Errorf("username claim %s not found", usernameClaim)
+			return nil, errors.Errorf("username claim: %s and objectID: %s not found", usernameClaim, userObjectIDClaim)
 		}
 		return nil, errors.Wrap(err, "unable to get username claim")
 	}
