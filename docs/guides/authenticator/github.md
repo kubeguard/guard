@@ -2,13 +2,13 @@
 title: Github Authenticator | Guard
 description: Authenticate into Kubernetes using Github
 menu:
-  product_guard_0.2.0:
+  product_guard_0.2.1:
     identifier: github-authenticator
     parent: authenticator-guides
     name: Github
     weight: 15
 product_name: guard
-menu_name: product_guard_0.2.0
+menu_name: product_guard_0.2.1
 section_menu_id: guides
 ---
 

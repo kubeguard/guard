@@ -2,13 +2,13 @@
 title: Uninstall
 description: Guard Uninstall
 menu:
-  product_guard_0.2.0:
+  product_guard_0.2.1:
     identifier: uninstall-guard
     name: Uninstall
     parent: setup
     weight: 20
 product_name: guard
-menu_name: product_guard_0.2.0
+menu_name: product_guard_0.2.1
 section_menu_id: setup
 ---
 
@@ -18,7 +18,7 @@ Please follow the steps below to uninstall Guard:
 - Delete the various objects created for Guard operator.
 
 ```console
-$ curl -fsSL https://raw.githubusercontent.com/appscode/guard/0.2.0/hack/deploy/uninstall.sh | bash
+$ curl -fsSL https://raw.githubusercontent.com/appscode/guard/0.2.1/hack/deploy/uninstall.sh | bash
 
 + kubectl delete deployment -l app=guard -n kube-system
 deployment "guard" deleted
