@@ -2,20 +2,35 @@
 title: Changelog | Guard
 description: Changelog
 menu:
-  product_stash_0.2.0:
+  product_stash_0.2.1:
     identifier: changelog-guard
     name: Changelog
     parent: welcome
     weight: 10
 product_name: guard
-menu_name: product_guard_0.2.0
+menu_name: product_guard_0.2.1
 section_menu_id: welcome
-url: /products/guard/0.2.0/welcome/changelog/
+url: /products/guard/0.2.1/welcome/changelog/
 aliases:
-  - /products/guard/0.2.0/CHANGELOG/
+  - /products/guard/0.2.1/CHANGELOG/
 ---
 
 # Change Log
+
+## [0.2.1](https://github.com/appscode/guard/tree/0.2.1) (2018-07-08)
+[Full Changelog](https://github.com/appscode/guard/compare/0.2.0...0.2.1)
+
+**Closed issues:**
+
+- Support B2B auth for Azure provider by supporting both `oid` or `upn` claims in the token [\#170](https://github.com/appscode/guard/issues/170)
+- Update kops docs [\#142](https://github.com/appscode/guard/issues/142)
+
+**Merged pull requests:**
+
+- Format shell scripts [\#175](https://github.com/appscode/guard/pull/175) ([tamalsaha](https://github.com/tamalsaha))
+- Use client-go v8.0.0 [\#173](https://github.com/appscode/guard/pull/173) ([tamalsaha](https://github.com/tamalsaha))
+- Enable B2B auth for Azure provider by supporting either `oid` or `upn` claim in the token [\#172](https://github.com/appscode/guard/pull/172) ([amanohar](https://github.com/amanohar))
+- Add missing image in azure [\#169](https://github.com/appscode/guard/pull/169) ([nightfury1204](https://github.com/nightfury1204))
 
 ## [0.2.0](https://github.com/appscode/guard/tree/0.2.0) (2018-06-22)
 [Full Changelog](https://github.com/appscode/guard/compare/0.1.4...0.2.0)
