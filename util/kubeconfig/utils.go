@@ -35,6 +35,7 @@ func AddAuthInfo(username string, authInfo *clientcmdapi.AuthInfo) error {
 			Preferences: clientcmdapi.Preferences{
 				Colors: true,
 			},
+			AuthInfos: map[string]*clientcmdapi.AuthInfo{},
 		}
 	}
 
