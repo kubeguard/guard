@@ -47,6 +47,11 @@ func write(w http.ResponseWriter, info *auth.UserInfo, err error) {
 		}
 	}
 
+	if glog.V(10) {
+		data, _ := json.MarshalIndent(resp, "", "  ")
+		glog.V(10).Infoln(string(data))
+	}
+
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
 		panic(err)
