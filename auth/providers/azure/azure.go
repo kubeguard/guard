@@ -35,7 +35,7 @@ func init() {
 
 var (
 	// ErrorClaimNotFound indicates the given key was not found in the claims
-	ErrorClaimNotFound = fmt.Errorf("claim not found")
+	ErrClaimNotFound = fmt.Errorf("claim not found")
 )
 
 // claims represents a map of claims provided with a JWT
@@ -108,39 +108,30 @@ func getClaims(token *oidc.IDToken) (claims, error) {
 // ReviewFromClaims creates a new TokenReview object from the claims object
 // the claims object
 func (c claims) getUserInfo(usernameClaim, userObjectIDClaim string) (*authv1.UserInfo, error) {
-	var resp = &authv1.UserInfo{}
-
-	username, err := c.String(usernameClaim)
-	if err != nil {
-		username, err = c.String(userObjectIDClaim)
+	username, err := c.string(usernameClaim)
+	if err != nil && err == ErrClaimNotFound {
+		username, err = c.string(userObjectIDClaim)
 	}
 	if err != nil {
-		if err == ErrorClaimNotFound {
+		if err == ErrClaimNotFound {
 			return nil, errors.Errorf("username: %s and objectID: %s claims not found", usernameClaim, userObjectIDClaim)
 		}
 		return nil, errors.Wrap(err, "unable to get username claim")
 	}
-	resp.Username = username
 
-	return resp, nil
+	return &authv1.UserInfo{Username: username}, nil
 }
 
-func (c claims) hasKey(key string) bool {
-	_, ok := c[key]
-	return ok
-}
-
-// String gets a string value from claims given a key. Returns false if
+// String gets a string value from claims given a key. Returns error if
 // the key does not exist
-func (c claims) String(key string) (string, error) {
-	var resp string
-	if !c.hasKey(key) {
-		return "", ErrorClaimNotFound
+func (c claims) string(key string) (string, error) {
+	v, ok := c[key]
+	if !ok {
+		return "", ErrClaimNotFound
 	}
-	if v, ok := c[key].(string); ok {
-		resp = v
-	} else { // Not a string type
-		return "", fmt.Errorf("claim is not a string")
+	s, ok := v.(string)
+	if !ok {
+		return "", fmt.Errorf("claim %s is not a string, found %v", key, v)
 	}
-	return resp, nil
+	return s, nil
 }
