@@ -396,28 +396,28 @@ func TestReviewFromClaims(t *testing.T) {
 func TestString(t *testing.T) {
 	// valid claim key should return value
 	t.Run("valid claim key should return value", func(t *testing.T) {
-		v, err := testClaims.String("upn")
+		v, err := testClaims.string("upn")
 		assert.Nil(t, err)
 		assert.Equal(t, username, v)
 	})
 
 	// valid claim key should return value
 	t.Run("valid claim key should return value", func(t *testing.T) {
-		v, err := testClaims.String("oid")
+		v, err := testClaims.string("oid")
 		assert.Nil(t, err)
 		assert.Equal(t, objectID, v)
 	})
 
 	// non-existent claim key should error
 	t.Run("non-existent claim key should error", func(t *testing.T) {
-		v, err := testClaims.String("claim_don't_exist")
+		v, err := testClaims.string("claim_don't_exist")
 		assert.NotNil(t, err)
 		assert.Empty(t, v, "expected empty")
 	})
 
 	//non-string claim should error
 	t.Run("non-string claim should error", func(t *testing.T) {
-		v, err := testClaims.String("bad_upn")
+		v, err := testClaims.string("bad_upn")
 		assert.NotNil(t, err)
 		assert.Empty(t, v, "expected empty")
 	})
