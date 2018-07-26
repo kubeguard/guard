@@ -1,4 +1,4 @@
-<p align="center"><img src="https://s33.postimg.cc/iv44xl667/LOGO_GUARD_Readme.jpg"></p>
+<p align="center"><img src="/logo/LOGO_GUARD_Readme.jpg"></p>
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/appscode/guard)](https://goreportcard.com/report/github.com/appscode/guard)
 [![Build Status](https://travis-ci.org/appscode/guard.svg?branch=master)](https://travis-ci.org/appscode/guard)
@@ -46,4 +46,4 @@ We use Slack for public discussions. To chit chat with us or the rest of the com
 
 If you have found a bug with Guard or want to request for new features, please [file an issue](https://github.com/appscode/guard/issues/new).
 
-<p align="center"><img src="https://s33.postimg.cc/f00quj2an/Separador.jpg"></p>
+<p align="center"><img src="/logo/Separador.jpg"></p>
