@@ -2,11 +2,12 @@ package leafnodes
 
 import (
 	"fmt"
+	"reflect"
+	"time"
+
 	"github.com/onsi/ginkgo/internal/codelocation"
 	"github.com/onsi/ginkgo/internal/failer"
 	"github.com/onsi/ginkgo/types"
-	"reflect"
-	"time"
 )
 
 type runner struct {
@@ -68,8 +69,10 @@ func (r *runner) runAsync() (outcome types.SpecState, failure types.SpecFailure)
 	done := make(chan interface{}, 1)
 
 	go func() {
+		finished := false
+
 		defer func() {
-			if e := recover(); e != nil {
+			if e := recover(); e != nil || !finished {
 				r.failer.Panic(codelocation.New(2), e)
 				select {
 				case <-done:
@@ -81,6 +84,7 @@ func (r *runner) runAsync() (outcome types.SpecState, failure types.SpecFailure)
 		}()
 
 		r.asyncFunc(done)
+		finished = true
 	}()
 
 	select {
@@ -93,8 +97,10 @@ func (r *runner) runAsync() (outcome types.SpecState, failure types.SpecFailure)
 	return
 }
 func (r *runner) runSync() (outcome types.SpecState, failure types.SpecFailure) {
+	finished := false
+
 	defer func() {
-		if e := recover(); e != nil {
+		if e := recover(); e != nil || !finished {
 			r.failer.Panic(codelocation.New(2), e)
 		}
 
@@ -102,6 +108,7 @@ func (r *runner) runSync() (outcome types.SpecState, failure types.SpecFailure) 
 	}()
 
 	r.syncFunc()
+	finished = true
 
 	return
 }

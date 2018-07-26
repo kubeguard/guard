@@ -152,7 +152,7 @@ func gitlabGetGroupResp(groupSize int) gitlabGroupRespFunc {
 func gitlabServerSetup(userResp string, userStatusCode int, gengroupResp gitlabGroupRespFunc) *httptest.Server {
 	m := pat.New()
 
-	m.Get("/user", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	m.Get("/api/v4/user", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		err := gitlabVerifyAuthorization(r)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -164,7 +164,7 @@ func gitlabServerSetup(userResp string, userStatusCode int, gengroupResp gitlabG
 		w.Write([]byte(userResp))
 	}))
 
-	m.Get("/groups", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	m.Get("/api/v4/groups", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		err := gitlabVerifyAuthorization(r)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -212,7 +212,7 @@ func TestGitlab(t *testing.T) {
 			"{{{PRIVATE-TOKEN: invalid token}}}",
 		},
 		{
-			"authentication unsuccessful, reason emtpy token",
+			"authentication unsuccessful, reason empty token",
 			gitlabUserRespBody,
 			http.StatusOK,
 			gitlabEmptyToken,
@@ -236,8 +236,9 @@ func TestGitlab(t *testing.T) {
 			client := gitlabClientSetup(srv.URL)
 
 			resp, err := client.Check(test.token)
-			assert.NotNil(t, err)
-			assert.Nil(t, resp)
+			if assert.NotNil(t, err) {
+				assert.Nil(t, resp)
+			}
 		})
 	}
 }
@@ -252,10 +253,12 @@ func TestForDIfferentGroupSizes(t *testing.T) {
 			defer srv.Close()
 
 			client := gitlabClientSetup(srv.URL)
-
-			resp, err := client.Check(gitlabGoodToken)
-			assert.Nil(t, err)
-			assertUserInfo(t, resp, groupSize)
+			if assert.NotNil(t, client) {
+				resp, err := client.Check(gitlabGoodToken)
+				if assert.Nil(t, err) {
+					assertUserInfo(t, resp, groupSize)
+				}
+			}
 		})
 	}
 }

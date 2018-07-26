@@ -1,12 +1,12 @@
 ---
 title: Guard Get Installer
 menu:
-  product_guard_0.1.2:
+  product_guard_0.2.1:
     identifier: guard-get-installer
     name: Guard Get Installer
     parent: reference
 product_name: guard
-menu_name: product_guard_0.1.2
+menu_name: product_guard_0.2.1
 section_menu_id: reference
 ---
 ## guard get installer
@@ -29,6 +29,7 @@ guard get installer [flags]
       --azure.client-id string               MS Graph application client ID to use
       --azure.client-secret string           MS Graph application client secret to use
       --azure.tenant-id string               MS Graph application tenant id to use
+      --azure.use-group-uid                  Use group UID for authentication instead of group display name (default true)
       --github.base-url string               Base url for enterprise, keep empty to use default github base url
       --gitlab.base-url string               Base url for GitLab, including the API path, keep empty to use default gitlab base url.
       --google.admin-email string            Email of G Suite administrator

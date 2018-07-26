@@ -43,6 +43,7 @@ type UserInfo struct {
 	loginURL *url.URL
 
 	groupsPerCall int
+	useGroupUID   bool
 }
 
 func (u *UserInfo) login() error {
@@ -77,7 +78,7 @@ func (u *UserInfo) login() error {
 	var authResp = &AuthResponse{}
 	err = json.NewDecoder(resp.Body).Decode(authResp)
 	if err != nil {
-		return errors.Wrapf(err, "failed to decode response for request %s", &req.URL.Path)
+		return errors.Wrapf(err, "failed to decode response for request %s", req.URL.Path)
 	}
 
 	// Set the authorization headers for future requests
@@ -126,7 +127,7 @@ func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
 	var objects = ObjectList{}
 	err = json.NewDecoder(resp.Body).Decode(&objects)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to decode response for request %s", &req.URL.Path)
+		return nil, errors.Wrapf(err, "failed to decode response for request %s", req.URL.Path)
 	}
 	return objects.Value, nil
 }
@@ -174,7 +175,7 @@ func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
 	var groups = &GroupList{}
 	err = json.NewDecoder(resp.Body).Decode(groups)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to decode response for request %s", &req.URL.Path)
+		return nil, errors.Wrapf(err, "failed to decode response for request %s", req.URL.Path)
 	}
 	return groups, nil
 }
@@ -191,6 +192,10 @@ func (u *UserInfo) GetGroups(userPrincipal string) ([]string, error) {
 	groupIDs, err := u.getGroupIDs(userPrincipal)
 	if err != nil {
 		return nil, err
+	}
+
+	if u.useGroupUID {
+		return groupIDs, nil
 	}
 
 	totalGroups := len(groupIDs)
@@ -229,7 +234,7 @@ func (u *UserInfo) Name() string {
 }
 
 // New returns a new UserInfo object
-func New(clientID, clientSecret, tenantName string) (*UserInfo, error) {
+func New(clientID, clientSecret, tenantName string, useGroupUID bool) (*UserInfo, error) {
 	parsedLogin, err := url.Parse(fmt.Sprintf(loginURL, tenantName))
 	if err != nil {
 		return nil, err
@@ -244,12 +249,13 @@ func New(clientID, clientSecret, tenantName string) (*UserInfo, error) {
 		clientID:      clientID,
 		clientSecret:  clientSecret,
 		groupsPerCall: expandedGroupsPerCall,
+		useGroupUID:   useGroupUID,
 	}
 
 	return u, nil
 }
 
-func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string) (*UserInfo, error) {
+func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string, useGroupUID bool) (*UserInfo, error) {
 	parsedLogin, err := url.Parse(loginUrl)
 	if err != nil {
 		return nil, err
@@ -268,6 +274,7 @@ func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string) (*UserInfo, e
 		clientID:      clientID,
 		clientSecret:  clientSecret,
 		groupsPerCall: expandedGroupsPerCall,
+		useGroupUID:   useGroupUID,
 	}
 	err = u.login()
 	if err != nil {

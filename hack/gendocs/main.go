@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	version = "0.1.2"
+	version = "0.2.1"
 )
 
 var (
@@ -55,7 +55,7 @@ aliases:
 
 // ref: https://github.com/spf13/cobra/blob/master/doc/md_docs.md
 func main() {
-	rootCmd := commands.NewRootCmd("")
+	rootCmd := commands.NewRootCmd()
 	dir := runtime.GOPath() + "/src/github.com/appscode/guard/docs/reference"
 	fmt.Printf("Generating util markdown tree in: %v\n", dir)
 	err := os.RemoveAll(dir)

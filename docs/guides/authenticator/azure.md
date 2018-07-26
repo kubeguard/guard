@@ -2,13 +2,13 @@
 title: Azure Authenticator | Guard
 description: Authenticate into Kubernetes using Azure
 menu:
-  product_guard_0.1.2:
+  product_guard_0.2.1:
     identifier: azure-authenticator
     parent: authenticator-guides
     name: Azure
     weight: 25
 product_name: guard
-menu_name: product_guard_0.1.2
+menu_name: product_guard_0.2.1
 section_menu_id: guides
 ---
 
@@ -27,16 +27,30 @@ To generate installer YAMLs for guard server you can use the following command.
 ```console
 # generate Kubernetes YAMLs for deploying guard server
 $ guard get installer \
-    --auth-providers = "azure" \
+    --auth-providers=azure \
     --azure.client-id=<application_id> \
     --azure.tenant-id=<tenant_id> \
     > installer.yaml
 
 $ kubectl apply -f installer.yaml
 ```
-> **Note:** guard take `<application_secret>` from environment variable **AZURE_CLIENT_SECRET**
+> **Note:** guard take `<application_secret>` from environment variable **AZURE_CLIENT_SECRET**.
 
 Procedure to find `<application_id>`, `<application_secret>` are given below. Replace the `<tenant_id>` with your azure tenant id.
+
+Please note that, since 0.2.1 release, Guard server will return AAD group uid as groups in `UserInfo`. To use AAD group names, set the `--azure.use-group-uid=false` flag to Guard server binary. _Please note that multiple AAD groups can use the same name._ Consider the potential securtiy implications of using group names in `UserInfo`.
+
+```console
+# generate Kubernetes YAMLs for deploying guard server
+$ guard get installer \
+    --auth-providers=azure \
+    --azure.use-group-uid=false \
+    --azure.client-id=<application_id> \
+    --azure.tenant-id=<tenant_id> \
+    > installer.yaml
+
+$ kubectl apply -f installer.yaml
+```
 
 ### Configure Azure Active Directory App
 

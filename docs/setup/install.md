@@ -2,13 +2,13 @@
 title: Install
 description: Guard Install
 menu:
-  product_guard_0.1.2:
+  product_guard_0.2.1:
     identifier: install-guard
     name: Install
     parent: setup
     weight: 10
 product_name: guard
-menu_name: product_guard_0.1.2
+menu_name: product_guard_0.2.1
 section_menu_id: setup
 ---
 
@@ -28,12 +28,12 @@ Download pre-built binaries from [appscode/guard Github releases](https://github
 
 ```console
 # Linux amd 64-bit:
-wget -O guard https://github.com/appscode/guard/releases/download/0.1.2/guard-linux-amd64 \
+wget -O guard https://github.com/appscode/guard/releases/download/0.2.1/guard-linux-amd64 \
   && chmod +x guard \
   && sudo mv guard /usr/local/bin/
 
 # Mac 64-bit
-wget -O guard https://github.com/appscode/guard/releases/download/0.1.2/guard-darwin-amd64 \
+wget -O guard https://github.com/appscode/guard/releases/download/0.2.1/guard-darwin-amd64 \
   && chmod +x guard \
   && sudo mv guard /usr/local/bin/
 ```
@@ -101,7 +101,27 @@ total 32
 -rw------- 1 tamal tamal 1675 Aug 28 07:12 server.key
 ```
 
-As you can see, Guard stores the generated certificates in `.guard` subdirectory of home directory of user executing these commands. You can change the location by passing the path to a different directory using [`--pki-dir`](https://github.com/appscode/guard/pull/25) flag. Guard can use [supported authenticator](/docs/guides/) to authenticate users for a Kubernetes cluster. A Kubernetes cluster can use one of these organization to authenticate users. But you can configure a single Guard server to perform authentication for multiple clusters, where each cluster uses a different auth provider.
+As you can see, Guard stores the generated certificates in `.guard` subdirectory of home directory of user executing these commands. You can change the location by either setting `GUARD_DATA_DIR` environment variable or by passing the path to a different directory using [`--pki-dir`](https://github.com/appscode/guard/pull/25) flag. For example:
+
+```console
+$ export GUARD_DATA_DIR=/tmp/guard
+
+$ guard init ca
+I0621 14:09:30.582429   17769 types.go:16] Using data dir /tmp/guard found in GUARD_DATA_DIR env variable
+I0621 14:09:30.606327   17769 logs.go:19] FLAG: --alsologtostderr="false"
+I0621 14:09:30.606350   17769 logs.go:19] FLAG: --analytics="true"
+I0621 14:09:30.606356   17769 logs.go:19] FLAG: --help="false"
+I0621 14:09:30.606363   17769 logs.go:19] FLAG: --log_backtrace_at=":0"
+I0621 14:09:30.606369   17769 logs.go:19] FLAG: --log_dir=""
+I0621 14:09:30.606377   17769 logs.go:19] FLAG: --logtostderr="false"
+I0621 14:09:30.606385   17769 logs.go:19] FLAG: --pki-dir="/tmp/guard"
+I0621 14:09:30.606392   17769 logs.go:19] FLAG: --stderrthreshold="0"
+I0621 14:09:30.606407   17769 logs.go:19] FLAG: --v="0"
+I0621 14:09:30.606415   17769 logs.go:19] FLAG: --vmodule=""
+Wrote ca certificates in  /tmp/guard/pki
+```
+
+Guard can use [supported authenticator](/docs/guides/) to authenticate users for a Kubernetes cluster. A Kubernetes cluster can use one of these organization to authenticate users. But you can configure a single Guard server to perform authentication for multiple clusters, where each cluster uses a different auth provider.
 
 ## Deploy Guard server
 Now deploy Guard server so that your Kubernetes api server can access it. Use the command below to generate YAMLs for your particular setup. Then use `kubectl apply -f` to install Guard server.

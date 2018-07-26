@@ -15,7 +15,7 @@ import (
 
 func NewCmdInitCA() *cobra.Command {
 	var (
-		rootDir = auth.DefaultPKIDir
+		rootDir = auth.DefaultDataDir
 	)
 	cmd := &cobra.Command{
 		Use:               "ca",

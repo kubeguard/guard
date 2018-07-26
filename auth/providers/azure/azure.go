@@ -26,6 +26,7 @@ const (
 	OrgType            = "azure"
 	azureIssuerURL     = "https://sts.windows.net/"
 	azureUsernameClaim = "upn"
+	azureObjectIDClaim = "oid"
 )
 
 func init() {
@@ -34,7 +35,7 @@ func init() {
 
 var (
 	// ErrorClaimNotFound indicates the given key was not found in the claims
-	ErrorClaimNotFound = fmt.Errorf("claim not found")
+	ErrClaimNotFound = fmt.Errorf("claim not found")
 )
 
 // claims represents a map of claims provided with a JWT
@@ -61,7 +62,7 @@ func New(opts Options) (auth.Interface, error) {
 
 	c.verifier = provider.Verifier(&oidc.Config{SkipClientIDCheck: true})
 
-	c.graphClient, err = graph.New(c.ClientID, c.ClientSecret, c.TenantID)
+	c.graphClient, err = graph.New(c.ClientID, c.ClientSecret, c.TenantID, c.UseGroupUID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create ms graph client")
 	}
@@ -83,7 +84,7 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 		return nil, errors.Wrap(err, "error parsing claims")
 	}
 
-	resp, err := claims.getUserInfo(azureUsernameClaim)
+	resp, err := claims.getUserInfo(azureUsernameClaim, azureObjectIDClaim)
 	if err != nil {
 		return nil, err
 	}
@@ -106,37 +107,31 @@ func getClaims(token *oidc.IDToken) (claims, error) {
 
 // ReviewFromClaims creates a new TokenReview object from the claims object
 // the claims object
-func (c claims) getUserInfo(usernameClaim string) (*authv1.UserInfo, error) {
-	var resp = &authv1.UserInfo{}
-
-	username, err := c.String(usernameClaim)
+func (c claims) getUserInfo(usernameClaim, userObjectIDClaim string) (*authv1.UserInfo, error) {
+	username, err := c.string(usernameClaim)
+	if err != nil && err == ErrClaimNotFound {
+		username, err = c.string(userObjectIDClaim)
+	}
 	if err != nil {
-		if err == ErrorClaimNotFound {
-			return nil, errors.Errorf("username claim %s not found", usernameClaim)
+		if err == ErrClaimNotFound {
+			return nil, errors.Errorf("username: %s and objectID: %s claims not found", usernameClaim, userObjectIDClaim)
 		}
 		return nil, errors.Wrap(err, "unable to get username claim")
 	}
-	resp.Username = username
 
-	return resp, nil
+	return &authv1.UserInfo{Username: username}, nil
 }
 
-func (c claims) hasKey(key string) bool {
-	_, ok := c[key]
-	return ok
-}
-
-// String gets a string value from claims given a key. Returns false if
+// String gets a string value from claims given a key. Returns error if
 // the key does not exist
-func (c claims) String(key string) (string, error) {
-	var resp string
-	if !c.hasKey(key) {
-		return "", ErrorClaimNotFound
+func (c claims) string(key string) (string, error) {
+	v, ok := c[key]
+	if !ok {
+		return "", ErrClaimNotFound
 	}
-	if v, ok := c[key].(string); ok {
-		resp = v
-	} else { // Not a string type
-		return "", fmt.Errorf("claim is not a string")
+	s, ok := v.(string)
+	if !ok {
+		return "", fmt.Errorf("claim %s is not a string, found %v", key, v)
 	}
-	return resp, nil
+	return s, nil
 }

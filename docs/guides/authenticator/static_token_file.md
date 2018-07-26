@@ -2,13 +2,13 @@
 title: Static Token File Authentication | Guard
 description: Authenticate into Kubernetes using static token file
 menu:
-  product_guard_0.1.2:
+  product_guard_0.2.1:
     identifier: static-token-file-authentication
     parent: authenticator-guides
     name: Static Token File
     weight: 10
 product_name: guard
-menu_name: product_guard_0.1.2
+menu_name: product_guard_0.2.1
 section_menu_id: guides
 ---
 

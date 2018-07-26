@@ -18,7 +18,7 @@ import (
 
 func NewCmdInitServer() *cobra.Command {
 	var (
-		rootDir = auth.DefaultPKIDir
+		rootDir = auth.DefaultDataDir
 		sans    = cert.AltNames{
 			IPs: []net.IP{net.ParseIP("127.0.0.1")},
 		}

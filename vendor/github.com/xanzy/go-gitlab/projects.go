@@ -79,6 +79,7 @@ type Project struct {
 	OnlyAllowMergeIfAllDiscussionsAreResolved bool              `json:"only_allow_merge_if_all_discussions_are_resolved"`
 	LFSEnabled                                bool              `json:"lfs_enabled"`
 	RequestAccessEnabled                      bool              `json:"request_access_enabled"`
+	MergeMethod                               string            `json:"merge_method"`
 	ForkedFromProject                         *ForkParent       `json:"forked_from_project"`
 	SharedWithGroups                          []struct {
 		GroupID          int    `json:"group_id"`
@@ -265,7 +266,7 @@ func (s *ProjectsService) ListProjectsUsers(pid interface{}, opt *ListProjectUse
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/users", project)
+	u := fmt.Sprintf("projects/%s/users", url.QueryEscape(project))
 
 	req, err := s.client.NewRequest("GET", u, opt, options)
 	if err != nil {
@@ -340,9 +341,7 @@ func (s ProjectEvent) String() string {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/ce/api/projects.html#get-project-events
-type GetProjectEventsOptions struct {
-	ListOptions
-}
+type GetProjectEventsOptions ListOptions
 
 // GetProjectEvents gets the events for the specified project. Sorted from
 // newest to latest.
@@ -374,29 +373,30 @@ func (s *ProjectsService) GetProjectEvents(pid interface{}, opt *GetProjectEvent
 //
 // GitLab API docs: https://docs.gitlab.com/ce/api/projects.html#create-project
 type CreateProjectOptions struct {
-	Name                                      *string          `url:"name,omitempty" json:"name,omitempty"`
-	Path                                      *string          `url:"path,omitempty" json:"path,omitempty"`
-	DefaultBranch                             *string          `url:"default_branch,omitempty" json:"default_branch,omitempty"`
-	NamespaceID                               *int             `url:"namespace_id,omitempty" json:"namespace_id,omitempty"`
-	Description                               *string          `url:"description,omitempty" json:"description,omitempty"`
-	IssuesEnabled                             *bool            `url:"issues_enabled,omitempty" json:"issues_enabled,omitempty"`
-	MergeRequestsEnabled                      *bool            `url:"merge_requests_enabled,omitempty" json:"merge_requests_enabled,omitempty"`
-	JobsEnabled                               *bool            `url:"jobs_enabled,omitempty" json:"jobs_enabled,omitempty"`
-	WikiEnabled                               *bool            `url:"wiki_enabled,omitempty" json:"wiki_enabled,omitempty"`
-	SnippetsEnabled                           *bool            `url:"snippets_enabled,omitempty" json:"snippets_enabled,omitempty"`
-	ResolveOutdatedDiffDiscussions            *bool            `url:"resolve_outdated_diff_discussions,omitempty" json:"resolve_outdated_diff_discussions,omitempty"`
-	ContainerRegistryEnabled                  *bool            `url:"container_registry_enabled,omitempty" json:"container_registry_enabled,omitempty"`
-	SharedRunnersEnabled                      *bool            `url:"shared_runners_enabled,omitempty" json:"shared_runners_enabled,omitempty"`
-	Visibility                                *VisibilityValue `url:"visibility,omitempty" json:"visibility,omitempty"`
-	ImportURL                                 *string          `url:"import_url,omitempty" json:"import_url,omitempty"`
-	PublicJobs                                *bool            `url:"public_jobs,omitempty" json:"public_jobs,omitempty"`
-	OnlyAllowMergeIfPipelineSucceeds          *bool            `url:"only_allow_merge_if_pipeline_succeeds,omitempty" json:"only_allow_merge_if_pipeline_succeeds,omitempty"`
-	OnlyAllowMergeIfAllDiscussionsAreResolved *bool            `url:"only_allow_merge_if_all_discussions_are_resolved,omitempty" json:"only_allow_merge_if_all_discussions_are_resolved,omitempty"`
-	LFSEnabled                                *bool            `url:"lfs_enabled,omitempty" json:"lfs_enabled,omitempty"`
-	RequestAccessEnabled                      *bool            `url:"request_access_enabled,omitempty" json:"request_access_enabled,omitempty"`
-	TagList                                   *[]string        `url:"tag_list,omitempty" json:"tag_list,omitempty"`
-	PrintingMergeRequestLinkEnabled           *bool            `url:"printing_merge_request_link_enabled,omitempty" json:"printing_merge_request_link_enabled,omitempty"`
-	CIConfigPath                              *string          `url:"ci_config_path,omitempty" json:"ci_config_path,omitempty"`
+	Name                                      *string           `url:"name,omitempty" json:"name,omitempty"`
+	Path                                      *string           `url:"path,omitempty" json:"path,omitempty"`
+	DefaultBranch                             *string           `url:"default_branch,omitempty" json:"default_branch,omitempty"`
+	NamespaceID                               *int              `url:"namespace_id,omitempty" json:"namespace_id,omitempty"`
+	Description                               *string           `url:"description,omitempty" json:"description,omitempty"`
+	IssuesEnabled                             *bool             `url:"issues_enabled,omitempty" json:"issues_enabled,omitempty"`
+	MergeRequestsEnabled                      *bool             `url:"merge_requests_enabled,omitempty" json:"merge_requests_enabled,omitempty"`
+	JobsEnabled                               *bool             `url:"jobs_enabled,omitempty" json:"jobs_enabled,omitempty"`
+	WikiEnabled                               *bool             `url:"wiki_enabled,omitempty" json:"wiki_enabled,omitempty"`
+	SnippetsEnabled                           *bool             `url:"snippets_enabled,omitempty" json:"snippets_enabled,omitempty"`
+	ResolveOutdatedDiffDiscussions            *bool             `url:"resolve_outdated_diff_discussions,omitempty" json:"resolve_outdated_diff_discussions,omitempty"`
+	ContainerRegistryEnabled                  *bool             `url:"container_registry_enabled,omitempty" json:"container_registry_enabled,omitempty"`
+	SharedRunnersEnabled                      *bool             `url:"shared_runners_enabled,omitempty" json:"shared_runners_enabled,omitempty"`
+	Visibility                                *VisibilityValue  `url:"visibility,omitempty" json:"visibility,omitempty"`
+	ImportURL                                 *string           `url:"import_url,omitempty" json:"import_url,omitempty"`
+	PublicJobs                                *bool             `url:"public_jobs,omitempty" json:"public_jobs,omitempty"`
+	OnlyAllowMergeIfPipelineSucceeds          *bool             `url:"only_allow_merge_if_pipeline_succeeds,omitempty" json:"only_allow_merge_if_pipeline_succeeds,omitempty"`
+	OnlyAllowMergeIfAllDiscussionsAreResolved *bool             `url:"only_allow_merge_if_all_discussions_are_resolved,omitempty" json:"only_allow_merge_if_all_discussions_are_resolved,omitempty"`
+	MergeMethod                               *MergeMethodValue `url:"merge_method,omitempty" json:"merge_method,omitempty"`
+	LFSEnabled                                *bool             `url:"lfs_enabled,omitempty" json:"lfs_enabled,omitempty"`
+	RequestAccessEnabled                      *bool             `url:"request_access_enabled,omitempty" json:"request_access_enabled,omitempty"`
+	TagList                                   *[]string         `url:"tag_list,omitempty" json:"tag_list,omitempty"`
+	PrintingMergeRequestLinkEnabled           *bool             `url:"printing_merge_request_link_enabled,omitempty" json:"printing_merge_request_link_enabled,omitempty"`
+	CIConfigPath                              *string           `url:"ci_config_path,omitempty" json:"ci_config_path,omitempty"`
 }
 
 // CreateProject creates a new project owned by the authenticated user.
@@ -648,6 +648,24 @@ func (s *ProjectsService) ShareProjectWithGroup(pid interface{}, opt *ShareWithG
 	return s.client.Do(req, nil)
 }
 
+// DeleteSharedProjectFromGroup allows to unshare a project from a group.
+//
+// GitLab API docs: https://docs.gitlab.com/ce/api/projects.html#delete-a-shared-project-link-within-a-group
+func (s *ProjectsService) DeleteSharedProjectFromGroup(pid interface{}, groupID int, options ...OptionFunc) (*Response, error) {
+	project, err := parseID(pid)
+	if err != nil {
+		return nil, err
+	}
+	u := fmt.Sprintf("projects/%s/share/%d", url.QueryEscape(project), groupID)
+
+	req, err := s.client.NewRequest("DELETE", u, nil, options)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.client.Do(req, nil)
+}
+
 // ProjectMember represents a project member.
 //
 // GitLab API docs:
@@ -667,27 +685,26 @@ type ProjectMember struct {
 // GitLab API docs:
 // https://docs.gitlab.com/ce/api/projects.html#list-project-hooks
 type ProjectHook struct {
-	ID                    int        `json:"id"`
-	URL                   string     `json:"url"`
-	ProjectID             int        `json:"project_id"`
-	PushEvents            bool       `json:"push_events"`
-	IssuesEvents          bool       `json:"issues_events"`
-	MergeRequestsEvents   bool       `json:"merge_requests_events"`
-	TagPushEvents         bool       `json:"tag_push_events"`
-	NoteEvents            bool       `json:"note_events"`
-	JobEvents             bool       `json:"job_events"`
-	PipelineEvents        bool       `json:"pipeline_events"`
-	WikiPageEvents        bool       `json:"wiki_page_events"`
-	EnableSSLVerification bool       `json:"enable_ssl_verification"`
-	CreatedAt             *time.Time `json:"created_at"`
+	ID                       int        `json:"id"`
+	URL                      string     `json:"url"`
+	ProjectID                int        `json:"project_id"`
+	PushEvents               bool       `json:"push_events"`
+	IssuesEvents             bool       `json:"issues_events"`
+	ConfidentialIssuesEvents bool       `json:"confidential_issues_events"`
+	MergeRequestsEvents      bool       `json:"merge_requests_events"`
+	TagPushEvents            bool       `json:"tag_push_events"`
+	NoteEvents               bool       `json:"note_events"`
+	JobEvents                bool       `json:"job_events"`
+	PipelineEvents           bool       `json:"pipeline_events"`
+	WikiPageEvents           bool       `json:"wiki_page_events"`
+	EnableSSLVerification    bool       `json:"enable_ssl_verification"`
+	CreatedAt                *time.Time `json:"created_at"`
 }
 
 // ListProjectHooksOptions represents the available ListProjectHooks() options.
 //
 // GitLab API docs: https://docs.gitlab.com/ce/api/projects.html#list-project-hooks
-type ListProjectHooksOptions struct {
-	ListOptions
-}
+type ListProjectHooksOptions ListOptions
 
 // ListProjectHooks gets a list of project hooks.
 //
@@ -744,17 +761,18 @@ func (s *ProjectsService) GetProjectHook(pid interface{}, hook int, options ...O
 // GitLab API docs:
 // https://docs.gitlab.com/ce/api/projects.html#add-project-hook
 type AddProjectHookOptions struct {
-	URL                   *string `url:"url,omitempty" json:"url,omitempty"`
-	PushEvents            *bool   `url:"push_events,omitempty" json:"push_events,omitempty"`
-	IssuesEvents          *bool   `url:"issues_events,omitempty" json:"issues_events,omitempty"`
-	MergeRequestsEvents   *bool   `url:"merge_requests_events,omitempty" json:"merge_requests_events,omitempty"`
-	TagPushEvents         *bool   `url:"tag_push_events,omitempty" json:"tag_push_events,omitempty"`
-	NoteEvents            *bool   `url:"note_events,omitempty" json:"note_events,omitempty"`
-	JobEvents             *bool   `url:"job_events,omitempty" json:"job_events,omitempty"`
-	PipelineEvents        *bool   `url:"pipeline_events,omitempty" json:"pipeline_events,omitempty"`
-	WikiPageEvents        *bool   `url:"wiki_page_events,omitempty" json:"wiki_page_events,omitempty"`
-	EnableSSLVerification *bool   `url:"enable_ssl_verification,omitempty" json:"enable_ssl_verification,omitempty"`
-	Token                 *string `url:"token,omitempty" json:"token,omitempty"`
+	URL                      *string `url:"url,omitempty" json:"url,omitempty"`
+	PushEvents               *bool   `url:"push_events,omitempty" json:"push_events,omitempty"`
+	IssuesEvents             *bool   `url:"issues_events,omitempty" json:"issues_events,omitempty"`
+	ConfidentialIssuesEvents *bool   `url:"confidential_issues_events,omitempty" json:"confidential_issues_events,omitempty"`
+	MergeRequestsEvents      *bool   `url:"merge_requests_events,omitempty" json:"merge_requests_events,omitempty"`
+	TagPushEvents            *bool   `url:"tag_push_events,omitempty" json:"tag_push_events,omitempty"`
+	NoteEvents               *bool   `url:"note_events,omitempty" json:"note_events,omitempty"`
+	JobEvents                *bool   `url:"job_events,omitempty" json:"job_events,omitempty"`
+	PipelineEvents           *bool   `url:"pipeline_events,omitempty" json:"pipeline_events,omitempty"`
+	WikiPageEvents           *bool   `url:"wiki_page_events,omitempty" json:"wiki_page_events,omitempty"`
+	EnableSSLVerification    *bool   `url:"enable_ssl_verification,omitempty" json:"enable_ssl_verification,omitempty"`
+	Token                    *string `url:"token,omitempty" json:"token,omitempty"`
 }
 
 // AddProjectHook adds a hook to a specified project.
@@ -787,17 +805,18 @@ func (s *ProjectsService) AddProjectHook(pid interface{}, opt *AddProjectHookOpt
 // GitLab API docs:
 // https://docs.gitlab.com/ce/api/projects.html#edit-project-hook
 type EditProjectHookOptions struct {
-	URL                   *string `url:"url,omitempty" json:"url,omitempty"`
-	PushEvents            *bool   `url:"push_events,omitempty" json:"push_events,omitempty"`
-	IssuesEvents          *bool   `url:"issues_events,omitempty" json:"issues_events,omitempty"`
-	MergeRequestsEvents   *bool   `url:"merge_requests_events,omitempty" json:"merge_requests_events,omitempty"`
-	TagPushEvents         *bool   `url:"tag_push_events,omitempty" json:"tag_push_events,omitempty"`
-	NoteEvents            *bool   `url:"note_events,omitempty" json:"note_events,omitempty"`
-	JobEvents             *bool   `url:"job_events,omitempty" json:"job_events,omitempty"`
-	PipelineEvents        *bool   `url:"pipeline_events,omitempty" json:"pipeline_events,omitempty"`
-	WikiPageEvents        *bool   `url:"wiki_page_events,omitempty" json:"wiki_page_events,omitempty"`
-	EnableSSLVerification *bool   `url:"enable_ssl_verification,omitempty" json:"enable_ssl_verification,omitempty"`
-	Token                 *string `url:"token,omitempty" json:"token,omitempty"`
+	URL                      *string `url:"url,omitempty" json:"url,omitempty"`
+	PushEvents               *bool   `url:"push_events,omitempty" json:"push_events,omitempty"`
+	IssuesEvents             *bool   `url:"issues_events,omitempty" json:"issues_events,omitempty"`
+	ConfidentialIssuesEvents *bool   `url:"confidential_issues_events,omitempty" json:"confidential_issues_events,omitempty"`
+	MergeRequestsEvents      *bool   `url:"merge_requests_events,omitempty" json:"merge_requests_events,omitempty"`
+	TagPushEvents            *bool   `url:"tag_push_events,omitempty" json:"tag_push_events,omitempty"`
+	NoteEvents               *bool   `url:"note_events,omitempty" json:"note_events,omitempty"`
+	JobEvents                *bool   `url:"job_events,omitempty" json:"job_events,omitempty"`
+	PipelineEvents           *bool   `url:"pipeline_events,omitempty" json:"pipeline_events,omitempty"`
+	WikiPageEvents           *bool   `url:"wiki_page_events,omitempty" json:"wiki_page_events,omitempty"`
+	EnableSSLVerification    *bool   `url:"enable_ssl_verification,omitempty" json:"enable_ssl_verification,omitempty"`
+	Token                    *string `url:"token,omitempty" json:"token,omitempty"`
 }
 
 // EditProjectHook edits a hook for a specified project.

@@ -16,6 +16,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	ldapmsg "github.com/vjeantet/goldap/message"
 	"github.com/vjeantet/ldapserver"
 	"k8s.io/client-go/util/cert"
 )
@@ -29,33 +30,28 @@ const (
 type ldapServer struct {
 	server     *ldapserver.Server
 	secureConn bool
-	stopCh     chan bool
 	certStore  *certstore.CertStore
 }
 
 func (s *ldapServer) start() {
 	var err error
-	go func() {
-		if s.secureConn {
-			tlsConfig, err := s.getTLSconfig()
-			if err == nil {
-				err = s.server.ListenAndServe(serverAddr+":"+securePort, func(s *ldapserver.Server) {
-					s.Listener = tls.NewListener(s.Listener, tlsConfig)
-				})
-			}
-		} else {
-			err = s.server.ListenAndServe(serverAddr + ":" + inSecurePort)
+	if s.secureConn {
+		tlsConfig, err := s.getTLSconfig()
+		if err == nil {
+			err = s.server.ListenAndServe(serverAddr+":"+securePort, func(s *ldapserver.Server) {
+				s.Listener = tls.NewListener(s.Listener, tlsConfig)
+			})
 		}
-		glog.Infoln("LDAP Server: ", err)
-	}()
-
-	<-s.stopCh
-	close(s.stopCh)
-	s.server.Stop()
+	} else {
+		err = s.server.ListenAndServe(serverAddr + ":" + inSecurePort)
+	}
+	if err != nil {
+		glog.Fatalln("LDAP Server: ", err)
+	}
 }
 
 func (s *ldapServer) stop() {
-	s.stopCh <- true
+	s.server.Stop()
 	if s.certStore != nil {
 		os.RemoveAll(s.certStore.Location())
 	}
@@ -98,7 +94,6 @@ func ldapServerSetup(secureConn bool, userSearchDN, groupSearchDN string) (*ldap
 
 	srv := &ldapServer{
 		server:     server,
-		stopCh:     make(chan bool),
 		secureConn: secureConn,
 	}
 
@@ -120,11 +115,16 @@ func ldapServerSetup(secureConn bool, userSearchDN, groupSearchDN string) (*ldap
 
 // handleBind return Success if username and password matched
 func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
-	r := m.GetBindRequest()
-	res := ldapserver.NewBindResponse(ldapserver.LDAPResultSuccess)
-
+	if m == nil || m.ProtocolOp() == nil {
+		return
+	}
+	r, ok := m.ProtocolOp().(ldapmsg.BindRequest)
+	if !ok {
+		return
+	}
 	glog.Infoln("Bind :", r.Name(), r.AuthenticationSimple())
 
+	res := ldapserver.NewBindResponse(ldapserver.LDAPResultSuccess)
 	// for baseDN
 	if string(r.Name()) == "uid=admin,ou=system" && string(r.AuthenticationSimple()) == "secret" {
 		w.Write(res)
@@ -143,7 +143,7 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 		return
 	}
 
-	glog.Infoln("Bind failed User=%s, Pass=%s", string(r.Name()), string(r.AuthenticationSimple()))
+	glog.Infof("Bind failed User=%s, Pass=%s", string(r.Name()), string(r.AuthenticationSimple()))
 	res.SetResultCode(ldapserver.LDAPResultInvalidCredentials)
 	res.SetDiagnosticMessage("invalid credentials")
 	w.Write(res)
@@ -169,7 +169,7 @@ func handleUserSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 		w.Write(e)
 	}
 
-	// mutliple entry
+	// multiple entry
 	if r.FilterString() == "(&(objectClass=person)(id=nahid))" {
 		e := ldapserver.NewSearchResultEntry("uid=nahid,ou=users,o=Company")
 		e.AddAttribute("cn", "nahid")
@@ -263,8 +263,9 @@ func runTest(t *testing.T, secureConn bool, s Authenticator, serverType string) 
 	}
 
 	go srv.start()
-	time.Sleep(2 * time.Second)
 	defer srv.stop()
+	// wait for server to start
+	time.Sleep(10 * time.Second)
 
 	if secureConn {
 		caCertPool := x509.NewCertPool()
@@ -377,7 +378,7 @@ func runTest(t *testing.T, secureConn bool, s Authenticator, serverType string) 
 func TestParseEncodedToken(t *testing.T) {
 	user, pass, ok := parseEncodedToken(base64.StdEncoding.EncodeToString([]byte("user1:12345")))
 	if !ok {
-		t.Error("Expected: parsing successfull, got parsing unsuccessfull")
+		t.Error("Expected: parsing successful, got parsing unsuccessful")
 	}
 	if user != "user1" {
 		t.Error("Expected: user: user1, got user:", user)

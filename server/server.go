@@ -40,7 +40,7 @@ func (s Server) ListenAndServe() {
 		ticker := time.NewTicker(s.RecommendedOptions.NTP.Interval)
 		go func() {
 			for range ticker.C {
-				if err := ntp.CheckSkew(s.RecommendedOptions.NTP.MaxClodkSkew); err != nil {
+				if err := ntp.CheckSkewFromServer(s.RecommendedOptions.NTP.NTPServer, s.RecommendedOptions.NTP.MaxClodkSkew); err != nil {
 					glog.Fatal(err)
 				}
 			}

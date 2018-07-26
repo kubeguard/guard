@@ -2,27 +2,90 @@
 title: Changelog | Guard
 description: Changelog
 menu:
-  product_stash_0.1.2:
+  product_stash_0.2.1:
     identifier: changelog-guard
     name: Changelog
     parent: welcome
     weight: 10
 product_name: guard
-menu_name: product_guard_0.1.2
+menu_name: product_guard_0.2.1
 section_menu_id: welcome
-url: /products/guard/0.1.2/welcome/changelog/
+url: /products/guard/0.2.1/welcome/changelog/
 aliases:
-  - /products/guard/0.1.2/CHANGELOG/
+  - /products/guard/0.2.1/CHANGELOG/
 ---
 
 # Change Log
 
-## [Unreleased](https://github.com/appscode/guard/tree/HEAD)
+## [0.2.1](https://github.com/appscode/guard/tree/0.2.1) (2018-07-08)
+[Full Changelog](https://github.com/appscode/guard/compare/0.2.0...0.2.1)
 
-[Full Changelog](https://github.com/appscode/guard/compare/0.1.1...HEAD)
+**Closed issues:**
+
+- Support B2B auth for Azure provider by supporting both `oid` or `upn` claims in the token [\#170](https://github.com/appscode/guard/issues/170)
+- Update kops docs [\#142](https://github.com/appscode/guard/issues/142)
 
 **Merged pull requests:**
 
+- Format shell scripts [\#175](https://github.com/appscode/guard/pull/175) ([tamalsaha](https://github.com/tamalsaha))
+- Use client-go v8.0.0 [\#173](https://github.com/appscode/guard/pull/173) ([tamalsaha](https://github.com/tamalsaha))
+- Enable B2B auth for Azure provider by supporting either `oid` or `upn` claim in the token [\#172](https://github.com/appscode/guard/pull/172) ([amanohar](https://github.com/amanohar))
+- Add missing image in azure [\#169](https://github.com/appscode/guard/pull/169) ([nightfury1204](https://github.com/nightfury1204))
+
+## [0.2.0](https://github.com/appscode/guard/tree/0.2.0) (2018-06-22)
+[Full Changelog](https://github.com/appscode/guard/compare/0.1.4...0.2.0)
+
+**Closed issues:**
+
+- Use a GUARD\_PKI\_DIR env variable [\#158](https://github.com/appscode/guard/issues/158)
+- Azure AAD auth provider is using AAD group's displayName instead of unique objectId for auth [\#153](https://github.com/appscode/guard/issues/153)
+
+**Merged pull requests:**
+
+- Prepare 0.2.0 release [\#168](https://github.com/appscode/guard/pull/168) ([tamalsaha](https://github.com/tamalsaha))
+- Fix flaky LDAP tests [\#167](https://github.com/appscode/guard/pull/167) ([tamalsaha](https://github.com/tamalsaha))
+- Fix bad pointer in frame ldap.handleBind [\#166](https://github.com/appscode/guard/pull/166) ([tamalsaha](https://github.com/tamalsaha))
+- Document --azure.use-group-uid flag [\#165](https://github.com/appscode/guard/pull/165) ([tamalsaha](https://github.com/tamalsaha))
+- Add GUARD\_DATA\_DIR env variable [\#164](https://github.com/appscode/guard/pull/164) ([tamalsaha](https://github.com/tamalsaha))
+- Various fixed based on goreportcard [\#163](https://github.com/appscode/guard/pull/163) ([tamalsaha](https://github.com/tamalsaha))
+- Fix test command in make.py [\#162](https://github.com/appscode/guard/pull/162) ([tamalsaha](https://github.com/tamalsaha))
+- Skip e2e tests from travis. [\#161](https://github.com/appscode/guard/pull/161) ([tamalsaha](https://github.com/tamalsaha))
+- Fix formatting error [\#160](https://github.com/appscode/guard/pull/160) ([tamalsaha](https://github.com/tamalsaha))
+- Fix test [\#159](https://github.com/appscode/guard/pull/159) ([nightfury1204](https://github.com/nightfury1204))
+- Vendor aws sdk [\#157](https://github.com/appscode/guard/pull/157) ([tamalsaha](https://github.com/tamalsaha))
+- User auth info added for AWS EKS [\#150](https://github.com/appscode/guard/pull/150) ([sanjid133](https://github.com/sanjid133))
+
+## [0.1.4](https://github.com/appscode/guard/tree/0.1.4) (2018-06-20)
+[Full Changelog](https://github.com/appscode/guard/compare/0.1.3...0.1.4)
+
+**Closed issues:**
+
+- NTP sync causing periodic crashes [\#143](https://github.com/appscode/guard/issues/143)
+- Hardcoded Oauth client/secret for google? [\#138](https://github.com/appscode/guard/issues/138)
+- Add paging to get around directoryObjects.getByIds limit of 1000 [\#132](https://github.com/appscode/guard/issues/132)
+
+**Merged pull requests:**
+
+- Prepare docs for 0.1.4 release [\#155](https://github.com/appscode/guard/pull/155) ([tamalsaha](https://github.com/tamalsaha))
+- Allow Azure AAD auth provider to use AAD group ids instead of display name for authn/authz [\#154](https://github.com/appscode/guard/pull/154) ([amanohar](https://github.com/amanohar))
+
+## [0.1.3](https://github.com/appscode/guard/tree/0.1.3) (2018-06-06)
+[Full Changelog](https://github.com/appscode/guard/compare/0.1.2...0.1.3)
+
+**Merged pull requests:**
+
+- Prepare docs for 0.1.3 [\#147](https://github.com/appscode/guard/pull/147) ([tamalsaha](https://github.com/tamalsaha))
+- Support ntp server as flag [\#145](https://github.com/appscode/guard/pull/145) ([tamalsaha](https://github.com/tamalsaha))
+- Increase NTP clock skew to 2 min and check every 10 min [\#144](https://github.com/appscode/guard/pull/144) ([tamalsaha](https://github.com/tamalsaha))
+- Fix typo [\#141](https://github.com/appscode/guard/pull/141) ([ryuheechul](https://github.com/ryuheechul))
+- Fix a typo in kubectl invocation [\#137](https://github.com/appscode/guard/pull/137) ([farcaller](https://github.com/farcaller))
+
+## [0.1.2](https://github.com/appscode/guard/tree/0.1.2) (2018-05-04)
+[Full Changelog](https://github.com/appscode/guard/compare/0.1.1...0.1.2)
+
+**Merged pull requests:**
+
+- Update docs for 0.1.2 release [\#136](https://github.com/appscode/guard/pull/136) ([tamalsaha](https://github.com/tamalsaha))
 - Update client-go to 7.0.0 \(Kubernetes 1.10\) [\#135](https://github.com/appscode/guard/pull/135) ([tamalsaha](https://github.com/tamalsaha))
 - Add paging to get around directoryObjects.getByIds limit of 1000 [\#133](https://github.com/appscode/guard/pull/133) ([amanohar](https://github.com/amanohar))
 
