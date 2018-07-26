@@ -207,7 +207,12 @@ func handleGroupSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 	w.Write(res)
 }
 
-func TestCheckLdapInSecure(t *testing.T) {
+func TestLdap(t *testing.T) {
+	testInSecureLdap(t)
+	testSecureLdap(t)
+}
+
+func testInSecureLdap(t *testing.T) {
 
 	opts := Options{
 		ServerAddress:        serverAddr,
@@ -232,7 +237,7 @@ func TestCheckLdapInSecure(t *testing.T) {
 	runTest(t, false, s, "Insecure LDAP")
 }
 
-func TestCheckLdapSecure(t *testing.T) {
+func testSecureLdap(t *testing.T) {
 	opts := Options{
 		ServerAddress:        serverAddr,
 		ServerPort:           securePort,
@@ -366,6 +371,8 @@ func runTest(t *testing.T, secureConn bool, s Authenticator, serverType string) 
 					assert.NotNil(t, err)
 					assert.Nil(t, resp)
 				}
+
+				time.Sleep(3*time.Second)
 
 				endCh <- true
 			})
