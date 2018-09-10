@@ -126,13 +126,13 @@ def build(name=None):
 
 
 def install():
-    die(call('GO15VENDOREXPERIMENT=1 ' + libbuild.GOC + ' install ./...'))
+    die(call(libbuild.GOC + ' install ./...'))
 
 
 def default():
     gen()
     fmt()
-    die(call('GO15VENDOREXPERIMENT=1 ' + libbuild.GOC + ' install ./...'))
+    die(call(libbuild.GOC + ' install ./...'))
 
 
 def test(type, *args):
@@ -149,13 +149,19 @@ def test(type, *args):
     else:
         print '{test unit|e2e}'
 
+
 def unit_test(args):
     st = ' '.join(args)
     die(call(libbuild.GOC + ' test -v . ./auth/... ./commands/... ./installer/... ./server/... ./util/...' + st))
 
+
 def e2e_test(args):
     st = ' '.join(args)
     die(call(libbuild.GOC + ' test -v ./test/e2e/... -timeout 10h -args -ginkgo.v -ginkgo.progress -ginkgo.trace -v=3 ' + st))
+
+
+def revendor():
+    libbuild.revendor()
 
 
 if __name__ == "__main__":
