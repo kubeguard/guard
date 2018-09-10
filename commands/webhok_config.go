@@ -43,7 +43,9 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 			}
 
 			cfg := cert.Config{
-				CommonName: args[0],
+				AltNames: cert.AltNames{
+					DNSNames: []string{args[0]},
+				},
 			}
 			if org == "" {
 				glog.Fatalf("Missing organization name. Set flag -o %s", auth.SupportedOrgs)
@@ -61,7 +63,7 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 				glog.Fatalf("CA certificates not found in %s. Run `guard init ca`", store.Location())
 			}
 			if !store.PairExists(filename(cfg)) {
-				glog.Fatalf("Client certificate not found in %s. Run `guard init client %s -p %s`", store.Location(), cfg.CommonName, cfg.Organization[0])
+				glog.Fatalf("Client certificate not found in %s. Run `guard init client %s -p %s`", store.Location(), cfg.AltNames.DNSNames[0], cfg.Organization[0])
 			}
 
 			caCert, _, err := store.ReadBytes("ca")
@@ -78,7 +80,7 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 				APIVersion: "v1",
 				Clusters: map[string]*clientcmdapi.Cluster{
 					"guard-server": {
-						Server: fmt.Sprintf("https://%s/tokenreviews", addr),
+						Server:                   fmt.Sprintf("https://%s/tokenreviews", addr),
 						CertificateAuthorityData: caCert,
 					},
 				},

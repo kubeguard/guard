@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/appscode/go/term"
 	"github.com/appscode/guard/auth"
@@ -29,9 +30,11 @@ func NewCmdInitServer() *cobra.Command {
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg := cert.Config{
-				CommonName: "server",
-				AltNames:   sans,
-				Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+				AltNames: cert.AltNames{
+					DNSNames: merge("server", sans.DNSNames),
+					IPs:      sans.IPs,
+				},
+				Usages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 			}
 
 			store, err := certstore.NewCertStore(afero.NewOsFs(), filepath.Join(rootDir, "pki"), cfg.Organization...)
@@ -48,7 +51,7 @@ func NewCmdInitServer() *cobra.Command {
 				glog.Fatalf("Failed to load ca certificate. Reason: %v.", err)
 			}
 
-			crt, key, err := store.NewServerCertPair(cfg.CommonName, cfg.AltNames)
+			crt, key, err := store.NewServerCertPairBytes(cfg.AltNames)
 			if err != nil {
 				glog.Fatalf("Failed to generate certificate pair. Reason: %v.", err)
 			}
@@ -64,4 +67,18 @@ func NewCmdInitServer() *cobra.Command {
 	cmd.Flags().IPSliceVar(&sans.IPs, "ips", sans.IPs, "Alternative IP addresses")
 	cmd.Flags().StringSliceVar(&sans.DNSNames, "domains", sans.DNSNames, "Alternative Domain names")
 	return cmd
+}
+
+func merge(cn string, sans []string) []string {
+	var found bool
+	for _, name := range sans {
+		if strings.EqualFold(name, cn) {
+			found = true
+			break
+		}
+	}
+	if found {
+		return sans
+	}
+	return append([]string{cn}, sans...)
 }
