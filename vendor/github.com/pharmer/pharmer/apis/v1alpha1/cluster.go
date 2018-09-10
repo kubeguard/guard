@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hashicorp/go-version"
+	"github.com/appscode/go-version"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha1"
@@ -375,4 +375,16 @@ func (c Cluster) IsMinorVersion(in string) bool {
 		return false
 	}
 	return inVer.String() == minor
+}
+
+func (c Cluster) IsLessThanVersion(in string) bool {
+	v, err := version.NewVersion(c.Spec.KubernetesVersion)
+	if err != nil {
+		return false
+	}
+	inVer, err := version.NewVersion(in)
+	if err != nil {
+		return false
+	}
+	return v.LessThan(inVer)
 }

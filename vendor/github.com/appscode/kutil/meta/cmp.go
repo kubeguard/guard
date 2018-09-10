@@ -34,6 +34,33 @@ func Equal(x, y interface{}) bool {
 	return cmp.Equal(x, y, cmpOptions...)
 }
 
+const LastAppliedConfigAnnotation = "kubectl.kubernetes.io/last-applied-configuration"
+
+// EqualAnnotation checks equality of annotations skipping `kubectl.kubernetes.io/last-applied-configuration` key
+func EqualAnnotation(x, y map[string]string) bool {
+	xLen := len(x)
+	if _, found := x[LastAppliedConfigAnnotation]; found {
+		xLen--
+	}
+	yLen := len(y)
+	if _, found := y[LastAppliedConfigAnnotation]; found {
+		yLen--
+	}
+	if xLen != yLen {
+		return false
+	}
+
+	for k, v := range x {
+		if k == LastAppliedConfigAnnotation {
+			continue
+		}
+		if y[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
 func JsonDiff(old, new interface{}) (string, error) {
 	var json = jsoniter.ConfigFastest
 	oldBytes, err := json.Marshal(old)

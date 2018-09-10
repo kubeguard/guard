@@ -1,5 +1,5 @@
-hash: f11b1d1195b67debec2a844d4464c089a9c3e171125f7c901c0c010c82190021
-updated: 2018-07-07T08:53:32.829896797-07:00
+hash: a3094b43556edd1e4419f28ce631bd5418327010572a2d04f3339efb6f1c0bbe
+updated: 2018-09-10T14:56:56.904300593-07:00
 imports:
 - name: appscode.com/api
   version: fba2ed5c99e7b2f1cd46368b0152085a5ad09b35
@@ -25,11 +25,12 @@ imports:
   - compute/metadata
   - internal
 - name: github.com/appscode/go
-  version: df3c57fca2bef0e5b7fd085507deb20f18c790df
+  version: 0499c350ad263174dc8c1e3006b2d3300ff398e6
   subpackages:
   - analytics
   - context
   - crypto/rand
+  - encoding/json/types
   - env
   - flags
   - homedir
@@ -51,7 +52,7 @@ imports:
 - name: github.com/appscode/jsonpatch
   version: 1359b374de83fa14fd58ab10aa8ea4935f84d249
 - name: github.com/appscode/kutil
-  version: ade0469e223909a181ae7a020024aa7adeb3dde6
+  version: 6a61b0d2df81e2d5b4764bee574eb43a9a954a5a
   subpackages:
   - meta
   - tools/analytics
@@ -102,7 +103,7 @@ imports:
 - name: github.com/coreos/go-oidc
   version: a4973d9a4225417aecf5d450a9522f00c1f7130f
 - name: github.com/cpuguy83/go-md2man
-  version: 71acacd42f85e5e82f70a55327789582a5200a90
+  version: 20f5889cbdc3c73dbd2862796665e7c465ade7d1
   subpackages:
   - md2man
 - name: github.com/davecgh/go-spew
@@ -114,7 +115,9 @@ imports:
 - name: github.com/evanphx/json-patch
   version: 94e38aa1586e8a6c8a75770bddf5ff84c48a106b
 - name: github.com/fatih/color
-  version: 2d684516a8861da43017284349b7e303e809ac21
+  version: 9aae6aaa22315390f03959adca2c4d395b02fcef
+- name: github.com/fatih/structs
+  version: ebf56d35bba727c68ac77f56f2fcf90b181851aa
 - name: github.com/fsnotify/fsnotify
   version: f12c6236fe7b5cf6bcf30e5935d08cb079d78334
 - name: github.com/ghodss/yaml
@@ -144,7 +147,7 @@ imports:
 - name: github.com/google/btree
   version: 7d79101e329e5a3adf994758c578dab82b90c017
 - name: github.com/google/go-cmp
-  version: 3af367b6b30c263d47e8895973edcca9a49cf029
+  version: 2006917edc5a27cd174dbc4baba31a137d6cb9ff
   subpackages:
   - cmp
   - cmp/internal/diff
@@ -191,11 +194,7 @@ imports:
   - third_party/appscodeapis/appscode/api
   - utilities
 - name: github.com/hashicorp/go-uuid
-  version: 27454136f0364f2d44b1276c552d69105cf8c498
-- name: github.com/hashicorp/go-version
-  version: fb6d4d97f77e338e49c50a317327a85e215f8269
-  repo: https://github.com/appscode/go-version.git
-  vcs: git
+  version: de160f5c59f693fed329e73e291bb751fe4ea4dc
 - name: github.com/howeyc/gopass
   version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/imdario/mergo
@@ -212,11 +211,11 @@ imports:
 - name: github.com/jpillora/go-ogle-analytics
   version: 14b04e0594ef6a9fd943363b135656f0ec8c9d0e
 - name: github.com/json-iterator/go
-  version: ab8a2e0c74be9d3be70b3184d9acc634935ded82
+  version: 1624edc4454b8682399def8740d46db5e4362ba4
 - name: github.com/mattn/go-colorable
   version: efa589957cd060542a26d2dd7832fd6a6c6c3ade
 - name: github.com/mattn/go-isatty
-  version: 57fdcb988a5c543893cc61bce354a6e24ab70022
+  version: 3fb116b820352b7f0c281308a4d6250c22d94e27
 - name: github.com/matttproud/golang_protobuf_extensions
   version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
   subpackages:
@@ -264,7 +263,7 @@ imports:
 - name: github.com/peterbourgon/diskv
   version: 5f041e8faa004a95c88a202771f4cc3e991971e6
 - name: github.com/pharmer/pharmer
-  version: 7ac17e274efe64276ad4486053ca39b513ae7703
+  version: f88158624477c78be5212bbacd12a9a7b7be48f2
   subpackages:
   - apis/v1alpha1
 - name: github.com/pkg/errors
@@ -320,6 +319,10 @@ imports:
   version: 12b6f73e6084dad08a7c6e575284b177ecafbc71
   subpackages:
   - assert
+- name: github.com/ugorji/go
+  version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
+  subpackages:
+  - codec
 - name: github.com/vjeantet/ldapserver
   version: accfdfa35083b2ba591ebd295e8177cd316ad15f
   repo: https://github.com/appscode/ldapserver.git
@@ -331,7 +334,7 @@ imports:
 - name: github.com/xeipuuv/gojsonreference
   version: e02fc20de94c78484cd5ffb007f8af96be030a45
 - name: github.com/xeipuuv/gojsonschema
-  version: 1d523034197ff1f222f6429836dd36a2457a1874
+  version: da425ebb7609ba06a0f395fc8a254d1c303364a0
 - name: github.com/yudai/gojsondiff
   version: 7b1b7adf999dab73a6eb02669c3d82dbb27a3dd6
   subpackages:
@@ -503,7 +506,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: 670d4cfef0544295bc27a114dbac37980d83185a
 - name: k8s.io/api
-  version: 072894a440bdee3a891dea811fe42902311cd2a3
+  version: 4e7be11eab3ffcfc1876898b8272df53785a9504
   subpackages:
   - admissionregistration/v1alpha1
   - admissionregistration/v1beta1
@@ -535,7 +538,9 @@ imports:
   - storage/v1alpha1
   - storage/v1beta1
 - name: k8s.io/apimachinery
-  version: 103fd098999dc9c0c88536f5c9ad2e5da39373ae
+  version: cbad0ea24d3adbf8cc3c0c1b4077b79828119584
+  repo: https://github.com/pharmer/apimachinery.git
+  vcs: git
   subpackages:
   - pkg/api/errors
   - pkg/api/meta
@@ -576,12 +581,8 @@ imports:
   - pkg/watch
   - third_party/forked/golang/json
   - third_party/forked/golang/reflect
-- name: k8s.io/apiserver
-  version: 01459b68eb5fee2dcf5ca0e29df8bcac89ead47b
-  subpackages:
-  - pkg/util/feature
 - name: k8s.io/client-go
-  version: 7d04d0e2a0a1a4d4a1cd6baa432a2301492e4e65
+  version: 2cefa64ff137e128daeddbd1775cd775708a05bf
   subpackages:
   - discovery
   - kubernetes
@@ -630,6 +631,7 @@ imports:
   - third_party/forked/golang/template
   - tools/auth
   - tools/bootstrap/token/api
+  - tools/bootstrap/token/util
   - tools/clientcmd
   - tools/clientcmd/api
   - tools/clientcmd/api/latest
@@ -648,14 +650,16 @@ imports:
   subpackages:
   - pkg/util/proto
 - name: k8s.io/kubernetes
-  version: fc32d2f3698e36b93322a3465f63a14e9f0eaead
+  version: acfc3fbb3a2f86e8b4cc674193b19b5dd3877149
+  repo: https://github.com/pharmer/kubernetes.git
+  vcs: git
   subpackages:
   - cmd/kubeadm/app/apis/kubeadm
   - cmd/kubeadm/app/apis/kubeadm/v1alpha1
   - cmd/kubeadm/app/constants
-  - cmd/kubeadm/app/features
   - pkg/apis/core
   - pkg/apis/core/v1/helper/qos
+  - pkg/apis/scheduling
   - pkg/kubelet/apis/kubeletconfig
   - pkg/kubelet/apis/kubeletconfig/scheme
   - pkg/kubelet/apis/kubeletconfig/v1beta1
@@ -667,7 +671,6 @@ imports:
   - pkg/proxy/apis/kubeproxyconfig/v1alpha1
   - pkg/registry/core/service/allocator
   - pkg/registry/core/service/ipallocator
-  - pkg/scheduler/api
   - pkg/util/pointer
   - pkg/util/version
 testImports:
