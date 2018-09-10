@@ -43,8 +43,10 @@ func NewCmdInitClient() *cobra.Command {
 			}
 
 			cfg := cert.Config{
-				CommonName: args[0],
-				Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+				AltNames: cert.AltNames{
+					DNSNames: []string{args[0]},
+				},
+				Usages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 			}
 
 			if org == "" {
@@ -69,7 +71,7 @@ func NewCmdInitClient() *cobra.Command {
 				glog.Fatalf("Failed to load ca certificate. Reason: %v.", err)
 			}
 
-			crt, key, err := store.NewClientCertPair(cfg.CommonName, cfg.Organization...)
+			crt, key, err := store.NewClientCertPairBytes(cfg.AltNames, cfg.Organization...)
 			if err != nil {
 				glog.Fatalf("Failed to generate certificate pair. Reason: %v.", err)
 			}
