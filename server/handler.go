@@ -1,8 +1,11 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/appscode/guard/auth"
 	"github.com/appscode/guard/auth/providers/appscode"
@@ -17,7 +20,17 @@ import (
 	authv1 "k8s.io/api/authentication/v1"
 )
 
+var reqID int64
+
 func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	rid := atomic.AddInt64(&reqID, 1)
+	start := time.Now()
+	fmt.Printf("%s %s: (%v) [%s %s]\n", req.Method, req.RequestURI, rid, req.UserAgent(), req.RemoteAddr)
+	defer func() {
+		latency := time.Now().Sub(start)
+		fmt.Printf("%s %s: (%v) %v [%s %s]\n", req.Method, req.RequestURI, rid, latency, req.UserAgent(), req.RemoteAddr)
+	}()
+
 	if req.TLS == nil || len(req.TLS.PeerCertificates) == 0 {
 		write(w, nil, WithCode(errors.New("Missing client certificate"), http.StatusBadRequest))
 		return
