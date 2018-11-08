@@ -19,7 +19,7 @@ aliases:
 
 Setup contains instructions for installing the Guard and its various components in Kubernetes.
 
-- [Install](/docs/setup/install.md). Installing Guard as CLI.
+- [Install](/docs/setup/install.md). Installation instructions for Guard cli and server.
 - [Install in Kops](/docs/setup/install-kops.md). Installation instructions for Kops.
 - [Install in Kubespray](/docs/setup/install-kubespray.md). Installation instructions for Kubespray.
 - [Uninstall Guard](/docs/setup/uninstall.md). Instructions for uninstalling Guard.
