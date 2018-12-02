@@ -1,18 +1,12 @@
 package: github.com/appscode/guard
 import:
-- package: appscode.com/api
-  repo: https://bitbucket.org/appscode/api.git
-  version: master
-- package: appscode.com/client-go
-  repo: https://bitbucket.org/appscode/client-go.git
-  version: master
 - package: github.com/appscode/go
   version: master
 - package: github.com/appscode/kutil
-  version: release-8.0
+  version: release-9.0
 - package: github.com/appscode/pat
 - package: github.com/aws/aws-sdk-go
-  version: v1.12.7
+  version: v1.14.12
 - package: github.com/coreos/go-oidc
   version: a4973d9a4225417aecf5d450a9522f00c1f7130f
 - package: github.com/go-ldap/ldap
@@ -41,29 +35,30 @@ import:
   version: v1.0.5
 - package: github.com/skratchdot/open-golang
 - package: github.com/spf13/afero
-  version: v1.1.0
+  version: v1.1.2
 - package: github.com/spf13/cobra
   version: v0.0.3
 - package: github.com/spf13/pflag
-  version: v1.0.1
+  version: v1.0.3
 - package: github.com/xanzy/go-gitlab
   version: v0.10.5
 - package: golang.org/x/net
+  version: 1c05540f6879653db88113bc4a2b70aec4bd491f
 - package: golang.org/x/oauth2
 - package: google.golang.org/api
   version: 98825bb0065da4054e5da6db34f5fc598e50bc24
 - package: gopkg.in/jcmturner/gokrb5.v4
   version: v4.1.2
 - package: k8s.io/api
-  version: kubernetes-1.11.3
+  version: kubernetes-1.12.0
 - package: k8s.io/apimachinery
-  repo: https://github.com/pharmer/apimachinery.git
+  repo: https://github.com/kmodules/apimachinery.git
   vcs: git
-  version: release-1.11.3
+  version: ac-1.12.0
 - package: k8s.io/client-go
-  version: kubernetes-1.11.3
+  version: v9.0.0
 - package: github.com/golang/protobuf
-  version: 6e4cc92cc905d5f4a73041c1b8228ea08f4c6147
+  version: v1.1.0
 - package: google.golang.org/grpc
   version: v1.9.2
 - package: github.com/grpc-ecosystem/grpc-gateway
@@ -71,7 +66,7 @@ import:
   vcs: git
   version: v1.3.1-ac
 - package: github.com/imdario/mergo
-  version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
+  version: v0.3.5
 - package: github.com/onsi/ginkgo
   version: v1.5.0
 - package: github.com/stretchr/testify
@@ -82,3 +77,21 @@ import:
   version: master
 - package: gopkg.in/square/go-jose.v2
   version: v2.1.6
+- package: github.com/cpuguy83/go-md2man
+  version: v1.0.8
+- package: github.com/russross/blackfriday
+  version: v1.5.2
+- package: golang.org/x/text
+  version: b19bf474d317b857955b12035d2c5acb57ce8b01
+- package: golang.org/x/sys
+  version: 95c6576299259db960f6c5b9b69ea52422860fce
+- package: golang.org/x/crypto
+  version: de0752318171da717af4ce24d0a2e8626afaeb11
+- package: github.com/davecgh/go-spew
+  version: v1.1.1
+- package: k8s.io/kube-openapi
+  version: 0cf8f7e6ed1d2e3d47d02e3b6e559369af24d803
+- package: gopkg.in/yaml.v2
+  version: v2.2.1
+- package: github.com/gorilla/websocket
+  version: v1.4.0

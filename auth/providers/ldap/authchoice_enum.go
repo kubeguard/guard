@@ -22,11 +22,12 @@ var _AuthChoiceMap = map[AuthChoice]string{
 	1: _AuthChoiceName[6:14],
 }
 
-func (i AuthChoice) String() string {
-	if str, ok := _AuthChoiceMap[i]; ok {
+// String implements the Stringer interface.
+func (x AuthChoice) String() string {
+	if str, ok := _AuthChoiceMap[x]; ok {
 		return str
 	}
-	return fmt.Sprintf("AuthChoice(%d)", i)
+	return fmt.Sprintf("AuthChoice(%d)", x)
 }
 
 var _AuthChoiceValue = map[string]AuthChoice{
@@ -39,24 +40,24 @@ var _AuthChoiceValue = map[string]AuthChoice{
 // ParseAuthChoice attempts to convert a string to a AuthChoice
 func ParseAuthChoice(name string) (AuthChoice, error) {
 	if x, ok := _AuthChoiceValue[name]; ok {
-		return AuthChoice(x), nil
+		return x, nil
 	}
 	return AuthChoice(0), fmt.Errorf("%s is not a valid AuthChoice", name)
 }
 
-// Set implements the Golang flag.Value interface func
+// Set implements the Golang flag.Value interface func.
 func (x *AuthChoice) Set(val string) error {
 	v, err := ParseAuthChoice(val)
 	*x = v
 	return err
 }
 
-// Get implements the Golang flag.Getter interface func
+// Get implements the Golang flag.Getter interface func.
 func (x *AuthChoice) Get() interface{} {
 	return *x
 }
 
-// Type implements the github.com/spf13/pFlag Value interface
+// Type implements the github.com/spf13/pFlag Value interface.
 func (x *AuthChoice) Type() string {
 	return "AuthChoice"
 }

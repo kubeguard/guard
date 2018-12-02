@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/appscode/guard/auth"
-	"github.com/appscode/guard/auth/providers/appscode"
 	"github.com/appscode/guard/auth/providers/azure"
 	"github.com/appscode/guard/auth/providers/github"
 	"github.com/appscode/guard/auth/providers/gitlab"
@@ -67,8 +66,6 @@ func (s Server) getAuthProviderClient(org, commonName string) (auth.Interface, e
 		return github.New(s.RecommendedOptions.Github, commonName), nil
 	case google.OrgType:
 		return google.New(s.RecommendedOptions.Google, commonName)
-	case appscode.OrgType:
-		return appscode.New(commonName), nil
 	case gitlab.OrgType:
 		return gitlab.New(s.RecommendedOptions.Gitlab), nil
 	case azure.OrgType:
