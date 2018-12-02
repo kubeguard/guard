@@ -1,5 +1,5 @@
 hash: df78451bfb48ca1ebdd2e42a99b0c167e03e43501ed1890865eb9bdf42b1a644
-updated: 2018-12-01T23:21:10.913077964-08:00
+updated: 2018-12-01T23:35:49.501284093-08:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -39,6 +39,7 @@ imports:
   - meta
   - tools/analytics
   - tools/certstore
+  - tools/cli
   - tools/clientcmd
   - tools/fsnotify
 - name: github.com/appscode/pat
