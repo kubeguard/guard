@@ -1,7 +1,9 @@
 package commands
 
 import (
+	v "github.com/appscode/go/version"
 	"github.com/appscode/guard/server"
+	"github.com/appscode/kutil/tools/cli"
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 )
@@ -15,6 +17,9 @@ func NewCmdRun() *cobra.Command {
 		Use:               "run",
 		Short:             "Run server",
 		DisableAutoGenTag: true,
+		PreRun: func(c *cobra.Command, args []string) {
+			cli.SendPeriodicAnalytics(c, v.Version.Version)
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if !srv.RecommendedOptions.SecureServing.UseTLS() {
 				glog.Fatalln("Guard server must use SSL.")
