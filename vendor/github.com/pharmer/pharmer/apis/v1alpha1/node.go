@@ -14,7 +14,7 @@ const (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type NodeGroup struct {
-	metav1.TypeMeta   `json:",inline,omitempty"`
+	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 	Spec              NodeGroupSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
 	Status            NodeGroupStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
@@ -87,7 +87,7 @@ type NodeSpec struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type NodeInfo struct {
-	metav1.TypeMeta `json:",inline,omitempty"`
+	metav1.TypeMeta `json:",inline"`
 	Name            string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
 	ExternalID      string `json:"externalID,omitempty" protobuf:"bytes,2,opt,name=externalID"`
 	PublicIP        string `json:"publicIP,omitempty" protobuf:"bytes,3,opt,name=publicIP"`

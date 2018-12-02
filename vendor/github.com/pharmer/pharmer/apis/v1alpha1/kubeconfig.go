@@ -9,7 +9,7 @@ import (
 // Config holds the information needed to build connect to remote kubernetes clusters as a given user
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type KubeConfig struct {
-	metav1.TypeMeta `json:",inline,omitempty,omitempty"`
+	metav1.TypeMeta `json:",inline"`
 	// Preferences holds general information to be use for cli interactions
 	Preferences Preferences `json:"preferences" protobuf:"bytes,1,opt,name=preferences"`
 	// Clusters is a map of referencable names to cluster configs
@@ -107,13 +107,13 @@ func Convert_KubeConfig_To_Config(in *KubeConfig) *clientcmdapi.Config {
 		},
 		Clusters: map[string]*clientcmdapi.Cluster{
 			in.Cluster.Name: {
-				Server: in.Cluster.Server,
+				Server:                   in.Cluster.Server,
 				CertificateAuthorityData: append([]byte(nil), in.Cluster.CertificateAuthorityData...),
 			},
 		},
 		AuthInfos: map[string]*clientcmdapi.AuthInfo{
 			in.AuthInfo.Name: {
-				Token: in.AuthInfo.Token,
+				Token:                 in.AuthInfo.Token,
 				ClientCertificateData: append([]byte(nil), in.AuthInfo.ClientCertificateData...),
 				ClientKeyData:         append([]byte(nil), in.AuthInfo.ClientKeyData...),
 				Username:              in.AuthInfo.Username,

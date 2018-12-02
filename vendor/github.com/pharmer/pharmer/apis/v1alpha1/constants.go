@@ -20,6 +20,9 @@ const (
 	RegionKey       = "failure-domain.beta.kubernetes.io/region"
 	ZoneKey         = "failure-domain.beta.kubernetes.io/zone"
 
+	// CoreDNS defines a variable used internally when referring to the CoreDNS addon for a cluster
+	CoreDNS = "coredns"
+
 	TokenDuration_10yr = 10 * 365 * 24 * time.Hour
 
 	// ref: https://github.com/kubernetes/kubeadm/issues/629

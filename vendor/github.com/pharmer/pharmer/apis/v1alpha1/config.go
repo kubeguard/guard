@@ -52,7 +52,7 @@ type StorageBackend struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type PharmerConfig struct {
-	metav1.TypeMeta `json:",inline,omitempty,omitempty"`
+	metav1.TypeMeta `json:",inline"`
 	Context         string         `json:"context,omitempty" protobuf:"bytes,1,opt,name=context"`
 	Credentials     []Credential   `json:"credentials,omitempty" protobuf:"bytes,2,rep,name=credentials"`
 	Store           StorageBackend `json:"store,omitempty" protobuf:"bytes,3,opt,name=store"`

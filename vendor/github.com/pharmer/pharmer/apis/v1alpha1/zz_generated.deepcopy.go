@@ -151,48 +151,28 @@ func (in *CloudSpec) DeepCopyInto(out *CloudSpec) {
 	*out = *in
 	if in.AWS != nil {
 		in, out := &in.AWS, &out.AWS
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(AWSSpec)
-			**out = **in
-		}
+		*out = new(AWSSpec)
+		**out = **in
 	}
 	if in.GCE != nil {
 		in, out := &in.GCE, &out.GCE
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(GoogleSpec)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(GoogleSpec)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Azure != nil {
 		in, out := &in.Azure, &out.Azure
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(AzureSpec)
-			**out = **in
-		}
+		*out = new(AzureSpec)
+		**out = **in
 	}
 	if in.Linode != nil {
 		in, out := &in.Linode, &out.Linode
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(LinodeSpec)
-			**out = **in
-		}
+		*out = new(LinodeSpec)
+		**out = **in
 	}
 	if in.GKE != nil {
 		in, out := &in.GKE, &out.GKE
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(GKESpec)
-			**out = **in
-		}
+		*out = new(GKESpec)
+		**out = **in
 	}
 	return
 }
@@ -212,21 +192,13 @@ func (in *CloudStatus) DeepCopyInto(out *CloudStatus) {
 	*out = *in
 	if in.AWS != nil {
 		in, out := &in.AWS, &out.AWS
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(AWSStatus)
-			**out = **in
-		}
+		*out = new(AWSStatus)
+		**out = **in
 	}
 	if in.EKS != nil {
 		in, out := &in.EKS, &out.EKS
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(EKSStatus)
-			**out = **in
-		}
+		*out = new(EKSStatus)
+		**out = **in
 	}
 	return
 }
@@ -671,12 +643,8 @@ func (in *NamedAuthInfo) DeepCopyInto(out *NamedAuthInfo) {
 	}
 	if in.Exec != nil {
 		in, out := &in.Exec, &out.Exec
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(ExecConfig)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(ExecConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
@@ -1095,57 +1063,33 @@ func (in *StorageBackend) DeepCopyInto(out *StorageBackend) {
 	*out = *in
 	if in.Local != nil {
 		in, out := &in.Local, &out.Local
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(LocalSpec)
-			**out = **in
-		}
+		*out = new(LocalSpec)
+		**out = **in
 	}
 	if in.S3 != nil {
 		in, out := &in.S3, &out.S3
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(S3Spec)
-			**out = **in
-		}
+		*out = new(S3Spec)
+		**out = **in
 	}
 	if in.GCS != nil {
 		in, out := &in.GCS, &out.GCS
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(GCSSpec)
-			**out = **in
-		}
+		*out = new(GCSSpec)
+		**out = **in
 	}
 	if in.Azure != nil {
 		in, out := &in.Azure, &out.Azure
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(AzureStorageSpec)
-			**out = **in
-		}
+		*out = new(AzureStorageSpec)
+		**out = **in
 	}
 	if in.Swift != nil {
 		in, out := &in.Swift, &out.Swift
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(SwiftSpec)
-			**out = **in
-		}
+		*out = new(SwiftSpec)
+		**out = **in
 	}
 	if in.Postgres != nil {
 		in, out := &in.Postgres, &out.Postgres
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(PostgresSpec)
-			**out = **in
-		}
+		*out = new(PostgresSpec)
+		**out = **in
 	}
 	return
 }
