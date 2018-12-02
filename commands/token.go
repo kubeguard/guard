@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/appscode/guard/auth"
-	"github.com/appscode/guard/auth/providers/appscode"
 	"github.com/appscode/guard/auth/providers/github"
 	"github.com/appscode/guard/auth/providers/gitlab"
 	"github.com/appscode/guard/auth/providers/google"
@@ -37,12 +36,6 @@ func NewCmdGetToken() *cobra.Command {
 				return
 			case google.OrgType:
 				err := google.IssueToken()
-				if err != nil {
-					glog.Fatal(err)
-				}
-				return
-			case appscode.OrgType:
-				err := appscode.IssueToken()
 				if err != nil {
 					glog.Fatal(err)
 				}

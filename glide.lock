@@ -1,24 +1,6 @@
-hash: a278604c0ba3a56ba2ba2219f1e6fdedbaea962f7325f21c82f305ea33734cf3
-updated: 2018-12-01T23:15:06.377063334-08:00
+hash: df78451bfb48ca1ebdd2e42a99b0c167e03e43501ed1890865eb9bdf42b1a644
+updated: 2018-12-01T23:21:10.913077964-08:00
 imports:
-- name: appscode.com/api
-  version: fba2ed5c99e7b2f1cd46368b0152085a5ad09b35
-  repo: https://bitbucket.org/appscode/api.git
-  subpackages:
-  - auth/v1alpha1
-  - cloud/v1alpha1
-  - dtypes
-  - health
-  - kubernetes/v1alpha1
-  - namespace/v1alpha1
-  - operation/v1alpha1
-  - version
-- name: appscode.com/client-go
-  version: c583bcd48f574ed698dff65f30a15933a35e34ec
-  repo: https://bitbucket.org/appscode/client-go.git
-  subpackages:
-  - credential
-  - util
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
   subpackages:
@@ -142,7 +124,6 @@ imports:
   subpackages:
   - jsonpb
   - proto
-  - protoc-gen-go/descriptor
   - ptypes
   - ptypes/any
   - ptypes/duration
@@ -194,17 +175,12 @@ imports:
   version: 222f010658cca4619115dfe10279480c6621001e
   repo: https://github.com/appscode/grpc-gateway.git
   vcs: git
-  subpackages:
-  - runtime
-  - runtime/internal
-  - third_party/appscodeapis/appscode/api
-  - utilities
 - name: github.com/hashicorp/go-uuid
   version: 4f571afc59f3043a65f8fe6bf46d887b10a01d43
 - name: github.com/howeyc/gopass
   version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/imdario/mergo
-  version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
+  version: 9316a62528ac99aaecb4e47eadd6dc8aa6533d58
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/jcmturner/gofork
@@ -268,10 +244,6 @@ imports:
   - types
 - name: github.com/peterbourgon/diskv
   version: 5f041e8faa004a95c88a202771f4cc3e991971e6
-- name: github.com/pharmer/pharmer
-  version: 8daaefe0c9be0454d04fae66a30eb30a31ab1732
-  subpackages:
-  - apis/v1alpha1
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/pquerna/cachecontrol
@@ -329,12 +301,6 @@ imports:
   vcs: git
 - name: github.com/xanzy/go-gitlab
   version: 26ea551e8c159cea42a9f206bc18ae5884d44d0c
-- name: github.com/xeipuuv/gojsonpointer
-  version: e0fe6f68307607d540ed8eac07a342c33fa1b54a
-- name: github.com/xeipuuv/gojsonreference
-  version: e02fc20de94c78484cd5ffb007f8af96be030a45
-- name: github.com/xeipuuv/gojsonschema
-  version: ac52e6811b56ee2b7730a88915e956afe2cc0d69
 - name: github.com/yudai/gojsondiff
   version: 7b1b7adf999dab73a6eb02669c3d82dbb27a3dd6
   subpackages:
@@ -363,10 +329,8 @@ imports:
   - idna
   - internal/iana
   - internal/socket
-  - internal/timeseries
   - ipv4
   - lex/httplex
-  - trace
 - name: golang.org/x/oauth2
   version: a6bd8cefa1811bd24b86f8902872e4e8225f74c4
   subpackages:
@@ -424,35 +388,8 @@ imports:
   - internal/remote_api
   - internal/urlfetch
   - urlfetch
-- name: google.golang.org/genproto
-  version: 09f6ed296fc66555a25fe4ce95173148778dfa85
-  subpackages:
-  - googleapis/api/annotations
-  - googleapis/rpc/status
 - name: google.golang.org/grpc
   version: 6b51017f791ae1cfbec89c52efdf444b13b550ef
-  subpackages:
-  - balancer
-  - balancer/base
-  - balancer/roundrobin
-  - codes
-  - connectivity
-  - credentials
-  - encoding
-  - grpclb/grpc_lb_v1/messages
-  - grpclog
-  - internal
-  - keepalive
-  - metadata
-  - naming
-  - peer
-  - resolver
-  - resolver/dns
-  - resolver/passthrough
-  - stats
-  - status
-  - tap
-  - transport
 - name: gopkg.in/asn1-ber.v1
   version: f715ec2f112d1e4195b827ad68cf44017a3ef2b1
 - name: gopkg.in/inf.v0
@@ -539,10 +476,6 @@ imports:
   - storage/v1
   - storage/v1alpha1
   - storage/v1beta1
-- name: k8s.io/apiextensions-apiserver
-  version: 1748dfb29e8a4432b78514bc88a1b07937a9805a
-  subpackages:
-  - pkg/features
 - name: k8s.io/apimachinery
   version: 00edbc532482e56a75224c794deaa1366dd292cb
   repo: https://github.com/kmodules/apimachinery.git
@@ -551,9 +484,6 @@ imports:
   - pkg/api/errors
   - pkg/api/meta
   - pkg/api/resource
-  - pkg/apis/config
-  - pkg/apis/config/v1alpha1
-  - pkg/apis/meta/internalversion
   - pkg/apis/meta/v1
   - pkg/apis/meta/v1/unstructured
   - pkg/apis/meta/v1beta1
@@ -589,11 +519,6 @@ imports:
   - pkg/watch
   - third_party/forked/golang/json
   - third_party/forked/golang/reflect
-- name: k8s.io/apiserver
-  version: e85ad7b666fef0476185731329f4cff1536efff8
-  subpackages:
-  - pkg/features
-  - pkg/util/feature
 - name: k8s.io/client-go
   version: 1638f8970cefaa404ff3a62950f88b08292b2696
   subpackages:
@@ -645,8 +570,6 @@ imports:
   - rest/watch
   - third_party/forked/golang/template
   - tools/auth
-  - tools/bootstrap/token/api
-  - tools/bootstrap/token/util
   - tools/clientcmd
   - tools/clientcmd/api
   - tools/clientcmd/api/latest
@@ -664,43 +587,6 @@ imports:
   version: 0cf8f7e6ed1d2e3d47d02e3b6e559369af24d803
   subpackages:
   - pkg/util/proto
-- name: k8s.io/kube-proxy
-  version: 7282faaeb68874ae13c031a0bbd951e56a7964f6
-  subpackages:
-  - config/v1alpha1
-- name: k8s.io/kubelet
-  version: 63bb2f3a8bebc7916b5a924e41af3316ac9cd01f
-  subpackages:
-  - config/v1beta1
-- name: k8s.io/kubernetes
-  version: 0ed33881dc4355495f623c6f22e7dd0b7632b7c0
-  subpackages:
-  - cmd/kubeadm/app/apis/kubeadm
-  - cmd/kubeadm/app/apis/kubeadm/v1alpha3
-  - cmd/kubeadm/app/constants
-  - pkg/apis/core
-  - pkg/apis/core/v1/helper/qos
-  - pkg/apis/scheduling
-  - pkg/features
-  - pkg/kubelet/apis/config
-  - pkg/kubelet/apis/config/scheme
-  - pkg/kubelet/apis/config/v1beta1
-  - pkg/kubelet/qos
-  - pkg/kubelet/types
-  - pkg/master/ports
-  - pkg/proxy/apis/config
-  - pkg/proxy/apis/config/scheme
-  - pkg/proxy/apis/config/v1alpha1
-  - pkg/registry/core/service/allocator
-  - pkg/registry/core/service/ipallocator
-  - pkg/util/version
-- name: k8s.io/utils
-  version: 66066c83e385e385ccc3c964b44fd7dcd413d0ed
-  subpackages:
-  - clock
-  - exec
-  - exec/testing
-  - pointer
 testImports:
 - name: github.com/pmezard/go-difflib
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d

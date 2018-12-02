@@ -1,11 +1,5 @@
 package: github.com/appscode/guard
 import:
-- package: appscode.com/api
-  repo: https://bitbucket.org/appscode/api.git
-  version: master
-- package: appscode.com/client-go
-  repo: https://bitbucket.org/appscode/client-go.git
-  version: master
 - package: github.com/appscode/go
   version: master
 - package: github.com/appscode/kutil
@@ -72,7 +66,7 @@ import:
   vcs: git
   version: v1.3.1-ac
 - package: github.com/imdario/mergo
-  version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
+  version: v0.3.5
 - package: github.com/onsi/ginkgo
   version: v1.5.0
 - package: github.com/stretchr/testify

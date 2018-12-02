@@ -39,7 +39,7 @@ func Generate(opts Options) ([]byte, error) {
 	if !ok {
 		return nil, errors.Errorf("unsupported media type %q", mediaType)
 	}
-	codec := versioning.NewCodecForScheme(clientsetscheme.Scheme, info.Serializer, info.Serializer, nil, nil)
+	codec := versioning.NewDefaultingCodecForScheme(clientsetscheme.Scheme, info.Serializer, info.Serializer, nil, nil)
 
 	var buf bytes.Buffer
 	for i, obj := range objects {

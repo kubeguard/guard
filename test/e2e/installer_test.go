@@ -8,7 +8,6 @@ import (
 
 	"github.com/appscode/go/util/errors"
 	"github.com/appscode/guard/auth/providers"
-	"github.com/appscode/guard/auth/providers/appscode"
 	"github.com/appscode/guard/auth/providers/azure"
 	"github.com/appscode/guard/auth/providers/github"
 	"github.com/appscode/guard/auth/providers/gitlab"

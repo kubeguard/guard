@@ -25,7 +25,7 @@ guard get installer [flags]
 
 ```
       --addr string                          Address (host:port) of guard server. (default "10.96.10.96:443")
-      --auth-providers strings               name of providers for which guard will provide authentication service (required), supported providers : Appscode/Azure/Github/Gitlab/Google/Ldap/Token-Auth
+      --auth-providers strings               name of providers for which guard will provide authentication service (required), supported providers : Azure/Github/Gitlab/Google/Ldap/Token-Auth
       --azure.client-id string               MS Graph application client ID to use
       --azure.client-secret string           MS Graph application client secret to use
       --azure.tenant-id string               MS Graph application tenant id to use
