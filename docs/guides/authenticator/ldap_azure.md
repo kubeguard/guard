@@ -2,13 +2,13 @@
 title: Azure Active Directory | Guard
 description: Authenticate into Kubernetes using Azure Active Directory
 menu:
-  product_guard_0.2.1:
+  product_guard_0.3.0:
     identifier: azure-ad-authenticator
     parent: authenticator-guides
     name: Azure AD
     weight: 40
 product_name: guard
-menu_name: product_guard_0.2.1
+menu_name: product_guard_0.3.0
 section_menu_id: guides
 ---
 
