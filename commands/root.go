@@ -2,13 +2,12 @@ package commands
 
 import (
 	"flag"
-	"log"
 
+	"github.com/appscode/go/flags"
 	v "github.com/appscode/go/version"
 	"github.com/appscode/kutil/tools/cli"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -20,9 +19,7 @@ func NewRootCmd() *cobra.Command {
 		DisableAutoGenTag:  true,
 		DisableFlagParsing: true,
 		PersistentPreRun: func(c *cobra.Command, args []string) {
-			c.Flags().VisitAll(func(flag *pflag.Flag) {
-				log.Printf("FLAG: --%s=%q", flag.Name, flag.Value)
-			})
+			flags.DumpAll(c.Flags())
 			cli.SendAnalytics(c, v.Version.Version)
 		},
 	}
