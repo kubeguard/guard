@@ -37,10 +37,22 @@ Additional flags for gitlab:
 ```console
 # Base url for GitLab, keep empty to use default gitlab base url
 --gitlab.base-url=<base_url>
+
+# Use group ID for authentication instead of group full path (default: false)
+--gitlab.use-group-id
 ```
 
 The GitLab base-url needs to include the path to the API. For example
 `https://<base-url>/api/v4`
+
+Please note that, since 0.3.0 release, Guard server will return group full path as groups in `UserInfo`. This will cahnge how subgroups are returned in `UserInfo`. Also note that, group names are not stable and editable in Gitlab. To returns group ids (stable) in `UserInfo`, set `--gitlab.use-group-id=true` in guard server binary.
+
+```console
+$ guard get installer \
+    --auth-providers="gitlab" \
+    --gitlab.use-group-id=true \
+    > installer.yaml
+```
 
 ### Issue Token
 

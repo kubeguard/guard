@@ -58,8 +58,12 @@ func (g *Authenticator) Check(token string) (*authv1.UserInfo, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to load groups")
 		}
-		for _, g := range list {
-			groups = append(groups, g.Name)
+		for _, entry := range list {
+			if g.opts.UseGroupID {
+				groups = append(groups, strconv.Itoa(entry.ID))
+			} else {
+				groups = append(groups, entry.FullPath)
+			}
 		}
 		if len(list) < pageSize {
 			break
