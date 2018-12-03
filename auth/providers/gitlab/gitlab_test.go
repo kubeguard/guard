@@ -27,6 +27,11 @@ const (
 	gitlabUserRespBody = `{ "id": 1204, "username": "nahid" }`
 )
 
+var testGroupID = map[bool]string{
+	true:  ":using-group-id",
+	false: ":using-group-fullpath",
+}
+
 type gitlabGroupRespFunc func(u *url.URL) (int, string)
 
 // GitLab API docs:
@@ -42,7 +47,7 @@ func gitlabGetErrorMsg(err error) []byte {
 func gitlabVerifyAuthorization(r *http.Request) error {
 	got := r.Header.Get("PRIVATE-TOKEN")
 	if got == "" {
-		return fmt.Errorf("Header PRIVATE-TOKEN: expected not empty")
+		return fmt.Errorf("header PRIVATE-TOKEN: expected not empty")
 	}
 	if got != gitlabGoodToken {
 		return fmt.Errorf("PRIVATE-TOKEN: invalid token")
@@ -63,28 +68,31 @@ func gitlabVerifyPageParameter(values []string) (int, error) {
 	}
 }
 
-func assertGroup(t *testing.T, groupList []string, expectedSize int) {
+func assertGroup(t *testing.T, useGroupId bool, groupList []string, expectedSize int) {
 	if len(groupList) != expectedSize {
 		t.Errorf("expected group size: %v, got %v", expectedSize, len(groupList))
 	}
 
 	groups := sets.NewString(groupList...)
 	for i := 1; i <= expectedSize; i++ {
-		group := "team" + strconv.Itoa(i)
+		group := strconv.Itoa(i)
+		if !useGroupId {
+			group = "team" + group
+		}
 		if !groups.Has(group) {
 			t.Errorf("group %v is missing", group)
 		}
 	}
 }
 
-func assertUserInfo(t *testing.T, info *v1.UserInfo, groupSize int) {
+func assertUserInfo(t *testing.T, info *v1.UserInfo, useGroupId bool, groupSize int) {
 	if info.Username != gitlabUsername {
 		t.Errorf("expected username %v, got %v", "nahid", info.Username)
 	}
 	if info.UID != gitlabUID {
 		t.Errorf("expected user id %v, got %v", "1204", info.UID)
 	}
-	assertGroup(t, info.Groups, groupSize)
+	assertGroup(t, useGroupId, info.Groups, groupSize)
 }
 
 // return string format
@@ -96,12 +104,14 @@ func assertUserInfo(t *testing.T, info *v1.UserInfo, groupSize int) {
 // Group name format : team[groupNo]
 func GitlabGetGroups(size int, startgroupNo int) ([]byte, error) {
 	type group struct {
-		Name string `json:"name"`
+		ID       int    `json:"id"`
+		FullPath string `json:"full_path"`
 	}
-	groupList := []group{}
+	var groupList []group
 	for i := 1; i <= size; i++ {
 		groupList = append(groupList, group{
-			Name: string("team" + strconv.Itoa(startgroupNo)),
+			ID:       startgroupNo,
+			FullPath: string("team" + strconv.Itoa(startgroupNo)),
 		})
 		startgroupNo++
 	}
@@ -185,10 +195,11 @@ func gitlabServerSetup(userResp string, userStatusCode int, gengroupResp gitlabG
 	return srv
 }
 
-func gitlabClientSetup(serverUrl string) *Authenticator {
+func gitlabClientSetup(serverUrl string, useGroupId bool) *Authenticator {
 	g := &Authenticator{
 		opts: Options{
-			BaseUrl: serverUrl,
+			BaseUrl:    serverUrl,
+			UseGroupID: useGroupId,
 		},
 	}
 
@@ -228,18 +239,20 @@ func TestGitlab(t *testing.T) {
 	}
 
 	for _, test := range dataset {
-		t.Run(test.testName, func(t *testing.T) {
-			groupSize := 1
-			srv := gitlabServerSetup(test.userResp, test.userStatusCode, gitlabGetGroupResp(groupSize))
-			defer srv.Close()
+		for useGroupId, suffix := range testGroupID {
+			t.Run(test.testName+suffix, func(t *testing.T) {
+				groupSize := 1
+				srv := gitlabServerSetup(test.userResp, test.userStatusCode, gitlabGetGroupResp(groupSize))
+				defer srv.Close()
 
-			client := gitlabClientSetup(srv.URL)
+				client := gitlabClientSetup(srv.URL, useGroupId)
 
-			resp, err := client.Check(test.token)
-			if assert.NotNil(t, err) {
-				assert.Nil(t, resp)
-			}
-		})
+				resp, err := client.Check(test.token)
+				if assert.NotNil(t, err) {
+					assert.Nil(t, resp)
+				}
+			})
+		}
 	}
 }
 
@@ -248,48 +261,52 @@ func TestForDIfferentGroupSizes(t *testing.T) {
 	for _, groupSize := range groupSizes {
 		// PerPage=20
 		// authenticated : true
-		t.Run(fmt.Sprintf("authentication successful, group size %v", groupSize), func(t *testing.T) {
-			srv := gitlabServerSetup(gitlabUserRespBody, http.StatusOK, gitlabGetGroupResp(groupSize))
-			defer srv.Close()
+		for useGroupId, suffix := range testGroupID {
+			t.Run(fmt.Sprintf("authentication successful, group size %v %s", groupSize, suffix), func(t *testing.T) {
+				srv := gitlabServerSetup(gitlabUserRespBody, http.StatusOK, gitlabGetGroupResp(groupSize))
+				defer srv.Close()
 
-			client := gitlabClientSetup(srv.URL)
-			if assert.NotNil(t, client) {
-				resp, err := client.Check(gitlabGoodToken)
-				if assert.Nil(t, err) {
-					assertUserInfo(t, resp, groupSize)
+				client := gitlabClientSetup(srv.URL, useGroupId)
+				if assert.NotNil(t, client) {
+					resp, err := client.Check(gitlabGoodToken)
+					if assert.Nil(t, err) {
+						assertUserInfo(t, resp, useGroupId, groupSize)
+					}
 				}
-			}
-		})
+			})
+		}
 	}
 }
 
 func TestGroupListErrorInDifferentPage(t *testing.T) {
 	pages := []int{1, 2, 3}
 	for _, pageNo := range pages {
-		t.Run(fmt.Sprintf("error when getting user's group at page %v", pageNo), func(t *testing.T) {
-			groupSize := 55
-			errMsg := fmt.Sprintf("error when getting user's group at page=%v", pageNo)
-			srv := gitlabServerSetup(gitlabUserRespBody, http.StatusOK, func(u *url.URL) (int, string) {
-				if pg, ok := u.Query()["page"]; ok {
-					pgNo, err := gitlabVerifyPageParameter(pg)
-					if err != nil {
-						return http.StatusBadRequest, fmt.Sprintf("List user groups request: %v", err)
-					}
-					if pgNo < pageNo {
-						return gitlabGetGroupResp(groupSize)(u)
+		for useGroupId, suffix := range testGroupID {
+			t.Run(fmt.Sprintf("error when getting user's group at page %v %s", pageNo, suffix), func(t *testing.T) {
+				groupSize := 55
+				errMsg := fmt.Sprintf("error when getting user's group at page=%v", pageNo)
+				srv := gitlabServerSetup(gitlabUserRespBody, http.StatusOK, func(u *url.URL) (int, string) {
+					if pg, ok := u.Query()["page"]; ok {
+						pgNo, err := gitlabVerifyPageParameter(pg)
+						if err != nil {
+							return http.StatusBadRequest, fmt.Sprintf("List user groups request: %v", err)
+						}
+						if pgNo < pageNo {
+							return gitlabGetGroupResp(groupSize)(u)
+						} else {
+							return http.StatusInternalServerError, errMsg
+						}
 					} else {
-						return http.StatusInternalServerError, errMsg
+						return http.StatusBadRequest, fmt.Sprint("List user groups request: query parameter page not provide")
 					}
-				} else {
-					return http.StatusBadRequest, fmt.Sprint("List user groups request: query parameter page not provide")
-				}
-			})
-			defer srv.Close()
+				})
+				defer srv.Close()
 
-			client := gitlabClientSetup(srv.URL)
-			resp, err := client.Check(gitlabGoodToken)
-			assert.NotNil(t, err)
-			assert.Nil(t, resp)
-		})
+				client := gitlabClientSetup(srv.URL, useGroupId)
+				resp, err := client.Check(gitlabGoodToken)
+				assert.NotNil(t, err)
+				assert.Nil(t, resp)
+			})
+		}
 	}
 }
