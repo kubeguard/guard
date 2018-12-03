@@ -51,7 +51,7 @@ COPY guard /usr/bin/guard
 USER nobody:nobody
 ENTRYPOINT ["guard"]
 EOL
-  local cmd="docker build -t appscode/$IMG:$TAG ."
+  local cmd="docker build --pull -t appscode/$IMG:$TAG ."
   echo $cmd; $cmd
 
   rm guard Dockerfile
