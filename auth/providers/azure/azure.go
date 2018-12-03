@@ -6,7 +6,7 @@ import (
 
 	"github.com/appscode/guard/auth"
 	"github.com/appscode/guard/auth/providers/azure/graph"
-	"github.com/coreos/go-oidc"
+	oidc "github.com/coreos/go-oidc"
 	"github.com/pkg/errors"
 	authv1 "k8s.io/api/authentication/v1"
 )

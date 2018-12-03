@@ -1,5 +1,5 @@
 hash: df78451bfb48ca1ebdd2e42a99b0c167e03e43501ed1890865eb9bdf42b1a644
-updated: 2018-12-01T23:35:49.501284093-08:00
+updated: 2018-12-03T11:17:38.055854244-08:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -7,7 +7,7 @@ imports:
   - compute/metadata
   - internal
 - name: github.com/appscode/go
-  version: a6d58457b39324ead2ffb1f24be7a0a638c9f112
+  version: aa0a55d74dac66f9b9bec9c0e7b67944115a3f44
   subpackages:
   - analytics
   - context
@@ -150,7 +150,7 @@ imports:
 - name: github.com/google/gofuzz
   version: 24818f796faf91cd76ec7bddd72458fbced7a6c1
 - name: github.com/google/uuid
-  version: 8c31c18f31ede9fc8eae72290a7e7a8064e9b3e3
+  version: 064e2069ce9c359c118179501254f67d7d37ba24
 - name: github.com/googleapis/gnostic
   version: 0c5108395e2debce0d731cf0287ddf7242066aba
   subpackages:
@@ -200,7 +200,7 @@ imports:
 - name: github.com/mattn/go-isatty
   version: 66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8
 - name: github.com/matttproud/golang_protobuf_extensions
-  version: c12348ce28de40eed0136aa2b644d0ee0650e56c
+  version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
   subpackages:
   - pbutil
 - name: github.com/modern-go/concurrent
@@ -378,7 +378,7 @@ imports:
   - googleapi/internal/uritemplates
   - oauth2/v1
 - name: google.golang.org/appengine
-  version: 4a4468ece617fc8205e99368fa2200e9d1fad421
+  version: 12d5545dc1cfa6047a286d5e853841b6471f4c19
   subpackages:
   - internal
   - internal/app_identity

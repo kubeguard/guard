@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	"github.com/appscode/pat"
-	"github.com/json-iterator/go"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/authentication/v1"
+	v1 "k8s.io/api/authentication/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 

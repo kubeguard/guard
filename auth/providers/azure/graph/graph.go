@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/json-iterator/go"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/moul/http2curl"
 	"github.com/pkg/errors"
 )

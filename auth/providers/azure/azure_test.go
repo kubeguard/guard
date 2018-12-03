@@ -13,10 +13,10 @@ import (
 
 	"github.com/appscode/guard/auth/providers/azure/graph"
 	"github.com/appscode/pat"
-	"github.com/coreos/go-oidc"
-	"github.com/json-iterator/go"
+	oidc "github.com/coreos/go-oidc"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/square/go-jose.v2"
+	jose "gopkg.in/square/go-jose.v2"
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )

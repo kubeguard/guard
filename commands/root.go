@@ -6,7 +6,7 @@ import (
 
 	v "github.com/appscode/go/version"
 	"github.com/appscode/kutil/tools/cli"
-	"github.com/json-iterator/go"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )

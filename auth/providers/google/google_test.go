@@ -16,10 +16,10 @@ import (
 	"testing"
 
 	"github.com/appscode/pat"
-	"github.com/coreos/go-oidc"
+	oidc "github.com/coreos/go-oidc"
 	"github.com/stretchr/testify/assert"
 	gdir "google.golang.org/api/admin/directory/v1"
-	"gopkg.in/square/go-jose.v2"
+	jose "gopkg.in/square/go-jose.v2"
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
