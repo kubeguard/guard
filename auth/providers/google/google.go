@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/appscode/guard/auth"
-	"github.com/coreos/go-oidc"
+	oidc "github.com/coreos/go-oidc"
 	"github.com/pkg/errors"
 	gdir "google.golang.org/api/admin/directory/v1"
 	gauth "google.golang.org/api/oauth2/v1"

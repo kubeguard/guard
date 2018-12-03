@@ -5,7 +5,7 @@ import (
 
 	"github.com/appscode/guard/auth"
 	"github.com/pkg/errors"
-	"github.com/xanzy/go-gitlab"
+	gitlab "github.com/xanzy/go-gitlab"
 	authv1 "k8s.io/api/authentication/v1"
 )
 
