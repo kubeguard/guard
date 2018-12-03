@@ -1,9 +1,9 @@
 ---
 menu:
-  product_guard_0.2.1:
+  product_guard_0.3.0:
     identifier: authenticator-guides
     parent: guides
     name: Authenticator
     weight: 10
-menu_name: product_guard_0.2.1
+menu_name: product_guard_0.3.0
 ---

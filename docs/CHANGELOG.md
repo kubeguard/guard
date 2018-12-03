@@ -2,22 +2,57 @@
 title: Changelog | Guard
 description: Changelog
 menu:
-  product_stash_0.2.1:
+  product_stash_0.3.0:
     identifier: changelog-guard
     name: Changelog
     parent: welcome
     weight: 10
 product_name: guard
-menu_name: product_guard_0.2.1
+menu_name: product_guard_0.3.0
 section_menu_id: welcome
-url: /products/guard/0.2.1/welcome/changelog/
+url: /products/guard/0.3.0/welcome/changelog/
 aliases:
-  - /products/guard/0.2.1/CHANGELOG/
+  - /products/guard/0.3.0/CHANGELOG/
 ---
 
 # Change Log
 
-## [0.2.1](https://github.com/appscode/guard/tree/0.2.1) (2018-07-08)
+## [0.3.0](https://github.com/appscode/guard/tree/0.3.0) (2018-12-03)
+[Full Changelog](https://github.com/appscode/guard/compare/0.2.1...0.3.0)
+
+**Fixed bugs:**
+
+- Fix panic if there is no $HOME/.kube/config [\#179](https://github.com/appscode/guard/pull/179) ([nightfury1204](https://github.com/nightfury1204))
+
+**Closed issues:**
+
+- Github connector docs asks for unnecessary public\_repo permissions [\#195](https://github.com/appscode/guard/issues/195)
+- Guard should not log password/secrets [\#194](https://github.com/appscode/guard/issues/194)
+- Issues with LDAP and guard get installer [\#193](https://github.com/appscode/guard/issues/193)
+- Dependabot couldn't find a Gopkg.toml for this project [\#191](https://github.com/appscode/guard/issues/191)
+- Guard crashes multiple times a day [\#190](https://github.com/appscode/guard/issues/190)
+- Missing binaries for 0.2.1 guard-darwin [\#189](https://github.com/appscode/guard/issues/189)
+- Guard pod keeps restarting ~ every 8 hours [\#187](https://github.com/appscode/guard/issues/187)
+- Logo Proposal for Guard [\#184](https://github.com/appscode/guard/issues/184)
+- Using Gitlab's full\_path instead of name while using authentication by Groups [\#181](https://github.com/appscode/guard/issues/181)
+- panic: assignment to entry in nil map [\#178](https://github.com/appscode/guard/issues/178)
+
+**Merged pull requests:**
+
+- Fix Gitlab tests [\#202](https://github.com/appscode/guard/pull/202) ([tamalsaha](https://github.com/tamalsaha))
+- Support group id or full\_path for Gitlab connector [\#201](https://github.com/appscode/guard/pull/201) ([tamalsaha](https://github.com/tamalsaha))
+- Document Github connector permissions to read:org [\#200](https://github.com/appscode/guard/pull/200) ([tamalsaha](https://github.com/tamalsaha))
+- Redact password/secrets when dumping flags. [\#199](https://github.com/appscode/guard/pull/199) ([tamalsaha](https://github.com/tamalsaha))
+- Revendor and run gofmt [\#198](https://github.com/appscode/guard/pull/198) ([tamalsaha](https://github.com/tamalsaha))
+- Set periodic analytics [\#197](https://github.com/appscode/guard/pull/197) ([tamalsaha](https://github.com/tamalsaha))
+- Update Kubernetes client libraries to 1.12.0 [\#196](https://github.com/appscode/guard/pull/196) ([tamalsaha](https://github.com/tamalsaha))
+- Typos [\#192](https://github.com/appscode/guard/pull/192) ([tmatias](https://github.com/tmatias))
+- Use kubernetes-1.11.3 [\#188](https://github.com/appscode/guard/pull/188) ([tamalsaha](https://github.com/tamalsaha))
+- Add readme images to logo folder [\#186](https://github.com/appscode/guard/pull/186) ([tamalsaha](https://github.com/tamalsaha))
+- Add Logos for Guard [\#185](https://github.com/appscode/guard/pull/185) ([area55git](https://github.com/area55git))
+- Cleanup error handling for Azure provider [\#182](https://github.com/appscode/guard/pull/182) ([tamalsaha](https://github.com/tamalsaha))
+
+## [0.2.1](https://github.com/appscode/guard/tree/0.2.1) (2018-07-10)
 [Full Changelog](https://github.com/appscode/guard/compare/0.2.0...0.2.1)
 
 **Closed issues:**
@@ -27,6 +62,8 @@ aliases:
 
 **Merged pull requests:**
 
+- Fix hugo frontmatter [\#177](https://github.com/appscode/guard/pull/177) ([tamalsaha](https://github.com/tamalsaha))
+- Prepare 0.2.1 release [\#176](https://github.com/appscode/guard/pull/176) ([tamalsaha](https://github.com/tamalsaha))
 - Format shell scripts [\#175](https://github.com/appscode/guard/pull/175) ([tamalsaha](https://github.com/tamalsaha))
 - Use client-go v8.0.0 [\#173](https://github.com/appscode/guard/pull/173) ([tamalsaha](https://github.com/tamalsaha))
 - Enable B2B auth for Azure provider by supporting either `oid` or `upn` claim in the token [\#172](https://github.com/appscode/guard/pull/172) ([amanohar](https://github.com/amanohar))

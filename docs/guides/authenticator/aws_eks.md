@@ -2,13 +2,13 @@
 title: Amazon EKS | Guard
 description: Authenticate into Amazon EKS cluster
 menu:
-  product_guard_0.2.1:
+  product_guard_0.3.0:
     identifier: amazon-eks
     parent: authenticator-guides
     name: EKS
     weight: 45
 product_name: guard
-menu_name: product_guard_0.2.1
+menu_name: product_guard_0.3.0
 section_menu_id: guides
 ---
 

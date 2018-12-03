@@ -1,12 +1,12 @@
 ---
 title: Guard Init Ca
 menu:
-  product_guard_0.2.1:
+  product_guard_0.3.0:
     identifier: guard-init-ca
     name: Guard Init Ca
     parent: reference
 product_name: guard
-menu_name: product_guard_0.2.1
+menu_name: product_guard_0.3.0
 section_menu_id: reference
 ---
 ## guard init ca
