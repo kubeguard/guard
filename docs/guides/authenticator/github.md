@@ -41,7 +41,7 @@ Additional flags for github:
 ```
 
 ### Issue Token
-To use Github authentication, you can use your personal access token with permissions to read `public_repo` and `read:org`. You can use the following command to issue a token:
+To use Github authentication, you can use your personal access token with permission to `read:org`. You can use the following command to issue a token:
 
 ```console
 $ guard get token -o github
