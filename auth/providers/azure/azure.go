@@ -2,11 +2,16 @@ package azure
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 
+	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/appscode/guard/auth"
 	"github.com/appscode/guard/auth/providers/azure/graph"
 	oidc "github.com/coreos/go-oidc"
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	authv1 "k8s.io/api/authentication/v1"
 )
@@ -24,7 +29,6 @@ import (
 
 const (
 	OrgType            = "azure"
-	azureIssuerURL     = "https://sts.windows.net/"
 	azureUsernameClaim = "upn"
 	azureObjectIDClaim = "oid"
 )
@@ -55,18 +59,66 @@ func New(opts Options) (auth.Interface, error) {
 	}
 
 	var err error
-	provider, err := oidc.NewProvider(c.ctx, azureIssuerURL+c.TenantID+"/")
+	env := azure.PublicCloud
+	if c.Environment != "" {
+		env, err = azure.EnvironmentFromName(c.Environment)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to parse enviroment for azure")
+		}
+	}
+
+	metadata, err := getMetadata(&env, c.TenantID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get metadata for azure")
+	}
+	glog.V(3).Infof("Using issuer url: %v", metadata.Issuer)
+
+	provider, err := oidc.NewProvider(c.ctx, metadata.Issuer)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create provider for azure")
 	}
 
 	c.verifier = provider.Verifier(&oidc.Config{SkipClientIDCheck: true})
 
-	c.graphClient, err = graph.New(c.ClientID, c.ClientSecret, c.TenantID, c.UseGroupUID)
+	c.graphClient, err = graph.New(c.ClientID, c.ClientSecret, c.TenantID, c.UseGroupUID, env.ActiveDirectoryEndpoint, metadata.MsgraphHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create ms graph client")
 	}
 	return c, nil
+}
+
+type metadataJSON struct {
+	Issuer      string `json:"issuer"`
+	MsgraphHost string `json:"msgraph_host"`
+}
+
+// https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-convert-app-to-be-multi-tenant
+func getMetadata(env *azure.Environment, tenantID string) (*metadataJSON, error) {
+	metadataURL := env.ActiveDirectoryEndpoint + tenantID + "/.well-known/openid-configuration"
+	glog.V(5).Infof("Querying metadata URL: %v", metadataURL)
+
+	response, err := http.Get(metadataURL)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("get metadata url failed with status code: %d", response.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var metadata metadataJSON
+	err = json.Unmarshal(body, &metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	return &metadata, nil
 }
 
 func (s Authenticator) UID() string {
