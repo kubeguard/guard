@@ -422,3 +422,20 @@ func TestString(t *testing.T) {
 		assert.Empty(t, v, "expected empty")
 	})
 }
+
+func TestGetAuthInfo(t *testing.T) {
+	authInfo, err := getAuthInfo("AzurePublicCloud", "testTenant", localGetMetadata)
+	assert.NoError(t, err)
+	assert.Contains(t, authInfo.AADEndpoint, "login.microsoftonline.com")
+
+	authInfo, err = getAuthInfo("AzureChinaCloud", "testTenant", localGetMetadata)
+	assert.NoError(t, err)
+	assert.Contains(t, authInfo.AADEndpoint, "login.chinacloudapi.cn")
+}
+
+func localGetMetadata(string, string) (*metadataJSON, error) {
+	return &metadataJSON{
+		Issuer:      "testIssuer",
+		MsgraphHost: "testHost",
+	}, nil
+}
