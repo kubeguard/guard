@@ -2,6 +2,8 @@ package: github.com/appscode/guard
 import:
 - package: github.com/appscode/go
   version: master
+- package: github.com/appscode/go-version
+  version: master
 - package: github.com/appscode/kutil
   version: release-9.0
 - package: github.com/appscode/pat
@@ -9,20 +11,38 @@ import:
   version: v1.14.12
 - package: github.com/coreos/go-oidc
   version: a4973d9a4225417aecf5d450a9522f00c1f7130f
+- package: github.com/cpuguy83/go-md2man
+  version: v1.0.8
+- package: github.com/davecgh/go-spew
+  version: v1.1.1
+- package: github.com/go-ini/ini
+  version: v1.40.0
 - package: github.com/go-ldap/ldap
   version: v2.5.1
 - package: github.com/golang/glog
-- package: github.com/google/gofuzz
-  version: master
+- package: github.com/golang/protobuf
+  version: v1.0.0
 - package: github.com/google/go-github
   version: v15.0.0
-- package: github.com/appscode/go-version
+- package: github.com/google/gofuzz
   version: master
+- package: github.com/gorilla/websocket
+  version: v1.4.0
+- package: github.com/grpc-ecosystem/grpc-gateway
+  repo: https://github.com/appscode/grpc-gateway.git
+  vcs: git
+  version: v1.3.1-ac
 - package: github.com/howeyc/gopass
+- package: github.com/imdario/mergo
+  version: v0.3.5
 - package: github.com/jpillora/go-ogle-analytics
 - package: github.com/json-iterator/go
   version: 1.1.5
+- package: github.com/mitchellh/mapstructure
+  version: v1.1.2
 - package: github.com/moul/http2curl
+- package: github.com/onsi/ginkgo
+  version: v1.5.0
 - package: github.com/onsi/gomega
   version: v1.4.0
 - package: github.com/pkg/errors
@@ -31,6 +51,8 @@ import:
   version: c3324c1198cf3374996e9d3098edd46a6b55afc9
 - package: github.com/prometheus/common
   version: 3233b24a36715a2fe36d162260457857a56d672d
+- package: github.com/russross/blackfriday
+  version: v1.5.2
 - package: github.com/sirupsen/logrus
   version: v1.0.5
 - package: github.com/skratchdot/open-golang
@@ -40,15 +62,35 @@ import:
   version: v0.0.3
 - package: github.com/spf13/pflag
   version: v1.0.3
+- package: github.com/stretchr/testify
+  version: v1.2.1
+- package: github.com/vjeantet/ldapserver
+  repo: https://github.com/appscode/ldapserver.git
+  vcs: git
+  version: master
 - package: github.com/xanzy/go-gitlab
   version: v0.10.5
+- package: golang.org/x/crypto
+  version: de0752318171da717af4ce24d0a2e8626afaeb11
 - package: golang.org/x/net
   version: 1c05540f6879653db88113bc4a2b70aec4bd491f
 - package: golang.org/x/oauth2
+- package: golang.org/x/sys
+  version: 95c6576299259db960f6c5b9b69ea52422860fce
+- package: golang.org/x/text
+  version: b19bf474d317b857955b12035d2c5acb57ce8b01
 - package: google.golang.org/api
   version: 98825bb0065da4054e5da6db34f5fc598e50bc24
+- package: google.golang.org/grpc
+  version: v1.9.2
+- package: gopkg.in/ini.v1
+  version: v1.40.0
 - package: gopkg.in/jcmturner/gokrb5.v4
   version: v4.1.2
+- package: gopkg.in/square/go-jose.v2
+  version: v2.2.1
+- package: gopkg.in/yaml.v2
+  version: v2.2.1
 - package: k8s.io/api
   version: kubernetes-1.12.0
 - package: k8s.io/apimachinery
@@ -57,41 +99,5 @@ import:
   version: ac-1.12.0
 - package: k8s.io/client-go
   version: v9.0.0
-- package: github.com/golang/protobuf
-  version: v1.1.0
-- package: google.golang.org/grpc
-  version: v1.9.2
-- package: github.com/grpc-ecosystem/grpc-gateway
-  repo: https://github.com/appscode/grpc-gateway.git
-  vcs: git
-  version: v1.3.1-ac
-- package: github.com/imdario/mergo
-  version: v0.3.5
-- package: github.com/onsi/ginkgo
-  version: v1.5.0
-- package: github.com/stretchr/testify
-  version: v1.2.1
-- package: github.com/vjeantet/ldapserver
-  repo: https://github.com/appscode/ldapserver.git
-  vcs: git
-  version: master
-- package: gopkg.in/square/go-jose.v2
-  version: v2.1.6
-- package: github.com/cpuguy83/go-md2man
-  version: v1.0.8
-- package: github.com/russross/blackfriday
-  version: v1.5.2
-- package: golang.org/x/text
-  version: b19bf474d317b857955b12035d2c5acb57ce8b01
-- package: golang.org/x/sys
-  version: 95c6576299259db960f6c5b9b69ea52422860fce
-- package: golang.org/x/crypto
-  version: de0752318171da717af4ce24d0a2e8626afaeb11
-- package: github.com/davecgh/go-spew
-  version: v1.1.1
 - package: k8s.io/kube-openapi
   version: 0cf8f7e6ed1d2e3d47d02e3b6e559369af24d803
-- package: gopkg.in/yaml.v2
-  version: v2.2.1
-- package: github.com/gorilla/websocket
-  version: v1.4.0
