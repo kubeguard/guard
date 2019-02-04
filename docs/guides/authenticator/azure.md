@@ -2,13 +2,13 @@
 title: Azure Authenticator | Guard
 description: Authenticate into Kubernetes using Azure
 menu:
-  product_guard_0.3.0:
+  product_guard_0.4.0:
     identifier: azure-authenticator
     parent: authenticator-guides
     name: Azure
     weight: 25
 product_name: guard
-menu_name: product_guard_0.3.0
+menu_name: product_guard_0.4.0
 section_menu_id: guides
 ---
 

@@ -1,17 +1,17 @@
 ---
 title: Guard
 menu:
-  product_guard_0.3.0:
+  product_guard_0.4.0:
     identifier: guard
     name: Guard
     parent: reference
     weight: 0
 
 product_name: guard
-menu_name: product_guard_0.3.0
+menu_name: product_guard_0.4.0
 section_menu_id: reference
 aliases:
-  - products/guard/0.3.0/reference/
+  - products/guard/0.4.0/reference/
 
 ---
 ## guard

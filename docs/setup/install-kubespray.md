@@ -2,13 +2,13 @@
 title: Install Kubespray
 description: Kubespray Guard Install
 menu:
-  product_guard_0.3.0:
+  product_guard_0.4.0:
     identifier: install-kubespray
     name: Install in Kubespray
     parent: setup
     weight: 15
 product_name: guard
-menu_name: product_guard_0.3.0
+menu_name: product_guard_0.4.0
 section_menu_id: setup
 ---
 
