@@ -2,20 +2,35 @@
 title: Changelog | Guard
 description: Changelog
 menu:
-  product_stash_0.3.0:
+  product_stash_0.4.0:
     identifier: changelog-guard
     name: Changelog
     parent: welcome
     weight: 10
 product_name: guard
-menu_name: product_guard_0.3.0
+menu_name: product_guard_0.4.0
 section_menu_id: welcome
-url: /products/guard/0.3.0/welcome/changelog/
+url: /products/guard/0.4.0/welcome/changelog/
 aliases:
-  - /products/guard/0.3.0/CHANGELOG/
+  - /products/guard/0.4.0/CHANGELOG/
 ---
 
 # Change Log
+
+## [0.4.0](https://github.com/appscode/guard/tree/0.4.0) (2019-02-04)
+[Full Changelog](https://github.com/appscode/guard/compare/0.3.0...0.4.0)
+
+**Closed issues:**
+
+- Support Azure Active Directory in sovereign cloud  [\#208](https://github.com/appscode/guard/issues/208)
+- Dependabot couldn't find a Gopkg.toml for this project [\#205](https://github.com/appscode/guard/issues/205)
+
+**Merged pull requests:**
+
+- Document how to use Azure sovereign cloud instances [\#212](https://github.com/appscode/guard/pull/212) ([tamalsaha](https://github.com/tamalsaha))
+- Revendor dependencies [\#211](https://github.com/appscode/guard/pull/211) ([tamalsaha](https://github.com/tamalsaha))
+- Add a little bit more guidance for users. [\#210](https://github.com/appscode/guard/pull/210) ([coderanger](https://github.com/coderanger))
+- Support aad sovereign clouds [\#209](https://github.com/appscode/guard/pull/209) ([karataliu](https://github.com/karataliu))
 
 ## [0.3.0](https://github.com/appscode/guard/tree/0.3.0) (2018-12-03)
 [Full Changelog](https://github.com/appscode/guard/compare/0.2.1...0.3.0)
@@ -39,6 +54,8 @@ aliases:
 
 **Merged pull requests:**
 
+- Use docker build --pull [\#204](https://github.com/appscode/guard/pull/204) ([tamalsaha](https://github.com/tamalsaha))
+- Prepare docs for 0.3.0 release [\#203](https://github.com/appscode/guard/pull/203) ([tamalsaha](https://github.com/tamalsaha))
 - Fix Gitlab tests [\#202](https://github.com/appscode/guard/pull/202) ([tamalsaha](https://github.com/tamalsaha))
 - Support group id or full\_path for Gitlab connector [\#201](https://github.com/appscode/guard/pull/201) ([tamalsaha](https://github.com/tamalsaha))
 - Document Github connector permissions to read:org [\#200](https://github.com/appscode/guard/pull/200) ([tamalsaha](https://github.com/tamalsaha))
@@ -51,6 +68,7 @@ aliases:
 - Add readme images to logo folder [\#186](https://github.com/appscode/guard/pull/186) ([tamalsaha](https://github.com/tamalsaha))
 - Add Logos for Guard [\#185](https://github.com/appscode/guard/pull/185) ([area55git](https://github.com/area55git))
 - Cleanup error handling for Azure provider [\#182](https://github.com/appscode/guard/pull/182) ([tamalsaha](https://github.com/tamalsaha))
+- Log userinfo at glog.V\(10\) [\#180](https://github.com/appscode/guard/pull/180) ([tamalsaha](https://github.com/tamalsaha))
 
 ## [0.2.1](https://github.com/appscode/guard/tree/0.2.1) (2018-07-10)
 [Full Changelog](https://github.com/appscode/guard/compare/0.2.0...0.2.1)

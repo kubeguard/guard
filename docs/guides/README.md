@@ -2,17 +2,17 @@
 title: Table of Contents | Guides
 description: Table of Contents | Guides
 menu:
-  product_guard_0.3.0:
+  product_guard_0.4.0:
     identifier: guides-readme
     name: Readme
     parent: guides
     weight: -1
 product_name: guard
-menu_name: product_guard_0.3.0
+menu_name: product_guard_0.4.0
 section_menu_id: guides
-url: /products/guard/0.3.0/guides/
+url: /products/guard/0.4.0/guides/
 aliases:
-  - /products/guard/0.3.0/guides/README/
+  - /products/guard/0.4.0/guides/README/
 ---
 
 # Guides
