@@ -38,6 +38,25 @@ $ kubectl apply -f installer.yaml
 
 Procedure to find `<application_id>`, `<application_secret>` are given below. Replace the `<tenant_id>` with your azure tenant id.
 
+Azure Active Directory has different instances for [sovereign clouds](https://docs.microsoft.com/en-us/azure/active-directory/develop/authentication-national-cloud). To use those, set `--azure.environment` flag to one the following values:
+
+- AzurePublicCloud (default)
+- AzureChinaCloud
+- AzureGermanCloud
+- AzureUSGovernmentCloud
+
+```console
+# generate Kubernetes YAMLs for deploying guard server
+$ guard get installer \
+    --auth-providers=azure \
+    --azure.environment=AzureChinaCloud \
+    --azure.client-id=<application_id> \
+    --azure.tenant-id=<tenant_id> \
+    > installer.yaml
+
+$ kubectl apply -f installer.yaml
+```
+
 Please note that, since 0.2.1 release, Guard server will return AAD group uid as groups in `UserInfo`. To use AAD group names, set the `--azure.use-group-uid=false` flag to Guard server binary. _Please note that multiple AAD groups can use the same name._ Consider the potential securtiy implications of using group names in `UserInfo`.
 
 ```console
