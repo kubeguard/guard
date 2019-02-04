@@ -18,17 +18,14 @@ import (
 
 // These are the base URL endpoints for MS graph
 var (
-	baseAPIURL, _         = url.Parse("https://graph.microsoft.com/v1.0")
-	loginURL              = "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
 	json                  = jsoniter.ConfigCompatibleWithStandardLibrary
 	expandedGroupsPerCall = 500
 )
 
 const (
-	graphDefaultScope = "https://graph.microsoft.com/.default" // This requests that a token use all of its default scopes
-	graphGrantType    = "client_credentials"                   // The only grant type supported for this login flow
-	expiryDelta       = 60 * time.Second
-	getterName        = "ms-graph"
+	graphGrantType = "client_credentials" // The only grant type supported for this login flow
+	expiryDelta    = 60 * time.Second
+	getterName     = "ms-graph"
 )
 
 // UserInfo allows you to get user data from MS Graph
@@ -44,6 +41,7 @@ type UserInfo struct {
 
 	groupsPerCall int
 	useGroupUID   bool
+	defaultScope  string
 }
 
 func (u *UserInfo) login() error {
@@ -52,7 +50,7 @@ func (u *UserInfo) login() error {
 	form := url.Values{}
 	form.Set("client_id", u.clientID)
 	form.Set("client_secret", u.clientSecret)
-	form.Set("scope", graphDefaultScope)
+	form.Set("scope", u.defaultScope)
 	form.Set("grant_type", graphGrantType)
 
 	req, err := http.NewRequest(http.MethodPost, u.loginURL.String(), strings.NewReader(form.Encode()))
@@ -234,7 +232,11 @@ func (u *UserInfo) Name() string {
 }
 
 // New returns a new UserInfo object
-func New(clientID, clientSecret, tenantName string, useGroupUID bool) (*UserInfo, error) {
+func New(clientID, clientSecret, tenantName string, useGroupUID bool, aadEndpoint, msgraphHost string) (*UserInfo, error) {
+	graphEndpoint := "https://" + msgraphHost + "/"
+	baseAPIURL, _ := url.Parse(graphEndpoint + "v1.0")
+	loginURL := aadEndpoint + "%s/oauth2/v2.0/token"
+
 	parsedLogin, err := url.Parse(fmt.Sprintf(loginURL, tenantName))
 	if err != nil {
 		return nil, err
@@ -250,6 +252,7 @@ func New(clientID, clientSecret, tenantName string, useGroupUID bool) (*UserInfo
 		clientSecret:  clientSecret,
 		groupsPerCall: expandedGroupsPerCall,
 		useGroupUID:   useGroupUID,
+		defaultScope:  graphEndpoint + ".default", // This requests that a token use all of its default scopes
 	}
 
 	return u, nil

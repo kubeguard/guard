@@ -14,6 +14,7 @@ import (
 )
 
 type Options struct {
+	Environment  string
 	ClientID     string
 	ClientSecret string
 	TenantID     string
@@ -28,6 +29,7 @@ func NewOptions() Options {
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
+	fs.StringVar(&o.Environment, "azure.environment", o.Environment, "Azure cloud environment")
 	fs.StringVar(&o.ClientID, "azure.client-id", o.ClientID, "MS Graph application client ID to use")
 	fs.StringVar(&o.ClientSecret, "azure.client-secret", o.ClientSecret, "MS Graph application client secret to use")
 	fs.StringVar(&o.TenantID, "azure.tenant-id", o.TenantID, "MS Graph application tenant id to use")
@@ -96,6 +98,9 @@ func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err e
 	})
 
 	args := container.Args
+	if o.Environment != "" {
+		args = append(args, fmt.Sprintf("--azure.environment=%s", o.Environment))
+	}
 	if o.ClientID != "" {
 		args = append(args, fmt.Sprintf("--azure.client-id=%s", o.ClientID))
 	}

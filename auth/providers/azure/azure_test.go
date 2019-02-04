@@ -21,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
+var jsonLib = jsoniter.ConfigCompatibleWithStandardLibrary
 
 const (
 	username                 = "nahid"
@@ -80,7 +80,7 @@ func newRSAKey(t *testing.T) (*signingKey, error) {
 
 func clientSetup(clientID, clientSecret, tenantID, serverUrl string, useGroupUID bool) (*Authenticator, error) {
 	c := &Authenticator{
-		Options: Options{clientID, clientSecret, tenantID, useGroupUID},
+		Options: Options{"", clientID, clientSecret, tenantID, useGroupUID},
 		ctx:     context.Background(),
 	}
 
@@ -195,11 +195,11 @@ func getGroupsAndIds(t *testing.T, groupSz int) ([]byte, []byte) {
 		groupId.Value = append(groupId.Value, th)
 		groupList.Value = append(groupList.Value, group{"group" + th, th})
 	}
-	gId, err := json.Marshal(groupId)
+	gId, err := jsonLib.Marshal(groupId)
 	if err != nil {
 		t.Fatalf("Error when generating groups id and group List. reason %v", err)
 	}
-	gList, err := json.Marshal(groupList)
+	gList, err := jsonLib.Marshal(groupList)
 	if err != nil {
 		t.Fatalf("Error when generating groups id and group List. reason %v", err)
 	}
@@ -230,7 +230,7 @@ func assertUserInfo(t *testing.T, info *authv1.UserInfo, groupSize int, useGroup
 
 func getServerAndClient(t *testing.T, signKey *signingKey, loginResp string, groupSize int, useGroupUID bool, groupStatus ...int) (*httptest.Server, *Authenticator) {
 	jwkSet := signKey.jwk()
-	jwkResp, err := json.Marshal(jwkSet)
+	jwkResp, err := jsonLib.Marshal(jwkSet)
 	if err != nil {
 		t.Fatalf("Error when generating JSONWebKeySet. reason: %v", err)
 	}
@@ -421,4 +421,21 @@ func TestString(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Empty(t, v, "expected empty")
 	})
+}
+
+func TestGetAuthInfo(t *testing.T) {
+	authInfo, err := getAuthInfo("AzurePublicCloud", "testTenant", localGetMetadata)
+	assert.NoError(t, err)
+	assert.Contains(t, authInfo.AADEndpoint, "login.microsoftonline.com")
+
+	authInfo, err = getAuthInfo("AzureChinaCloud", "testTenant", localGetMetadata)
+	assert.NoError(t, err)
+	assert.Contains(t, authInfo.AADEndpoint, "login.chinacloudapi.cn")
+}
+
+func localGetMetadata(string, string) (*metadataJSON, error) {
+	return &metadataJSON{
+		Issuer:      "testIssuer",
+		MsgraphHost: "testHost",
+	}, nil
 }

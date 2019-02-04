@@ -2,11 +2,16 @@ package azure
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 
+	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/appscode/guard/auth"
 	"github.com/appscode/guard/auth/providers/azure/graph"
 	oidc "github.com/coreos/go-oidc"
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	authv1 "k8s.io/api/authentication/v1"
 )
@@ -24,7 +29,6 @@ import (
 
 const (
 	OrgType            = "azure"
-	azureIssuerURL     = "https://sts.windows.net/"
 	azureUsernameClaim = "upn"
 	azureObjectIDClaim = "oid"
 )
@@ -48,25 +52,70 @@ type Authenticator struct {
 	ctx         context.Context
 }
 
+type authInfo struct {
+	AADEndpoint string
+	MSGraphHost string
+	Issuer      string
+}
+
 func New(opts Options) (auth.Interface, error) {
 	c := &Authenticator{
 		Options: opts,
 		ctx:     context.Background(),
 	}
+	authInfoVal, err := getAuthInfo(c.Environment, c.TenantID, getMetadata)
+	if err != nil {
+		return nil, err
+	}
 
-	var err error
-	provider, err := oidc.NewProvider(c.ctx, azureIssuerURL+c.TenantID+"/")
+	glog.V(3).Infof("Using issuer url: %v", authInfoVal.Issuer)
+
+	provider, err := oidc.NewProvider(c.ctx, authInfoVal.Issuer)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create provider for azure")
 	}
 
 	c.verifier = provider.Verifier(&oidc.Config{SkipClientIDCheck: true})
 
-	c.graphClient, err = graph.New(c.ClientID, c.ClientSecret, c.TenantID, c.UseGroupUID)
+	c.graphClient, err = graph.New(c.ClientID, c.ClientSecret, c.TenantID, c.UseGroupUID, authInfoVal.AADEndpoint, authInfoVal.MSGraphHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create ms graph client")
 	}
 	return c, nil
+}
+
+type metadataJSON struct {
+	Issuer      string `json:"issuer"`
+	MsgraphHost string `json:"msgraph_host"`
+}
+
+// https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-convert-app-to-be-multi-tenant
+func getMetadata(aadEndpoint, tenantID string) (*metadataJSON, error) {
+	metadataURL := aadEndpoint + tenantID + "/.well-known/openid-configuration"
+	glog.V(5).Infof("Querying metadata URL: %v", metadataURL)
+
+	response, err := http.Get(metadataURL)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("get metadata url failed with status code: %d", response.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var metadata metadataJSON
+	err = json.Unmarshal(body, &metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	return &metadata, nil
 }
 
 func (s Authenticator) UID() string {
@@ -134,4 +183,26 @@ func (c claims) string(key string) (string, error) {
 		return "", fmt.Errorf("claim %s is not a string, found %v", key, v)
 	}
 	return s, nil
+}
+
+func getAuthInfo(environment, tenantID string, getMetadata func(string, string) (*metadataJSON, error)) (*authInfo, error) {
+	var err error
+	env := azure.PublicCloud
+	if environment != "" {
+		env, err = azure.EnvironmentFromName(environment)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to parse enviroment for azure")
+		}
+	}
+
+	metadata, err := getMetadata(env.ActiveDirectoryEndpoint, tenantID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get metadata for azure")
+	}
+
+	return &authInfo{
+		AADEndpoint: env.ActiveDirectoryEndpoint,
+		MSGraphHost: metadata.MsgraphHost,
+		Issuer:      metadata.Issuer,
+	}, nil
 }
