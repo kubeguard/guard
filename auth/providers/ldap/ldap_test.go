@@ -60,7 +60,10 @@ func (s *ldapServer) stop() {
 // getTLSconfig returns a tls configuration used
 // to build a TLSlistener for TLS or StartTLS
 func (s *ldapServer) getTLSconfig() (*tls.Config, error) {
-	srvCert, srvKey, err := s.certStore.NewServerCertPair("server", cert.AltNames{IPs: []net.IP{net.ParseIP(serverAddr)}})
+	srvCert, srvKey, err := s.certStore.NewServerCertPairBytes(cert.AltNames{
+		DNSNames: []string{"server"},
+		IPs:      []net.IP{net.ParseIP(serverAddr)},
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +272,7 @@ func runTest(t *testing.T, secureConn bool, s Authenticator, serverType string) 
 
 	if secureConn {
 		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(srv.certStore.CACert())
+		caCertPool.AppendCertsFromPEM(srv.certStore.CACertBytes())
 		s.opts.CaCertFile = srv.certStore.CertFile("ca")
 		s.opts.CaCertPool = caCertPool
 	}

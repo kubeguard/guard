@@ -35,7 +35,7 @@ func TestServeHTTP(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pemCertsWithOrg, _, err := store.NewClientCertPair("guard", "foo")
+	pemCertsWithOrg, _, err := store.NewClientCertPairBytes(cert.AltNames{DNSNames: []string{"guard"}}, "foo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestServeHTTP(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pemCertsWithoutOrg, _, err := store.NewClientCertPair("guard")
+	pemCertsWithoutOrg, _, err := store.NewClientCertPairBytes(cert.AltNames{DNSNames: []string{"guard"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,11 +108,6 @@ func TestGetAuthProviderClient(t *testing.T) {
 		{
 			"get google client",
 			google.OrgType,
-			nil,
-		},
-		{
-			"get appscode client",
-			appscode.OrgType,
 			nil,
 		},
 		{
