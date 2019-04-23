@@ -191,7 +191,7 @@ func getAuthInfo(environment, tenantID string, getMetadata func(string, string) 
 	if environment != "" {
 		env, err = azure.EnvironmentFromName(environment)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to parse enviroment for azure")
+			return nil, errors.Wrap(err, "failed to parse environment for azure")
 		}
 	}
 
