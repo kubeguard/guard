@@ -63,7 +63,7 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 				glog.Fatalf("CA certificates not found in %s. Run `guard init ca`", store.Location())
 			}
 			if !store.PairExists(filename(cfg)) {
-				glog.Fatalf("Client certificate not found in %s. Run `guard init client %s -p %s`", store.Location(), cfg.AltNames.DNSNames[0], cfg.Organization[0])
+				glog.Fatalf("Client certificate not found in %s. Run `guard init client %s -o %s`", store.Location(), cfg.AltNames.DNSNames[0], cfg.Organization[0])
 			}
 
 			caCert, _, err := store.ReadBytes("ca")
