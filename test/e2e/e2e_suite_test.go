@@ -6,11 +6,11 @@ import (
 
 	logs "github.com/appscode/go/log/golog"
 	"github.com/appscode/guard/test/e2e/framework"
-	"github.com/appscode/kutil/tools/clientcmd"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes"
+	"kmodules.xyz/client-go/tools/clientcmd"
 )
 
 const (

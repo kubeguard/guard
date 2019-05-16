@@ -12,13 +12,13 @@ import (
 	"github.com/appscode/guard/auth/providers/gitlab"
 	"github.com/appscode/guard/auth/providers/google"
 	"github.com/appscode/guard/auth/providers/ldap"
-	"github.com/appscode/kutil/tools/certstore"
 	fuzz "github.com/google/gofuzz"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"gomodules.xyz/cert"
+	"gomodules.xyz/cert/certstore"
 	auth "k8s.io/api/authentication/v1"
-	"k8s.io/client-go/util/cert"
 )
 
 func TestServeHTTP(t *testing.T) {

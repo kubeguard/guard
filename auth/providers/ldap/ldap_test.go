@@ -11,14 +11,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/appscode/kutil/tools/certstore"
 	"github.com/go-ldap/ldap"
 	"github.com/golang/glog"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	ldapmsg "github.com/vjeantet/goldap/message"
 	"github.com/vjeantet/ldapserver"
-	"k8s.io/client-go/util/cert"
+	"gomodules.xyz/cert"
+	"gomodules.xyz/cert/certstore"
 )
 
 const (

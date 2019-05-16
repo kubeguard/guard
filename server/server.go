@@ -13,13 +13,13 @@ import (
 	"github.com/appscode/go/signals"
 	v "github.com/appscode/go/version"
 	"github.com/appscode/guard/auth/providers/token"
-	"github.com/appscode/kutil/meta"
-	"github.com/appscode/kutil/tools/fsnotify"
 	"github.com/appscode/pat"
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
+	"kmodules.xyz/client-go/meta"
+	"kmodules.xyz/client-go/tools/fsnotify"
 )
 
 type Server struct {

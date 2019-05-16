@@ -9,11 +9,11 @@ import (
 
 	"github.com/appscode/go/term"
 	"github.com/appscode/guard/auth"
-	"github.com/appscode/kutil/tools/certstore"
 	"github.com/golang/glog"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/util/cert"
+	"gomodules.xyz/cert"
+	"gomodules.xyz/cert/certstore"
 )
 
 func NewCmdInitClient() *cobra.Command {

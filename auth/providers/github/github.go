@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/appscode/guard/auth"
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v25/github"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 	authv1 "k8s.io/api/authentication/v1"
@@ -72,7 +72,7 @@ func (g *Authenticator) Check(token string) (*authv1.UserInfo, error) {
 	page := 1
 	pageSize := 25
 	for {
-		teams, _, err := client.Organizations.ListUserTeams(g.ctx, &github.ListOptions{Page: page, PerPage: pageSize})
+		teams, _, err := client.Teams.ListUserTeams(g.ctx, &github.ListOptions{Page: page, PerPage: pageSize})
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to load user's teams for Org %s", g.OrgName)
 		}

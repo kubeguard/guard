@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 
 	"github.com/appscode/go/types"
-	"github.com/appscode/kutil/tools/certstore"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"github.com/spf13/pflag"
+	"gomodules.xyz/cert/certstore"
 	"k8s.io/api/apps/v1beta1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

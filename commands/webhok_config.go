@@ -6,13 +6,13 @@ import (
 	"strings"
 
 	"github.com/appscode/guard/auth"
-	"github.com/appscode/kutil/tools/certstore"
 	"github.com/golang/glog"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"gomodules.xyz/cert"
+	"gomodules.xyz/cert/certstore"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	"k8s.io/client-go/util/cert"
 )
 
 func NewCmdGetWebhookConfig() *cobra.Command {

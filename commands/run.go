@@ -3,9 +3,9 @@ package commands
 import (
 	v "github.com/appscode/go/version"
 	"github.com/appscode/guard/server"
-	"github.com/appscode/kutil/tools/cli"
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
+	"kmodules.xyz/client-go/tools/cli"
 )
 
 func NewCmdRun() *cobra.Command {
