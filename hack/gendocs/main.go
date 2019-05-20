@@ -47,7 +47,7 @@ menu_name: product_guard_{{ .Version }}
 section_menu_id: reference
 {{- if .RootCmd }}
 aliases:
-  - products/guard/{{ .Version }}/reference/
+  - /products/guard/{{ .Version }}/reference/
 {{ end }}
 ---
 `))
