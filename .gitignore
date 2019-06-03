@@ -25,12 +25,9 @@ _testmain.go
 *.test
 *.prof
 
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
-
-# external packages folder
-dist/
-.idea/
-**/node_modules/
-.vscode/
-coverage.txt
+/.go
+/.idea
+/.vscode
+/bin
+/coverage.txt
+/dist
