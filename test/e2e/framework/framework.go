@@ -4,9 +4,9 @@ import (
 	"path/filepath"
 
 	"github.com/appscode/go/crypto/rand"
-	"github.com/appscode/kutil/tools/certstore"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/afero"
+	"gomodules.xyz/cert/certstore"
 	"k8s.io/client-go/kubernetes"
 )
 

@@ -20,9 +20,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/afero"
+	"gomodules.xyz/cert"
 	kerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/util/cert"
 )
 
 var _ = Describe("Installer test", func() {

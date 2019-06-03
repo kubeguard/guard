@@ -5,9 +5,9 @@ import (
 
 	"github.com/appscode/go/flags"
 	v "github.com/appscode/go/version"
-	"github.com/appscode/kutil/tools/cli"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/cobra"
+	"kmodules.xyz/client-go/tools/cli"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
