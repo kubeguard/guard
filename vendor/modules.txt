@@ -1,19 +1,17 @@
 # cloud.google.com/go v0.39.0
 cloud.google.com/go/compute/metadata
-# contrib.go.opencensus.io/exporter/ocagent v0.5.0
-contrib.go.opencensus.io/exporter/ocagent
-# github.com/Azure/go-autorest v12.0.0+incompatible
+# github.com/Azure/go-autorest v11.1.2+incompatible
 github.com/Azure/go-autorest/autorest/azure
 github.com/Azure/go-autorest/autorest
-github.com/Azure/go-autorest/tracing
 github.com/Azure/go-autorest/autorest/adal
 github.com/Azure/go-autorest/logger
+github.com/Azure/go-autorest/version
 github.com/Azure/go-autorest/autorest/date
 # github.com/PuerkitoBio/purell v1.1.1
 github.com/PuerkitoBio/purell
 # github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578
 github.com/PuerkitoBio/urlesc
-# github.com/appscode/go v0.0.0-20190424183524-60025f1135c9
+# github.com/appscode/go v0.0.0-20190603183757-54ec592fa0ba
 github.com/appscode/go/log/golog
 github.com/appscode/go/version
 github.com/appscode/go/types
@@ -38,7 +36,7 @@ github.com/appscode/go/homedir
 github.com/appscode/jsonpatch
 # github.com/appscode/pat v0.0.0-20170521084856-48ff78925b79
 github.com/appscode/pat
-# github.com/aws/aws-sdk-go v1.19.31
+# github.com/aws/aws-sdk-go v1.19.42
 github.com/aws/aws-sdk-go/aws/session
 github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/aws
@@ -67,18 +65,12 @@ github.com/aws/aws-sdk-go/private/protocol/rest
 github.com/aws/aws-sdk-go/private/protocol/query/queryutil
 github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil
 github.com/aws/aws-sdk-go/internal/sdkuri
+github.com/aws/aws-sdk-go/private/protocol/json/jsonutil
 github.com/aws/aws-sdk-go/private/protocol
 # github.com/beevik/ntp v0.2.0
 github.com/beevik/ntp
 # github.com/beorn7/perks v1.0.0
 github.com/beorn7/perks/quantile
-# github.com/census-instrumentation/opencensus-proto v0.2.0
-github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1
-github.com/census-instrumentation/opencensus-proto/gen-go/agent/metrics/v1
-github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1
-github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1
-github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1
-github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1
 # github.com/coreos/go-oidc v0.0.0-20170711233713-a4973d9a4225
 github.com/coreos/go-oidc
 # github.com/cpuguy83/go-md2man v1.0.10
@@ -119,11 +111,10 @@ github.com/golang/glog
 github.com/golang/protobuf/jsonpb
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/ptypes/struct
-github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/protobuf/ptypes/any
-github.com/golang/protobuf/ptypes/wrappers
 github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/duration
+github.com/golang/protobuf/ptypes/timestamp
 # github.com/google/btree v1.0.0
 github.com/google/btree
 # github.com/google/go-cmp v0.3.0
@@ -155,10 +146,6 @@ github.com/gophercloud/gophercloud/pagination
 # github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc
 github.com/gregjones/httpcache
 github.com/gregjones/httpcache/diskcache
-# github.com/grpc-ecosystem/grpc-gateway v1.9.0 => github.com/appscode/grpc-gateway v1.3.1-ac
-github.com/grpc-ecosystem/grpc-gateway/runtime
-github.com/grpc-ecosystem/grpc-gateway/utilities
-github.com/grpc-ecosystem/grpc-gateway/runtime/internal
 # github.com/hashicorp/go-uuid v1.0.1
 github.com/hashicorp/go-uuid
 # github.com/hashicorp/golang-lru v0.5.1
@@ -285,23 +272,21 @@ github.com/yudai/gojsondiff/formatter
 github.com/yudai/golcs
 # go.opencensus.io v0.21.0
 go.opencensus.io/plugin/ochttp
-go.opencensus.io/plugin/ochttp/propagation/tracecontext
-go.opencensus.io/stats/view
-go.opencensus.io/trace
-go.opencensus.io
-go.opencensus.io/plugin/ocgrpc
-go.opencensus.io/resource
-go.opencensus.io/stats
-go.opencensus.io/tag
-go.opencensus.io/trace/tracestate
 go.opencensus.io/plugin/ochttp/propagation/b3
+go.opencensus.io/stats
+go.opencensus.io/stats/view
+go.opencensus.io/tag
+go.opencensus.io/trace
 go.opencensus.io/trace/propagation
-go.opencensus.io/internal/tagencoding
 go.opencensus.io/metric/metricdata
-go.opencensus.io/metric/metricproducer
 go.opencensus.io/stats/internal
+go.opencensus.io/internal/tagencoding
+go.opencensus.io/metric/metricproducer
 go.opencensus.io/internal
 go.opencensus.io/trace/internal
+go.opencensus.io/trace/tracestate
+go.opencensus.io/resource
+go.opencensus.io
 # golang.org/x/crypto v0.0.0-20190513172903-22d7a77e9e5f
 golang.org/x/crypto/md4
 golang.org/x/crypto/ssh/terminal
@@ -330,8 +315,6 @@ golang.org/x/oauth2/google
 golang.org/x/oauth2/jwt
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
-# golang.org/x/sync v0.0.0-20190423024810-112230192c58
-golang.org/x/sync/semaphore
 # golang.org/x/sys v0.0.0-20190516110030-61b9204099cb
 golang.org/x/sys/unix
 golang.org/x/sys/windows
@@ -373,7 +356,6 @@ google.golang.org/api/googleapi/internal/uritemplates
 google.golang.org/api/internal
 google.golang.org/api/googleapi/transport
 google.golang.org/api/transport/http/internal/propagation
-google.golang.org/api/support/bundler
 # google.golang.org/appengine v1.6.0
 google.golang.org/appengine
 google.golang.org/appengine/urlfetch
@@ -389,13 +371,12 @@ google.golang.org/appengine/internal/remote_api
 google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/grpc v1.20.1
 google.golang.org/grpc
-google.golang.org/grpc/credentials
-google.golang.org/grpc/metadata
 google.golang.org/grpc/naming
 google.golang.org/grpc/balancer
 google.golang.org/grpc/balancer/roundrobin
 google.golang.org/grpc/codes
 google.golang.org/grpc/connectivity
+google.golang.org/grpc/credentials
 google.golang.org/grpc/encoding
 google.golang.org/grpc/encoding/proto
 google.golang.org/grpc/grpclog
@@ -409,6 +390,7 @@ google.golang.org/grpc/internal/grpcrand
 google.golang.org/grpc/internal/grpcsync
 google.golang.org/grpc/internal/transport
 google.golang.org/grpc/keepalive
+google.golang.org/grpc/metadata
 google.golang.org/grpc/peer
 google.golang.org/grpc/resolver
 google.golang.org/grpc/resolver/dns
@@ -416,8 +398,8 @@ google.golang.org/grpc/resolver/passthrough
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-google.golang.org/grpc/credentials/internal
 google.golang.org/grpc/balancer/base
+google.golang.org/grpc/credentials/internal
 google.golang.org/grpc/binarylog/grpc_binarylog_v1
 google.golang.org/grpc/internal/syscall
 # gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d

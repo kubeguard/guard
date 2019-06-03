@@ -3,12 +3,10 @@ module github.com/appscode/guard
 go 1.12
 
 require (
-	cloud.google.com/go v0.39.0 // indirect
-	contrib.go.opencensus.io/exporter/ocagent v0.5.0 // indirect
-	github.com/Azure/go-autorest v12.0.0+incompatible
-	github.com/appscode/go v0.0.0-20190424183524-60025f1135c9
+	github.com/Azure/go-autorest v11.1.2+incompatible
+	github.com/appscode/go v0.0.0-20190603183757-54ec592fa0ba
 	github.com/appscode/pat v0.0.0-20170521084856-48ff78925b79
-	github.com/aws/aws-sdk-go v1.19.31
+	github.com/aws/aws-sdk-go v1.19.42
 	github.com/coreos/go-oidc v0.0.0-20170711233713-a4973d9a4225
 	github.com/emicklei/go-restful v2.9.6+incompatible // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
@@ -21,7 +19,6 @@ require (
 	github.com/google/gofuzz v1.0.0
 	github.com/gophercloud/gophercloud v0.0.0-20190516144603-ad4210895ed0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190430165422-3e4dfb77656c // indirect
-	github.com/grpc-ecosystem/grpc-gateway v1.9.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/jcmturner/gofork v0.0.0-20190328161633-dc7c13fece03 // indirect
@@ -48,7 +45,6 @@ require (
 	golang.org/x/crypto v0.0.0-20190513172903-22d7a77e9e5f // indirect
 	golang.org/x/net v0.0.0-20190514140710-3ec191127204
 	golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a
-	golang.org/x/sync v0.0.0-20190423024810-112230192c58 // indirect
 	golang.org/x/sys v0.0.0-20190516110030-61b9204099cb // indirect
 	gomodules.xyz/cert v1.0.0
 	google.golang.org/api v0.5.0
@@ -87,6 +83,7 @@ replace (
 	k8s.io/klog => k8s.io/klog v0.3.0
 	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.0.0-20190314000639-da8327669ac5
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20190228160746-b3a7cee44a30
+	k8s.io/kubernetes => k8s.io/kubernetes v1.14.0
 	k8s.io/metrics => k8s.io/metrics v0.0.0-20190314001731-1bd6a4002213
 	k8s.io/utils => k8s.io/utils v0.0.0-20190221042446-c2654d5206da
 )

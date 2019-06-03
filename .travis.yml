@@ -3,6 +3,11 @@ go:
  - 1.x
  - tip
 
+cache:
+  directories:
+  - $HOME/.cache/go-build
+  - $GOPATH/pkg/mod
+
 install: true
 
 script:
