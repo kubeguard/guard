@@ -26,6 +26,8 @@ require (
 	github.com/mailru/easyjson v0.0.0-20190403194419-1ea4449da983 // indirect
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/moul/http2curl v1.0.0
+	github.com/nmcclain/asn1-ber v0.0.0-20170104154839-2661553a0484 // indirect
+	github.com/nmcclain/ldap v0.0.0-20160601145537-6e14e8271933
 	github.com/onsi/ginkgo v1.8.0
 	github.com/onsi/gomega v1.5.0
 	github.com/pkg/errors v0.8.1
@@ -39,8 +41,6 @@ require (
 	github.com/spf13/cobra v0.0.4
 	github.com/spf13/pflag v1.0.3
 	github.com/stretchr/testify v1.3.0
-	github.com/vjeantet/goldap v0.0.0-00010101000000-000000000000
-	github.com/vjeantet/ldapserver v0.0.0-20170919170217-479fece7c5f1
 	github.com/xanzy/go-gitlab v0.10.5
 	golang.org/x/crypto v0.0.0-20190513172903-22d7a77e9e5f // indirect
 	golang.org/x/net v0.0.0-20190514140710-3ec191127204

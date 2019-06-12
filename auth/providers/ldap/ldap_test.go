@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -11,12 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-ldap/ldap"
 	"github.com/golang/glog"
+	ldapserver "github.com/nmcclain/ldap"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
-	ldapmsg "github.com/vjeantet/goldap/message"
-	"github.com/vjeantet/ldapserver"
 	"gomodules.xyz/cert"
 	"gomodules.xyz/cert/certstore"
 )
@@ -34,27 +33,32 @@ type ldapServer struct {
 }
 
 func (s *ldapServer) start() {
-	var err error
 	if s.secureConn {
-		tlsConfig, err := s.getTLSconfig()
-		if err == nil {
-			err = s.server.ListenAndServe(serverAddr+":"+securePort, func(s *ldapserver.Server) {
-				s.Listener = tls.NewListener(s.Listener, tlsConfig)
-			})
+		srvCert, srvKey, err := s.certStore.NewServerCertPairBytes(cert.AltNames{
+			DNSNames: []string{"server"},
+			IPs:      []net.IP{net.ParseIP(serverAddr)},
+		})
+		if err != nil {
+			glog.Fatal(err)
+		}
+
+		err = s.certStore.WriteBytes("srv", srvCert, srvKey)
+		if err != nil {
+			glog.Fatal(err)
+		}
+
+		if err := s.server.ListenAndServeTLS(serverAddr+":"+securePort, s.certStore.CertFile("srv"), s.certStore.KeyFile("srv")); err != nil {
+			glog.Fatal(err)
 		}
 	} else {
-		err = s.server.ListenAndServe(serverAddr + ":" + inSecurePort)
-	}
-	if err != nil {
-		glog.Fatalln("LDAP Server: ", err)
+		if err := s.server.ListenAndServe(serverAddr + ":" + inSecurePort); err != nil {
+			glog.Fatal(err)
+		}
 	}
 }
 
 func (s *ldapServer) stop() {
-	s.server.Stop()
-	if s.certStore != nil {
-		os.RemoveAll(s.certStore.Location())
-	}
+
 }
 
 // getTLSconfig returns a tls configuration used
@@ -84,16 +88,10 @@ func (s *ldapServer) getTLSconfig() (*tls.Config, error) {
 func ldapServerSetup(secureConn bool, userSearchDN, groupSearchDN string) (*ldapServer, error) {
 	//Create a new LDAP Server
 	server := ldapserver.NewServer()
+	handler := ldapHandler{}
 
-	routes := ldapserver.NewRouteMux()
-
-	routes.Bind(handleBind).AuthenticationChoice("simple")
-
-	routes.Search(handleUserSearch).BaseDn(userSearchDN)
-
-	routes.Search(handleGroupSearch).BaseDn(groupSearchDN)
-
-	server.Handle(routes)
+	server.BindFunc("", handler)
+	server.SearchFunc("", handler)
 
 	srv := &ldapServer{
 		server:     server,
@@ -116,98 +114,91 @@ func ldapServerSetup(secureConn bool, userSearchDN, groupSearchDN string) (*ldap
 	return srv, nil
 }
 
-// handleBind return Success if username and password matched
-func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
-	if m == nil || m.ProtocolOp() == nil {
-		return
-	}
-	r, ok := m.ProtocolOp().(ldapmsg.BindRequest)
-	if !ok {
-		return
-	}
-	glog.Infoln("Bind :", r.Name(), r.AuthenticationSimple())
-
-	res := ldapserver.NewBindResponse(ldapserver.LDAPResultSuccess)
-	// for baseDN
-	if string(r.Name()) == "uid=admin,ou=system" && string(r.AuthenticationSimple()) == "secret" {
-		w.Write(res)
-		return
-	}
-
-	// for userDN
-	if string(r.Name()) == "uid=nahid,ou=users,o=Company" && string(r.AuthenticationSimple()) == "secret" {
-		w.Write(res)
-		return
-	}
-
-	// for userDN
-	if string(r.Name()) == "uid=shuvo,ou=users,o=Company" && string(r.AuthenticationSimple()) == "secret" {
-		w.Write(res)
-		return
-	}
-
-	glog.Infof("Bind failed User=%s, Pass=%s", string(r.Name()), string(r.AuthenticationSimple()))
-	res.SetResultCode(ldapserver.LDAPResultInvalidCredentials)
-	res.SetDiagnosticMessage("invalid credentials")
-	w.Write(res)
+type ldapHandler struct {
 }
 
-func handleUserSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
-	r := m.GetSearchRequest()
-	glog.Infoln("User search filter", r.FilterString())
+func (h ldapHandler) Bind(bindDN, bindSimplePw string, conn net.Conn) (ldapserver.LDAPResultCode, error) {
+	fmt.Println("*********bind**************")
+	fmt.Println(bindDN, bindSimplePw)
+	fmt.Println("*********bind-end**************")
+	if bindDN == "uid=admin,ou=system" && bindSimplePw == "secret" {
+		return ldapserver.LDAPResultSuccess, nil
+	}
+
+	// for userDN
+	if bindDN == "uid=nahid,ou=users,o=Company" && bindSimplePw == "secret" {
+		return ldapserver.LDAPResultSuccess, nil
+	}
+
+	// for userDN
+	if bindDN == "uid=shuvo,ou=users,o=Company" && bindSimplePw == "secret" {
+		return ldapserver.LDAPResultSuccess, nil
+	}
+	if bindDN == "" && bindSimplePw == "" {
+		return ldapserver.LDAPResultSuccess, nil
+	}
+	return ldapserver.LDAPResultInvalidCredentials, nil
+}
+
+func (h ldapHandler) Search(boundDN string, searchReq ldapserver.SearchRequest, conn net.Conn) (ldapserver.ServerSearchResult, error) {
+	fmt.Println("*********search**************")
+	fmt.Println(boundDN)
+	fmt.Println(searchReq)
+
+	var entries []*ldapserver.Entry
 
 	// one entry
-	if r.FilterString() == "(&(objectClass=person)(uid=nahid))" {
-		e := ldapserver.NewSearchResultEntry("uid=nahid,ou=users,o=Company")
-		e.AddAttribute("cn", "nahid")
-
-		w.Write(e)
+	if searchReq.Filter == "(&(objectClass=person)(uid=nahid))" {
+		entries = append(entries, &ldapserver.Entry{
+			"uid=nahid,ou=users,o=Company",
+			[]*ldapserver.EntryAttribute{
+				{"cn", []string{"nahid"}},
+			},
+		})
 	}
 
 	// one entry
-	if r.FilterString() == "(&(objectClass=person)(uid=shuvo))" {
-		e := ldapserver.NewSearchResultEntry("uid=shuvo,ou=users,o=Company")
-		e.AddAttribute("cn", "shuvo")
-
-		w.Write(e)
+	if searchReq.Filter == "(&(objectClass=person)(uid=shuvo))" {
+		entries = append(entries, &ldapserver.Entry{
+			"uid=shuvo,ou=users,o=Company",
+			[]*ldapserver.EntryAttribute{
+				{"cn", []string{"shuvo"}},
+			},
+		})
 	}
 
 	// multiple entry
-	if r.FilterString() == "(&(objectClass=person)(id=nahid))" {
-		e := ldapserver.NewSearchResultEntry("uid=nahid,ou=users,o=Company")
-		e.AddAttribute("cn", "nahid")
-		e.AddAttribute("id", "1204")
-
-		e1 := ldapserver.NewSearchResultEntry("uid=shuvo,ou=users,o=Company")
-		e1.AddAttribute("cn", "shuvo")
-		e1.AddAttribute("id", "1204")
-
-		w.Write(e)
-		w.Write(e1)
+	if searchReq.Filter == "(&(objectClass=person)(id=nahid))" {
+		entries = append(entries, &ldapserver.Entry{
+			"uid=nahid,ou=users,o=Company",
+			[]*ldapserver.EntryAttribute{
+				{"cn", []string{"nahid"}},
+				{"id", []string{"1204"}},
+			},
+		}, &ldapserver.Entry{
+			"uid=shuvo,ou=users,o=Company",
+			[]*ldapserver.EntryAttribute{
+				{"cn", []string{"shuvo"}},
+				{"id", []string{"1204"}},
+			},
+		})
 	}
-
-	res := ldapserver.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
-	w.Write(res)
-}
-
-func handleGroupSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
-	r := m.GetSearchRequest()
-	glog.Infoln("Group search filter", r.FilterString())
 
 	// one entry
-	if r.FilterString() == "(&(objectClass=groupOfNames)(member=uid=nahid,ou=users,o=Company))" {
-		e := ldapserver.NewSearchResultEntry("id=1,ou=groups,o=Company")
-		e.AddAttribute("cn", "group1")
-
-		e1 := ldapserver.NewSearchResultEntry("id=1,ou=groups,o=Company")
-		e1.AddAttribute("cn", "group2")
-
-		w.Write(e)
-		w.Write(e1)
+	if searchReq.Filter == "(&(objectClass=groupOfNames)(member=uid=nahid,ou=users,o=Company))" {
+		entries = append(entries, &ldapserver.Entry{
+			"id=1,ou=groups,o=Company",
+			[]*ldapserver.EntryAttribute{
+				{"cn", []string{"group1"}},
+			},
+		}, &ldapserver.Entry{
+			"id=1,ou=groups,o=Company",
+			[]*ldapserver.EntryAttribute{
+				{"cn", []string{"group2"}},
+			},
+		})
 	}
-
-	res := ldapserver.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
-	w.Write(res)
+	return ldapserver.ServerSearchResult{entries, []string{}, []ldapserver.Control{}, ldapserver.LDAPResultSuccess}, nil
 }
 
 func TestCheckLdapInSecure(t *testing.T) {
