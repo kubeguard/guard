@@ -58,10 +58,10 @@ func TestServeHTTP(t *testing.T) {
 		UseClientCert    bool
 		IncludeClientOrg bool
 	}
-	f := fuzz.New()
-	obj := TestData{}
+	f := fuzz.New().MaxDepth(3)
 
 	for i := 0; i < 1000; i++ {
+		obj := TestData{}
 		f.Fuzz(&obj)
 
 		review := new(bytes.Buffer)
