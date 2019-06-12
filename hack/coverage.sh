@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -eou pipefail
 
+export CGO_ENABLED=0
+export GO111MODULE=on
+export GOFLAGS="-mod=vendor"
+
 GOPATH=$(go env GOPATH)
 REPO_ROOT="$GOPATH/src/github.com/appscode/guard"
 
