@@ -64,6 +64,16 @@ func newDeployment(opts Options) (objects []runtime.Object, err error) {
 								},
 								InitialDelaySeconds: int32(30),
 							},
+							LivenessProbe: &core.Probe{
+								Handler: core.Handler{
+									HTTPGet: &core.HTTPGetAction{
+										Path:   "/healthz",
+										Port:   intstr.FromInt(server.ServingPort),
+										Scheme: core.URISchemeHTTPS,
+									},
+								},
+								InitialDelaySeconds: int32(30),
+							},
 						},
 					},
 					Tolerations: []core.Toleration{
