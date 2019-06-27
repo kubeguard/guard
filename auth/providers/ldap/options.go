@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"gopkg.in/jcmturner/gokrb5.v4/keytab"
-	"k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -211,7 +211,7 @@ func (o *Options) Validate() []error {
 	return errs
 }
 
-func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
+func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err error) {
 	container := d.Spec.Template.Spec.Containers[0]
 
 	// create auth secret

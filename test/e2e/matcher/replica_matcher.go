@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/onsi/gomega/types"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 )

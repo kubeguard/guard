@@ -13,7 +13,7 @@ import (
 	"github.com/appscode/guard/auth/providers/ldap"
 	"github.com/appscode/guard/auth/providers/token"
 	"github.com/appscode/guard/server"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,6 +29,9 @@ func newDeployment(opts Options) (objects []runtime.Object, err error) {
 		},
 		Spec: apps.DeploymentSpec{
 			Replicas: types.Int32P(1),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
 			Template: core.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
