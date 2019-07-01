@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/pflag"
-	"k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -28,7 +28,7 @@ func (o *Options) Validate() []error {
 	return nil
 }
 
-func (o Options) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
+func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err error) {
 	args := d.Spec.Template.Spec.Containers[0].Args
 	if o.BaseUrl != "" {
 		args = append(args, fmt.Sprintf("--github.base-url=%s", o.BaseUrl))

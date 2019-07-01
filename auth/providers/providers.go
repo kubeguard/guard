@@ -13,7 +13,7 @@ import (
 	_ "github.com/appscode/guard/auth/providers/token"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
-	"k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -39,7 +39,7 @@ func (a *AuthProviders) Validate() []error {
 	return errs
 }
 
-func (a *AuthProviders) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
+func (a *AuthProviders) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err error) {
 	if len(a.Providers) > 0 {
 		d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--auth-providers=%s", strings.Join(a.Providers, ",")))
 	}

@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/pflag"
 	"gomodules.xyz/cert/certstore"
-	"k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -71,7 +71,7 @@ func (o *SecureServingOptions) Validate() []error {
 	return errs
 }
 
-func (o SecureServingOptions) Apply(d *v1beta1.Deployment) (extraObjs []runtime.Object, err error) {
+func (o SecureServingOptions) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err error) {
 	// create auth secret
 	store, err := certstore.NewCertStore(afero.NewOsFs(), filepath.Join(o.pkiDir, "pki"))
 	if err != nil {

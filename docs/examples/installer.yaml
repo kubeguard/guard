@@ -11,7 +11,7 @@ metadata:
   name: guard-pki
   namespace: kube-system
 ---
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   creationTimestamp: null
@@ -22,6 +22,9 @@ metadata:
 spec:
   replicas: 1
   strategy: {}
+  selector:
+    matchLabels:
+      app: guard
   template:
     metadata:
       creationTimestamp: null

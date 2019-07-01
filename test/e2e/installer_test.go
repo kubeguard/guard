@@ -144,7 +144,7 @@ var _ = Describe("Installer test", func() {
 		checkDeploymentCreated = func() {
 			By("Checking deployment created. deployment name: " + deploymentName)
 			Eventually(func() bool {
-				if obj, err := f.KubeClient.AppsV1beta1().Deployments(root.Namespace()).Get(deploymentName, metav1.GetOptions{}); err == nil {
+				if obj, err := f.KubeClient.AppsV1().Deployments(root.Namespace()).Get(deploymentName, metav1.GetOptions{}); err == nil {
 					return *obj.Spec.Replicas == obj.Status.ReadyReplicas
 				}
 				return false
@@ -197,7 +197,7 @@ var _ = Describe("Installer test", func() {
 		checkDeploymentDeleted = func() {
 			By("Checking deployment Deleted. deployment name: " + deploymentName)
 			Eventually(func() bool {
-				_, err := f.KubeClient.AppsV1beta1().Deployments(root.Namespace()).Get(deploymentName, metav1.GetOptions{})
+				_, err := f.KubeClient.AppsV1().Deployments(root.Namespace()).Get(deploymentName, metav1.GetOptions{})
 				return kerr.IsNotFound(err) || kerr.IsGone(err)
 			}, timeOut, pollingInterval).Should(BeTrue())
 		}
