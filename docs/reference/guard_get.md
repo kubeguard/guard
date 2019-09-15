@@ -1,12 +1,12 @@
 ---
 title: Guard Get
 menu:
-  product_guard_0.4.0:
+  product_guard_{{ .version }}:
     identifier: guard-get
     name: Guard Get
     parent: reference
 product_name: guard
-menu_name: product_guard_0.4.0
+menu_name: product_guard_{{ .version }}
 section_menu_id: reference
 ---
 ## guard get
