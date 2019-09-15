@@ -2,18 +2,18 @@
 title: Welcome | Guard
 description: Welcome to Guard
 menu:
-  product_guard_0.4.0:
+  product_guard_{{ .version }}:
     identifier: readme-guard
     name: Readme
     parent: welcome
     weight: -1
 product_name: guard
-menu_name: product_guard_0.4.0
+menu_name: product_guard_{{ .version }}
 section_menu_id: welcome
-url: /products/guard/0.4.0/welcome/
+url: /products/guard/{{ .version }}/welcome/
 aliases:
-  - /products/guard/0.4.0/
-  - /products/guard/0.4.0/README/
+  - /products/guard/{{ .version }}/
+  - /products/guard/{{ .version }}/README/
 ---
 
 # Guard

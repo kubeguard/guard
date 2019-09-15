@@ -2,13 +2,13 @@
 title: LDAP Authenticator | Guard
 description: Authenticate into Kubernetes using LDAP
 menu:
-  product_guard_0.4.0:
+  product_guard_{{ .version }}:
     identifier: ldap-authenticator
     parent: authenticator-guides
     name: LDAP
     weight: 35
 product_name: guard
-menu_name: product_guard_0.4.0
+menu_name: product_guard_{{ .version }}
 section_menu_id: guides
 ---
 

@@ -2,13 +2,13 @@
 title: Release | Guard
 description: Guard Release
 menu:
-  product_guard_0.4.0:
+  product_guard_{{ .version }}:
     identifier: release
     name: Release Process
     parent: developer-guide
     weight: 15
 product_name: guard
-menu_name: product_guard_0.4.0
+menu_name: product_guard_{{ .version }}
 section_menu_id: setup
 ---
 

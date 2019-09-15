@@ -2,13 +2,13 @@
 title: Install Kops
 description: Kops Guard Install
 menu:
-  product_guard_0.4.0:
+  product_guard_{{ .version }}:
     identifier: install-kops
     name: Install in Kops
     parent: setup
     weight: 15
 product_name: guard
-menu_name: product_guard_0.4.0
+menu_name: product_guard_{{ .version }}
 section_menu_id: setup
 ---
 

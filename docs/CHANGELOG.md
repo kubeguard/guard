@@ -2,17 +2,17 @@
 title: Changelog | Guard
 description: Changelog
 menu:
-  product_stash_0.4.0:
+  product_stash_{{< param "info.version" >}}:
     identifier: changelog-guard
     name: Changelog
     parent: welcome
     weight: 10
 product_name: guard
-menu_name: product_guard_0.4.0
+menu_name: product_guard_{{ .version }}
 section_menu_id: welcome
-url: /products/guard/0.4.0/welcome/changelog/
+url: /products/guard/{{ .version }}/welcome/changelog/
 aliases:
-  - /products/guard/0.4.0/CHANGELOG/
+  - /products/guard/{{ .version }}/CHANGELOG/
 ---
 
 # Change Log

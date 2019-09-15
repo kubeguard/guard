@@ -1,13 +1,13 @@
 ---
 title: Overview | Guard
 menu:
-  product_guard_0.4.0:
+  product_guard_{{ .version }}:
     identifier: overview-concepts
     name: Overview
     parent: concepts
     weight: 10
 product_name: guard
-menu_name: product_guard_0.4.0
+menu_name: product_guard_{{ .version }}
 section_menu_id: concepts
 ---
 

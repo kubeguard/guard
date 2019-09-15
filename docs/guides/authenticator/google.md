@@ -2,13 +2,13 @@
 title: Google Authenticator | Guard
 description: Authenticate into Kubernetes using Google
 menu:
-  product_guard_0.4.0:
+  product_guard_{{ .version }}:
     identifier: google-authenticator
     parent: authenticator-guides
     name: Google
     weight: 20
 product_name: guard
-menu_name: product_guard_0.4.0
+menu_name: product_guard_{{ .version }}
 section_menu_id: guides
 ---
 

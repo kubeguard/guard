@@ -1,9 +1,9 @@
 ---
 title: Guides | Guard
 menu:
-  product_guard_0.4.0:
+  product_guard_{{ .version }}:
     identifier: guides
     name: Guides
     weight: 40
-menu_name: product_guard_0.4.0
+menu_name: product_guard_{{ .version }}
 ---

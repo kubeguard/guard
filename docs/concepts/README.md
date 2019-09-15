@@ -1,17 +1,17 @@
 ---
 title: Concepts | Guard
 menu:
-  product_guard_0.4.0:
+  product_guard_{{ .version }}:
     identifier: concepts-readme
     name: Readme
     parent: concepts
     weight: -1
 product_name: guard
-menu_name: product_guard_0.4.0
+menu_name: product_guard_{{ .version }}
 section_menu_id: concepts
-url: /products/guard/0.4.0/concepts/
+url: /products/guard/{{ .version }}/concepts/
 aliases:
-  - /products/guard/0.4.0/concepts/README/
+  - /products/guard/{{ .version }}/concepts/README/
 ---
 
 # Concepts
