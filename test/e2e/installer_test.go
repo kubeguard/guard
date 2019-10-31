@@ -1,3 +1,18 @@
+/*
+Copyright The Guard Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 package e2e_test
 
 import (
@@ -16,6 +31,7 @@ import (
 	"github.com/appscode/guard/auth/providers/token"
 	"github.com/appscode/guard/installer"
 	"github.com/appscode/guard/test/e2e/framework"
+
 	"github.com/golang/glog"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -249,14 +265,17 @@ var _ = Describe("Installer test", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// write ca
-		err = afero.WriteFile(appFs, filepath.Join(certDir, "pki", "ca.crt"), f.CertStore.CACert(), 0777)
+		err = afero.WriteFile(appFs, filepath.Join(certDir, "pki", "ca.crt"), f.CertStore.CACertBytes(), 0777)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = afero.WriteFile(appFs, filepath.Join(certDir, "pki", "ca.key"), f.CertStore.CAKey(), 0777)
+		err = afero.WriteFile(appFs, filepath.Join(certDir, "pki", "ca.key"), f.CertStore.CAKeyBytes(), 0777)
 		Expect(err).NotTo(HaveOccurred())
 
 		// write server cert, key
-		srvCert, srvKey, err := f.CertStore.NewServerCertPair("server", cert.AltNames{IPs: []net.IP{net.ParseIP(serverAddr)}})
+		srvCert, srvKey, err := f.CertStore.NewServerCertPairBytes(cert.AltNames{
+			DNSNames: []string{"server"},
+			IPs:      []net.IP{net.ParseIP(serverAddr)},
+		})
 		Expect(err).NotTo(HaveOccurred())
 		err = afero.WriteFile(appFs, filepath.Join(certDir, "pki", "server.crt"), srvCert, 0777)
 		Expect(err).NotTo(HaveOccurred())
@@ -301,23 +320,6 @@ var _ = Describe("Installer test", func() {
 			Expect(f.DeleteClusterRole(clusterRoleName)).NotTo(HaveOccurred())
 			Expect(f.DeleteClusterRoleBinding(clusterRoleBindingName)).NotTo(HaveOccurred())
 			Expect(f.DeleteSecret(secretName, root.Namespace())).NotTo(HaveOccurred())
-		})
-
-		Context("Setting up guard for appscode", func() {
-			BeforeEach(func() {
-				opts.AuthProvider = providers.AuthProviders{[]string{appscode.OrgType}}
-			})
-
-			It("Set up guard for appscode should be successful", func() {
-				setupGuard(opts)
-
-				checkServiceCreated()
-				checkClusterRoleCreated()
-				checkClusterRoleBindingCreated()
-				checkDeploymentCreated()
-				checkPodCreated()
-				checkSecretCreated(secretName)
-			})
 		})
 
 		Context("Setting up guard for github", func() {
@@ -514,7 +516,6 @@ var _ = Describe("Installer test", func() {
 			}
 
 			opts.AuthProvider = providers.AuthProviders{Providers: []string{
-				appscode.OrgType,
 				azure.OrgType,
 				github.OrgType,
 				gitlab.OrgType,

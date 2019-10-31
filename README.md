@@ -1,7 +1,7 @@
 <p align="center"><img src="/logo/LOGO_GUARD_Readme.jpg"></p>
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/appscode/guard)](https://goreportcard.com/report/github.com/appscode/guard)
-[![Build Status](https://travis-ci.org/appscode/guard.svg?branch=master)](https://travis-ci.org/appscode/guard)
+[![Build Status](https://github.com/appscode/guard/workflows/CI/badge.svg)](https://github.com/appscode/guard/actions?workflow=CI)
 [![codecov](https://codecov.io/gh/appscode/guard/branch/master/graph/badge.svg)](https://codecov.io/gh/appscode/guard)
 [![Docker Pulls](https://img.shields.io/docker/pulls/appscode/guard.svg)](https://hub.docker.com/r/appscode/guard/)
 [![Slack](https://slack.appscode.com/badge.svg)](https://slack.appscode.com)

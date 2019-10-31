@@ -17,7 +17,6 @@ package gitlab
 
 import (
 	"fmt"
-	"net/url"
 	"time"
 )
 
@@ -34,7 +33,7 @@ type Deployment struct {
 	ID          int          `json:"id"`
 	IID         int          `json:"iid"`
 	Ref         string       `json:"ref"`
-	Sha         string       `json:"sha"`
+	SHA         string       `json:"sha"`
 	CreatedAt   *time.Time   `json:"created_at"`
 	User        *ProjectUser `json:"user"`
 	Environment *Environment `json:"environment"`
@@ -54,7 +53,7 @@ type Deployment struct {
 		Commit     *Commit    `json:"commit"`
 		Pipeline   struct {
 			ID     int    `json:"id"`
-			Sha    string `json:"sha"`
+			SHA    string `json:"sha"`
 			Ref    string `json:"ref"`
 			Status string `json:"status"`
 		} `json:"pipeline"`
@@ -68,8 +67,8 @@ type Deployment struct {
 // https://docs.gitlab.com/ce/api/deployments.html#list-project-deployments
 type ListProjectDeploymentsOptions struct {
 	ListOptions
-	OrderBy *OrderByValue `url:"order_by,omitempty" json:"order_by,omitempty"`
-	Sort    *string       `url:"sort,omitempty" json:"sort,omitempty"`
+	OrderBy *string `url:"order_by,omitempty" json:"order_by,omitempty"`
+	Sort    *string `url:"sort,omitempty" json:"sort,omitempty"`
 }
 
 // ListProjectDeployments gets a list of deployments in a project.
@@ -80,7 +79,7 @@ func (s *DeploymentsService) ListProjectDeployments(pid interface{}, opts *ListP
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/deployments", url.QueryEscape(project))
+	u := fmt.Sprintf("projects/%s/deployments", pathEscape(project))
 
 	req, err := s.client.NewRequest("GET", u, opts, options)
 	if err != nil {
@@ -104,7 +103,7 @@ func (s *DeploymentsService) GetProjectDeployment(pid interface{}, deployment in
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/deployments/%d", url.QueryEscape(project), deployment)
+	u := fmt.Sprintf("projects/%s/deployments/%d", pathEscape(project), deployment)
 
 	req, err := s.client.NewRequest("GET", u, nil, options)
 	if err != nil {

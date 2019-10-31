@@ -1,9 +1,10 @@
 package ldap
 
 import (
-	"github.com/nmcclain/asn1-ber"
 	"log"
 	"net"
+
+	"github.com/nmcclain/asn1-ber"
 )
 
 func HandleAddRequest(req *ber.Packet, boundDN string, fns map[string]Adder, conn net.Conn) (resultCode LDAPResultCode) {
@@ -71,7 +72,7 @@ func HandleModifyRequest(req *ber.Packet, boundDN string, fns map[string]Modifie
 	}
 	var ok bool
 	modReq := ModifyRequest{}
-	modReq.dn, ok = req.Children[0].Value.(string)
+	modReq.Dn, ok = req.Children[0].Value.(string)
 	if !ok {
 		return LDAPResultProtocolError
 	}
@@ -84,7 +85,7 @@ func HandleModifyRequest(req *ber.Packet, boundDN string, fns map[string]Modifie
 		if len(attrs) != 2 {
 			return LDAPResultProtocolError
 		}
-		attr.attrType, ok = attrs[0].Value.(string)
+		attr.AttrType, ok = attrs[0].Value.(string)
 		if !ok {
 			return LDAPResultProtocolError
 		}
@@ -93,7 +94,7 @@ func HandleModifyRequest(req *ber.Packet, boundDN string, fns map[string]Modifie
 			if !ok {
 				return LDAPResultProtocolError
 			}
-			attr.attrVals = append(attr.attrVals, v)
+			attr.AttrVals = append(attr.AttrVals, v)
 		}
 		op, ok := change.Children[0].Value.(uint64)
 		if !ok {
@@ -104,11 +105,11 @@ func HandleModifyRequest(req *ber.Packet, boundDN string, fns map[string]Modifie
 			log.Printf("Unrecognized Modify attribute %d", op)
 			return LDAPResultProtocolError
 		case AddAttribute:
-			modReq.Add(attr.attrType, attr.attrVals)
+			modReq.Add(attr.AttrType, attr.AttrVals)
 		case DeleteAttribute:
-			modReq.Delete(attr.attrType, attr.attrVals)
+			modReq.Delete(attr.AttrType, attr.AttrVals)
 		case ReplaceAttribute:
-			modReq.Replace(attr.attrType, attr.attrVals)
+			modReq.Replace(attr.AttrType, attr.AttrVals)
 		}
 	}
 	fnNames := []string{}

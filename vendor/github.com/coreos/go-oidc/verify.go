@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"strings"
 	"time"
 
@@ -19,17 +21,52 @@ const (
 	issuerGoogleAccountsNoScheme = "accounts.google.com"
 )
 
-// keySet is an interface that lets us stub out verification policies for
-// testing. Outside of testing, it's always backed by a remoteKeySet.
-type keySet interface {
-	verify(ctx context.Context, jws *jose.JSONWebSignature) ([]byte, error)
+// KeySet is a set of publc JSON Web Keys that can be used to validate the signature
+// of JSON web tokens. This is expected to be backed by a remote key set through
+// provider metadata discovery or an in-memory set of keys delivered out-of-band.
+type KeySet interface {
+	// VerifySignature parses the JSON web token, verifies the signature, and returns
+	// the raw payload. Header and claim fields are validated by other parts of the
+	// package. For example, the KeySet does not need to check values such as signature
+	// algorithm, issuer, and audience since the IDTokenVerifier validates these values
+	// independently.
+	//
+	// If VerifySignature makes HTTP requests to verify the token, it's expected to
+	// use any HTTP client associated with the context through ClientContext.
+	VerifySignature(ctx context.Context, jwt string) (payload []byte, err error)
 }
 
 // IDTokenVerifier provides verification for ID Tokens.
 type IDTokenVerifier struct {
-	keySet keySet
+	keySet KeySet
 	config *Config
 	issuer string
+}
+
+// NewVerifier returns a verifier manually constructed from a key set and issuer URL.
+//
+// It's easier to use provider discovery to construct an IDTokenVerifier than creating
+// one directly. This method is intended to be used with provider that don't support
+// metadata discovery, or avoiding round trips when the key set URL is already known.
+//
+// This constructor can be used to create a verifier directly using the issuer URL and
+// JSON Web Key Set URL without using discovery:
+//
+//		keySet := oidc.NewRemoteKeySet(ctx, "https://www.googleapis.com/oauth2/v3/certs")
+//		verifier := oidc.NewVerifier("https://accounts.google.com", keySet, config)
+//
+// Since KeySet is an interface, this constructor can also be used to supply custom
+// public key sources. For example, if a user wanted to supply public keys out-of-band
+// and hold them statically in-memory:
+//
+//		// Custom KeySet implementation.
+//		keySet := newStatisKeySet(publicKeys...)
+//
+//		// Verifier uses the custom KeySet implementation.
+//		verifier := oidc.NewVerifier("https://auth.example.com", keySet, config)
+//
+func NewVerifier(issuerURL string, keySet KeySet, config *Config) *IDTokenVerifier {
+	return &IDTokenVerifier{keySet: keySet, config: config, issuer: issuerURL}
 }
 
 // Config is the configuration for an IDTokenVerifier.
@@ -50,6 +87,15 @@ type Config struct {
 	// If true, token expiry is not checked.
 	SkipExpiryCheck bool
 
+	// SkipIssuerCheck is intended for specialized cases where the the caller wishes to
+	// defer issuer validation. When enabled, callers MUST independently verify the Token's
+	// Issuer is a known good value.
+	//
+	// Mismatched issuers often indicate client mis-configuration. If mismatches are
+	// unexpected, evaluate if the provided issuer URL is incorrect instead of enabling
+	// this option.
+	SkipIssuerCheck bool
+
 	// Time function to check Token expiry. Defaults to time.Now
 	Now func() time.Time
 }
@@ -59,21 +105,7 @@ type Config struct {
 // The returned IDTokenVerifier is tied to the Provider's context and its behavior is
 // undefined once the Provider's context is canceled.
 func (p *Provider) Verifier(config *Config) *IDTokenVerifier {
-
-	return newVerifier(p.remoteKeySet, config, p.issuer)
-}
-
-func newVerifier(keySet keySet, config *Config, issuer string) *IDTokenVerifier {
-	// If SupportedSigningAlgs is empty defaults to only support RS256.
-	if len(config.SupportedSigningAlgs) == 0 {
-		config.SupportedSigningAlgs = []string{RS256}
-	}
-
-	return &IDTokenVerifier{
-		keySet: keySet,
-		config: config,
-		issuer: issuer,
-	}
+	return NewVerifier(p.issuer, p.remoteKeySet, config)
 }
 
 func parseJWT(p string) ([]byte, error) {
@@ -95,6 +127,53 @@ func contains(sli []string, ele string) bool {
 		}
 	}
 	return false
+}
+
+// Returns the Claims from the distributed JWT token
+func resolveDistributedClaim(ctx context.Context, verifier *IDTokenVerifier, src claimSource) ([]byte, error) {
+	req, err := http.NewRequest("GET", src.Endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("malformed request: %v", err)
+	}
+	if src.AccessToken != "" {
+		req.Header.Set("Authorization", "Bearer "+src.AccessToken)
+	}
+
+	resp, err := doRequest(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("oidc: Request to endpoint failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read response body: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("oidc: request failed: %v", resp.StatusCode)
+	}
+
+	token, err := verifier.Verify(ctx, string(body))
+	if err != nil {
+		return nil, fmt.Errorf("malformed response body: %v", err)
+	}
+
+	return token.claims, nil
+}
+
+func parseClaim(raw []byte, name string, v interface{}) error {
+	var parsed map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		return err
+	}
+
+	val, ok := parsed[name]
+	if !ok {
+		return fmt.Errorf("claim doesn't exist: %s", name)
+	}
+
+	return json.Unmarshal([]byte(val), v)
 }
 
 // Verify parses a raw ID Token, verifies it's been signed by the provider, preforms
@@ -120,7 +199,7 @@ func contains(sli []string, ele string) bool {
 func (v *IDTokenVerifier) Verify(ctx context.Context, rawIDToken string) (*IDToken, error) {
 	jws, err := jose.ParseSigned(rawIDToken)
 	if err != nil {
-		return nil, fmt.Errorf("oidc: mallformed jwt: %v", err)
+		return nil, fmt.Errorf("oidc: malformed jwt: %v", err)
 	}
 
 	// Throw out tokens with invalid claims before trying to verify the token. This lets
@@ -134,18 +213,34 @@ func (v *IDTokenVerifier) Verify(ctx context.Context, rawIDToken string) (*IDTok
 		return nil, fmt.Errorf("oidc: failed to unmarshal claims: %v", err)
 	}
 
+	distributedClaims := make(map[string]claimSource)
+
+	//step through the token to map claim names to claim sources"
+	for cn, src := range token.ClaimNames {
+		if src == "" {
+			return nil, fmt.Errorf("oidc: failed to obtain source from claim name")
+		}
+		s, ok := token.ClaimSources[src]
+		if !ok {
+			return nil, fmt.Errorf("oidc: source does not exist")
+		}
+		distributedClaims[cn] = s
+	}
+
 	t := &IDToken{
-		Issuer:   token.Issuer,
-		Subject:  token.Subject,
-		Audience: []string(token.Audience),
-		Expiry:   time.Time(token.Expiry),
-		IssuedAt: time.Time(token.IssuedAt),
-		Nonce:    token.Nonce,
-		claims:   payload,
+		Issuer:            token.Issuer,
+		Subject:           token.Subject,
+		Audience:          []string(token.Audience),
+		Expiry:            time.Time(token.Expiry),
+		IssuedAt:          time.Time(token.IssuedAt),
+		Nonce:             token.Nonce,
+		AccessTokenHash:   token.AtHash,
+		claims:            payload,
+		distributedClaims: distributedClaims,
 	}
 
 	// Check issuer.
-	if t.Issuer != v.issuer {
+	if !v.config.SkipIssuerCheck && t.Issuer != v.issuer {
 		// Google sometimes returns "accounts.google.com" as the issuer claim instead of
 		// the required "https://accounts.google.com". Detect this case and allow it only
 		// for Google.
@@ -165,7 +260,7 @@ func (v *IDTokenVerifier) Verify(ctx context.Context, rawIDToken string) (*IDTok
 				return nil, fmt.Errorf("oidc: expected audience %q got %q", v.config.ClientID, t.Audience)
 			}
 		} else {
-			return nil, fmt.Errorf("oidc: Invalid configuration. ClientID must be provided or SkipClientIDCheck must be set.")
+			return nil, fmt.Errorf("oidc: invalid configuration, clientID must be provided or SkipClientIDCheck must be set")
 		}
 	}
 
@@ -175,9 +270,20 @@ func (v *IDTokenVerifier) Verify(ctx context.Context, rawIDToken string) (*IDTok
 		if v.config.Now != nil {
 			now = v.config.Now
 		}
+		nowTime := now()
 
-		if t.Expiry.Before(now()) {
+		if t.Expiry.Before(nowTime) {
 			return nil, fmt.Errorf("oidc: token is expired (Token Expiry: %v)", t.Expiry)
+		}
+
+		// If nbf claim is provided in token, ensure that it is indeed in the past.
+		if token.NotBefore != nil {
+			nbfTime := time.Time(*token.NotBefore)
+			leeway := 1 * time.Minute
+
+			if nowTime.Add(leeway).Before(nbfTime) {
+				return nil, fmt.Errorf("oidc: current time %v before the nbf (not before) time: %v", nowTime, nbfTime)
+			}
 		}
 	}
 
@@ -190,11 +296,18 @@ func (v *IDTokenVerifier) Verify(ctx context.Context, rawIDToken string) (*IDTok
 	}
 
 	sig := jws.Signatures[0]
-	if len(v.config.SupportedSigningAlgs) != 0 && !contains(v.config.SupportedSigningAlgs, sig.Header.Algorithm) {
-		return nil, fmt.Errorf("oidc: id token signed with unsupported algorithm, expected %q got %q", v.config.SupportedSigningAlgs, sig.Header.Algorithm)
+	supportedSigAlgs := v.config.SupportedSigningAlgs
+	if len(supportedSigAlgs) == 0 {
+		supportedSigAlgs = []string{RS256}
 	}
 
-	gotPayload, err := v.keySet.verify(ctx, jws)
+	if !contains(supportedSigAlgs, sig.Header.Algorithm) {
+		return nil, fmt.Errorf("oidc: id token signed with unsupported algorithm, expected %q got %q", supportedSigAlgs, sig.Header.Algorithm)
+	}
+
+	t.sigAlgorithm = sig.Header.Algorithm
+
+	gotPayload, err := v.keySet.VerifySignature(ctx, rawIDToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify signature: %v", err)
 	}

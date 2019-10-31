@@ -23,62 +23,65 @@ to add new and/or missing endpoints. Currently the following services are suppor
 - [x] Award Emojis
 - [x] Branches
 - [x] Broadcast Messages
-- [ ] Project-level Variables
-- [ ] Group-level Variables
 - [x] Commits
-- [ ] Custom Attributes
-- [x] Deployments
+- [x] Container Registry
+- [x] Custom Attributes
 - [x] Deploy Keys
+- [x] Deployments
+- [ ] Discussions (threaded comments)
 - [x] Environments
-- [ ] Epics
 - [ ] Epic Issues
+- [ ] Epics
 - [x] Events
-- [x] Feature flags
+- [x] Feature Flags
 - [ ] Geo Nodes
-- [x] Gitignores templates
-- [ ] GitLab CI Config templates
+- [x] GitLab CI Config Templates
+- [x] Gitignores Templates
+- [x] Group Access Requests
+- [x] Group Issue Boards
+- [x] Group Members
+- [x] Group Milestones
+- [x] Group-Level Variables
 - [x] Groups
-- [ ] Group Access Requests
-- [ ] Group Members
-- [x] Issues
 - [x] Issue Boards
+- [x] Issues
 - [x] Jobs
-- [ ] Keys
+- [x] Keys
 - [x] Labels
-- [ ] License
-- [x] Merge Requests
+- [x] License
 - [x] Merge Request Approvals
-- [x] Project Milestones
-- [ ] Group Milestones
+- [x] Merge Requests
 - [x] Namespaces
 - [x] Notes (comments)
-- [ ] Discussions (threaded comments)
-- [x] Notification settings
-- [ ] Open source license templates
+- [x] Notification Settings
+- [x] Open Source License Templates
 - [x] Pages Domains
-- [x] Pipelines
-- [x] Pipeline Triggers
 - [x] Pipeline Schedules
-- [x] Projects (including setting Webhooks)
-- [ ] Project Access Requests
-- [ ] Project badges
-- [ ] Project import/export
+- [x] Pipeline Triggers
+- [x] Pipelines
+- [x] Project Access Requests
+- [x] Project Badges
+- [x] Project Clusters
+- [x] Project Import/export
 - [x] Project Members
+- [x] Project Milestones
 - [x] Project Snippets
+- [x] Project-Level Variables
+- [x] Projects (including setting Webhooks)
 - [x] Protected Branches
+- [x] Protected Tags
 - [x] Repositories
 - [x] Repository Files
 - [x] Runners
-- [ ] Search
+- [x] Search
 - [x] Services
 - [x] Settings
-- [x] Sidekiq metrics
-- [x] Session
+- [x] Sidekiq Metrics
 - [x] System Hooks
 - [x] Tags
 - [x] Todos
 - [x] Users
-- [x] Validate CI configuration
+- [x] Validate CI Configuration
 - [x] Version
 - [x] Wikis
 
@@ -149,7 +152,6 @@ func main() {
 		log.Fatal(err)
 	}
 }
-
 ```
 
 For complete usage of go-gitlab, see the full [package docs](https://godoc.org/github.com/xanzy/go-gitlab).

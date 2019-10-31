@@ -2,12 +2,13 @@ package ldap
 
 import (
 	"crypto/tls"
-	"github.com/nmcclain/asn1-ber"
 	"io"
 	"log"
 	"net"
 	"strings"
 	"sync"
+
+	"github.com/nmcclain/asn1-ber"
 )
 
 type Binder interface {
@@ -156,7 +157,7 @@ func (server *Server) ListenAndServeTLS(listenString string, certFile string, ke
 	if err != nil {
 		return err
 	}
-	err = server.serve(ln)
+	err = server.Serve(ln)
 	if err != nil {
 		return err
 	}
@@ -184,14 +185,14 @@ func (server *Server) ListenAndServe(listenString string) error {
 	if err != nil {
 		return err
 	}
-	err = server.serve(ln)
+	err = server.Serve(ln)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (server *Server) serve(ln net.Listener) error {
+func (server *Server) Serve(ln net.Listener) error {
 	newConn := make(chan net.Conn)
 	go func() {
 		for {
