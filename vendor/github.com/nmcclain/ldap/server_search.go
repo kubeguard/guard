@@ -3,9 +3,10 @@ package ldap
 import (
 	"errors"
 	"fmt"
-	"github.com/nmcclain/asn1-ber"
 	"net"
 	"strings"
+
+	ber "github.com/nmcclain/asn1-ber"
 )
 
 func HandleSearchRequest(req *ber.Packet, controls *[]Control, messageID uint64, boundDN string, server *Server, conn net.Conn) (resultErr error) {
@@ -161,7 +162,7 @@ func filterAttributes(entry *Entry, attributes []string) (*Entry, error) {
 
 	for _, attr := range entry.Attributes {
 		for _, requested := range attributes {
-			if strings.ToLower(attr.Name) == strings.ToLower(requested) {
+			if requested == "*" || strings.ToLower(attr.Name) == strings.ToLower(requested) {
 				newAttributes = append(newAttributes, attr)
 			}
 		}

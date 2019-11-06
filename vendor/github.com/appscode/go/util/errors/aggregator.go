@@ -61,3 +61,9 @@ func (agg aggregate) Error() string {
 func (agg aggregate) Errors() []error {
 	return []error(agg)
 }
+
+func Must(err error) {
+	if err != nil {
+		panic(err)
+	}
+}

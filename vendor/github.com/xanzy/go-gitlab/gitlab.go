@@ -64,12 +64,16 @@ type AccessLevelValue int
 //
 // GitLab API docs: https://docs.gitlab.com/ce/permissions/permissions.html
 const (
-	NoPermissions        AccessLevelValue = 0
-	GuestPermissions     AccessLevelValue = 10
-	ReporterPermissions  AccessLevelValue = 20
-	DeveloperPermissions AccessLevelValue = 30
-	MasterPermissions    AccessLevelValue = 40
-	OwnerPermission      AccessLevelValue = 50
+	NoPermissions         AccessLevelValue = 0
+	GuestPermissions      AccessLevelValue = 10
+	ReporterPermissions   AccessLevelValue = 20
+	DeveloperPermissions  AccessLevelValue = 30
+	MaintainerPermissions AccessLevelValue = 40
+	OwnerPermissions      AccessLevelValue = 50
+
+	// These are deprecated and should be removed in a future version
+	MasterPermissions AccessLevelValue = 40
+	OwnerPermission   AccessLevelValue = 50
 )
 
 // BuildStateValue represents a GitLab build state.
@@ -95,7 +99,7 @@ const iso8601 = "2006-01-02"
 func (t ISOTime) MarshalJSON() ([]byte, error) {
 	if y := time.Time(t).Year(); y < 0 || y >= 10000 {
 		// ISO 8901 uses 4 digits for the years
-		return nil, errors.New("ISOTime.MarshalJSON: year outside of range [0,9999]")
+		return nil, errors.New("json: ISOTime year outside of range [0,9999]")
 	}
 
 	b := make([]byte, 0, len(iso8601)+2)
@@ -117,6 +121,15 @@ func (t *ISOTime) UnmarshalJSON(data []byte) error {
 	*t = ISOTime(isotime)
 
 	return err
+}
+
+// EncodeValues implements the query.Encoder interface
+func (t *ISOTime) EncodeValues(key string, v *url.Values) error {
+	if t == nil || (time.Time(*t)).IsZero() {
+		return nil
+	}
+	v.Add(key, t.String())
+	return nil
 }
 
 // String implements the Stringer interface
@@ -186,31 +199,31 @@ var notificationLevelTypes = map[string]NotificationLevelValue{
 	"custom":        CustomNotificationLevel,
 }
 
-// OrderByValue represent in which order to sort the item
-type OrderByValue string
-
-// These constants represent all valid order by values.
-const (
-	OrderByCreatedAt OrderByValue = "created_at"
-	OrderByID        OrderByValue = "id"
-	OrderByIID       OrderByValue = "iid"
-	OrderByRef       OrderByValue = "ref"
-	OrderByStatus    OrderByValue = "status"
-	OrderByUserID    OrderByValue = "user_id"
-)
-
 // VisibilityValue represents a visibility level within GitLab.
 //
 // GitLab API docs: https://docs.gitlab.com/ce/api/
 type VisibilityValue string
 
-// List of available visibility levels
+// List of available visibility levels.
 //
 // GitLab API docs: https://docs.gitlab.com/ce/api/
 const (
 	PrivateVisibility  VisibilityValue = "private"
 	InternalVisibility VisibilityValue = "internal"
 	PublicVisibility   VisibilityValue = "public"
+)
+
+// VariableTypeValue represents a variable type within GitLab.
+//
+// GitLab API docs: https://docs.gitlab.com/ce/api/
+type VariableTypeValue string
+
+// List of available variable types.
+//
+// GitLab API docs: https://docs.gitlab.com/ce/api/
+const (
+	EnvVariableType  VariableTypeValue = "env_var"
+	FileVariableType VariableTypeValue = "file"
 )
 
 // MergeMethodValue represents a project merge type within GitLab.
@@ -286,45 +299,65 @@ type Client struct {
 	UserAgent string
 
 	// Services used for talking to different parts of the GitLab API.
+	AccessRequests        *AccessRequestsService
 	AwardEmoji            *AwardEmojiService
+	Boards                *IssueBoardsService
 	Branches              *BranchesService
-	BuildVariables        *BuildVariablesService
 	BroadcastMessage      *BroadcastMessagesService
+	CIYMLTemplate         *CIYMLTemplatesService
 	Commits               *CommitsService
+	ContainerRegistry     *ContainerRegistryService
+	CustomAttribute       *CustomAttributesService
 	DeployKeys            *DeployKeysService
 	Deployments           *DeploymentsService
+	Discussions           *DiscussionsService
 	Environments          *EnvironmentsService
+	Epics                 *EpicsService
 	Events                *EventsService
 	Features              *FeaturesService
 	GitIgnoreTemplates    *GitIgnoreTemplatesService
-	Groups                *GroupsService
+	GroupBadges           *GroupBadgesService
+	GroupCluster          *GroupClustersService
+	GroupIssueBoards      *GroupIssueBoardsService
+	GroupLabels           *GroupLabelsService
 	GroupMembers          *GroupMembersService
 	GroupMilestones       *GroupMilestonesService
-	Issues                *IssuesService
+	GroupVariables        *GroupVariablesService
+	Groups                *GroupsService
 	IssueLinks            *IssueLinksService
+	Issues                *IssuesService
 	Jobs                  *JobsService
-	Boards                *IssueBoardsService
+	Keys                  *KeysService
 	Labels                *LabelsService
-	MergeRequests         *MergeRequestsService
+	License               *LicenseService
+	LicenseTemplates      *LicenseTemplatesService
 	MergeRequestApprovals *MergeRequestApprovalsService
+	MergeRequests         *MergeRequestsService
 	Milestones            *MilestonesService
 	Namespaces            *NamespacesService
 	Notes                 *NotesService
 	NotificationSettings  *NotificationSettingsService
 	PagesDomains          *PagesDomainsService
-	Pipelines             *PipelinesService
 	PipelineSchedules     *PipelineSchedulesService
 	PipelineTriggers      *PipelineTriggersService
-	Projects              *ProjectsService
+	Pipelines             *PipelinesService
+	ProjectBadges         *ProjectBadgesService
+	ProjectCluster        *ProjectClustersService
+	ProjectImportExport   *ProjectImportExportService
 	ProjectMembers        *ProjectMembersService
 	ProjectSnippets       *ProjectSnippetsService
+	ProjectVariables      *ProjectVariablesService
+	Projects              *ProjectsService
 	ProtectedBranches     *ProtectedBranchesService
+	ProtectedTags         *ProtectedTagsService
+	ReleaseLinks          *ReleaseLinksService
+	Releases              *ReleasesService
 	Repositories          *RepositoriesService
 	RepositoryFiles       *RepositoryFilesService
+	ResourceLabelEvents   *ResourceLabelEventsService
 	Runners               *RunnersService
 	Search                *SearchService
 	Services              *ServicesService
-	Session               *SessionService
 	Settings              *SettingsService
 	Sidekiq               *SidekiqService
 	Snippets              *SnippetsService
@@ -416,45 +449,65 @@ func newClient(httpClient *http.Client) *Client {
 	timeStats := &timeStatsService{client: c}
 
 	// Create all the public services.
+	c.AccessRequests = &AccessRequestsService{client: c}
 	c.AwardEmoji = &AwardEmojiService{client: c}
+	c.Boards = &IssueBoardsService{client: c}
 	c.Branches = &BranchesService{client: c}
-	c.BuildVariables = &BuildVariablesService{client: c}
 	c.BroadcastMessage = &BroadcastMessagesService{client: c}
+	c.CIYMLTemplate = &CIYMLTemplatesService{client: c}
 	c.Commits = &CommitsService{client: c}
+	c.ContainerRegistry = &ContainerRegistryService{client: c}
+	c.CustomAttribute = &CustomAttributesService{client: c}
 	c.DeployKeys = &DeployKeysService{client: c}
 	c.Deployments = &DeploymentsService{client: c}
+	c.Discussions = &DiscussionsService{client: c}
 	c.Environments = &EnvironmentsService{client: c}
+	c.Epics = &EpicsService{client: c}
 	c.Events = &EventsService{client: c}
 	c.Features = &FeaturesService{client: c}
 	c.GitIgnoreTemplates = &GitIgnoreTemplatesService{client: c}
-	c.Groups = &GroupsService{client: c}
+	c.GroupBadges = &GroupBadgesService{client: c}
+	c.GroupCluster = &GroupClustersService{client: c}
+	c.GroupIssueBoards = &GroupIssueBoardsService{client: c}
+	c.GroupLabels = &GroupLabelsService{client: c}
 	c.GroupMembers = &GroupMembersService{client: c}
 	c.GroupMilestones = &GroupMilestonesService{client: c}
-	c.Issues = &IssuesService{client: c, timeStats: timeStats}
+	c.GroupVariables = &GroupVariablesService{client: c}
+	c.Groups = &GroupsService{client: c}
 	c.IssueLinks = &IssueLinksService{client: c}
+	c.Issues = &IssuesService{client: c, timeStats: timeStats}
 	c.Jobs = &JobsService{client: c}
-	c.Boards = &IssueBoardsService{client: c}
+	c.Keys = &KeysService{client: c}
 	c.Labels = &LabelsService{client: c}
-	c.MergeRequests = &MergeRequestsService{client: c, timeStats: timeStats}
+	c.License = &LicenseService{client: c}
+	c.LicenseTemplates = &LicenseTemplatesService{client: c}
 	c.MergeRequestApprovals = &MergeRequestApprovalsService{client: c}
+	c.MergeRequests = &MergeRequestsService{client: c, timeStats: timeStats}
 	c.Milestones = &MilestonesService{client: c}
 	c.Namespaces = &NamespacesService{client: c}
 	c.Notes = &NotesService{client: c}
 	c.NotificationSettings = &NotificationSettingsService{client: c}
 	c.PagesDomains = &PagesDomainsService{client: c}
-	c.Pipelines = &PipelinesService{client: c}
 	c.PipelineSchedules = &PipelineSchedulesService{client: c}
 	c.PipelineTriggers = &PipelineTriggersService{client: c}
-	c.Projects = &ProjectsService{client: c}
+	c.Pipelines = &PipelinesService{client: c}
+	c.ProjectBadges = &ProjectBadgesService{client: c}
+	c.ProjectCluster = &ProjectClustersService{client: c}
+	c.ProjectImportExport = &ProjectImportExportService{client: c}
 	c.ProjectMembers = &ProjectMembersService{client: c}
 	c.ProjectSnippets = &ProjectSnippetsService{client: c}
+	c.ProjectVariables = &ProjectVariablesService{client: c}
+	c.Projects = &ProjectsService{client: c}
 	c.ProtectedBranches = &ProtectedBranchesService{client: c}
+	c.ProtectedTags = &ProtectedTagsService{client: c}
+	c.ReleaseLinks = &ReleaseLinksService{client: c}
+	c.Releases = &ReleasesService{client: c}
 	c.Repositories = &RepositoriesService{client: c}
 	c.RepositoryFiles = &RepositoryFilesService{client: c}
+	c.ResourceLabelEvents = &ResourceLabelEventsService{client: c}
 	c.Runners = &RunnersService{client: c}
-	c.Services = &ServicesService{client: c}
 	c.Search = &SearchService{client: c}
-	c.Session = &SessionService{client: c}
+	c.Services = &ServicesService{client: c}
 	c.Settings = &SettingsService{client: c}
 	c.Sidekiq = &SidekiqService{client: c}
 	c.Snippets = &SnippetsService{client: c}
@@ -505,8 +558,14 @@ func (c *Client) SetBaseURL(urlStr string) error {
 // request body.
 func (c *Client) NewRequest(method, path string, opt interface{}, options []OptionFunc) (*http.Request, error) {
 	u := *c.baseURL
-	// Set the encoded opaque data
-	u.Opaque = c.baseURL.Path + path
+	unescaped, err := url.PathUnescape(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set the encoded path data
+	u.RawPath = c.baseURL.Path + path
+	u.Path = c.baseURL.Path + unescaped
 
 	if opt != nil {
 		q, err := query.Values(opt)
@@ -545,6 +604,9 @@ func (c *Client) NewRequest(method, path string, opt interface{}, options []Opti
 
 		u.RawQuery = ""
 		req.Body = ioutil.NopCloser(bodyReader)
+		req.GetBody = func() (io.ReadCloser, error) {
+			return ioutil.NopCloser(bodyReader), nil
+		}
 		req.ContentLength = int64(bodyReader.Len())
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -675,17 +737,23 @@ func parseID(id interface{}) (string, error) {
 	}
 }
 
+// Helper function to escape a project identifier.
+func pathEscape(s string) string {
+	return strings.Replace(url.PathEscape(s), ".", "%2E", -1)
+}
+
 // An ErrorResponse reports one or more errors caused by an API request.
 //
 // GitLab API docs:
 // https://docs.gitlab.com/ce/api/README.html#data-validation-and-error-reporting
 type ErrorResponse struct {
+	Body     []byte
 	Response *http.Response
 	Message  string
 }
 
 func (e *ErrorResponse) Error() string {
-	path, _ := url.QueryUnescape(e.Response.Request.URL.Opaque)
+	path, _ := url.QueryUnescape(e.Response.Request.URL.Path)
 	u := fmt.Sprintf("%s://%s%s", e.Response.Request.URL.Scheme, e.Response.Request.URL.Host, path)
 	return fmt.Sprintf("%s %s: %d %s", e.Response.Request.Method, u, e.Response.StatusCode, e.Message)
 }
@@ -700,12 +768,14 @@ func CheckResponse(r *http.Response) error {
 	errorResponse := &ErrorResponse{Response: r}
 	data, err := ioutil.ReadAll(r.Body)
 	if err == nil && data != nil {
+		errorResponse.Body = data
+
 		var raw interface{}
 		if err := json.Unmarshal(data, &raw); err != nil {
 			errorResponse.Message = "failed to parse unknown error format"
+		} else {
+			errorResponse.Message = parseError(raw)
 		}
-
-		errorResponse.Message = parseError(raw)
 	}
 
 	return errorResponse
@@ -805,6 +875,14 @@ func String(v string) *string {
 	return p
 }
 
+// Time is a helper routine that allocates a new time.Time value
+// to store v and returns a pointer to it.
+func Time(v time.Time) *time.Time {
+	p := new(time.Time)
+	*p = v
+	return p
+}
+
 // AccessLevel is a helper routine that allocates a new AccessLevelValue
 // to store v and returns a pointer to it.
 func AccessLevel(v AccessLevelValue) *AccessLevelValue {
@@ -829,10 +907,10 @@ func NotificationLevel(v NotificationLevelValue) *NotificationLevelValue {
 	return p
 }
 
-// OrderBy is a helper routine that allocates a new OrderByValue
+// VariableType is a helper routine that allocates a new VariableTypeValue
 // to store v and returns a pointer to it.
-func OrderBy(v OrderByValue) *OrderByValue {
-	p := new(OrderByValue)
+func VariableType(v VariableTypeValue) *VariableTypeValue {
+	p := new(VariableTypeValue)
 	*p = v
 	return p
 }
@@ -851,4 +929,25 @@ func MergeMethod(v MergeMethodValue) *MergeMethodValue {
 	p := new(MergeMethodValue)
 	*p = v
 	return p
+}
+
+// BoolValue is a boolean value with advanced json unmarshaling features.
+type BoolValue bool
+
+// UnmarshalJSON allows 1 and 0 to be considered as boolean values
+// Needed for https://gitlab.com/gitlab-org/gitlab-ce/issues/50122
+func (t *BoolValue) UnmarshalJSON(b []byte) error {
+	switch string(b) {
+	case `"1"`:
+		*t = true
+		return nil
+	case `"0"`:
+		*t = false
+		return nil
+	default:
+		var v bool
+		err := json.Unmarshal(b, &v)
+		*t = BoolValue(v)
+		return err
+	}
 }

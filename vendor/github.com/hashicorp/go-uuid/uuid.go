@@ -15,11 +15,9 @@ func GenerateRandomBytes(size int) ([]byte, error) {
 	return buf, nil
 }
 
-const uuidLen = 16
-
 // GenerateUUID is used to generate a random UUID
 func GenerateUUID() (string, error) {
-	buf, err := GenerateRandomBytes(uuidLen)
+	buf, err := GenerateRandomBytes(16)
 	if err != nil {
 		return "", err
 	}
@@ -27,11 +25,11 @@ func GenerateUUID() (string, error) {
 }
 
 func FormatUUID(buf []byte) (string, error) {
-	if buflen := len(buf); buflen != uuidLen {
-		return "", fmt.Errorf("wrong length byte slice (%d)", buflen)
+	if len(buf) != 16 {
+		return "", fmt.Errorf("wrong length byte slice (%d)", len(buf))
 	}
 
-	return fmt.Sprintf("%x-%x-%x-%x-%x",
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%12x",
 		buf[0:4],
 		buf[4:6],
 		buf[6:8],
@@ -40,14 +38,16 @@ func FormatUUID(buf []byte) (string, error) {
 }
 
 func ParseUUID(uuid string) ([]byte, error) {
-	if len(uuid) != 2 * uuidLen + 4 {
+	if len(uuid) != 36 {
 		return nil, fmt.Errorf("uuid string is wrong length")
 	}
 
-	if uuid[8] != '-' ||
-		uuid[13] != '-' ||
-		uuid[18] != '-' ||
-		uuid[23] != '-' {
+	hyph := []byte("-")
+
+	if uuid[8] != hyph[0] ||
+		uuid[13] != hyph[0] ||
+		uuid[18] != hyph[0] ||
+		uuid[23] != hyph[0] {
 		return nil, fmt.Errorf("uuid is improperly formatted")
 	}
 
@@ -57,7 +57,7 @@ func ParseUUID(uuid string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(ret) != uuidLen {
+	if len(ret) != 16 {
 		return nil, fmt.Errorf("decoded hex is the wrong length")
 	}
 
