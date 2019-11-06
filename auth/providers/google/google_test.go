@@ -82,10 +82,10 @@ func (s *signingKey) jwk() jose.JSONWebKeySet {
 	return kset
 }
 
-func newRSAKey(t *testing.T) (*signingKey, error) {
+func newRSAKey() (*signingKey, error) {
 	priv, err := rsa.GenerateKey(rand.Reader, 1028)
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
 	return &signingKey{"", priv, priv.Public(), jose.RS256}, nil
 }
@@ -221,24 +221,24 @@ func googleServerSetup(jwkResp []byte, groupResp googleGroupResp) (*httptest.Ser
 		err := googleVerifyUrlParams(r.URL)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(err.Error()))
+			_, _ = w.Write([]byte(err.Error()))
 			return
 		}
 
 		status, resp := groupResp(r.URL)
 		w.WriteHeader(status)
-		w.Write(resp)
+		_, _ = w.Write(resp)
 	}))
 
 	m.Get("/.well-known/openid-configuration", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		resp := `{"issuer" : "http://%v", "jwks_uri" : "http://%v/jwk"}`
-		w.Write([]byte(fmt.Sprintf(resp, addr, addr)))
+		_, _ = w.Write([]byte(fmt.Sprintf(resp, addr, addr)))
 	}))
 
 	m.Get("/jwk", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write(jwkResp)
+		_, _ = w.Write(jwkResp)
 	}))
 
 	srv := &httptest.Server{
@@ -272,7 +272,7 @@ func assertUserInfo(t *testing.T, info *authv1.UserInfo, groupSize int) {
 }
 
 func TestCheckGoogleAuthenticationSuccess(t *testing.T) {
-	signKey, err := newRSAKey(t)
+	signKey, err := newRSAKey()
 	if err != nil {
 		t.Fatalf("Error when creating signing key. reason : %v", err)
 	}
@@ -329,7 +329,7 @@ func TestCheckGoogleAuthenticationFailed(t *testing.T) {
 		goodIDToken      = fmt.Sprintf(`{ "iss":"_ISSUER_", "email":"%s", "aud":"%s", "hd":"%s"}`, userEmail, GoogleOauth2ClientID, domain)
 	)
 
-	signKey, err := newRSAKey(t)
+	signKey, err := newRSAKey()
 	if err != nil {
 		t.Fatalf("Error when creating signing key. reason : %v", err)
 	}

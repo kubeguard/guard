@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	auth "k8s.io/api/authentication/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
 
 func stringArrayToBytes(in []string) []byte {
@@ -193,8 +194,13 @@ func TestLoadTokenFile(t *testing.T) {
 
 	appFs := afero.NewOsFs()
 	filePath := "token-auth/load-file/test"
-	appFs.MkdirAll(filePath, 0775)
-	defer appFs.RemoveAll("token-auth")
+	err := appFs.MkdirAll(filePath, 0775)
+	if err != nil {
+		t.Errorf("Error when making directory. reason : %v", err)
+	}
+	defer func() {
+		utilruntime.Must(appFs.RemoveAll("token-auth"))
+	}()
 
 	for _, testData := range loadTokenTests {
 		t.Run(fmt.Sprintf("testing load token file, error %v", testData.expectedError), func(t *testing.T) {

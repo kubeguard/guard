@@ -16,6 +16,8 @@ limitations under the License.
 package github
 
 import (
+	"log"
+
 	"github.com/appscode/go/term"
 
 	"github.com/skratchdot/open-golang/open"
@@ -27,5 +29,8 @@ func IssueToken() {
 	term.Infoln("Select only read:org permissions for the token")
 	term.Infoln("After the token is created, run:")
 	term.Infoln("    kubectl config set-credentials <user_name> --token=<token>")
-	open.Start(codeURurl)
+	err := open.Start(codeURurl)
+	if err != nil {
+		log.Fatalln(err)
+	}
 }

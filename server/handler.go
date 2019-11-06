@@ -73,7 +73,6 @@ func (s Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	resp, err := client.Check(data.Spec.Token)
 	write(w, resp, err)
-	return
 }
 
 func (s Server) getAuthProviderClient(org, commonName string) (auth.Interface, error) {

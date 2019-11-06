@@ -77,14 +77,12 @@ func (t *TokenOptions) IssueToken() error {
 	switch t.AuthenticationChoice {
 	case 0:
 		token = t.getSimpleAuthToken()
-		break
 	case 1:
 		// ref: https://www.youtube.com/watch?v=KD2Q-2ToloE
 		token, err = t.getKerberosToken()
 		if err != nil {
 			return err
 		}
-		break
 	default:
 		return errors.New("invalid authentication choice")
 	}

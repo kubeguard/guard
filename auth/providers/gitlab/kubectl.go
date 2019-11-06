@@ -16,6 +16,8 @@ limitations under the License.
 package gitlab
 
 import (
+	"log"
+
 	"github.com/appscode/go/term"
 
 	"github.com/skratchdot/open-golang/open"
@@ -24,5 +26,8 @@ import (
 func IssueToken() {
 	codeURurl := "https://gitlab.com/profile/personal_access_tokens"
 	term.Infoln("Gitlab url for personal access tokens:", codeURurl)
-	open.Start(codeURurl)
+	err := open.Start(codeURurl)
+	if err != nil {
+		log.Fatalln(err)
+	}
 }

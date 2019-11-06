@@ -182,29 +182,29 @@ func gitlabServerSetup(userResp string, userStatusCode int, gengroupResp gitlabG
 		err := gitlabVerifyAuthorization(r)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
-			w.Write(gitlabGetErrorMsg(err))
+			_, _ = w.Write(gitlabGetErrorMsg(err))
 			return
 		}
 
 		w.WriteHeader(userStatusCode)
-		w.Write([]byte(userResp))
+		_, _ = w.Write([]byte(userResp))
 	}))
 
 	m.Get("/api/v4/groups", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		err := gitlabVerifyAuthorization(r)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
-			w.Write(gitlabGetErrorMsg(err))
+			_, _ = w.Write(gitlabGetErrorMsg(err))
 			return
 		}
 
 		status, resp := gengroupResp(r.URL)
 		w.WriteHeader(status)
 		if status != http.StatusOK {
-			w.Write(gitlabGetErrorMsg(errors.New(resp)))
+			_, _ = w.Write(gitlabGetErrorMsg(errors.New(resp)))
 			return
 		}
-		w.Write([]byte(resp))
+		_, _ = w.Write([]byte(resp))
 	}))
 
 	srv := httptest.NewServer(m)

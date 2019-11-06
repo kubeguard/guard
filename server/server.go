@@ -78,7 +78,10 @@ func (s Server) ListenAndServe() {
 				},
 			}
 			stopCh := signals.SetupSignalHandler()
-			w.Run(stopCh)
+			err = w.Run(stopCh)
+			if err != nil {
+				glog.Fatal(err)
+			}
 		}
 	}
 
@@ -145,7 +148,10 @@ func (s Server) ListenAndServe() {
 		w.WriteHeader(200)
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("x-content-type-options", "nosniff")
-		json.NewEncoder(w).Encode(v.Version)
+		err := json.NewEncoder(w).Encode(v.Version)
+		if err != nil {
+			glog.Fatal(err)
+		}
 	}))
 	srv := &http.Server{
 		Addr:         s.RecommendedOptions.SecureServing.SecureAddr,

@@ -27,7 +27,7 @@ import (
 func getAuthServerAndUserInfo(returnCode int, body, clientID, clientSecret string) (*httptest.Server, *UserInfo) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(returnCode)
-		w.Write([]byte(body))
+		_, _ = w.Write([]byte(body))
 	}))
 	loginURL, _ := url.Parse(ts.URL)
 	u := &UserInfo{
@@ -105,7 +105,7 @@ func TestLogin(t *testing.T) {
 func getAPIServerAndUserInfo(returnCode int, body string) (*httptest.Server, *UserInfo) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(returnCode)
-		w.Write([]byte(body))
+		_, _ = w.Write([]byte(body))
 	}))
 	apiURL, _ := url.Parse(ts.URL)
 	u := &UserInfo{
@@ -270,15 +270,15 @@ func TestGetGroups(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.Handle("/login", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
-		w.Write([]byte(`{ "token_type": "Bearer", "expires_in": 8459, "access_token": "secret"}`))
+		_, _ = w.Write([]byte(`{ "token_type": "Bearer", "expires_in": 8459, "access_token": "secret"}`))
 	}))
 	mux.Handle("/users/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
-		w.Write([]byte(validBody1))
+		_, _ = w.Write([]byte(validBody1))
 	}))
 	mux.Handle("/directoryObjects/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
-		w.Write([]byte(validBody2))
+		_, _ = w.Write([]byte(validBody2))
 	}))
 	ts := httptest.NewServer(mux)
 	apiURL, _ := url.Parse(ts.URL)
@@ -363,11 +363,11 @@ func TestGetGroupsPaging(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.Handle("/login", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
-		w.Write([]byte(`{ "token_type": "Bearer", "expires_in": 8459, "access_token": "secret"}`))
+		_, _ = w.Write([]byte(`{ "token_type": "Bearer", "expires_in": 8459, "access_token": "secret"}`))
 	}))
 	mux.Handle("/users/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
-		w.Write([]byte(validBody1))
+		_, _ = w.Write([]byte(validBody1))
 	}))
 	mux.Handle("/directoryObjects/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
@@ -379,9 +379,9 @@ func TestGetGroupsPaging(t *testing.T) {
 		}
 
 		if len(objectQuery.IDs) == 2 {
-			w.Write([]byte(validBody2))
+			_, _ = w.Write([]byte(validBody2))
 		} else {
-			w.Write([]byte(validBody3))
+			_, _ = w.Write([]byte(validBody3))
 		}
 	}))
 	ts := httptest.NewServer(mux)

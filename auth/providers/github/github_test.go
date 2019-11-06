@@ -205,34 +205,33 @@ func githubServerSetup(githubOrg string, memberResp string, memberStatusCode int
 		err := verifyAuthorization(r)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
-			w.Write(getErrorMessage(err))
+			_, _ = w.Write(getErrorMessage(err))
 			return
 		}
 		w.WriteHeader(memberStatusCode)
-		w.Write([]byte(memberResp))
+		_, _ = w.Write([]byte(memberResp))
 	}))
 
 	m.Get(fmt.Sprintf("/user/memberships/orgs/"), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write(getErrorMessage(errors.New("Authorization: invalid token")))
-		return
+		_, _ = w.Write(getErrorMessage(errors.New("Authorization: invalid token")))
 	}))
 
 	m.Get("/user/teams", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		err := verifyAuthorization(r)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
-			w.Write(getErrorMessage(err))
+			_, _ = w.Write(getErrorMessage(err))
 			return
 		}
 
 		status, resp := genTeamRespn(r.URL)
 		w.WriteHeader(status)
 		if status != http.StatusOK {
-			w.Write(getErrorMessage(errors.New(resp)))
+			_, _ = w.Write(getErrorMessage(errors.New(resp)))
 			return
 		}
-		w.Write([]byte(resp))
+		_, _ = w.Write([]byte(resp))
 	}))
 
 	srv := httptest.NewServer(m)

@@ -16,7 +16,6 @@ limitations under the License.
 package ldap
 
 import (
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
@@ -76,31 +75,7 @@ func (s *ldapServer) stop() {
 
 }
 
-// getTLSconfig returns a tls configuration used
-// to build a TLSlistener for TLS or StartTLS
-func (s *ldapServer) getTLSconfig() (*tls.Config, error) {
-	srvCert, srvKey, err := s.certStore.NewServerCertPairBytes(cert.AltNames{
-		DNSNames: []string{"server"},
-		IPs:      []net.IP{net.ParseIP(serverAddr)},
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	cert, err := tls.X509KeyPair(srvCert, srvKey)
-	if err != nil {
-		return nil, err
-	}
-
-	return &tls.Config{
-		MinVersion:   tls.VersionSSL30,
-		MaxVersion:   tls.VersionTLS12,
-		Certificates: []tls.Certificate{cert},
-		ServerName:   serverAddr,
-	}, nil
-}
-
-func ldapServerSetup(secureConn bool, userSearchDN, groupSearchDN string) (*ldapServer, error) {
+func ldapServerSetup(secureConn bool) (*ldapServer, error) {
 	//Create a new LDAP Server
 	server := ldapserver.NewServer()
 	handler := ldapHandler{}
@@ -136,17 +111,19 @@ func (h ldapHandler) Bind(bindDN, bindSimplePw string, conn net.Conn) (ldapserve
 	fmt.Println("*********bind**************")
 	fmt.Println(bindDN, bindSimplePw)
 	fmt.Println("*********bind-end**************")
-	if bindDN == "uid=admin,ou=system" && bindSimplePw == "secret" {
+
+	const bindSimplePwSecret = "secret"
+	if bindDN == "uid=admin,ou=system" && bindSimplePw == bindSimplePwSecret {
 		return ldapserver.LDAPResultSuccess, nil
 	}
 
 	// for userDN
-	if bindDN == "uid=nahid,ou=users,o=Company" && bindSimplePw == "secret" {
+	if bindDN == "uid=nahid,ou=users,o=Company" && bindSimplePw == bindSimplePwSecret {
 		return ldapserver.LDAPResultSuccess, nil
 	}
 
 	// for userDN
-	if bindDN == "uid=shuvo,ou=users,o=Company" && bindSimplePw == "secret" {
+	if bindDN == "uid=shuvo,ou=users,o=Company" && bindSimplePw == bindSimplePwSecret {
 		return ldapserver.LDAPResultSuccess, nil
 	}
 	if bindDN == "" && bindSimplePw == "" {
@@ -165,9 +142,9 @@ func (h ldapHandler) Search(boundDN string, searchReq ldapserver.SearchRequest, 
 	// one entry
 	if searchReq.Filter == "(&(objectClass=person)(uid=nahid))" {
 		entries = append(entries, &ldapserver.Entry{
-			"uid=nahid,ou=users,o=Company",
-			[]*ldapserver.EntryAttribute{
-				{"cn", []string{"nahid"}},
+			DN: "uid=nahid,ou=users,o=Company",
+			Attributes: []*ldapserver.EntryAttribute{
+				{Name: "cn", Values: []string{"nahid"}},
 			},
 		})
 	}
@@ -175,9 +152,9 @@ func (h ldapHandler) Search(boundDN string, searchReq ldapserver.SearchRequest, 
 	// one entry
 	if searchReq.Filter == "(&(objectClass=person)(uid=shuvo))" {
 		entries = append(entries, &ldapserver.Entry{
-			"uid=shuvo,ou=users,o=Company",
-			[]*ldapserver.EntryAttribute{
-				{"cn", []string{"shuvo"}},
+			DN: "uid=shuvo,ou=users,o=Company",
+			Attributes: []*ldapserver.EntryAttribute{
+				{Name: "cn", Values: []string{"shuvo"}},
 			},
 		})
 	}
@@ -185,16 +162,16 @@ func (h ldapHandler) Search(boundDN string, searchReq ldapserver.SearchRequest, 
 	// multiple entry
 	if searchReq.Filter == "(&(objectClass=person)(id=nahid))" {
 		entries = append(entries, &ldapserver.Entry{
-			"uid=nahid,ou=users,o=Company",
-			[]*ldapserver.EntryAttribute{
-				{"cn", []string{"nahid"}},
-				{"id", []string{"1204"}},
+			DN: "uid=nahid,ou=users,o=Company",
+			Attributes: []*ldapserver.EntryAttribute{
+				{Name: "cn", Values: []string{"nahid"}},
+				{Name: "id", Values: []string{"1204"}},
 			},
 		}, &ldapserver.Entry{
-			"uid=shuvo,ou=users,o=Company",
-			[]*ldapserver.EntryAttribute{
-				{"cn", []string{"shuvo"}},
-				{"id", []string{"1204"}},
+			DN: "uid=shuvo,ou=users,o=Company",
+			Attributes: []*ldapserver.EntryAttribute{
+				{Name: "cn", Values: []string{"shuvo"}},
+				{Name: "id", Values: []string{"1204"}},
 			},
 		})
 	}
@@ -202,18 +179,18 @@ func (h ldapHandler) Search(boundDN string, searchReq ldapserver.SearchRequest, 
 	// one entry
 	if searchReq.Filter == "(&(objectClass=groupOfNames)(member=uid=nahid,ou=users,o=Company))" {
 		entries = append(entries, &ldapserver.Entry{
-			"id=1,ou=groups,o=Company",
-			[]*ldapserver.EntryAttribute{
-				{"cn", []string{"group1"}},
+			DN: "id=1,ou=groups,o=Company",
+			Attributes: []*ldapserver.EntryAttribute{
+				{Name: "cn", Values: []string{"group1"}},
 			},
 		}, &ldapserver.Entry{
-			"id=1,ou=groups,o=Company",
-			[]*ldapserver.EntryAttribute{
-				{"cn", []string{"group2"}},
+			DN: "id=1,ou=groups,o=Company",
+			Attributes: []*ldapserver.EntryAttribute{
+				{Name: "cn", Values: []string{"group2"}},
 			},
 		})
 	}
-	return ldapserver.ServerSearchResult{entries, []string{}, []ldapserver.Control{}, ldapserver.LDAPResultSuccess}, nil
+	return ldapserver.ServerSearchResult{Entries: entries, Referrals: []string{}, Controls: []ldapserver.Control{}, ResultCode: ldapserver.LDAPResultSuccess}, nil
 }
 
 func TestCheckLdapInSecure(t *testing.T) {
@@ -266,7 +243,7 @@ func TestCheckLdapSecure(t *testing.T) {
 }
 
 func runTest(t *testing.T, secureConn bool, s Authenticator, serverType string) {
-	srv, err := ldapServerSetup(secureConn, "o=Company,ou=users", "o=Company,ou=groups")
+	srv, err := ldapServerSetup(secureConn)
 	if err != nil {
 		t.Fatal(err)
 	}

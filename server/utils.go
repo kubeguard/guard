@@ -115,11 +115,17 @@ func (w *withCode) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			fmt.Fprintf(s, "%+v\n", w.Cause())
+			_, err := fmt.Fprintf(s, "%+v\n", w.Cause())
+			if err != nil {
+				glog.Fatal(err)
+			}
 			return
 		}
 		fallthrough
 	case 's', 'q':
-		io.WriteString(s, w.Error())
+		_, err := io.WriteString(s, w.Error())
+		if err != nil {
+			glog.Fatal(err)
+		}
 	}
 }

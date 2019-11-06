@@ -80,5 +80,6 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
-	root.DeleteNamespace()
+	err := root.DeleteNamespace()
+	Expect(err).NotTo(HaveOccurred())
 })

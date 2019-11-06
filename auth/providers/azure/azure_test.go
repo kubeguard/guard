@@ -86,10 +86,10 @@ func (s *signingKey) jwk() jose.JSONWebKeySet {
 	return kset
 }
 
-func newRSAKey(t *testing.T) (*signingKey, error) {
+func newRSAKey() (*signingKey, error) {
 	priv, err := rsa.GenerateKey(rand.Reader, 1028)
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
 	return &signingKey{"", priv, priv.Public(), jose.RS256}, nil
 }
@@ -129,7 +129,7 @@ func serverSetup(loginResp string, loginStatus int, jwkResp, groupIds, groupList
 
 	m.Post("/login", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(loginStatus)
-		w.Write([]byte(loginResp))
+		_, _ = w.Write([]byte(loginResp))
 	}))
 
 	m.Post("/api/users/nahid/getMemberGroups", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +138,7 @@ func serverSetup(loginResp string, loginStatus int, jwkResp, groupIds, groupList
 		} else {
 			w.WriteHeader(http.StatusOK)
 		}
-		w.Write(groupIds)
+		_, _ = w.Write(groupIds)
 	}))
 
 	m.Post("/api/users/abc-123d4/getMemberGroups", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -147,23 +147,23 @@ func serverSetup(loginResp string, loginStatus int, jwkResp, groupIds, groupList
 		} else {
 			w.WriteHeader(http.StatusOK)
 		}
-		w.Write(groupIds)
+		_, _ = w.Write(groupIds)
 	}))
 
 	m.Post("/api/directoryObjects/getByIds", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write(groupList)
+		_, _ = w.Write(groupList)
 	}))
 
 	m.Get("/.well-known/openid-configuration", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		resp := `{"issuer" : "http://%v", "jwks_uri" : "http://%v/jwk"}`
-		w.Write([]byte(fmt.Sprintf(resp, addr, addr)))
+		_, _ = w.Write([]byte(fmt.Sprintf(resp, addr, addr)))
 	}))
 
 	m.Get("/jwk", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write(jwkResp)
+		_, _ = w.Write(jwkResp)
 	}))
 
 	srv := &httptest.Server{
@@ -267,7 +267,7 @@ func getServerAndClient(t *testing.T, signKey *signingKey, loginResp string, gro
 }
 
 func TestCheckAzureAuthenticationSuccess(t *testing.T) {
-	signKey, err := newRSAKey(t)
+	signKey, err := newRSAKey()
 	if err != nil {
 		t.Fatalf("Error when creating signing key. reason : %v", err)
 	}
@@ -328,7 +328,7 @@ func TestCheckAzureAuthenticationSuccess(t *testing.T) {
 }
 
 func TestCheckAzureAuthenticationFailed(t *testing.T) {
-	signKey, err := newRSAKey(t)
+	signKey, err := newRSAKey()
 	if err != nil {
 		t.Fatalf("Error when creating signing key. reason : %v", err)
 	}
