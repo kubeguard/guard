@@ -59,7 +59,11 @@ func IssueToken() error {
 	codeURL := gauthConfig.AuthCodeURL("/", promptSelectAccount)
 
 	glog.Infoln("Auhtorization code URL:", codeURL)
-	open.Start(codeURL)
+
+	err = open.Start(codeURL)
+	if err != nil {
+		return err
+	}
 
 	http.HandleFunc("/", handleGoogleAuth)
 	return http.Serve(listener, nil)
@@ -82,10 +86,10 @@ func handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
 
 	err = addAuthInfo(token.Extra("id_token").(string), token.RefreshToken)
 	if err != nil {
-		w.Write([]byte(fmt.Sprintf("Error: %v", err)))
+		_, _ = w.Write([]byte(fmt.Sprintf("Error: %v", err)))
 		return
 	} else {
-		w.Write([]byte("Configuration has been written to " + kubeconfig.Path()))
+		_, _ = w.Write([]byte("Configuration has been written to " + kubeconfig.Path()))
 		return
 	}
 }

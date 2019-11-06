@@ -22,6 +22,7 @@ import (
 	"github.com/appscode/go/flags"
 	logs "github.com/appscode/go/log/golog"
 
+	"github.com/golang/glog"
 	"k8s.io/client-go/util/homedir"
 )
 
@@ -48,7 +49,10 @@ func enableLogging() {
 		logs.InitLogs()
 		defer logs.FlushLogs()
 	}()
-	flag.Set("logtostderr", "true")
+	err := flag.Set("logtostderr", "true")
+	if err != nil {
+		glog.Fatal(err)
+	}
 	logLevelFlag := flag.Lookup("v")
 	if logLevelFlag != nil {
 		if len(logLevelFlag.Value.String()) > 0 && logLevelFlag.Value.String() != "0" {

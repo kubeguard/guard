@@ -324,7 +324,7 @@ var _ = Describe("Installer test", func() {
 
 		Context("Setting up guard for github", func() {
 			BeforeEach(func() {
-				opts.AuthProvider = providers.AuthProviders{[]string{github.OrgType}}
+				opts.AuthProvider = providers.AuthProviders{Providers: []string{github.OrgType}}
 			})
 
 			It("Set up guard for github should be successful", func() {
@@ -354,7 +354,7 @@ var _ = Describe("Installer test", func() {
 
 		Context("Setting up guard for gitlab", func() {
 			BeforeEach(func() {
-				opts.AuthProvider = providers.AuthProviders{[]string{gitlab.OrgType}}
+				opts.AuthProvider = providers.AuthProviders{Providers: []string{gitlab.OrgType}}
 			})
 
 			It("Set up guard for gitlab should be successful", func() {
@@ -384,7 +384,7 @@ var _ = Describe("Installer test", func() {
 
 		Context("Setting up guard for azure", func() {
 			BeforeEach(func() {
-				opts.AuthProvider = providers.AuthProviders{[]string{azure.OrgType}}
+				opts.AuthProvider = providers.AuthProviders{Providers: []string{azure.OrgType}}
 				opts.Azure = azureOpts
 
 				checkSecretDeleted(azureSecret)
@@ -410,7 +410,7 @@ var _ = Describe("Installer test", func() {
 
 		Context("Setting up guard for LDAP", func() {
 			BeforeEach(func() {
-				opts.AuthProvider = providers.AuthProviders{[]string{ldap.OrgType}}
+				opts.AuthProvider = providers.AuthProviders{Providers: []string{ldap.OrgType}}
 				opts.LDAP = ldapOpts
 
 				checkSecretDeleted(ldapSecret)
@@ -436,18 +436,21 @@ var _ = Describe("Installer test", func() {
 
 		Context("Setting up guard for token auth", func() {
 			BeforeEach(func() {
-				opts.AuthProvider = providers.AuthProviders{[]string{token.OrgType}}
+				opts.AuthProvider = providers.AuthProviders{Providers: []string{token.OrgType}}
 				opts.Token = tokenOpts
 
-				appFs.Mkdir(tokenAuthDir, 0777)
-				afero.WriteFile(appFs, filepath.Join(tokenAuthDir, tokenFileName), []byte(tokenData), 0777)
+				err := appFs.Mkdir(tokenAuthDir, 0777)
+				Expect(err).NotTo(HaveOccurred())
+				err = afero.WriteFile(appFs, filepath.Join(tokenAuthDir, tokenFileName), []byte(tokenData), 0777)
+				Expect(err).NotTo(HaveOccurred())
 
 				checkSecretDeleted(tokenSecret)
 			})
 
 			AfterEach(func() {
 				Expect(f.DeleteSecret(tokenSecret, root.Namespace())).NotTo(HaveOccurred())
-				appFs.RemoveAll(tokenAuthDir)
+				err := appFs.RemoveAll(tokenAuthDir)
+				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("Set up guard for token auth should be successful", func() {
@@ -466,18 +469,22 @@ var _ = Describe("Installer test", func() {
 
 		Context("Setting up guard for google", func() {
 			BeforeEach(func() {
-				opts.AuthProvider = providers.AuthProviders{[]string{google.OrgType}}
+				opts.AuthProvider = providers.AuthProviders{Providers: []string{google.OrgType}}
 				opts.Google = googleOpts
 
-				appFs.Mkdir(saDir, 0777)
-				afero.WriteFile(appFs, filepath.Join(saDir, saFileName), []byte(saData), 0777)
+				err := appFs.Mkdir(saDir, 0777)
+				Expect(err).NotTo(HaveOccurred())
+
+				err = afero.WriteFile(appFs, filepath.Join(saDir, saFileName), []byte(saData), 0777)
+				Expect(err).NotTo(HaveOccurred())
 
 				checkSecretDeleted(googleSecret)
 			})
 
 			AfterEach(func() {
 				Expect(f.DeleteSecret(googleSecret, root.Namespace())).NotTo(HaveOccurred())
-				appFs.RemoveAll(saDir)
+				err := appFs.RemoveAll(saDir)
+				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("Set up guard for google should be successful", func() {
@@ -533,11 +540,15 @@ var _ = Describe("Installer test", func() {
 				googleSecret,
 			}
 
-			appFs.Mkdir(tokenAuthDir, 0777)
-			afero.WriteFile(appFs, filepath.Join(tokenAuthDir, tokenFileName), []byte(tokenData), 0777)
+			err := appFs.Mkdir(tokenAuthDir, 0777)
+			Expect(err).NotTo(HaveOccurred())
+			err = afero.WriteFile(appFs, filepath.Join(tokenAuthDir, tokenFileName), []byte(tokenData), 0777)
+			Expect(err).NotTo(HaveOccurred())
 
-			appFs.Mkdir(saDir, 0777)
-			afero.WriteFile(appFs, filepath.Join(saDir, saFileName), []byte(saData), 0777)
+			err = appFs.Mkdir(saDir, 0777)
+			Expect(err).NotTo(HaveOccurred())
+			err = afero.WriteFile(appFs, filepath.Join(saDir, saFileName), []byte(saData), 0777)
+			Expect(err).NotTo(HaveOccurred())
 
 			checkServiceDeleted()
 			checkDeploymentDeleted()

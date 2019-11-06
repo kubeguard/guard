@@ -17,16 +17,14 @@ package commands
 
 import (
 	"flag"
+	"log"
 
 	"github.com/appscode/go/flags"
 	v "github.com/appscode/go/version"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/cobra"
 	"kmodules.xyz/client-go/tools/cli"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func NewRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -41,7 +39,11 @@ func NewRootCmd() *cobra.Command {
 	}
 	cmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
 	// ref: https://github.com/kubernetes/kubernetes/issues/17162#issuecomment-225596212
-	flag.CommandLine.Parse([]string{})
+	err := flag.CommandLine.Parse([]string{})
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	cmd.PersistentFlags().BoolVar(&cli.EnableAnalytics, "analytics", cli.EnableAnalytics, "Send analytical events to Google Guard")
 
 	cmd.AddCommand(NewCmdInit())

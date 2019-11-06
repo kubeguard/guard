@@ -101,10 +101,6 @@ func (u *UserInfo) login() error {
 	return nil
 }
 
-func (u *UserInfo) isExpired() bool {
-	return time.Now().After(u.expires)
-}
-
 func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
 	// Create a new request for finding the user.
 	// Shallow copy of the base API URL
