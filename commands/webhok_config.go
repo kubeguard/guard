@@ -88,7 +88,7 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 			}
 			clientCert, clientKey, err := store.ReadBytes(filename(cfg))
 			if err != nil {
-				glog.Fatalf("Failed to load ca certificate. Reason: %v.", err)
+				glog.Fatalf("Failed to load client certificate. Reason: %v.", err)
 			}
 
 			config := clientcmdapi.Config{
