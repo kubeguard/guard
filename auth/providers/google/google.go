@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	gdir "google.golang.org/api/admin/directory/v1"
 	gauth "google.golang.org/api/oauth2/v1"
+	"google.golang.org/api/option"
 	authv1 "k8s.io/api/authentication/v1"
 )
 
@@ -70,9 +71,8 @@ func New(opts Options, domain string) (auth.Interface, error) {
 	})
 
 	if opts.ServiceAccountJsonFile != "" {
-		client := opts.jwtConfig.Client(context.Background())
-
-		g.service, err = gdir.New(client)
+		ctx := context.Background()
+		g.service, err = gdir.NewService(ctx, option.WithTokenSource(opts.jwtConfig.TokenSource(ctx)))
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to create admin/directory/v1 client for domain %s", domain)
 		}
