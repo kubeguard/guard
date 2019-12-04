@@ -75,9 +75,6 @@ func (o *SecureServingOptions) Validate() []error {
 	if o.CACertFile == "" {
 		errs = append(errs, errors.New("CA cert is empty"))
 	}
-	if o.CACertFile == "" {
-		errs = append(errs, errors.New("CA cert is empty"))
-	}
 	if o.CertFile == "" {
 		errs = append(errs, errors.New("server certificate is empty"))
 	}
