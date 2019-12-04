@@ -35,6 +35,7 @@ import (
 	oidc "github.com/coreos/go-oidc"
 	"github.com/stretchr/testify/assert"
 	gdir "google.golang.org/api/admin/directory/v1"
+	"google.golang.org/api/option"
 	jose "gopkg.in/square/go-jose.v2"
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -197,7 +198,7 @@ func googleClientSetup(serverUrl string) (*Authenticator, error) {
 		SkipExpiryCheck: true,
 	})
 
-	g.service, err = gdir.New(http.DefaultClient)
+	g.service, err = gdir.NewService(context.Background(), option.WithHTTPClient(http.DefaultClient))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create google service. Reason: %v", err)
 	}
