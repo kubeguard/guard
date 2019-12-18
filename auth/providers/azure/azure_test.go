@@ -96,7 +96,7 @@ func newRSAKey() (*signingKey, error) {
 
 func clientSetup(clientID, clientSecret, tenantID, serverUrl string, useGroupUID bool) (*Authenticator, error) {
 	c := &Authenticator{
-		Options: Options{"", clientID, clientSecret, tenantID, useGroupUID},
+		Options: Options{"", clientID, clientSecret, tenantID, useGroupUID, ClientCredentialAuthMode, ""},
 		ctx:     context.Background(),
 	}
 

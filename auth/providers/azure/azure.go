@@ -93,7 +93,14 @@ func New(opts Options) (auth.Interface, error) {
 
 	c.verifier = provider.Verifier(&oidc.Config{SkipClientIDCheck: true})
 
-	c.graphClient, err = graph.New(c.ClientID, c.ClientSecret, c.TenantID, c.UseGroupUID, authInfoVal.AADEndpoint, authInfoVal.MSGraphHost)
+	switch opts.AuthMode {
+	case ClientCredentialAuthMode:
+		c.graphClient, err = graph.New(c.ClientID, c.ClientSecret, c.TenantID, c.UseGroupUID, authInfoVal.AADEndpoint, authInfoVal.MSGraphHost)
+	case OBOAuthMode:
+		c.graphClient, err = graph.NewWithOBO(c.ClientID, c.ClientSecret, c.TenantID, authInfoVal.AADEndpoint, authInfoVal.MSGraphHost)
+	case AKSAuthMode:
+		c.graphClient, err = graph.NewWithAKS(c.AKSTokenURL, c.TenantID, authInfoVal.MSGraphHost)
+	}
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create ms graph client")
 	}
@@ -151,6 +158,9 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 
 	resp, err := claims.getUserInfo(azureUsernameClaim, azureObjectIDClaim)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.graphClient.RefreshToken(token); err != nil {
 		return nil, err
 	}
 	resp.Groups, err = s.graphClient.GetGroups(resp.Username)

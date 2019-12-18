@@ -42,7 +42,17 @@ var (
 		testName    string
 		optsFunc    optionFunc
 		expectedErr error
+		allError    bool
 	}{
+		{
+			"azure.auth-mode is invalid",
+			func(o Options) Options {
+				o.AuthMode = empty
+				return o
+			},
+			errors.New("invalid azure.auth-mode. valid value is either aks, obo, or client-credential"),
+			true,
+		},
 		{
 			"azure.client-secret must be non-empty",
 			func(o Options) Options {
@@ -50,6 +60,7 @@ var (
 				return o
 			},
 			errors.New("client secret must be non-empty"),
+			true,
 		},
 		{
 			"azure.client-id is empty",
@@ -58,6 +69,7 @@ var (
 				return o
 			},
 			errors.New("azure.client-id must be non-empty"),
+			true,
 		},
 		{
 			"azure.tenant-id is empty",
@@ -66,6 +78,16 @@ var (
 				return o
 			},
 			errors.New("azure.tenant-id must be non-empty"),
+			true,
+		},
+		{
+			"azure.aks-token-url is empty for aks auth mode",
+			func(o Options) Options {
+				o.AuthMode = AKSAuthMode
+				return o
+			},
+			errors.New("azure.aks-token-url must be non-empty"),
+			false,
 		},
 	}
 )
@@ -75,6 +97,7 @@ func getNonEmptyOptions() Options {
 		ClientID:     nonempty,
 		ClientSecret: nonempty,
 		TenantID:     nonempty,
+		AuthMode:     ClientCredentialAuthMode,
 	}
 }
 
@@ -85,7 +108,9 @@ func getEmptyOptions() Options {
 func getAllError() []error {
 	var errs []error
 	for _, d := range validationErrorData {
-		errs = append(errs, d.expectedErr)
+		if d.allError {
+			errs = append(errs, d.expectedErr)
+		}
 	}
 	return errs
 }

@@ -18,6 +18,7 @@ package azure
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/appscode/go/types"
 
@@ -29,12 +30,20 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+const (
+	AKSAuthMode              = "aks"
+	OBOAuthMode              = "obo"
+	ClientCredentialAuthMode = "client-credential"
+)
+
 type Options struct {
 	Environment  string
 	ClientID     string
 	ClientSecret string
 	TenantID     string
 	UseGroupUID  bool
+	AuthMode     string
+	AKSTokenURL  string
 }
 
 func NewOptions() Options {
@@ -50,15 +59,31 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.ClientSecret, "azure.client-secret", o.ClientSecret, "MS Graph application client secret to use")
 	fs.StringVar(&o.TenantID, "azure.tenant-id", o.TenantID, "MS Graph application tenant id to use")
 	fs.BoolVar(&o.UseGroupUID, "azure.use-group-uid", o.UseGroupUID, "Use group UID for authentication instead of group display name")
+	fs.StringVar(&o.AuthMode, "azure.auth-mode", "client-credential", "auth mode to call graph api, valid value is either aks, obo, or client-credential")
+	fs.StringVar(&o.AKSTokenURL, "azure.aks-token-url", "", "url to call for AKS OBO flow")
 }
 
 func (o *Options) Validate() []error {
 	var errs []error
-	if o.ClientSecret == "" {
-		errs = append(errs, errors.New("client secret must be non-empty"))
+	o.AuthMode = strings.ToLower(o.AuthMode)
+	switch o.AuthMode {
+	case AKSAuthMode:
+	case OBOAuthMode:
+	case ClientCredentialAuthMode:
+	default:
+		errs = append(errs, errors.New("invalid azure.auth-mode. valid value is either aks, obo, or client-credential"))
 	}
-	if o.ClientID == "" {
-		errs = append(errs, errors.New("azure.client-id must be non-empty"))
+
+	if o.AuthMode != AKSAuthMode {
+		if o.ClientSecret == "" {
+			errs = append(errs, errors.New("client secret must be non-empty"))
+		}
+		if o.ClientID == "" {
+			errs = append(errs, errors.New("azure.client-id must be non-empty"))
+		}
+	}
+	if o.AuthMode == AKSAuthMode && o.AKSTokenURL == "" {
+		errs = append(errs, errors.New("azure.aks-token-url must be non-empty"))
 	}
 	if o.TenantID == "" {
 		errs = append(errs, errors.New("azure.tenant-id must be non-empty"))
@@ -122,6 +147,21 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 	}
 	if o.TenantID != "" {
 		args = append(args, fmt.Sprintf("--azure.tenant-id=%s", o.TenantID))
+	}
+
+	switch o.AuthMode {
+	case AKSAuthMode:
+		fallthrough
+	case OBOAuthMode:
+		fallthrough
+	case ClientCredentialAuthMode:
+		args = append(args, fmt.Sprintf("--azure.auth-mode=%s", o.AuthMode))
+	default:
+		args = append(args, fmt.Sprintf("--azure.auth-mode=%s", ClientCredentialAuthMode))
+	}
+
+	if o.AKSTokenURL != "" {
+		args = append(args, fmt.Sprintf("--azure.aks-token-url=%s", o.AKSTokenURL))
 	}
 
 	args = append(args, fmt.Sprintf("--azure.use-group-uid=%t", o.UseGroupUID))
