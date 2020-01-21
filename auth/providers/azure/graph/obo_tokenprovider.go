@@ -37,7 +37,7 @@ type oboTokenRefresher struct {
 
 // NewOBOTokenRefresher returns a TokenRefresher that implements OAuth On-Behalf-Of flow on Azure Active Directory
 // https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow
-func NewOBOTokenRefresher(clientID, clientSecret, loginURL, scope string) TokenRefresher {
+func NewOBOTokenRefresher(clientID, clientSecret, loginURL, scope string) TokenProvider {
 	return &oboTokenRefresher{
 		name:         "OBOTokenRefresher",
 		client:       &http.Client{},
@@ -50,7 +50,7 @@ func NewOBOTokenRefresher(clientID, clientSecret, loginURL, scope string) TokenR
 
 func (u *oboTokenRefresher) Name() string { return u.name }
 
-func (u *oboTokenRefresher) Refresh(token string) (AuthResponse, error) {
+func (u *oboTokenRefresher) Acquire(token string) (AuthResponse, error) {
 	var authResp = AuthResponse{}
 	form := url.Values{}
 	form.Set("client_id", u.clientID)

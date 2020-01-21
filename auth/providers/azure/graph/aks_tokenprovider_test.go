@@ -59,7 +59,7 @@ func TestAKSTokenRefresher(t *testing.T) {
 		defer stopTestServer(t, s)
 
 		r := NewAKSTokenRefresher(s.URL, tenantID)
-		resp, err := r.Refresh(inputAccessToken)
+		resp, err := r.Acquire(inputAccessToken)
 		if err != nil {
 			t.Fatalf("refresh should not return error: %s", err)
 		}
@@ -102,7 +102,7 @@ func TestAKSTokenRefresher(t *testing.T) {
 		defer stopTestServer(t, s)
 
 		r := NewAKSTokenRefresher(s.URL, tenantID)
-		resp, err := r.Refresh(inputAccessToken)
+		resp, err := r.Acquire(inputAccessToken)
 		if err == nil {
 			t.Error("refresh should return error")
 		}

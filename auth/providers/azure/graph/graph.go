@@ -53,7 +53,7 @@ type UserInfo struct {
 	groupsPerCall int
 	useGroupUID   bool
 
-	tokenRefresher TokenRefresher
+	tokenRefresher TokenProvider
 }
 
 func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
@@ -145,7 +145,7 @@ func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
 }
 
 func (u *UserInfo) RefreshToken(token string) error {
-	resp, err := u.tokenRefresher.Refresh(token)
+	resp, err := u.tokenRefresher.Acquire(token)
 	if err != nil {
 		return errors.Errorf("%s: failed to refresh token: %s", u.tokenRefresher.Name(), err)
 	}
@@ -207,7 +207,7 @@ func (u *UserInfo) Name() string {
 }
 
 // newUserInfo returns a UserInfo object
-func newUserInfo(tokenRefresher TokenRefresher, graphURL *url.URL, useGroupUID bool) (*UserInfo, error) {
+func newUserInfo(tokenRefresher TokenProvider, graphURL *url.URL, useGroupUID bool) (*UserInfo, error) {
 	u := &UserInfo{
 		client: http.DefaultClient,
 		headers: http.Header{

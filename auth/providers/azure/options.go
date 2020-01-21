@@ -76,7 +76,7 @@ func (o *Options) Validate() []error {
 
 	if o.AuthMode != AKSAuthMode {
 		if o.ClientSecret == "" {
-			errs = append(errs, errors.New("client secret must be non-empty"))
+			errs = append(errs, errors.New("azure.client-secret must be non-empty"))
 		}
 		if o.ClientID == "" {
 			errs = append(errs, errors.New("azure.client-id must be non-empty"))

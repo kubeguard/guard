@@ -37,7 +37,7 @@ type clientCredentialTokenRefresher struct {
 
 // NewClientCredentialTokenRefresher returns a TokenRefresher that implements OAuth client credential flow on Azure Active Directory
 // https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-client-creds-grant-flow#get-a-token
-func NewClientCredentialTokenRefresher(clientID, clientSecret, loginURL, scope string) TokenRefresher {
+func NewClientCredentialTokenRefresher(clientID, clientSecret, loginURL, scope string) TokenProvider {
 	return &clientCredentialTokenRefresher{
 		name:         "ClientCredentialTokenRefresher",
 		client:       &http.Client{},
@@ -50,7 +50,7 @@ func NewClientCredentialTokenRefresher(clientID, clientSecret, loginURL, scope s
 
 func (u *clientCredentialTokenRefresher) Name() string { return u.name }
 
-func (u *clientCredentialTokenRefresher) Refresh(token string) (AuthResponse, error) {
+func (u *clientCredentialTokenRefresher) Acquire(token string) (AuthResponse, error) {
 	var authResp = AuthResponse{}
 	form := url.Values{}
 	form.Set("client_id", u.clientID)

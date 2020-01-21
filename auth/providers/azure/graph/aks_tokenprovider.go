@@ -20,8 +20,6 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/golang/glog"
-	"github.com/moul/http2curl"
 	"github.com/pkg/errors"
 )
 
@@ -33,7 +31,7 @@ type aksTokenRefresher struct {
 }
 
 // NewAKSTokenRefresher returns a TokenRefresher that implements On-Behalf-Of flow using AKS first party service
-func NewAKSTokenRefresher(tokenURL, tenantID string) TokenRefresher {
+func NewAKSTokenRefresher(tokenURL, tenantID string) TokenProvider {
 	return &aksTokenRefresher{
 		name:     "AKSTokenRefresher",
 		client:   &http.Client{},
@@ -44,7 +42,7 @@ func NewAKSTokenRefresher(tokenURL, tenantID string) TokenRefresher {
 
 func (u *aksTokenRefresher) Name() string { return u.name }
 
-func (u *aksTokenRefresher) Refresh(token string) (AuthResponse, error) {
+func (u *aksTokenRefresher) Acquire(token string) (AuthResponse, error) {
 	var authResp = AuthResponse{}
 	tokenReq := struct {
 		TenantID    string `json:"tenantID,omitempty"`
@@ -63,10 +61,6 @@ func (u *aksTokenRefresher) Refresh(token string) (AuthResponse, error) {
 		return authResp, errors.Wrap(err, "failed to create request")
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if glog.V(10) {
-		cmd, _ := http2curl.GetCurlCommand(req)
-		glog.V(10).Infoln(cmd)
-	}
 
 	resp, err := u.client.Do(req)
 	if err != nil {

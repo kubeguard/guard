@@ -18,10 +18,11 @@ package graph
 import (
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
-func TestClientCredentialTokenRefresher(t *testing.T) {
+func TestOBOTokenRefresher(t *testing.T) {
 	const (
 		inputAccessToken    = "inputAccessToken"
 		oboAccessToken      = "oboAccessToken"
@@ -30,7 +31,8 @@ func TestClientCredentialTokenRefresher(t *testing.T) {
 		scope               = "https://graph.microsoft.com/.default"
 		oboResponse         = `{"token_type":"Bearer","expires_in":3599,"access_token":"%s"}`
 		expectedContentType = "application/x-www-form-urlencoded"
-		expectedGrantType   = "client_credentials"
+		expectedTokenUse    = "on_behalf_of"
+		expectedGrantType   = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 		expectedTokneType   = "Bearer"
 	)
 
@@ -48,6 +50,12 @@ func TestClientCredentialTokenRefresher(t *testing.T) {
 			if req.FormValue("client_secret") != clientSecret {
 				t.Errorf("expected client_secret: %s, actual: %s", clientSecret, req.FormValue("client_secret"))
 			}
+			if req.FormValue("assertion") != inputAccessToken {
+				t.Errorf("expected assertion: %s, actual: %s", inputAccessToken, req.FormValue("assertion"))
+			}
+			if req.FormValue("requested_token_use") != expectedTokenUse {
+				t.Errorf("expected requested_token_use: %s, actual: %s", expectedTokenUse, req.FormValue("requested_token_use"))
+			}
 			if req.FormValue("scope") != scope {
 				t.Errorf("expected scope: %s, actual: %s", scope, req.FormValue("scope"))
 			}
@@ -59,8 +67,8 @@ func TestClientCredentialTokenRefresher(t *testing.T) {
 
 		defer stopTestServer(t, s)
 
-		r := NewClientCredentialTokenRefresher(clientID, clientSecret, s.URL, scope)
-		resp, err := r.Refresh(inputAccessToken)
+		r := NewOBOTokenRefresher(clientID, clientSecret, s.URL, scope)
+		resp, err := r.Acquire(inputAccessToken)
 		if err != nil {
 			t.Fatalf("refresh should not return error: %s", err)
 		}
@@ -87,6 +95,12 @@ func TestClientCredentialTokenRefresher(t *testing.T) {
 			if req.FormValue("client_secret") != clientSecret {
 				t.Errorf("expected client_secret: %s, actual: %s", clientSecret, req.FormValue("client_secret"))
 			}
+			if req.FormValue("assertion") != inputAccessToken {
+				t.Errorf("expected assertion: %s, actual: %s", inputAccessToken, req.FormValue("assertion"))
+			}
+			if req.FormValue("requested_token_use") != expectedTokenUse {
+				t.Errorf("expected requested_token_use: %s, actual: %s", expectedTokenUse, req.FormValue("requested_token_use"))
+			}
 			if req.FormValue("scope") != scope {
 				t.Errorf("expected scope: %s, actual: %s", scope, req.FormValue("scope"))
 			}
@@ -100,8 +114,8 @@ func TestClientCredentialTokenRefresher(t *testing.T) {
 
 		defer stopTestServer(t, s)
 
-		r := NewClientCredentialTokenRefresher(clientID, clientSecret, s.URL, scope)
-		resp, err := r.Refresh(inputAccessToken)
+		r := NewOBOTokenRefresher(clientID, clientSecret, s.URL, scope)
+		resp, err := r.Acquire(inputAccessToken)
 		if err == nil {
 			t.Error("refresh should return error")
 		}
@@ -113,4 +127,14 @@ func TestClientCredentialTokenRefresher(t *testing.T) {
 			t.Errorf("expected token type: %s should be empty", resp.TokenType)
 		}
 	})
+}
+
+func startTestServer(t *testing.T, handler func(rw http.ResponseWriter, req *http.Request)) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(handler))
+}
+
+func stopTestServer(t *testing.T, server *httptest.Server) {
+	t.Helper()
+	server.Close()
 }
