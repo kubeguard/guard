@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-func TestAKSTokenRefresher(t *testing.T) {
+func TestAKSTokenProvider(t *testing.T) {
 	const (
 		inputAccessToken    = "inputAccessToken"
 		oboAccessToken      = "oboAccessToken"
@@ -58,7 +58,7 @@ func TestAKSTokenRefresher(t *testing.T) {
 
 		defer stopTestServer(t, s)
 
-		r := NewAKSTokenRefresher(s.URL, tenantID)
+		r := NewAKSTokenProvider(s.URL, tenantID)
 		resp, err := r.Acquire(inputAccessToken)
 		if err != nil {
 			t.Fatalf("refresh should not return error: %s", err)
@@ -101,7 +101,7 @@ func TestAKSTokenRefresher(t *testing.T) {
 
 		defer stopTestServer(t, s)
 
-		r := NewAKSTokenRefresher(s.URL, tenantID)
+		r := NewAKSTokenProvider(s.URL, tenantID)
 		resp, err := r.Acquire(inputAccessToken)
 		if err == nil {
 			t.Error("refresh should return error")

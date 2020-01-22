@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-func TestClientCredentialTokenRefresher(t *testing.T) {
+func TestClientCredentialTokenProvider(t *testing.T) {
 	const (
 		inputAccessToken    = "inputAccessToken"
 		oboAccessToken      = "oboAccessToken"
@@ -59,7 +59,7 @@ func TestClientCredentialTokenRefresher(t *testing.T) {
 
 		defer stopTestServer(t, s)
 
-		r := NewClientCredentialTokenRefresher(clientID, clientSecret, s.URL, scope)
+		r := NewClientCredentialTokenProvider(clientID, clientSecret, s.URL, scope)
 		resp, err := r.Acquire(inputAccessToken)
 		if err != nil {
 			t.Fatalf("refresh should not return error: %s", err)
@@ -100,7 +100,7 @@ func TestClientCredentialTokenRefresher(t *testing.T) {
 
 		defer stopTestServer(t, s)
 
-		r := NewClientCredentialTokenRefresher(clientID, clientSecret, s.URL, scope)
+		r := NewClientCredentialTokenProvider(clientID, clientSecret, s.URL, scope)
 		resp, err := r.Acquire(inputAccessToken)
 		if err == nil {
 			t.Error("refresh should return error")

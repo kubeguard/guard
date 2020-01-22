@@ -15,8 +15,8 @@ limitations under the License.
 */
 package graph
 
-// TokenRefresher is an interface to obtain token for MS Graph api
-type TokenRefresher interface {
+// TokenProvider is an interface to obtain token for MS Graph api
+type TokenProvider interface {
 	Name() string
-	Refresh(token string) (AuthResponse, error)
+	Acquire(token string) (AuthResponse, error)
 }

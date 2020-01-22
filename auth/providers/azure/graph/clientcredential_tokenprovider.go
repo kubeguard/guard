@@ -26,7 +26,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type clientCredentialTokenRefresher struct {
+type clientCredentialTokenProvider struct {
 	name         string
 	client       *http.Client
 	clientID     string
@@ -35,11 +35,11 @@ type clientCredentialTokenRefresher struct {
 	loginURL     string
 }
 
-// NewClientCredentialTokenRefresher returns a TokenRefresher that implements OAuth client credential flow on Azure Active Directory
+// NewClientCredentialTokenProvider returns a TokenProvider that implements OAuth client credential flow on Azure Active Directory
 // https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-client-creds-grant-flow#get-a-token
-func NewClientCredentialTokenRefresher(clientID, clientSecret, loginURL, scope string) TokenProvider {
-	return &clientCredentialTokenRefresher{
-		name:         "ClientCredentialTokenRefresher",
+func NewClientCredentialTokenProvider(clientID, clientSecret, loginURL, scope string) TokenProvider {
+	return &clientCredentialTokenProvider{
+		name:         "ClientCredentialTokenProvider",
 		client:       &http.Client{},
 		clientID:     clientID,
 		clientSecret: clientSecret,
@@ -48,9 +48,9 @@ func NewClientCredentialTokenRefresher(clientID, clientSecret, loginURL, scope s
 	}
 }
 
-func (u *clientCredentialTokenRefresher) Name() string { return u.name }
+func (u *clientCredentialTokenProvider) Name() string { return u.name }
 
-func (u *clientCredentialTokenRefresher) Acquire(token string) (AuthResponse, error) {
+func (u *clientCredentialTokenProvider) Acquire(token string) (AuthResponse, error) {
 	var authResp = AuthResponse{}
 	form := url.Values{}
 	form.Set("client_id", u.clientID)

@@ -22,7 +22,7 @@ import (
 	"testing"
 )
 
-func TestOBOTokenRefresher(t *testing.T) {
+func TestOBOTokenProvider(t *testing.T) {
 	const (
 		inputAccessToken    = "inputAccessToken"
 		oboAccessToken      = "oboAccessToken"
@@ -67,7 +67,7 @@ func TestOBOTokenRefresher(t *testing.T) {
 
 		defer stopTestServer(t, s)
 
-		r := NewOBOTokenRefresher(clientID, clientSecret, s.URL, scope)
+		r := NewOBOTokenProvider(clientID, clientSecret, s.URL, scope)
 		resp, err := r.Acquire(inputAccessToken)
 		if err != nil {
 			t.Fatalf("refresh should not return error: %s", err)
@@ -114,7 +114,7 @@ func TestOBOTokenRefresher(t *testing.T) {
 
 		defer stopTestServer(t, s)
 
-		r := NewOBOTokenRefresher(clientID, clientSecret, s.URL, scope)
+		r := NewOBOTokenProvider(clientID, clientSecret, s.URL, scope)
 		resp, err := r.Acquire(inputAccessToken)
 		if err == nil {
 			t.Error("refresh should return error")

@@ -23,26 +23,26 @@ import (
 	"github.com/pkg/errors"
 )
 
-type aksTokenRefresher struct {
+type aksTokenProvider struct {
 	name     string
 	client   *http.Client
 	tokenURL string
 	tenantID string
 }
 
-// NewAKSTokenRefresher returns a TokenRefresher that implements On-Behalf-Of flow using AKS first party service
-func NewAKSTokenRefresher(tokenURL, tenantID string) TokenProvider {
-	return &aksTokenRefresher{
-		name:     "AKSTokenRefresher",
+// NewAKSTokenProvider returns a TokenProvider that implements On-Behalf-Of flow using AKS first party service
+func NewAKSTokenProvider(tokenURL, tenantID string) TokenProvider {
+	return &aksTokenProvider{
+		name:     "AKSTokenProvider",
 		client:   &http.Client{},
 		tokenURL: tokenURL,
 		tenantID: tenantID,
 	}
 }
 
-func (u *aksTokenRefresher) Name() string { return u.name }
+func (u *aksTokenProvider) Name() string { return u.name }
 
-func (u *aksTokenRefresher) Acquire(token string) (AuthResponse, error) {
+func (u *aksTokenProvider) Acquire(token string) (AuthResponse, error) {
 	var authResp = AuthResponse{}
 	tokenReq := struct {
 		TenantID    string `json:"tenantID,omitempty"`

@@ -53,7 +53,7 @@ type UserInfo struct {
 	groupsPerCall int
 	useGroupUID   bool
 
-	tokenRefresher TokenProvider
+	tokenProvider TokenProvider
 }
 
 func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
@@ -145,9 +145,9 @@ func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
 }
 
 func (u *UserInfo) RefreshToken(token string) error {
-	resp, err := u.tokenRefresher.Acquire(token)
+	resp, err := u.tokenProvider.Acquire(token)
 	if err != nil {
-		return errors.Errorf("%s: failed to refresh token: %s", u.tokenRefresher.Name(), err)
+		return errors.Errorf("%s: failed to refresh token: %s", u.tokenProvider.Name(), err)
 	}
 
 	// Set the authorization headers for future requests
@@ -207,16 +207,16 @@ func (u *UserInfo) Name() string {
 }
 
 // newUserInfo returns a UserInfo object
-func newUserInfo(tokenRefresher TokenProvider, graphURL *url.URL, useGroupUID bool) (*UserInfo, error) {
+func newUserInfo(tokenProvider TokenProvider, graphURL *url.URL, useGroupUID bool) (*UserInfo, error) {
 	u := &UserInfo{
 		client: http.DefaultClient,
 		headers: http.Header{
 			"Content-Type": []string{"application/json"},
 		},
-		apiURL:         graphURL,
-		groupsPerCall:  expandedGroupsPerCall,
-		useGroupUID:    useGroupUID,
-		tokenRefresher: tokenRefresher,
+		apiURL:        graphURL,
+		groupsPerCall: expandedGroupsPerCall,
+		useGroupUID:   useGroupUID,
+		tokenProvider: tokenProvider,
 	}
 
 	return u, nil
@@ -227,11 +227,11 @@ func New(clientID, clientSecret, tenantID string, useGroupUID bool, aadEndpoint,
 	graphEndpoint := "https://" + msgraphHost + "/"
 	graphURL, _ := url.Parse(graphEndpoint + "v1.0")
 
-	tokenRefresher := NewClientCredentialTokenRefresher(clientID, clientSecret,
+	tokenProvider := NewClientCredentialTokenProvider(clientID, clientSecret,
 		fmt.Sprintf("%s%s/oauth2/v2.0/token", aadEndpoint, tenantID),
 		fmt.Sprintf("https://%s/.default", msgraphHost))
 
-	return newUserInfo(tokenRefresher, graphURL, useGroupUID)
+	return newUserInfo(tokenProvider, graphURL, useGroupUID)
 }
 
 // NewWithOBO returns a new UserInfo object
@@ -239,11 +239,11 @@ func NewWithOBO(clientID, clientSecret, tenantID string, aadEndpoint, msgraphHos
 	graphEndpoint := "https://" + msgraphHost + "/"
 	graphURL, _ := url.Parse(graphEndpoint + "v1.0")
 
-	tokenRefresher := NewOBOTokenRefresher(clientID, clientSecret,
+	tokenProvider := NewOBOTokenProvider(clientID, clientSecret,
 		fmt.Sprintf("%s%s/oauth2/v2.0/token", aadEndpoint, tenantID),
 		fmt.Sprintf("https://%s/.default", msgraphHost))
 
-	return newUserInfo(tokenRefresher, graphURL, true)
+	return newUserInfo(tokenProvider, graphURL, true)
 }
 
 // NewWithAKS returns a new UserInfo object used in AKS
@@ -251,9 +251,9 @@ func NewWithAKS(tokenURL, tenantID, msgraphHost string) (*UserInfo, error) {
 	graphEndpoint := "https://" + msgraphHost + "/"
 	graphURL, _ := url.Parse(graphEndpoint + "v1.0")
 
-	tokenRefresher := NewAKSTokenRefresher(tokenURL, tenantID)
+	tokenProvider := NewAKSTokenProvider(tokenURL, tenantID)
 
-	return newUserInfo(tokenRefresher, graphURL, true)
+	return newUserInfo(tokenProvider, graphURL, true)
 }
 
 func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string, useGroupUID bool) (*UserInfo, error) {
@@ -270,7 +270,7 @@ func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string, useGroupUID b
 		groupsPerCall: expandedGroupsPerCall,
 		useGroupUID:   useGroupUID,
 	}
-	u.tokenRefresher = NewClientCredentialTokenRefresher(clientID, clientSecret, loginUrl, "")
+	u.tokenProvider = NewClientCredentialTokenProvider(clientID, clientSecret, loginUrl, "")
 	if err != nil {
 		return nil, err
 	}

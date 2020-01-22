@@ -26,7 +26,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type oboTokenRefresher struct {
+type oboTokenProvider struct {
 	name         string
 	client       *http.Client
 	clientID     string
@@ -35,11 +35,11 @@ type oboTokenRefresher struct {
 	loginURL     string
 }
 
-// NewOBOTokenRefresher returns a TokenRefresher that implements OAuth On-Behalf-Of flow on Azure Active Directory
+// NewOBOTokenProvider returns a TokenProvider that implements OAuth On-Behalf-Of flow on Azure Active Directory
 // https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow
-func NewOBOTokenRefresher(clientID, clientSecret, loginURL, scope string) TokenProvider {
-	return &oboTokenRefresher{
-		name:         "OBOTokenRefresher",
+func NewOBOTokenProvider(clientID, clientSecret, loginURL, scope string) TokenProvider {
+	return &oboTokenProvider{
+		name:         "OBOTokenProvider",
 		client:       &http.Client{},
 		clientID:     clientID,
 		clientSecret: clientSecret,
@@ -48,9 +48,9 @@ func NewOBOTokenRefresher(clientID, clientSecret, loginURL, scope string) TokenP
 	}
 }
 
-func (u *oboTokenRefresher) Name() string { return u.name }
+func (u *oboTokenProvider) Name() string { return u.name }
 
-func (u *oboTokenRefresher) Acquire(token string) (AuthResponse, error) {
+func (u *oboTokenProvider) Acquire(token string) (AuthResponse, error) {
 	var authResp = AuthResponse{}
 	form := url.Values{}
 	form.Set("client_id", u.clientID)
