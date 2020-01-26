@@ -111,7 +111,7 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	err = tplFrontMatter.ExecuteTemplate(f, "index", struct{ }{})
+	err = tplFrontMatter.ExecuteTemplate(f, "index", struct{}{})
 	if err != nil {
 		log.Fatalln(err)
 	}
