@@ -139,7 +139,7 @@ $ guard get installer \
 
 $ kubectl apply -f installer.yaml
 ```
-> **Note:** guard take `<application_secret>` from environment variable **AZURE_CLIENT_SECRET**.
+> **Note:** Guard takes `<application_secret>` from environment variable **AZURE_CLIENT_SECRET**.
 
 ### Configure Azure Active Directory App
 
