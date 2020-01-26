@@ -20,6 +20,10 @@ Guard installation guide can be found [here](/docs/setup/install.md). To use Azu
 $ guard init client [CommonName] -o Azure
 ```
 
+## Client Credential mode
+
+Guard can be configured with client credential mode which uses service principal with persistent access(application permission) to Microsoft Graph API. This mode is the defualt when `--azure.auth-mode` is not specified.
+
 ### Deploy guard server
 
 To generate installer YAMLs for guard server you can use the following command.
@@ -28,6 +32,7 @@ To generate installer YAMLs for guard server you can use the following command.
 # generate Kubernetes YAMLs for deploying guard server
 $ guard get installer \
     --auth-providers=azure \
+    --azure.auth-mode=client-credential \
     --azure.client-id=<application_id> \
     --azure.tenant-id=<tenant_id> \
     > installer.yaml
@@ -115,6 +120,40 @@ Configuring Azure AD as a auth provider requires an initial setup by `Global Adm
 
     ![add-guard-app](/docs/images/azure/add-guard-api.png)
 
+## On-Behalf-Of(OBO) mode
+
+Guard can be configured with on-behalf-of(OBO) mode which uses service principal with delegated access to Microsoft Graph API. This mode requires lower Graph API privilege than "client credential" mode does. The configuration is almost identital to "client credential" mode except the AAD application configurations.
+
+### Deploy guard server
+
+To generate installer YAMLs for guard server you can use the following command.
+
+```console
+# generate Kubernetes YAMLs for deploying guard server
+$ guard get installer \
+    --auth-providers=azure \
+    --azure.auth-mode=obo \
+    --azure.client-id=<application_id> \
+    --azure.tenant-id=<tenant_id> \
+    > installer.yaml
+
+$ kubectl apply -f installer.yaml
+```
+> **Note:** Guard takes `<application_secret>` from environment variable **AZURE_CLIENT_SECRET**.
+
+### Configure Azure Active Directory App
+
+You will still need to create client application and server application as you do in "client credential" mode.
+The only differences are:
+
+1. server application requires `User.Read` and `GroupMember.Read.All` **delegated permissions** to Microsoft Graph API.
+
+    ![obo-server-app](/docs/images/azure/obo-server-app.png)
+
+1. client application only needs **delegated permission** to the server application
+
+    ![obo-client-app](/docs/images/azure/obo-client-app.png)
+
 ## Configure kubectl
 
 ```console
@@ -156,3 +195,4 @@ After signing in a web browser, the token is stored in the configuration, and it
 ## Further Reading:
 - https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-integrating-applications
 - https://github.com/kubernetes/client-go/blob/master/plugin/pkg/client/auth/azure/README.md
+- https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow
