@@ -32,10 +32,13 @@ jobs:
     - name: Build
       env:
         APPSCODE_ENV: prod
+        DOCKER_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        USERNAME: 1gtm
       run: |
+        docker login --username ${USERNAME} --password ${DOCKER_TOKEN}
         make release
 
     - uses: actions/upload-artifact@master
       with:
-        name: stash-cli-binaries
+        name: guard-binaries
         path:  bin

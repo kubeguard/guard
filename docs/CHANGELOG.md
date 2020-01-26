@@ -17,9 +17,8 @@ aliases:
 
 # Change Log
 
-## [Unreleased](https://github.com/appscode/guard/tree/HEAD)
-
-[Full Changelog](https://github.com/appscode/guard/compare/0.4.0...HEAD)
+## [v0.5.0-rc.0](https://github.com/appscode/guard/tree/v0.5.0-rc.0) (2020-01-26)
+[Full Changelog](https://github.com/appscode/guard/compare/0.4.0...v0.5.0-rc.0)
 
 **Closed issues:**
 
