@@ -25,6 +25,8 @@ guard run [flags]
 
 ```
       --auth-providers strings               name of providers for which guard will provide authentication service (required), supported providers : Azure/Github/Gitlab/Google/Ldap/Token-Auth
+      --azure.aks-token-url string           url to call for AKS OBO flow
+      --azure.auth-mode string               auth mode to call graph api, valid value is either aks, obo, or client-credential (default "client-credential")
       --azure.client-id string               MS Graph application client ID to use
       --azure.client-secret string           MS Graph application client secret to use
       --azure.environment string             Azure cloud environment

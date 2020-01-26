@@ -2,7 +2,7 @@
 title: Changelog | Guard
 description: Changelog
 menu:
-  product_stash_{{< param "info.version" >}}:
+  product_guard_{{ .version }}:
     identifier: changelog-guard
     name: Changelog
     parent: welcome

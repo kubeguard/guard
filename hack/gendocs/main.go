@@ -31,27 +31,23 @@ import (
 	"github.com/spf13/cobra/doc"
 )
 
-const (
-	version = "0.4.0"
-)
-
 var (
 	tplFrontMatter = template.Must(template.New("index").Parse(`---
 title: Reference
 description: Guard CLI Reference
 menu:
-  product_guard_{{ .Version }}:
+  product_guard_{{ "{{ .version }}" }}:
     identifier: reference
     name: Reference
     weight: 1000
-menu_name: product_guard_{{ .Version }}
+menu_name: product_guard_{{ "{{ .version }}" }}
 ---
 `))
 
 	_ = template.Must(tplFrontMatter.New("cmd").Parse(`---
 title: {{ .Name }}
 menu:
-  product_guard_{{ .Version }}:
+  product_guard_{{ "{{ .version }}" }}:
     identifier: {{ .ID }}
     name: {{ .Name }}
     parent: reference
@@ -59,11 +55,11 @@ menu:
     weight: 0
 {{ end }}
 product_name: guard
-menu_name: product_guard_{{ .Version }}
+menu_name: product_guard_{{ "{{ .version }}" }}
 section_menu_id: reference
 {{- if .RootCmd }}
 aliases:
-  - /products/guard/{{ .Version }}/reference/
+  - /products/guard/{{ "{{ .version }}" }}/reference/
 {{ end }}
 ---
 `))
@@ -89,12 +85,10 @@ func main() {
 		data := struct {
 			ID      string
 			Name    string
-			Version string
 			RootCmd bool
 		}{
 			strings.Replace(base, "_", "-", -1),
 			strings.Title(strings.Replace(base, "_", " ", -1)),
-			version,
 			!strings.ContainsRune(base, '_'),
 		}
 		var buf bytes.Buffer
@@ -117,7 +111,7 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	err = tplFrontMatter.ExecuteTemplate(f, "index", struct{ Version string }{version})
+	err = tplFrontMatter.ExecuteTemplate(f, "index", struct{ }{})
 	if err != nil {
 		log.Fatalln(err)
 	}
