@@ -29,15 +29,12 @@ func getAuthServerAndUserInfo(returnCode int, body, clientID, clientSecret strin
 		w.WriteHeader(returnCode)
 		_, _ = w.Write([]byte(body))
 	}))
-	loginURL, _ := url.Parse(ts.URL)
 	u := &UserInfo{
 		client:        http.DefaultClient,
-		loginURL:      loginURL,
 		headers:       http.Header{},
-		clientID:      clientID,
-		clientSecret:  clientSecret,
 		groupsPerCall: expandedGroupsPerCall,
 	}
+	u.tokenProvider = NewClientCredentialTokenProvider(clientID, clientSecret, ts.URL, "")
 	return ts, u
 }
 
@@ -52,7 +49,7 @@ func TestLogin(t *testing.T) {
 		ts, u := getAuthServerAndUserInfo(http.StatusOK, fmt.Sprintf(validBody, validToken), "jason", "bourne")
 		defer ts.Close()
 
-		err := u.login()
+		err := u.RefreshToken("")
 		if err != nil {
 			t.Errorf("Error when trying to log in: %s", err)
 		}
@@ -68,24 +65,22 @@ func TestLogin(t *testing.T) {
 		ts, u := getAuthServerAndUserInfo(http.StatusUnauthorized, "Unauthorized", "CIA", "treadstone")
 		defer ts.Close()
 
-		err := u.login()
+		err := u.RefreshToken("")
 		if err == nil {
 			t.Error("Should have gotten error")
 		}
 	})
 
 	t.Run("request error", func(t *testing.T) {
-		badURL, _ := url.Parse("https://127.0.0.1:34567")
+		badURL := "https://127.0.0.1:34567"
 		u := &UserInfo{
 			client:        http.DefaultClient,
-			loginURL:      badURL,
 			headers:       http.Header{},
-			clientID:      "CIA",
-			clientSecret:  "outcome",
 			groupsPerCall: expandedGroupsPerCall,
 		}
+		u.tokenProvider = NewClientCredentialTokenProvider("CIA", "outcome", badURL, "")
 
-		err := u.login()
+		err := u.RefreshToken("")
 		if err == nil {
 			t.Error("Should have gotten error")
 		}
@@ -95,7 +90,7 @@ func TestLogin(t *testing.T) {
 		ts, u := getAuthServerAndUserInfo(http.StatusOK, "{bad_json", "CIA", "treadstone")
 		defer ts.Close()
 
-		err := u.login()
+		err := u.RefreshToken("")
 		if err == nil {
 			t.Error("Should have gotten error")
 		}
@@ -112,8 +107,6 @@ func getAPIServerAndUserInfo(returnCode int, body string) (*httptest.Server, *Us
 		client:        http.DefaultClient,
 		apiURL:        apiURL,
 		headers:       http.Header{},
-		clientID:      "jason",
-		clientSecret:  "bourne",
 		expires:       time.Now().Add(time.Hour),
 		groupsPerCall: expandedGroupsPerCall,
 	}
@@ -156,8 +149,6 @@ func TestGetGroupIDs(t *testing.T) {
 			client:        http.DefaultClient,
 			apiURL:        badURL,
 			headers:       http.Header{},
-			clientID:      "jason",
-			clientSecret:  "bourne",
 			expires:       time.Now().Add(time.Hour),
 			groupsPerCall: expandedGroupsPerCall,
 		}
@@ -223,8 +214,6 @@ func TestGetExpandedGroups(t *testing.T) {
 			client:        http.DefaultClient,
 			apiURL:        badURL,
 			headers:       http.Header{},
-			clientID:      "jason",
-			clientSecret:  "bourne",
 			expires:       time.Now().Add(time.Hour),
 			groupsPerCall: expandedGroupsPerCall,
 		}
@@ -282,15 +271,11 @@ func TestGetGroups(t *testing.T) {
 	}))
 	ts := httptest.NewServer(mux)
 	apiURL, _ := url.Parse(ts.URL)
-	loginURL, _ := url.Parse(ts.URL + "/login")
 
 	u := &UserInfo{
 		client:        http.DefaultClient,
 		apiURL:        apiURL,
-		loginURL:      loginURL,
 		headers:       http.Header{},
-		clientID:      "jason",
-		clientSecret:  "bourne",
 		expires:       time.Now().Add(time.Hour),
 		groupsPerCall: expandedGroupsPerCall,
 	}
@@ -307,10 +292,7 @@ func TestGetGroups(t *testing.T) {
 	uWithGroupID := &UserInfo{
 		client:        http.DefaultClient,
 		apiURL:        apiURL,
-		loginURL:      loginURL,
 		headers:       http.Header{},
-		clientID:      "jason",
-		clientSecret:  "bourne",
 		expires:       time.Now().Add(time.Hour),
 		groupsPerCall: expandedGroupsPerCall,
 		useGroupUID:   true,
@@ -361,10 +343,6 @@ func TestGetGroupsPaging(t *testing.T) {
 }`
 
 	mux := http.NewServeMux()
-	mux.Handle("/login", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(200)
-		_, _ = w.Write([]byte(`{ "token_type": "Bearer", "expires_in": 8459, "access_token": "secret"}`))
-	}))
 	mux.Handle("/users/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
 		_, _ = w.Write([]byte(validBody1))
@@ -386,15 +364,11 @@ func TestGetGroupsPaging(t *testing.T) {
 	}))
 	ts := httptest.NewServer(mux)
 	apiURL, _ := url.Parse(ts.URL)
-	loginURL, _ := url.Parse(ts.URL + "/login")
 
 	u := &UserInfo{
 		client:        http.DefaultClient,
 		apiURL:        apiURL,
-		loginURL:      loginURL,
 		headers:       http.Header{},
-		clientID:      "jason",
-		clientSecret:  "bourne",
 		expires:       time.Now().Add(time.Hour),
 		groupsPerCall: 2,
 	}

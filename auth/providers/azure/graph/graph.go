@@ -38,67 +38,22 @@ var (
 )
 
 const (
-	graphGrantType = "client_credentials" // The only grant type supported for this login flow
-	expiryDelta    = 60 * time.Second
-	getterName     = "ms-graph"
+	expiryDelta = 60 * time.Second
+	getterName  = "ms-graph"
 )
 
 // UserInfo allows you to get user data from MS Graph
 type UserInfo struct {
-	headers      http.Header
-	client       *http.Client
-	clientID     string
-	clientSecret string
-	expires      time.Time
+	headers http.Header
+	client  *http.Client
+	expires time.Time
 	// These allow us to mock out the URL for testing
-	apiURL   *url.URL
-	loginURL *url.URL
+	apiURL *url.URL
 
 	groupsPerCall int
 	useGroupUID   bool
-	defaultScope  string
-}
 
-func (u *UserInfo) login() error {
-	// Perform the login with the proper credentials
-	// Put together the form data
-	form := url.Values{}
-	form.Set("client_id", u.clientID)
-	form.Set("client_secret", u.clientSecret)
-	form.Set("scope", u.defaultScope)
-	form.Set("grant_type", graphGrantType)
-
-	req, err := http.NewRequest(http.MethodPost, u.loginURL.String(), strings.NewReader(form.Encode()))
-	if err != nil {
-		return errors.Wrap(err, "error creating login request")
-	}
-	if glog.V(10) {
-		cmd, _ := http2curl.GetCurlCommand(req)
-		glog.V(10).Infoln(cmd)
-	}
-
-	resp, err := u.client.Do(req)
-	if err != nil {
-		return errors.Wrap(err, "error performing login")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		data, _ := ioutil.ReadAll(resp.Body)
-		return errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data))
-	}
-	// Decode the response
-	var authResp = &AuthResponse{}
-	err = json.NewDecoder(resp.Body).Decode(authResp)
-	if err != nil {
-		return errors.Wrapf(err, "failed to decode response for request %s", req.URL.Path)
-	}
-
-	// Set the authorization headers for future requests
-	u.headers.Set("Authorization", fmt.Sprintf("Bearer %s", authResp.Token))
-	expIn := time.Duration(authResp.Expires) * time.Second
-	u.expires = time.Now().Add(expIn - expiryDelta)
-	return nil
+	tokenProvider TokenProvider
 }
 
 func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
@@ -189,14 +144,23 @@ func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
 	return groups, nil
 }
 
+func (u *UserInfo) RefreshToken(token string) error {
+	resp, err := u.tokenProvider.Acquire(token)
+	if err != nil {
+		return errors.Errorf("%s: failed to refresh token: %s", u.tokenProvider.Name(), err)
+	}
+
+	// Set the authorization headers for future requests
+	u.headers.Set("Authorization", fmt.Sprintf("Bearer %s", resp.Token))
+	expIn := time.Duration(resp.Expires) * time.Second
+	u.expires = time.Now().Add(expIn - expiryDelta)
+
+	return nil
+}
+
 // GetGroups gets a list of all groups that the given user principal is part of
 // Generally in federated directories the email address is the userPrincipalName
 func (u *UserInfo) GetGroups(userPrincipal string) ([]string, error) {
-	// Make sure things are logged in before continuing
-	if err := u.login(); err != nil {
-		return nil, err
-	}
-
 	// Get the group IDs for the user
 	groupIDs, err := u.getGroupIDs(userPrincipal)
 	if err != nil {
@@ -242,38 +206,57 @@ func (u *UserInfo) Name() string {
 	return getterName
 }
 
-// New returns a new UserInfo object
-func New(clientID, clientSecret, tenantName string, useGroupUID bool, aadEndpoint, msgraphHost string) (*UserInfo, error) {
-	graphEndpoint := "https://" + msgraphHost + "/"
-	baseAPIURL, _ := url.Parse(graphEndpoint + "v1.0")
-	loginURL := aadEndpoint + "%s/oauth2/v2.0/token"
-
-	parsedLogin, err := url.Parse(fmt.Sprintf(loginURL, tenantName))
-	if err != nil {
-		return nil, err
-	}
+// newUserInfo returns a UserInfo object
+func newUserInfo(tokenProvider TokenProvider, graphURL *url.URL, useGroupUID bool) (*UserInfo, error) {
 	u := &UserInfo{
 		client: http.DefaultClient,
 		headers: http.Header{
 			"Content-Type": []string{"application/json"},
 		},
-		apiURL:        baseAPIURL,
-		loginURL:      parsedLogin,
-		clientID:      clientID,
-		clientSecret:  clientSecret,
+		apiURL:        graphURL,
 		groupsPerCall: expandedGroupsPerCall,
 		useGroupUID:   useGroupUID,
-		defaultScope:  graphEndpoint + ".default", // This requests that a token use all of its default scopes
+		tokenProvider: tokenProvider,
 	}
 
 	return u, nil
 }
 
+// New returns a new UserInfo object
+func New(clientID, clientSecret, tenantID string, useGroupUID bool, aadEndpoint, msgraphHost string) (*UserInfo, error) {
+	graphEndpoint := "https://" + msgraphHost + "/"
+	graphURL, _ := url.Parse(graphEndpoint + "v1.0")
+
+	tokenProvider := NewClientCredentialTokenProvider(clientID, clientSecret,
+		fmt.Sprintf("%s%s/oauth2/v2.0/token", aadEndpoint, tenantID),
+		fmt.Sprintf("https://%s/.default", msgraphHost))
+
+	return newUserInfo(tokenProvider, graphURL, useGroupUID)
+}
+
+// NewWithOBO returns a new UserInfo object
+func NewWithOBO(clientID, clientSecret, tenantID string, aadEndpoint, msgraphHost string) (*UserInfo, error) {
+	graphEndpoint := "https://" + msgraphHost + "/"
+	graphURL, _ := url.Parse(graphEndpoint + "v1.0")
+
+	tokenProvider := NewOBOTokenProvider(clientID, clientSecret,
+		fmt.Sprintf("%s%s/oauth2/v2.0/token", aadEndpoint, tenantID),
+		fmt.Sprintf("https://%s/.default", msgraphHost))
+
+	return newUserInfo(tokenProvider, graphURL, true)
+}
+
+// NewWithAKS returns a new UserInfo object used in AKS
+func NewWithAKS(tokenURL, tenantID, msgraphHost string) (*UserInfo, error) {
+	graphEndpoint := "https://" + msgraphHost + "/"
+	graphURL, _ := url.Parse(graphEndpoint + "v1.0")
+
+	tokenProvider := NewAKSTokenProvider(tokenURL, tenantID)
+
+	return newUserInfo(tokenProvider, graphURL, true)
+}
+
 func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string, useGroupUID bool) (*UserInfo, error) {
-	parsedLogin, err := url.Parse(loginUrl)
-	if err != nil {
-		return nil, err
-	}
 	parsedApi, err := url.Parse(apiUrl)
 	if err != nil {
 		return nil, err
@@ -284,13 +267,10 @@ func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string, useGroupUID b
 			"Content-Type": []string{"application/json"},
 		},
 		apiURL:        parsedApi,
-		loginURL:      parsedLogin,
-		clientID:      clientID,
-		clientSecret:  clientSecret,
 		groupsPerCall: expandedGroupsPerCall,
 		useGroupUID:   useGroupUID,
 	}
-	err = u.login()
+	u.tokenProvider = NewClientCredentialTokenProvider(clientID, clientSecret, loginUrl, "")
 	if err != nil {
 		return nil, err
 	}
