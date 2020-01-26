@@ -59,7 +59,7 @@ var (
 				o.ClientSecret = empty
 				return o
 			},
-			errors.New("client secret must be non-empty"),
+			errors.New("azure.client-secret must be non-empty"),
 			true,
 		},
 		{

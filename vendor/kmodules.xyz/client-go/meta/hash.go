@@ -24,10 +24,8 @@ import (
 	"strconv"
 
 	"github.com/appscode/go/encoding/json/types"
-	"github.com/appscode/go/log"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/fatih/structs"
-	"github.com/golang/glog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -99,88 +97,59 @@ func DeepHashObject(hasher hash.Hash, objectToWrite interface{}) {
 	printer.Fprintf(hasher, "%#v", objectToWrite)
 }
 
-func AlreadyReconciled(o interface{}) bool {
+func MustAlreadyReconciled(o interface{}) bool {
+	reconciled, err := AlreadyReconciled(o)
+	if err != nil {
+		panic("failed to extract status.observedGeneration field due to err:" + err.Error())
+	}
+	return reconciled
+}
+
+func AlreadyReconciled(o interface{}) (bool, error) {
 	var generation, observedGeneration *types.IntHash
 	var err error
 
 	switch obj := o.(type) {
 	case *unstructured.Unstructured:
-		generation = types.IntHashForGeneration(obj.GetGeneration())
-		var val interface{}
-		val, _, err = unstructured.NestedFieldNoCopy(obj.Object, "status", "observedGeneration")
-		if err == nil {
-			observedGeneration, err = types.ParseIntHash(val)
-		}
+		generation, observedGeneration, err = extractGenerationFromUnstructured(obj)
 	case metav1.Object:
-		st := structs.New(o)
-		generation = types.IntHashForGeneration(obj.GetGeneration())
-		observedGeneration, err = types.ParseIntHash(st.Field("Status").Field("ObservedGeneration").Value())
+		generation, observedGeneration, err = extractGenerationFromObject(obj)
 	default:
 		err = fmt.Errorf("unknown object type %s", reflect.TypeOf(o).String())
 	}
 	if err != nil {
-		panic("failed to extract status.observedGeneration field due to err:" + err.Error())
+		return false, err
 	}
-	return observedGeneration.MatchGeneration(generation)
+	return observedGeneration.MatchGeneration(generation), nil
 }
 
-// Deprecated, should not be used after we drop support for Kubernetes 1.10. Use AlreadyReconciled
-func AlreadyObserved(o interface{}, enableStatusSubresource bool) bool {
-	if !enableStatusSubresource {
-		return false
-	}
+func extractGenerationFromUnstructured(obj *unstructured.Unstructured) (*types.IntHash, *types.IntHash, error) {
+	generation := types.IntHashForGeneration(obj.GetGeneration())
 
-	obj := o.(metav1.Object)
-	st := structs.New(o)
-
-	cur := types.NewIntHash(obj.GetGeneration(), GenerationHash(obj))
-	observed, err := types.ParseIntHash(st.Field("Status").Field("ObservedGeneration").Value())
+	val, found, err := unstructured.NestedFieldNoCopy(obj.Object, "status", "observedGeneration")
 	if err != nil {
-		panic(err)
+		return nil, nil, err
+	} else if !found {
+		return nil, nil, fmt.Errorf("status.observedGeneration is missing")
 	}
-	return observed.Equal(cur)
+	observedGeneration, err := types.ParseIntHash(val)
+
+	return generation, observedGeneration, err
 }
 
-// Deprecated, should not be used after we drop support for Kubernetes 1.10. Use AlreadyReconciled
-func AlreadyObserved2(old, nu interface{}, enableStatusSubresource bool) bool {
-	if old == nil {
-		return nu == nil
-	}
-	if nu == nil { // && old != nil
-		return false
-	}
-	if old == nu {
-		return true
-	}
+func extractGenerationFromObject(obj metav1.Object) (*types.IntHash, *types.IntHash, error) {
+	generation := types.IntHashForGeneration(obj.GetGeneration())
 
-	oldObj := old.(metav1.Object)
-	nuObj := nu.(metav1.Object)
-
-	oldStruct := structs.New(old)
-	nuStruct := structs.New(nu)
-
-	var match bool
-
-	if enableStatusSubresource {
-		observed, err := types.ParseIntHash(nuStruct.Field("Status").Field("ObservedGeneration").Value())
-		if err != nil {
-			panic(err)
-		}
-		gen := types.NewIntHash(nuObj.GetGeneration(), GenerationHash(nuObj))
-		match = gen.Equal(observed)
-	} else {
-		match = Equal(oldStruct.Field("Spec").Value(), nuStruct.Field("Spec").Value())
-		if match {
-			match = reflect.DeepEqual(oldObj.GetLabels(), nuObj.GetLabels())
-		}
-		if match {
-			match = EqualAnnotation(oldObj.GetAnnotations(), nuObj.GetAnnotations())
-		}
+	st := structs.New(obj)
+	fieldStatus, found := st.FieldOk("Status")
+	if !found {
+		return nil, nil, fmt.Errorf("status is missing")
 	}
-
-	if !match && bool(glog.V(log.LevelDebug)) {
-		diff := Diff(old, nu)
-		glog.V(log.LevelDebug).Infof("%s %s/%s has changed. Diff: %s", GetKind(old), oldObj.GetNamespace(), oldObj.GetName(), diff)
+	fieldObsGen, found := fieldStatus.FieldOk("ObservedGeneration")
+	if !found {
+		return nil, nil, fmt.Errorf("status.observedGeneration is missing")
 	}
-	return match
+	observedGeneration, err := types.ParseIntHash(fieldObsGen.Value())
+
+	return generation, observedGeneration, err
 }
