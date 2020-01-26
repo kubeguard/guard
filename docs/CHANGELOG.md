@@ -17,6 +17,34 @@ aliases:
 
 # Change Log
 
+## [Unreleased](https://github.com/appscode/guard/tree/HEAD)
+
+[Full Changelog](https://github.com/appscode/guard/compare/0.4.0...HEAD)
+
+**Closed issues:**
+
+- Use github.com/glauth/glauth LDAP server for testing [\#220](https://github.com/appscode/guard/issues/220)
+- Unable to build docker image from src [\#217](https://github.com/appscode/guard/issues/217)
+
+**Merged pull requests:**
+
+- Update dependencies [\#240](https://github.com/appscode/guard/pull/240) ([tamalsaha](https://github.com/tamalsaha))
+- Update azure doc with new feature [\#239](https://github.com/appscode/guard/pull/239) ([weinong](https://github.com/weinong))
+- Implement On-Behalf-Of \(OBO\) flow [\#236](https://github.com/appscode/guard/pull/236) ([weinong](https://github.com/weinong))
+- Update client-go to kubernetes-1.16.3 [\#234](https://github.com/appscode/guard/pull/234) ([tamalsaha](https://github.com/tamalsaha))
+- fix small errors [\#233](https://github.com/appscode/guard/pull/233) ([torubylist](https://github.com/torubylist))
+- Fix Linter Issues [\#231](https://github.com/appscode/guard/pull/231) ([faem](https://github.com/faem))
+- Various Makefile improvements [\#230](https://github.com/appscode/guard/pull/230) ([tamalsaha](https://github.com/tamalsaha))
+- Templatize front matter [\#229](https://github.com/appscode/guard/pull/229) ([tamalsaha](https://github.com/tamalsaha))
+- migrate from apps/v1beta1 to apps/v1 [\#225](https://github.com/appscode/guard/pull/225) ([qw1mb0](https://github.com/qw1mb0))
+- Fix LDAP test [\#223](https://github.com/appscode/guard/pull/223) ([nightfury1204](https://github.com/nightfury1204))
+- Add Makefile [\#222](https://github.com/appscode/guard/pull/222) ([tamalsaha](https://github.com/tamalsaha))
+- Use absolute path as aliases for reference docs [\#221](https://github.com/appscode/guard/pull/221) ([tamalsaha](https://github.com/tamalsaha))
+- Update to k8s 1.14.0 client libraries using go.mod [\#219](https://github.com/appscode/guard/pull/219) ([tamalsaha](https://github.com/tamalsaha))
+- Update Kubernetes client libraries to 1.13.5 [\#218](https://github.com/appscode/guard/pull/218) ([tamalsaha](https://github.com/tamalsaha))
+- fix typo [\#216](https://github.com/appscode/guard/pull/216) ([zabio3](https://github.com/zabio3))
+- typo in error command the it should be -o [\#214](https://github.com/appscode/guard/pull/214) ([kanolato](https://github.com/kanolato))
+
 ## [0.4.0](https://github.com/appscode/guard/tree/0.4.0) (2019-02-04)
 [Full Changelog](https://github.com/appscode/guard/compare/0.3.0...0.4.0)
 
@@ -27,6 +55,7 @@ aliases:
 
 **Merged pull requests:**
 
+- Prepare docs for 0.4.0 release [\#213](https://github.com/appscode/guard/pull/213) ([tamalsaha](https://github.com/tamalsaha))
 - Document how to use Azure sovereign cloud instances [\#212](https://github.com/appscode/guard/pull/212) ([tamalsaha](https://github.com/tamalsaha))
 - Revendor dependencies [\#211](https://github.com/appscode/guard/pull/211) ([tamalsaha](https://github.com/tamalsaha))
 - Add a little bit more guidance for users. [\#210](https://github.com/appscode/guard/pull/210) ([coderanger](https://github.com/coderanger))
@@ -257,7 +286,7 @@ aliases:
 - Use clientcmd apis to generate webhook config [\#46](https://github.com/appscode/guard/pull/46) ([tamalsaha](https://github.com/tamalsaha))
 - Use client scheme to convert to YAML [\#45](https://github.com/appscode/guard/pull/45) ([tamalsaha](https://github.com/tamalsaha))
 - Use cert store from kutil [\#44](https://github.com/appscode/guard/pull/44) ([tamalsaha](https://github.com/tamalsaha))
-- Add kops documentation [\#43](https://github.com/appscode/guard/pull/43) ([tsupertramp](https://github.com/tsupertramp))
+- Add kops documentation [\#43](https://github.com/appscode/guard/pull/43) ([thomaspeitz](https://github.com/thomaspeitz))
 - Format error messages [\#42](https://github.com/appscode/guard/pull/42) ([tamalsaha](https://github.com/tamalsaha))
 - Generate RBAC roles in installer [\#41](https://github.com/appscode/guard/pull/41) ([tamalsaha](https://github.com/tamalsaha))
 - Simplify ClientID generation for analytics [\#40](https://github.com/appscode/guard/pull/40) ([tamalsaha](https://github.com/tamalsaha))
