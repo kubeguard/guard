@@ -45,8 +45,8 @@ func NewCmdInitClient() *cobra.Command {
 			org = strings.ToLower(org)
 			if len(args) == 0 {
 				switch org {
-				// for gitlab/azure/ldap client name not required
-				case "gitlab", "azure", "ldap":
+				// for gitlab/azure/ldap/firebase client name not required
+				case "gitlab", "azure", "ldap", "firebase":
 					args = []string{org}
 				}
 			}

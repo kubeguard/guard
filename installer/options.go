@@ -19,6 +19,7 @@ import (
 	"github.com/appscode/guard/auth"
 	"github.com/appscode/guard/auth/providers"
 	"github.com/appscode/guard/auth/providers/azure"
+	"github.com/appscode/guard/auth/providers/firebase"
 	"github.com/appscode/guard/auth/providers/github"
 	"github.com/appscode/guard/auth/providers/gitlab"
 	"github.com/appscode/guard/auth/providers/google"
@@ -44,6 +45,7 @@ type Options struct {
 	LDAP         ldap.Options
 	Github       github.Options
 	Gitlab       gitlab.Options
+	Firebase     firebase.Options
 }
 
 func New() Options {
@@ -59,6 +61,7 @@ func New() Options {
 		LDAP:            ldap.NewOptions(),
 		Github:          github.NewOptions(),
 		Gitlab:          gitlab.NewOptions(),
+		Firebase:        firebase.NewOptions(),
 	}
 }
 
@@ -76,6 +79,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	o.LDAP.AddFlags(fs)
 	o.Github.AddFlags(fs)
 	o.Gitlab.AddFlags(fs)
+	o.Firebase.AddFlags(fs)
 }
 
 func (o *Options) Validate() []error {
@@ -99,6 +103,9 @@ func (o *Options) Validate() []error {
 	}
 	if o.AuthProvider.Has(gitlab.OrgType) {
 		errs = append(errs, o.Gitlab.Validate()...)
+	}
+	if o.AuthProvider.Has(firebase.OrgType) {
+		errs = append(errs, o.Firebase.Validate()...)
 	}
 
 	return errs

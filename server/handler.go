@@ -21,6 +21,7 @@ import (
 
 	"github.com/appscode/guard/auth"
 	"github.com/appscode/guard/auth/providers/azure"
+	"github.com/appscode/guard/auth/providers/firebase"
 	"github.com/appscode/guard/auth/providers/github"
 	"github.com/appscode/guard/auth/providers/gitlab"
 	"github.com/appscode/guard/auth/providers/google"
@@ -87,6 +88,8 @@ func (s Server) getAuthProviderClient(org, commonName string) (auth.Interface, e
 		return azure.New(s.RecommendedOptions.Azure)
 	case ldap.OrgType:
 		return ldap.New(s.RecommendedOptions.LDAP), nil
+	case firebase.OrgType:
+		return firebase.New(s.RecommendedOptions.Firebase)
 	}
 
 	return nil, errors.Errorf("Client is using unknown organization %s", org)
