@@ -43,15 +43,15 @@ const (
 	username                       = "nahid"
 	objectID                       = "abc-123d4"
 	loginResp                      = `{ "token_type": "Bearer", "expires_in": 8459, "access_token": "%v"}`
-	accessToken                    = `{ "iss" : "%v", "upn": "nahid", "groups": [ "1", "2", "3"] }`
-	accessTokenWithOid             = `{ "iss" : "%v", "oid": "abc-123d4", "groups": [ "1", "2", "3"] }`
-	accessTokenWithUpnAndOid       = `{ "iss" : "%v", "upn": "nahid", "oid": "abc-123d4", "groups": [ "1", "2", "3"] }`
-	emptyUpn                       = `{ "iss" : "%v",	"groups": [ "1", "2", "3"] }`
-	emptyGroup                     = `{	"iss" : "%v", "upn": "nahid" }`
-	emptyGroupOid                  = `{	"iss" : "%v","oid": "abc-123d4" }`
-	accessTokenWithOverageClaim    = `{ "iss" : "%v", "upn": "nahid", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
-	accessTokenWithNoGroups        = `{ "iss" : "%v", "oid": "abc-123d4" }`
-	accessTokenWithoutOverageClaim = `{ "iss" : "%v", "upn": "nahid", "_claim_names": {"foo": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
+	accessToken                    = `{ "aud": "client_id", "iss" : "%v", "upn": "nahid", "groups": [ "1", "2", "3"] }`
+	accessTokenWithOid             = `{ "aud": "client_id","iss" : "%v", "oid": "abc-123d4", "groups": [ "1", "2", "3"] }`
+	accessTokenWithUpnAndOid       = `{ "aud": "client_id","iss" : "%v", "upn": "nahid", "oid": "abc-123d4", "groups": [ "1", "2", "3"] }`
+	emptyUpn                       = `{ "aud": "client_id","iss" : "%v",	"groups": [ "1", "2", "3"] }`
+	emptyGroup                     = `{	"aud": "client_id","iss" : "%v", "upn": "nahid" }`
+	emptyGroupOid                  = `{	"aud": "client_id","iss" : "%v","oid": "abc-123d4" }`
+	accessTokenWithOverageClaim    = `{ "aud": "client_id", "iss" : "%v", "upn": "nahid", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
+	accessTokenWithNoGroups        = `{ "aud": "client_id", "iss" : "%v", "oid": "abc-123d4" }`
+	accessTokenWithoutOverageClaim = `{ "aud": "client_id", "iss" : "%v", "upn": "nahid", "_claim_names": {"foo": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
 	badToken                       = "bad_token"
 )
 
@@ -97,16 +97,17 @@ func newRSAKey() (*signingKey, error) {
 	return &signingKey{"", priv, priv.Public(), jose.RS256}, nil
 }
 
-func clientSetup(clientID, clientSecret, tenantID, serverUrl string, useGroupUID bool) (*Authenticator, error) {
+func clientSetup(clientID, clientSecret, tenantID, serverUrl string, useGroupUID, verifyClientID bool) (*Authenticator, error) {
 	c := &Authenticator{
 		Options: Options{
-			Environment:  "",
-			ClientID:     clientID,
-			ClientSecret: clientSecret,
-			TenantID:     tenantID,
-			UseGroupUID:  useGroupUID,
-			AuthMode:     ClientCredentialAuthMode,
-			AKSTokenURL:  "",
+			Environment:    "",
+			ClientID:       clientID,
+			ClientSecret:   clientSecret,
+			TenantID:       tenantID,
+			UseGroupUID:    useGroupUID,
+			AuthMode:       ClientCredentialAuthMode,
+			AKSTokenURL:    "",
+			VerifyClientID: verifyClientID,
 		},
 		ctx: context.Background(),
 	}
@@ -117,8 +118,9 @@ func clientSetup(clientID, clientSecret, tenantID, serverUrl string, useGroupUID
 	}
 
 	c.verifier = p.Verifier(&oidc.Config{
-		SkipClientIDCheck: true,
+		SkipClientIDCheck: !verifyClientID,
 		SkipExpiryCheck:   true,
+		ClientID:          clientID,
 	})
 
 	c.graphClient, err = graph.TestUserInfo(clientID, clientSecret, serverUrl+"/login", serverUrl+"/api", useGroupUID)
@@ -255,7 +257,7 @@ func assertUserInfo(t *testing.T, info *authv1.UserInfo, groupSize int, useGroup
 	}
 }
 
-func getServerAndClient(t *testing.T, signKey *signingKey, loginResp string, groupSize int, useGroupUID bool, groupStatus ...int) (*httptest.Server, *Authenticator) {
+func getServerAndClient(t *testing.T, signKey *signingKey, loginResp string, groupSize int, useGroupUID, verifyClientID bool, groupStatus ...int) (*httptest.Server, *Authenticator) {
 	jwkSet := signKey.jwk()
 	jwkResp, err := jsonLib.Marshal(jwkSet)
 	if err != nil {
@@ -270,7 +272,7 @@ func getServerAndClient(t *testing.T, signKey *signingKey, loginResp string, gro
 		t.Fatalf("Error when creating server, reason: %v", err)
 	}
 
-	client, err := clientSetup("client_id", "client_secret", "tenant_id", srv.URL, useGroupUID)
+	client, err := clientSetup("client_id", "client_secret", "tenant_id", srv.URL, useGroupUID, verifyClientID)
 	if err != nil {
 		t.Fatalf("Error when creatidng azure client. reason : %v", err)
 	}
@@ -305,7 +307,7 @@ func TestCheckAzureAuthenticationSuccess(t *testing.T) {
 		// authenticated : true
 		t.Run(fmt.Sprintf("authentication successful, group size %v", test.groupSize), func(t *testing.T) {
 
-			srv, client := getServerAndClient(t, signKey, loginResp, test.groupSize, false)
+			srv, client := getServerAndClient(t, signKey, loginResp, test.groupSize, false, false)
 			defer srv.Close()
 
 			token, err := signKey.sign([]byte(fmt.Sprintf(test.token, srv.URL)))
@@ -323,7 +325,7 @@ func TestCheckAzureAuthenticationSuccess(t *testing.T) {
 		// authenticated : true
 		t.Run(fmt.Sprintf("authentication (with group IDs) successful, group size %v", test.groupSize), func(t *testing.T) {
 
-			srv, client := getServerAndClient(t, signKey, loginResp, test.groupSize, true)
+			srv, client := getServerAndClient(t, signKey, loginResp, test.groupSize, true, false)
 			defer srv.Close()
 
 			token, err := signKey.sign([]byte(fmt.Sprintf(test.token, srv.URL)))
@@ -353,24 +355,27 @@ func TestCheckAzureAuthenticationWithOverageCheckOption(t *testing.T) {
 		{0, accessTokenWithNoGroups},
 		{0, accessTokenWithoutOverageClaim},
 	}
+	verifyClientIDs := []bool{true, false}
 
-	for _, test := range datasetForSuccess {
-		t.Run(fmt.Sprintf("authentication successful, group size %v", test.groupSize), func(t *testing.T) {
+	for _, verifyClientID := range verifyClientIDs {
+		for _, test := range datasetForSuccess {
+			t.Run(fmt.Sprintf("authentication successful, verifyClientID: %t, group size %v", verifyClientID, test.groupSize), func(t *testing.T) {
 
-			srv, client := getServerAndClient(t, signKey, loginResp, test.groupSize, true)
-			client.Options.ResolveGroupMembershipOnlyOnOverageClaim = true
-			client.Options.UseGroupUID = true
-			defer srv.Close()
+				srv, client := getServerAndClient(t, signKey, loginResp, test.groupSize, true, verifyClientID)
+				client.Options.ResolveGroupMembershipOnlyOnOverageClaim = true
+				client.Options.UseGroupUID = true
+				defer srv.Close()
 
-			token, err := signKey.sign([]byte(fmt.Sprintf(test.token, srv.URL)))
-			if err != nil {
-				t.Fatalf("Error when signing token. reason: %v", err)
-			}
+				token, err := signKey.sign([]byte(fmt.Sprintf(test.token, srv.URL)))
+				if err != nil {
+					t.Fatalf("Error when signing token. reason: %v", err)
+				}
 
-			resp, err := client.Check(token)
-			assert.Nil(t, err)
-			assertUserInfo(t, resp, test.groupSize, client.UseGroupUID)
-		})
+				resp, err := client.Check(token)
+				assert.Nil(t, err)
+				assertUserInfo(t, resp, test.groupSize, client.UseGroupUID)
+			})
+		}
 	}
 }
 
@@ -410,7 +415,7 @@ func TestCheckAzureAuthenticationFailed(t *testing.T) {
 	for _, test := range dataset {
 		t.Run(test.testName, func(t *testing.T) {
 			t.Log(test)
-			srv, client := getServerAndClient(t, signKey, loginResp, 5, false, test.groupRespStatus...)
+			srv, client := getServerAndClient(t, signKey, loginResp, 5, false, false, test.groupRespStatus...)
 			defer srv.Close()
 
 			var token string

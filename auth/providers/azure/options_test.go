@@ -63,13 +63,14 @@ var (
 			true,
 		},
 		{
-			"azure.client-id is empty",
+			"azure.client-id is empty when verify-clientID is true",
 			func(o Options) Options {
 				o.ClientID = empty
+				o.VerifyClientID = true
 				return o
 			},
-			errors.New("azure.client-id must be non-empty"),
-			true,
+			errors.New("azure.client-id must be non-empty when azure.verify-clientID is set"),
+			false,
 		},
 		{
 			"azure.tenant-id is empty",
