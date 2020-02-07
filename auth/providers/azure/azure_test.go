@@ -40,16 +40,19 @@ import (
 var jsonLib = jsoniter.ConfigCompatibleWithStandardLibrary
 
 const (
-	username                 = "nahid"
-	objectID                 = "abc-123d4"
-	loginResp                = `{ "token_type": "Bearer", "expires_in": 8459, "access_token": "%v"}`
-	accessToken              = `{ "iss" : "%v", "upn": "nahid", "groups": [ "1", "2", "3"] }`
-	accessTokenWithOid       = `{ "iss" : "%v", "oid": "abc-123d4", "groups": [ "1", "2", "3"] }`
-	accessTokenWithUpnAndOid = `{ "iss" : "%v", "upn": "nahid", "oid": "abc-123d4", "groups": [ "1", "2", "3"] }`
-	emptyUpn                 = `{ "iss" : "%v",	"groups": [ "1", "2", "3"] }`
-	emptyGroup               = `{	"iss" : "%v", "upn": "nahid" }`
-	emptyGroupOid            = `{	"iss" : "%v","oid": "abc-123d4" }`
-	badToken                 = "bad_token"
+	username                       = "nahid"
+	objectID                       = "abc-123d4"
+	loginResp                      = `{ "token_type": "Bearer", "expires_in": 8459, "access_token": "%v"}`
+	accessToken                    = `{ "iss" : "%v", "upn": "nahid", "groups": [ "1", "2", "3"] }`
+	accessTokenWithOid             = `{ "iss" : "%v", "oid": "abc-123d4", "groups": [ "1", "2", "3"] }`
+	accessTokenWithUpnAndOid       = `{ "iss" : "%v", "upn": "nahid", "oid": "abc-123d4", "groups": [ "1", "2", "3"] }`
+	emptyUpn                       = `{ "iss" : "%v",	"groups": [ "1", "2", "3"] }`
+	emptyGroup                     = `{	"iss" : "%v", "upn": "nahid" }`
+	emptyGroupOid                  = `{	"iss" : "%v","oid": "abc-123d4" }`
+	accessTokenWithOverageClaim    = `{ "iss" : "%v", "upn": "nahid", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
+	accessTokenWithNoGroups        = `{ "iss" : "%v", "oid": "abc-123d4" }`
+	accessTokenWithoutOverageClaim = `{ "iss" : "%v", "upn": "nahid", "_claim_names": {"foo": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
+	badToken                       = "bad_token"
 )
 
 type signingKey struct {
@@ -96,8 +99,16 @@ func newRSAKey() (*signingKey, error) {
 
 func clientSetup(clientID, clientSecret, tenantID, serverUrl string, useGroupUID bool) (*Authenticator, error) {
 	c := &Authenticator{
-		Options: Options{"", clientID, clientSecret, tenantID, useGroupUID, ClientCredentialAuthMode, ""},
-		ctx:     context.Background(),
+		Options: Options{
+			Environment:  "",
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+			TenantID:     tenantID,
+			UseGroupUID:  useGroupUID,
+			AuthMode:     ClientCredentialAuthMode,
+			AKSTokenURL:  "",
+		},
+		ctx: context.Background(),
 	}
 
 	p, err := oidc.NewProvider(c.ctx, serverUrl)
@@ -313,6 +324,42 @@ func TestCheckAzureAuthenticationSuccess(t *testing.T) {
 		t.Run(fmt.Sprintf("authentication (with group IDs) successful, group size %v", test.groupSize), func(t *testing.T) {
 
 			srv, client := getServerAndClient(t, signKey, loginResp, test.groupSize, true)
+			defer srv.Close()
+
+			token, err := signKey.sign([]byte(fmt.Sprintf(test.token, srv.URL)))
+			if err != nil {
+				t.Fatalf("Error when signing token. reason: %v", err)
+			}
+
+			resp, err := client.Check(token)
+			assert.Nil(t, err)
+			assertUserInfo(t, resp, test.groupSize, client.UseGroupUID)
+		})
+	}
+}
+
+func TestCheckAzureAuthenticationWithOverageCheckOption(t *testing.T) {
+	signKey, err := newRSAKey()
+	if err != nil {
+		t.Fatalf("Error when creating signing key. reason : %v", err)
+	}
+
+	datasetForSuccess := []struct {
+		groupSize int
+		token     string
+	}{
+		{3, accessToken},
+		{3, accessTokenWithOverageClaim},
+		{0, accessTokenWithNoGroups},
+		{0, accessTokenWithoutOverageClaim},
+	}
+
+	for _, test := range datasetForSuccess {
+		t.Run(fmt.Sprintf("authentication successful, group size %v", test.groupSize), func(t *testing.T) {
+
+			srv, client := getServerAndClient(t, signKey, loginResp, test.groupSize, true)
+			client.Options.ResolveGroupMembershipOnlyOnOverageClaim = true
+			client.Options.UseGroupUID = true
 			defer srv.Close()
 
 			token, err := signKey.sign([]byte(fmt.Sprintf(test.token, srv.URL)))

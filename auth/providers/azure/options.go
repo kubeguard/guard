@@ -37,13 +37,14 @@ const (
 )
 
 type Options struct {
-	Environment  string
-	ClientID     string
-	ClientSecret string
-	TenantID     string
-	UseGroupUID  bool
-	AuthMode     string
-	AKSTokenURL  string
+	Environment                              string
+	ClientID                                 string
+	ClientSecret                             string
+	TenantID                                 string
+	UseGroupUID                              bool
+	AuthMode                                 string
+	AKSTokenURL                              string
+	ResolveGroupMembershipOnlyOnOverageClaim bool
 }
 
 func NewOptions() Options {
@@ -61,6 +62,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.UseGroupUID, "azure.use-group-uid", o.UseGroupUID, "Use group UID for authentication instead of group display name")
 	fs.StringVar(&o.AuthMode, "azure.auth-mode", "client-credential", "auth mode to call graph api, valid value is either aks, obo, or client-credential")
 	fs.StringVar(&o.AKSTokenURL, "azure.aks-token-url", "", "url to call for AKS OBO flow")
+	fs.BoolVar(&o.ResolveGroupMembershipOnlyOnOverageClaim, "azure.graph-call-on-overage-claim", o.ResolveGroupMembershipOnlyOnOverageClaim, "set to true to resolve group membership only when overage claim is present. setting to false will always call graph api to resolve group membership")
 }
 
 func (o *Options) Validate() []error {
@@ -165,6 +167,8 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 	}
 
 	args = append(args, fmt.Sprintf("--azure.use-group-uid=%t", o.UseGroupUID))
+
+	args = append(args, fmt.Sprintf("--azure.graph-call-on-overage-claim=%t", o.ResolveGroupMembershipOnlyOnOverageClaim))
 
 	container.Args = args
 	d.Spec.Template.Spec.Containers[0] = container

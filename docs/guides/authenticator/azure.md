@@ -192,7 +192,17 @@ The access token is acquired when first `kubectl` command is executed
 
 After signing in a web browser, the token is stored in the configuration, and it will be reused when executing next commands.
 
+### Skip Graph API call when overage indicator is not present
+
+When the client is configured to emit `groups` claim, it is possible to skip Graph api call when there is no overage indicator.
+To enable skipping the graph api call, add below option to guard
+
+```console
+    --azure.graph-call-on-overage-claim
+```
+
 ## Further Reading:
 - https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-integrating-applications
 - https://github.com/kubernetes/client-go/blob/master/plugin/pkg/client/auth/azure/README.md
 - https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow
+- https://docs.microsoft.com/en-us/azure/active-directory/develop/access-tokens#payload-claims
