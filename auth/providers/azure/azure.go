@@ -160,6 +160,16 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	if s.Options.ResolveGroupMembershipOnlyOnOverageClaim {
+		groups, skipGraphAPI, err := getGroupsAndCheckOverage(claims)
+		if err != nil {
+			return nil, fmt.Errorf("error in getGroupsAndCheckOverage: %s", err)
+		}
+		if skipGraphAPI {
+			resp.Groups = groups
+			return resp, nil
+		}
+	}
 	if err := s.graphClient.RefreshToken(token); err != nil {
 		return nil, err
 	}
@@ -168,6 +178,85 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 		return nil, errors.Wrap(err, "failed to get groups")
 	}
 	return resp, nil
+}
+
+// getGroupsAndCheckOverage will extract groups when groups claim is already present
+// it also checks overage indicator and returns
+// true: groups claim is present or overage indicator is not present. no need to call graph api
+// false: there is a need to call graph api to get group membership
+//
+// overage indicator:
+// https://docs.microsoft.com/en-us/azure/active-directory/develop/access-tokens#payload-claims
+//
+// ...
+// "_claim_names": {
+//   "groups": "src1"
+// },
+// "_claim_sources": {
+//   "src1": {
+//     "endpoint": "[Graph Url to get this user's group membership from]"
+//   }
+// },
+// ...
+func getGroupsAndCheckOverage(claims claims) ([]string, bool, error) {
+	if c, ok := claims["groups"]; ok {
+		var groups []string
+		if err := marshalGenericTo(c, &groups); err != nil {
+			return nil, true, err
+		}
+		return groups, true, nil
+	}
+	// we will short circuit when overage indicator is not present
+	claimNames, ok := claims["_claim_names"]
+	if !ok {
+		return nil, true, nil
+	}
+	claimToSource := map[string]string{}
+	if err := marshalGenericTo(claimNames, &claimToSource); err != nil {
+		return nil, true, err
+	}
+	claimSources, ok := claims["_claim_sources"]
+	if !ok {
+		// it is not expected to have _claim_names but no _claim_sources
+		// it will never get to this point because idToken.Verify()
+		// already maps claim sources to claim names.
+		// however, there is no interface to expose these resolved distributed claims
+		return nil, true, errors.New("no _claim_sources is found")
+	}
+	var sources map[string]struct {
+		Endpoint string `json:"endpoint"`
+	}
+	if err := marshalGenericTo(claimSources, &sources); err != nil {
+		return nil, true, err
+	}
+
+	src, ok := claimToSource["groups"]
+	if !ok {
+		// no overage indicator present
+		return nil, true, nil
+	}
+	ep, ok := sources[src]
+	if !ok {
+		// it will never get to this point because idToken.Verify()
+		// already maps claim sources to claim names.
+		// however, there is no interface to expose these resolved distributed claims
+		return nil, true, fmt.Errorf("%s is missing in _claim_sources", src)
+	}
+	if ep.Endpoint == "" {
+		// may not be a distributed token
+		return nil, true, nil
+	}
+
+	// return true to proceed to call graph api
+	return nil, false, nil
+}
+
+func marshalGenericTo(src interface{}, dst interface{}) error {
+	b, err := json.Marshal(src)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, dst)
 }
 
 // GetClaims returns a Claims object
