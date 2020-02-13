@@ -45,6 +45,7 @@ type Options struct {
 	AuthMode                                 string
 	AKSTokenURL                              string
 	ResolveGroupMembershipOnlyOnOverageClaim bool
+	VerifyClientID                           bool
 }
 
 func NewOptions() Options {
@@ -63,6 +64,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.AuthMode, "azure.auth-mode", "client-credential", "auth mode to call graph api, valid value is either aks, obo, or client-credential")
 	fs.StringVar(&o.AKSTokenURL, "azure.aks-token-url", "", "url to call for AKS OBO flow")
 	fs.BoolVar(&o.ResolveGroupMembershipOnlyOnOverageClaim, "azure.graph-call-on-overage-claim", o.ResolveGroupMembershipOnlyOnOverageClaim, "set to true to resolve group membership only when overage claim is present. setting to false will always call graph api to resolve group membership")
+	fs.BoolVar(&o.VerifyClientID, "azure.verify-clientID", o.VerifyClientID, "set to true to validate token's audience claim matches clientID")
 }
 
 func (o *Options) Validate() []error {
@@ -80,15 +82,15 @@ func (o *Options) Validate() []error {
 		if o.ClientSecret == "" {
 			errs = append(errs, errors.New("azure.client-secret must be non-empty"))
 		}
-		if o.ClientID == "" {
-			errs = append(errs, errors.New("azure.client-id must be non-empty"))
-		}
 	}
 	if o.AuthMode == AKSAuthMode && o.AKSTokenURL == "" {
 		errs = append(errs, errors.New("azure.aks-token-url must be non-empty"))
 	}
 	if o.TenantID == "" {
 		errs = append(errs, errors.New("azure.tenant-id must be non-empty"))
+	}
+	if o.VerifyClientID && o.ClientID == "" {
+		errs = append(errs, errors.New("azure.client-id must be non-empty when azure.verify-clientID is set"))
 	}
 	return errs
 }
@@ -169,6 +171,8 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 	args = append(args, fmt.Sprintf("--azure.use-group-uid=%t", o.UseGroupUID))
 
 	args = append(args, fmt.Sprintf("--azure.graph-call-on-overage-claim=%t", o.ResolveGroupMembershipOnlyOnOverageClaim))
+
+	args = append(args, fmt.Sprintf("--azure.verify-clientID=%t", o.VerifyClientID))
 
 	container.Args = args
 	d.Spec.Template.Spec.Containers[0] = container

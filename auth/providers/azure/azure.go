@@ -91,7 +91,7 @@ func New(opts Options) (auth.Interface, error) {
 		return nil, errors.Wrap(err, "failed to create provider for azure")
 	}
 
-	c.verifier = provider.Verifier(&oidc.Config{SkipClientIDCheck: true})
+	c.verifier = provider.Verifier(&oidc.Config{SkipClientIDCheck: !opts.VerifyClientID, ClientID: opts.ClientID})
 
 	switch opts.AuthMode {
 	case ClientCredentialAuthMode:

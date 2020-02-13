@@ -35,6 +35,7 @@ $ guard get installer \
     --azure.auth-mode=client-credential \
     --azure.client-id=<application_id> \
     --azure.tenant-id=<tenant_id> \
+    --azure.verify-clientID \
     > installer.yaml
 
 $ kubectl apply -f installer.yaml
@@ -57,6 +58,7 @@ $ guard get installer \
     --azure.environment=AzureChinaCloud \
     --azure.client-id=<application_id> \
     --azure.tenant-id=<tenant_id> \
+    --azure.verify-clientID \
     > installer.yaml
 
 $ kubectl apply -f installer.yaml
@@ -71,6 +73,7 @@ $ guard get installer \
     --azure.use-group-uid=false \
     --azure.client-id=<application_id> \
     --azure.tenant-id=<tenant_id> \
+    --azure.verify-clientID \
     > installer.yaml
 
 $ kubectl apply -f installer.yaml
@@ -135,6 +138,7 @@ $ guard get installer \
     --azure.auth-mode=obo \
     --azure.client-id=<application_id> \
     --azure.tenant-id=<tenant_id> \
+    --azure.verify-clientID \
     > installer.yaml
 
 $ kubectl apply -f installer.yaml
@@ -192,7 +196,7 @@ The access token is acquired when first `kubectl` command is executed
 
 After signing in a web browser, the token is stored in the configuration, and it will be reused when executing next commands.
 
-### Skip Graph API call when overage indicator is not present
+## Skip Graph API call when overage indicator is not present
 
 When the client is configured to emit `groups` claim, it is possible to skip Graph api call when there is no overage indicator.
 To enable skipping the graph api call, add below option to guard
@@ -201,8 +205,18 @@ To enable skipping the graph api call, add below option to guard
     --azure.graph-call-on-overage-claim
 ```
 
+## Skipping clientID validation
+
+It is a [best practice](https://docs.microsoft.com/en-us/azure/active-directory/develop/access-tokens#validating-tokens) to validate token's `aud` claim against specified clientID.
+However, if it is desired to disable such validation, update below option
+
+```console
+    --azure.verify-clientID=false
+```
+
 ## Further Reading:
 - https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-integrating-applications
 - https://github.com/kubernetes/client-go/blob/master/plugin/pkg/client/auth/azure/README.md
 - https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow
 - https://docs.microsoft.com/en-us/azure/active-directory/develop/access-tokens#payload-claims
+- https://docs.microsoft.com/en-us/azure/active-directory/develop/access-tokens#validating-tokens
