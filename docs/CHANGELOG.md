@@ -17,6 +17,29 @@ aliases:
 
 # Change Log
 
+## [Unreleased](https://github.com/appscode/guard/tree/HEAD)
+
+[Full Changelog](https://github.com/appscode/guard/compare/v0.5.0-rc.1...HEAD)
+
+**Closed issues:**
+
+- azure auth provider should validate token audience [\#244](https://github.com/appscode/guard/issues/244)
+
+## [v0.5.0-rc.1](https://github.com/appscode/guard/tree/v0.5.0-rc.1) (2020-02-13)
+[Full Changelog](https://github.com/appscode/guard/compare/v0.5.0-rc.0...v0.5.0-rc.1)
+
+**Closed issues:**
+
+- Enable guard to use AKS On-Behalf-Of flow to obtain user's group memberships [\#235](https://github.com/appscode/guard/issues/235)
+- Don't query for groups if AAD token already contains groups [\#171](https://github.com/appscode/guard/issues/171)
+- Azure AAD [\#152](https://github.com/appscode/guard/issues/152)
+- Enable guard to use OAuth 2.0 On-Behalf-Of flow to obtain user's group memberships [\#131](https://github.com/appscode/guard/issues/131)
+
+**Merged pull requests:**
+
+- Add option to verify client ID [\#246](https://github.com/appscode/guard/pull/246) ([weinong](https://github.com/weinong))
+- Add flag to call Graph api only when overage indicator is present [\#245](https://github.com/appscode/guard/pull/245) ([weinong](https://github.com/weinong))
+
 ## [v0.5.0-rc.0](https://github.com/appscode/guard/tree/v0.5.0-rc.0) (2020-01-26)
 [Full Changelog](https://github.com/appscode/guard/compare/0.4.0...v0.5.0-rc.0)
 
