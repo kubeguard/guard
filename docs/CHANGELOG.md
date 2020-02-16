@@ -17,19 +17,12 @@ aliases:
 
 # Change Log
 
-## [Unreleased](https://github.com/appscode/guard/tree/HEAD)
-
-[Full Changelog](https://github.com/appscode/guard/compare/v0.5.0-rc.1...HEAD)
-
-**Closed issues:**
-
-- azure auth provider should validate token audience [\#244](https://github.com/appscode/guard/issues/244)
-
-## [v0.5.0-rc.1](https://github.com/appscode/guard/tree/v0.5.0-rc.1) (2020-02-13)
+## [v0.5.0-rc.1](https://github.com/appscode/guard/tree/v0.5.0-rc.1) (2020-02-16)
 [Full Changelog](https://github.com/appscode/guard/compare/v0.5.0-rc.0...v0.5.0-rc.1)
 
 **Closed issues:**
 
+- azure auth provider should validate token audience [\#244](https://github.com/appscode/guard/issues/244)
 - Enable guard to use AKS On-Behalf-Of flow to obtain user's group memberships [\#235](https://github.com/appscode/guard/issues/235)
 - Don't query for groups if AAD token already contains groups [\#171](https://github.com/appscode/guard/issues/171)
 - Azure AAD [\#152](https://github.com/appscode/guard/issues/152)
@@ -37,6 +30,7 @@ aliases:
 
 **Merged pull requests:**
 
+- Add blank line before package delcaration [\#247](https://github.com/appscode/guard/pull/247) ([tamalsaha](https://github.com/tamalsaha))
 - Add option to verify client ID [\#246](https://github.com/appscode/guard/pull/246) ([weinong](https://github.com/weinong))
 - Add flag to call Graph api only when overage indicator is present [\#245](https://github.com/appscode/guard/pull/245) ([weinong](https://github.com/weinong))
 
