@@ -28,4 +28,5 @@ Guides show you how to perform tasks with Guard.
   - [LDAP](/docs/guides/authenticator/ldap.md). Explains how to use LDAP using simple or kerberos authentication.
   - [Azure Active Directory via LDAP](/docs/guides/authenticator/ldap_azure.md). Explains how to authenticate using secure LDAP of Azure Active Directory Domain Services.
   - [Amazon EKS](/docs/guides/authenticator/aws_eks.md). Explains how to use with Amazon EKS cluster.
+  - [Firebase](/docs/guides/authenticator/firebase.md). Explains how to use Firebase authenticator. 
 - [RBAC Roles](/docs/guides/rbac.md). Documents how to configure RBAC roles for user groups.
