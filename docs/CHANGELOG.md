@@ -17,12 +17,12 @@ aliases:
 
 # Change Log
 
-## [Unreleased](https://github.com/appscode/guard/tree/HEAD)
-
-[Full Changelog](https://github.com/appscode/guard/compare/v0.5.0-rc.1...HEAD)
+## [v0.5.0](https://github.com/appscode/guard/tree/v0.5.0) (2020-05-11)
+[Full Changelog](https://github.com/appscode/guard/compare/v0.5.0-rc.1...v0.5.0)
 
 **Merged pull requests:**
 
+- Use Go 1.14.2 [\#251](https://github.com/appscode/guard/pull/251) ([tamalsaha](https://github.com/tamalsaha))
 - Azure: switch to new graph endpoint for US Government cloud [\#250](https://github.com/appscode/guard/pull/250) ([karataliu](https://github.com/karataliu))
 
 ## [v0.5.0-rc.1](https://github.com/appscode/guard/tree/v0.5.0-rc.1) (2020-02-16)
