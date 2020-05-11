@@ -128,7 +128,6 @@ func (s Server) ListenAndServe() {
 		ClientCAs:  caCertPool,
 		NextProtos: []string{"h2", "http/1.1"},
 	}
-	tlsConfig.BuildNameToCertificate()
 
 	m := pat.New()
 

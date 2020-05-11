@@ -17,6 +17,14 @@ aliases:
 
 # Change Log
 
+## [Unreleased](https://github.com/appscode/guard/tree/HEAD)
+
+[Full Changelog](https://github.com/appscode/guard/compare/v0.5.0-rc.1...HEAD)
+
+**Merged pull requests:**
+
+- Azure: switch to new graph endpoint for US Government cloud [\#250](https://github.com/appscode/guard/pull/250) ([karataliu](https://github.com/karataliu))
+
 ## [v0.5.0-rc.1](https://github.com/appscode/guard/tree/v0.5.0-rc.1) (2020-02-16)
 [Full Changelog](https://github.com/appscode/guard/compare/v0.5.0-rc.0...v0.5.0-rc.1)
 
