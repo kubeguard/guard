@@ -162,6 +162,7 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if s.Options.ResolveGroupMembershipOnlyOnOverageClaim {
 		groups, skipGraphAPI, err := getGroupsAndCheckOverage(claims)
 		if err != nil {
@@ -285,7 +286,11 @@ func (c claims) getUserInfo(usernameClaim, userObjectIDClaim string) (*authv1.Us
 		return nil, errors.Wrap(err, "unable to get username claim")
 	}
 
-	return &authv1.UserInfo{Username: username}, nil
+	useroid, _ := c.string(userObjectIDClaim)
+
+	return &authv1.UserInfo{
+		Username: username,
+		Extra:    map[string]authv1.ExtraValue{"oid": {useroid}}}, nil
 }
 
 // String gets a string value from claims given a key. Returns error if

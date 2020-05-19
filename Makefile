@@ -47,7 +47,7 @@ endif
 ### These variables should not need tweaking.
 ###
 
-SRC_PKGS := *.go auth commands docs installer server util
+SRC_PKGS := *.go auth authz commands docs installer server util
 SRC_DIRS := $(SRC_PKGS) test hack/gendocs # directories which hold app source (not vendored)
 
 DOCKER_PLATFORMS := linux/amd64 linux/arm linux/arm64
@@ -325,7 +325,7 @@ lint: $(BUILD_DIRS)
 	    --env HTTP_PROXY=$(HTTP_PROXY)                          \
 	    --env HTTPS_PROXY=$(HTTPS_PROXY)                        \
 	    --env GO111MODULE=on                                    \
-	    --env GOFLAGS="-mod=vendor"                             \
+		--env GOFLAGS="-mod=vendor"                             \
 	    $(BUILD_IMAGE)                                          \
 	    golangci-lint run --enable $(ADDTL_LINTERS) --deadline=10m --skip-files="generated.*\.go$\" --skip-dirs-use-default --skip-dirs=client,vendor
 

@@ -65,9 +65,22 @@ var (
 		},
 		[]string{"handler"},
 	)
+
+	inFlightGaugeAuthz = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "subjectaccessreviews_handler_requests_in_flight",
+		Help: "A gauge of requests currently being served by the tokenreviews handler.",
+	})
+
+	counterAuthz = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "subjectaccessreviews_handler_requests_total",
+			Help: "A counter for requests to the tokenreviews handler.",
+		},
+		[]string{"code", "method"},
+	)
 )
 
 func init() {
 	// Register all of the metrics in the standard registry.
-	prometheus.MustRegister(version, inFlightGauge, counter, duration, responseSize)
+	prometheus.MustRegister(version, inFlightGauge, counter, duration, responseSize, inFlightGaugeAuthz, counterAuthz)
 }
