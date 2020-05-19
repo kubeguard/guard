@@ -40,7 +40,7 @@ import (
 
 func TestServeHTTP(t *testing.T) {
 	srv := Server{
-		RecommendedOptions: NewRecommendedOptions(),
+		AuthRecommendedOptions: NewAuthRecommendedOptions(),
 	}
 
 	store, err := certstore.NewCertStore(afero.NewMemMapFs(), "/pki", "foo")
@@ -149,12 +149,12 @@ func TestGetAuthProviderClient(t *testing.T) {
 		},
 	}
 	s := Server{
-		RecommendedOptions: NewRecommendedOptions(),
+		AuthRecommendedOptions: NewAuthRecommendedOptions(),
 	}
 
 	// https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-v2-protocols-oidc
 	// https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-protocols-oauth-code#jwt-token-claims
-	s.RecommendedOptions.Azure.TenantID = "7fe81447-da57-4385-becb-6de57f21477e"
+	s.AuthRecommendedOptions.Azure.TenantID = "7fe81447-da57-4385-becb-6de57f21477e"
 
 	for _, test := range testData {
 		t.Run(test.testName, func(t *testing.T) {

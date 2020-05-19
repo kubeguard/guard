@@ -25,6 +25,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	auth "k8s.io/api/authentication/v1"
+	authz "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -66,6 +67,48 @@ func write(w http.ResponseWriter, info *auth.UserInfo, err error) {
 	if glog.V(10) {
 		data, _ := json.MarshalIndent(resp, "", "  ")
 		glog.V(10).Infoln(string(data))
+	}
+
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func writeAuthzResponse(w http.ResponseWriter, spec *authz.SubjectAccessReviewSpec, accessInfo *authz.SubjectAccessReviewStatus, err error) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("x-content-type-options", "nosniff")
+	code := http.StatusOK
+
+	resp := authz.SubjectAccessReview{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: authz.SchemeGroupVersion.String(),
+			Kind:       "SubjectAccessReview",
+		},
+	}
+
+	if spec != nil {
+		resp.Spec = *spec
+	}
+
+	if accessInfo != nil {
+		resp.Status = *accessInfo
+	} else {
+		accessInfo := authz.SubjectAccessReviewStatus{Allowed: false, Denied: true}
+		if err != nil {
+			accessInfo.Reason = err.Error()
+		}
+		resp.Status = accessInfo
+	}
+
+	if err != nil {
+		printStackTrace(err)
+	}
+
+	w.WriteHeader(code)
+	if glog.V(10) {
+		data, _ := json.MarshalIndent(resp, "", "  ")
+		glog.V(10).Infof("final data:%s", string(data))
 	}
 
 	err = json.NewEncoder(w).Encode(resp)
