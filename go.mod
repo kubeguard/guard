@@ -8,14 +8,19 @@ require (
 	github.com/appscode/pat v0.0.0-20170521084856-48ff78925b79
 	github.com/aws/aws-sdk-go v1.31.3
 	github.com/coreos/go-oidc v2.1.0+incompatible
+	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-ldap/ldap v3.0.3+incompatible
+	github.com/go-openapi/swag v0.19.4 // indirect
+	github.com/gogo/protobuf v1.2.2-0.20190730201129-28a6bbf47e48 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
+	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/google/go-github/v25 v25.1.3
 	github.com/google/gofuzz v1.1.0
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
 	github.com/jcmturner/gofork v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.8
 	github.com/moul/http2curl v1.0.0
+	github.com/nmcclain/asn1-ber v0.0.0-20170104154839-2661553a0484 // indirect
 	github.com/nmcclain/ldap v0.0.0-20191021200707-3b3b69a7e9e3
 	github.com/onsi/ginkgo v1.11.0
 	github.com/onsi/gomega v1.7.0
