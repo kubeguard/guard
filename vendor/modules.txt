@@ -15,7 +15,14 @@ github.com/Azure/go-autorest/tracing
 github.com/PuerkitoBio/purell
 # github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578
 github.com/PuerkitoBio/urlesc
+<<<<<<< HEAD
 # github.com/appscode/go v0.0.0-20200323182826-54e98e09185a
+=======
+# github.com/allegro/bigcache v1.2.1
+github.com/allegro/bigcache
+github.com/allegro/bigcache/queue
+# github.com/appscode/go v0.0.0-20191119085241-0887d8ec2ecc
+>>>>>>> Reverted unnecessary go.mod changes
 github.com/appscode/go/analytics
 github.com/appscode/go/context
 github.com/appscode/go/crypto/rand
@@ -240,7 +247,7 @@ github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
 # github.com/peterbourgon/diskv v2.0.1+incompatible
 github.com/peterbourgon/diskv
-# github.com/pkg/errors v0.9.1
+# github.com/pkg/errors v0.8.1
 github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
@@ -272,9 +279,9 @@ github.com/spf13/afero/mem
 # github.com/spf13/cobra v0.0.5
 github.com/spf13/cobra
 github.com/spf13/cobra/doc
-# github.com/spf13/pflag v1.0.5
+# github.com/spf13/pflag v1.0.3
 github.com/spf13/pflag
-# github.com/stretchr/testify v1.5.1
+# github.com/stretchr/testify v1.4.0
 github.com/stretchr/testify/assert
 # github.com/xanzy/go-gitlab v0.31.0
 github.com/xanzy/go-gitlab
