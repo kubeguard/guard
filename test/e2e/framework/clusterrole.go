@@ -17,22 +17,24 @@ limitations under the License.
 package framework
 
 import (
+	"context"
+
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func (f *Framework) DeleteClusterRole(name string) error {
-	return f.KubeClient.RbacV1().ClusterRoles().Delete(name, deleteInBackground())
+	return f.KubeClient.RbacV1().ClusterRoles().Delete(context.TODO(), name, deleteInBackground())
 }
 
 func (f *Framework) GetClusterRole(name string) (*rbac.ClusterRole, error) {
-	return f.KubeClient.RbacV1().ClusterRoles().Get(name, metav1.GetOptions{})
+	return f.KubeClient.RbacV1().ClusterRoles().Get(context.TODO(), name, metav1.GetOptions{})
 }
 
 func (f *Framework) DeleteClusterRoleBinding(name string) error {
-	return f.KubeClient.RbacV1().ClusterRoleBindings().Delete(name, deleteInBackground())
+	return f.KubeClient.RbacV1().ClusterRoleBindings().Delete(context.TODO(), name, deleteInBackground())
 }
 
 func (f *Framework) GetClusterRoleBinding(name string) (*rbac.ClusterRoleBinding, error) {
-	return f.KubeClient.RbacV1().ClusterRoleBindings().Get(name, metav1.GetOptions{})
+	return f.KubeClient.RbacV1().ClusterRoleBindings().Get(context.TODO(), name, metav1.GetOptions{})
 }

@@ -17,14 +17,16 @@ limitations under the License.
 package framework
 
 import (
+	"context"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func (f *Framework) DeleteService(name, namespace string) error {
-	return f.KubeClient.CoreV1().Services(namespace).Delete(name, deleteInForeground())
+	return f.KubeClient.CoreV1().Services(namespace).Delete(context.TODO(), name, deleteInForeground())
 }
 
 func (f *Framework) GetService(name, namespace string) (*corev1.Service, error) {
-	return f.KubeClient.CoreV1().Services(namespace).Get(name, metav1.GetOptions{})
+	return f.KubeClient.CoreV1().Services(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 }

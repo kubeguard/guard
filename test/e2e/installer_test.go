@@ -17,6 +17,7 @@ limitations under the License.
 package e2e_test
 
 import (
+	"context"
 	"net"
 	"os/exec"
 	"path/filepath"
@@ -153,7 +154,7 @@ var _ = Describe("Installer test", func() {
 		checkServiceCreated = func() {
 			By("Checking service created. service name: " + serviceName)
 			Eventually(func() bool {
-				_, err := f.KubeClient.CoreV1().Services(root.Namespace()).Get(serviceName, metav1.GetOptions{})
+				_, err := f.KubeClient.CoreV1().Services(root.Namespace()).Get(context.TODO(), serviceName, metav1.GetOptions{})
 				return err == nil
 			}, timeOut, pollingInterval).Should(BeTrue())
 		}
@@ -161,7 +162,7 @@ var _ = Describe("Installer test", func() {
 		checkDeploymentCreated = func() {
 			By("Checking deployment created. deployment name: " + deploymentName)
 			Eventually(func() bool {
-				if obj, err := f.KubeClient.AppsV1().Deployments(root.Namespace()).Get(deploymentName, metav1.GetOptions{}); err == nil {
+				if obj, err := f.KubeClient.AppsV1().Deployments(root.Namespace()).Get(context.TODO(), deploymentName, metav1.GetOptions{}); err == nil {
 					return *obj.Spec.Replicas == obj.Status.ReadyReplicas
 				}
 				return false
@@ -171,7 +172,7 @@ var _ = Describe("Installer test", func() {
 		checkPodCreated = func() {
 			By("Checking pod created.")
 			Eventually(func() bool {
-				pods, err := f.KubeClient.CoreV1().Pods(root.Namespace()).List(metav1.ListOptions{
+				pods, err := f.KubeClient.CoreV1().Pods(root.Namespace()).List(context.TODO(), metav1.ListOptions{
 					LabelSelector: "app=guard", // pods created for has has a label, app:guard
 				})
 				Expect(err).NotTo(HaveOccurred())
@@ -182,7 +183,7 @@ var _ = Describe("Installer test", func() {
 		checkSecretCreated = func(name string) {
 			By("Checking secret created. secret name: " + name)
 			Eventually(func() bool {
-				_, err := f.KubeClient.CoreV1().Secrets(root.Namespace()).Get(name, metav1.GetOptions{})
+				_, err := f.KubeClient.CoreV1().Secrets(root.Namespace()).Get(context.TODO(), name, metav1.GetOptions{})
 				return err == nil
 			}, timeOut, pollingInterval).Should(BeTrue())
 		}
@@ -190,7 +191,7 @@ var _ = Describe("Installer test", func() {
 		checkClusterRoleCreated = func() {
 			By("Checking cluster role created.")
 			Eventually(func() bool {
-				_, err := f.KubeClient.RbacV1().ClusterRoles().Get(clusterRoleName, metav1.GetOptions{})
+				_, err := f.KubeClient.RbacV1().ClusterRoles().Get(context.TODO(), clusterRoleName, metav1.GetOptions{})
 				return err == nil
 			}, timeOut, pollingInterval).Should(BeTrue())
 		}
@@ -198,7 +199,7 @@ var _ = Describe("Installer test", func() {
 		checkClusterRoleBindingCreated = func() {
 			By("Checking cluster role binding created.")
 			Eventually(func() bool {
-				_, err := f.KubeClient.RbacV1().ClusterRoleBindings().Get(clusterRoleBindingName, metav1.GetOptions{})
+				_, err := f.KubeClient.RbacV1().ClusterRoleBindings().Get(context.TODO(), clusterRoleBindingName, metav1.GetOptions{})
 				return err == nil
 			}, timeOut, pollingInterval).Should(BeTrue())
 		}
@@ -206,7 +207,7 @@ var _ = Describe("Installer test", func() {
 		checkServiceDeleted = func() {
 			By("Checking service Deleted. service name: " + serviceName)
 			Eventually(func() bool {
-				_, err := f.KubeClient.CoreV1().Services(root.Namespace()).Get(serviceName, metav1.GetOptions{})
+				_, err := f.KubeClient.CoreV1().Services(root.Namespace()).Get(context.TODO(), serviceName, metav1.GetOptions{})
 				return kerr.IsNotFound(err) || kerr.IsGone(err)
 			}, timeOut, pollingInterval).Should(BeTrue())
 		}
@@ -214,7 +215,7 @@ var _ = Describe("Installer test", func() {
 		checkDeploymentDeleted = func() {
 			By("Checking deployment Deleted. deployment name: " + deploymentName)
 			Eventually(func() bool {
-				_, err := f.KubeClient.AppsV1().Deployments(root.Namespace()).Get(deploymentName, metav1.GetOptions{})
+				_, err := f.KubeClient.AppsV1().Deployments(root.Namespace()).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 				return kerr.IsNotFound(err) || kerr.IsGone(err)
 			}, timeOut, pollingInterval).Should(BeTrue())
 		}
@@ -222,7 +223,7 @@ var _ = Describe("Installer test", func() {
 		checkPodDeleted = func() {
 			By("Checking pod Deleted.")
 			Eventually(func() bool {
-				pods, err := f.KubeClient.CoreV1().Pods(root.Namespace()).List(metav1.ListOptions{
+				pods, err := f.KubeClient.CoreV1().Pods(root.Namespace()).List(context.TODO(), metav1.ListOptions{
 					LabelSelector: "app=guard", // pods Deleted for has has a label, app:guard
 				})
 				Expect(err).NotTo(HaveOccurred())
@@ -233,7 +234,7 @@ var _ = Describe("Installer test", func() {
 		checkSecretDeleted = func(name string) {
 			By("Checking secret Deleted. secret name: " + name)
 			Eventually(func() bool {
-				_, err := f.KubeClient.CoreV1().Secrets(root.Namespace()).Get(name, metav1.GetOptions{})
+				_, err := f.KubeClient.CoreV1().Secrets(root.Namespace()).Get(context.TODO(), name, metav1.GetOptions{})
 				return kerr.IsNotFound(err) || kerr.IsGone(err)
 			}, timeOut, pollingInterval).Should(BeTrue())
 		}
@@ -241,7 +242,7 @@ var _ = Describe("Installer test", func() {
 		checkClusterRoleDeleted = func() {
 			By("Checking cluster role Deleted.")
 			Eventually(func() bool {
-				_, err := f.KubeClient.RbacV1().ClusterRoles().Get(clusterRoleName, metav1.GetOptions{})
+				_, err := f.KubeClient.RbacV1().ClusterRoles().Get(context.TODO(), clusterRoleName, metav1.GetOptions{})
 				return kerr.IsNotFound(err) || kerr.IsGone(err)
 			}, timeOut, pollingInterval).Should(BeTrue())
 		}
@@ -249,7 +250,7 @@ var _ = Describe("Installer test", func() {
 		checkClusterRoleBindingDeleted = func() {
 			By("Checking cluster role binding Deleted.")
 			Eventually(func() bool {
-				_, err := f.KubeClient.RbacV1().ClusterRoleBindings().Get(clusterRoleBindingName, metav1.GetOptions{})
+				_, err := f.KubeClient.RbacV1().ClusterRoleBindings().Get(context.TODO(), clusterRoleBindingName, metav1.GetOptions{})
 				return kerr.IsNotFound(err) || kerr.IsGone(err)
 			}, timeOut, pollingInterval).Should(BeTrue())
 		}

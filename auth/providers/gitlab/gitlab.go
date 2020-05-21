@@ -49,12 +49,14 @@ func (g Authenticator) UID() string {
 }
 
 func (g *Authenticator) Check(token string) (*authv1.UserInfo, error) {
-	client := gitlab.NewClient(nil, token)
+	var opts []gitlab.ClientOptionFunc
 	if g.opts.BaseUrl != "" {
-		err := client.SetBaseURL(g.opts.BaseUrl)
-		if err != nil {
-			return nil, err
-		}
+		opts = append(opts, gitlab.WithBaseURL(g.opts.BaseUrl))
+	}
+
+	client, err := gitlab.NewClient(token, opts...)
+	if err != nil {
+		return nil, err
 	}
 
 	user, _, err := client.Users.CurrentUser()
