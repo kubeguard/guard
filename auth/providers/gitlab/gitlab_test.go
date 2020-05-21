@@ -168,11 +168,9 @@ func gitlabGetGroupResp(groupSize int) gitlabGroupRespFunc {
 				return http.StatusOK, string(resp)
 			}
 
-			return http.StatusBadRequest, fmt.Sprint("List user groups request: query parameter per_page not provide")
-
-		} else {
-			return http.StatusBadRequest, fmt.Sprint("List user groups request: query parameter page not provide")
+			return http.StatusBadRequest, "List user groups request: query parameter per_page not provide"
 		}
+		return http.StatusBadRequest, "List user groups request: query parameter page not provide"
 	}
 }
 
@@ -314,7 +312,7 @@ func TestGroupListErrorInDifferentPage(t *testing.T) {
 							return http.StatusInternalServerError, errMsg
 						}
 					} else {
-						return http.StatusBadRequest, fmt.Sprint("List user groups request: query parameter page not provide")
+						return http.StatusBadRequest, "List user groups request: query parameter page not provide"
 					}
 				})
 				defer srv.Close()

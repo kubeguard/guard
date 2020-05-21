@@ -56,7 +56,7 @@ func NewCmdLogin() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&cluster, "cluster", "k", cluster, fmt.Sprintf("Name of cluster"))
-	cmd.Flags().StringVarP(&provider, "provider", "p", provider, fmt.Sprintf("Name of cloud provider"))
+	cmd.Flags().StringVarP(&cluster, "cluster", "k", cluster, "Name of cluster")
+	cmd.Flags().StringVarP(&provider, "provider", "p", provider, "Name of cloud provider")
 	return cmd
 }

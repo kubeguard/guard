@@ -342,13 +342,13 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 		args = append(args, "--ldap.start-tls")
 	}
 	if o.CaCertFile != "" {
-		args = append(args, fmt.Sprintf("--ldap.ca-cert-file=/etc/guard/auth/ldap/ca.crt"))
+		args = append(args, "--ldap.ca-cert-file=/etc/guard/auth/ldap/ca.crt")
 	}
 	if o.ServiceAccountName != "" {
 		args = append(args, fmt.Sprintf("--ldap.service-account=%s", o.ServiceAccountName))
 	}
 	if o.KeytabFile != "" {
-		args = append(args, fmt.Sprintf("--ldap.keytab-file=/etc/guard/auth/ldap/krb5.keytab"))
+		args = append(args, "--ldap.keytab-file=/etc/guard/auth/ldap/krb5.keytab")
 	}
 	args = append(args, fmt.Sprintf("--ldap.auth-choice=%v", o.AuthenticationChoice))
 
