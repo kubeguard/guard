@@ -16,6 +16,8 @@ limitations under the License.
 
 package framework
 
+import "context"
+
 func (f *Framework) DeleteSecret(name, namespace string) error {
-	return f.KubeClient.CoreV1().Secrets(namespace).Delete(name, deleteInBackground())
+	return f.KubeClient.CoreV1().Secrets(namespace).Delete(context.TODO(), name, deleteInBackground())
 }

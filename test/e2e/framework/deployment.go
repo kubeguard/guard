@@ -17,14 +17,16 @@ limitations under the License.
 package framework
 
 import (
+	"context"
+
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func (f *Framework) DeleteDeployment(name, namespace string) error {
-	return f.KubeClient.AppsV1().Deployments(namespace).Delete(name, deleteInBackground())
+	return f.KubeClient.AppsV1().Deployments(namespace).Delete(context.TODO(), name, deleteInBackground())
 }
 
 func (f *Framework) GetDeployment(name, namespace string) (*apps.Deployment, error) {
-	return f.KubeClient.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
+	return f.KubeClient.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 }
