@@ -154,11 +154,9 @@ func getTeamRespFunc(teamSize int) teamRespFunc {
 				return http.StatusOK, string(resp)
 			}
 
-			return http.StatusBadRequest, fmt.Sprint("List user teams request: query parameter per_page not provide")
-
-		} else {
-			return http.StatusBadRequest, fmt.Sprint("List user teams request: query parameter page not provide")
+			return http.StatusBadRequest, "List user teams request: query parameter per_page not provide"
 		}
+		return http.StatusBadRequest, "List user teams request: query parameter page not provide"
 	}
 }
 
@@ -213,7 +211,7 @@ func githubServerSetup(githubOrg string, memberResp string, memberStatusCode int
 		_, _ = w.Write([]byte(memberResp))
 	}))
 
-	m.Get(fmt.Sprintf("/user/memberships/orgs/"), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	m.Get("/user/memberships/orgs/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write(getErrorMessage(errors.New("Authorization: invalid token")))
 	}))
@@ -358,7 +356,7 @@ func TestTeamListErrorAtDifferentPage(t *testing.T) {
 						return http.StatusInternalServerError, errMsg
 					}
 				} else {
-					return http.StatusBadRequest, fmt.Sprint("List user teams request: query parameter page not provide")
+					return http.StatusBadRequest, "List user teams request: query parameter page not provide"
 				}
 			})
 			defer srv.Close()
