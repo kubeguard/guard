@@ -1,15 +1,15 @@
 # cloud.google.com/go v0.38.0
 cloud.google.com/go/compute/metadata
-# github.com/Azure/go-autorest/autorest v0.9.0
+# github.com/Azure/go-autorest/autorest v0.9.0 => github.com/Azure/go-autorest/autorest v0.9.0
 github.com/Azure/go-autorest/autorest
 github.com/Azure/go-autorest/autorest/azure
-# github.com/Azure/go-autorest/autorest/adal v0.5.0
+# github.com/Azure/go-autorest/autorest/adal v0.5.0 => github.com/Azure/go-autorest/autorest/adal v0.5.0
 github.com/Azure/go-autorest/autorest/adal
-# github.com/Azure/go-autorest/autorest/date v0.1.0
+# github.com/Azure/go-autorest/autorest/date v0.1.0 => github.com/Azure/go-autorest/autorest/date v0.1.0
 github.com/Azure/go-autorest/autorest/date
-# github.com/Azure/go-autorest/logger v0.1.0
+# github.com/Azure/go-autorest/logger v0.1.0 => github.com/Azure/go-autorest/logger v0.1.0
 github.com/Azure/go-autorest/logger
-# github.com/Azure/go-autorest/tracing v0.5.0
+# github.com/Azure/go-autorest/tracing v0.5.0 => github.com/Azure/go-autorest/tracing v0.5.0
 github.com/Azure/go-autorest/tracing
 # github.com/PuerkitoBio/purell v1.1.1
 github.com/PuerkitoBio/purell
@@ -38,7 +38,7 @@ github.com/appscode/go/util/errors
 github.com/appscode/go/version
 # github.com/appscode/pat v0.0.0-20170521084856-48ff78925b79
 github.com/appscode/pat
-# github.com/aws/aws-sdk-go v1.31.2
+# github.com/aws/aws-sdk-go v1.31.3
 github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/aws/awserr
 github.com/aws/aws-sdk-go/aws/awsutil
@@ -247,7 +247,7 @@ github.com/pmezard/go-difflib/difflib
 # github.com/pquerna/cachecontrol v0.0.0-20171018203845-0dec1b30a021
 github.com/pquerna/cachecontrol
 github.com/pquerna/cachecontrol/cacheobject
-# github.com/prometheus/client_golang v1.0.0
+# github.com/prometheus/client_golang v1.0.0 => github.com/prometheus/client_golang v1.0.0
 github.com/prometheus/client_golang/prometheus
 github.com/prometheus/client_golang/prometheus/internal
 github.com/prometheus/client_golang/prometheus/promhttp
@@ -574,7 +574,7 @@ k8s.io/cli-runtime/pkg/kustomize/k8sdeps/transformer/patch
 k8s.io/cli-runtime/pkg/kustomize/k8sdeps/validator
 k8s.io/cli-runtime/pkg/printers
 k8s.io/cli-runtime/pkg/resource
-# k8s.io/client-go v0.18.3
+# k8s.io/client-go v0.18.3 => k8s.io/client-go v0.18.3
 k8s.io/client-go/discovery
 k8s.io/client-go/discovery/cached/disk
 k8s.io/client-go/dynamic
