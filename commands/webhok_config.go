@@ -93,7 +93,7 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 				glog.Fatalf("Failed to load client certificate. Reason: %v.", err)
 			}
 
-			if mode == "auth" {
+			if mode == "authn" {
 				config := clientcmdapi.Config{
 					Kind:       "Config",
 					APIVersion: "v1",
@@ -160,6 +160,6 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 	cmd.Flags().StringVar(&rootDir, "pki-dir", rootDir, "Path to directory where pki files are stored.")
 	cmd.Flags().StringVarP(&org, "organization", "o", org, fmt.Sprintf("Name of Organization (%v).", auth.SupportedOrgs))
 	cmd.Flags().StringVar(&addr, "addr", "10.96.10.96:443", "Address (host:port) of guard server.")
-	cmd.Flags().StringVar(&mode, "mode", "auth", "Mode to generate config, Supported mode: auth, authz")
+	cmd.Flags().StringVar(&mode, "mode", "authn", "Mode to generate config, Supported mode: authn, authz")
 	return cmd
 }
