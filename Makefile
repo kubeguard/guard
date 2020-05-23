@@ -332,21 +332,6 @@ lint: $(BUILD_DIRS)
 $(BUILD_DIRS):
 	@mkdir -p $@
 
-.PHONY: install
-install:
-	@cd ../installer; \
-	APPSCODE_ENV=dev  STASH_IMAGE_TAG=$(TAG) ./deploy/stash.sh --docker-registry=$(REGISTRY) --image-pull-secret=$(REGISTRY_SECRET)
-
-.PHONY: uninstall
-uninstall:
-	@cd ../installer; \
-	./deploy/stash.sh --uninstall
-
-.PHONY: purge
-purge:
-	@cd ../installer; \
-	./deploy/stash.sh --uninstall --purge
-
 .PHONY: dev
 dev: gen fmt push
 
