@@ -448,6 +448,7 @@ func TestReviewFromClaims(t *testing.T) {
 	t.Run("valid user claim", func(t *testing.T) {
 		var validUserInfo = &authv1.UserInfo{
 			Username: username,
+			Extra:    map[string]authv1.ExtraValue{"oid": {"abc-123d4"}},
 		}
 
 		resp, err := testClaims.getUserInfo("upn", "oid")

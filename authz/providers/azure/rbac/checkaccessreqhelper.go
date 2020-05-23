@@ -101,8 +101,8 @@ type DenyAssignment struct {
 	Permission
 	Scope                   string `json:"scope"`
 	DoNotApplyToChildScopes bool   `json:"doNotApplyToChildScopes"`
-	principals              []Principal
-	excludeprincipals       []Principal
+	Principals              []Principal
+	ExcludePrincipals       []Principal
 	Condition               string `json:"condition"`
 	ConditionVersion        string `json:"conditionVersion"`
 }
@@ -110,7 +110,7 @@ type DenyAssignment struct {
 type AzureDenyAssignment struct {
 	MetaData          map[string]interface{} `json:"metadata"`
 	IsSystemProtected string                 `json:"isSystemProtected"`
-	IsBuiltIn         bool                   `json:isBuiltIn`
+	IsBuiltIn         bool                   `json:"isBuiltIn"`
 	DenyAssignment
 }
 

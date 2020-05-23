@@ -18,10 +18,11 @@ package azure
 import (
 	"strings"
 
-	"github.com/Azure/go-autorest/autorest/azure"
 	auth "github.com/appscode/guard/auth/providers/azure"
 	"github.com/appscode/guard/authz"
 	"github.com/appscode/guard/authz/providers/azure/rbac"
+
+	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	authzv1 "k8s.io/api/authorization/v1"
@@ -103,7 +104,7 @@ func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec) (*authzv1.Su
 	}
 
 	if s.rbacClient.IsTokenExpired() {
-		s.rbacClient.RefreshToken()
+		_ = s.rbacClient.RefreshToken()
 	}
 	return s.rbacClient.CheckAccess(request)
 }

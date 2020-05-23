@@ -26,6 +26,7 @@ import (
 	"github.com/appscode/guard/auth/providers/azure/graph"
 	"github.com/appscode/guard/authz"
 	"github.com/appscode/guard/authz/providers/azure/data"
+
 	"github.com/stretchr/testify/assert"
 	authzv1 "k8s.io/api/authorization/v1"
 )

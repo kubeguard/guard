@@ -21,6 +21,7 @@ import (
 
 	"github.com/appscode/guard/authz"
 	"github.com/appscode/guard/authz/providers/azure"
+
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	authzv1 "k8s.io/api/authorization/v1"
@@ -60,7 +61,7 @@ func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	client, err := s.getAuthzProviderClient(org, crt.Subject.CommonName)
+	client, err := s.getAuthzProviderClient(org)
 	if err != nil {
 		writeAuthzResponse(w, &data.Spec, nil, err)
 		return
@@ -70,7 +71,7 @@ func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	writeAuthzResponse(w, &data.Spec, resp, err)
 }
 
-func (s *Authzhandler) getAuthzProviderClient(org, commonName string) (authz.Interface, error) {
+func (s *Authzhandler) getAuthzProviderClient(org string) (authz.Interface, error) {
 	switch strings.ToLower(org) {
 	case azure.OrgType:
 		return azure.New(s.AuthzRecommendedOptions.Azure, s.AuthRecommendedOptions.Azure, s.Store)

@@ -29,6 +29,7 @@ import (
 
 	"github.com/appscode/guard/auth/providers/azure/graph"
 	"github.com/appscode/guard/authz"
+
 	"github.com/golang/glog"
 	"github.com/moul/http2curl"
 	"github.com/pkg/errors"
@@ -250,9 +251,9 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	// Decode response and prepare k8s response
 	response, err := ConvertCheckAccessResponse(data)
 	if err == nil {
-		a.SetResultInCache(request, response.Allowed)
+		_ = a.SetResultInCache(request, response.Allowed)
 	} else {
-		a.SetResultInCache(request, false)
+		_ = a.SetResultInCache(request, false)
 	}
 	return response, err
 }

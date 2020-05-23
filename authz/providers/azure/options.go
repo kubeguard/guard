@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/appscode/guard/auth/providers/azure"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	apps "k8s.io/api/apps/v1"
