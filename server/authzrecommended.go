@@ -18,18 +18,19 @@ package server
 import (
 	authz "github.com/appscode/guard/authz/providers"
 	"github.com/appscode/guard/authz/providers/azure"
+	"github.com/appscode/guard/authz/providers/azure/options"
 
 	"github.com/spf13/pflag"
 )
 
 type AuthzRecommendedOptions struct {
-	Azure         azure.Options
+	Azure         options.Options
 	AuthzProvider authz.AuthzProviders
 }
 
 func NewAuthzRecommendedOptions() *AuthzRecommendedOptions {
 	return &AuthzRecommendedOptions{
-		Azure: azure.NewOptions(),
+		Azure: options.NewOptions(),
 	}
 }
 

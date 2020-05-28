@@ -231,7 +231,7 @@ func Test_getResultCacheKey(t *testing.T) {
 				User: "alpha@bing.com",
 				ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev", Group: "", Resource: "pods",
 					Subresource: "status", Version: "v1", Name: "test", Verb: "delete"}}},
-			"alpha@bing.com/dev/pods/delete"},
+			"alpha@bing.com/dev/-/pods/delete"},
 
 		{"arc", args{
 			subRevReq: &authzv1.SubjectAccessReviewSpec{
@@ -246,7 +246,7 @@ func Test_getResultCacheKey(t *testing.T) {
 				User: "beta@msn.com",
 				ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "", Group: "", Resource: "nodes",
 					Subresource: "scopes", Version: "v1", Name: "", Verb: "list"}}},
-			"beta@msn.com/nodes/read"},
+			"beta@msn.com/-/-/nodes/read"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

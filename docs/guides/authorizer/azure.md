@@ -41,6 +41,7 @@ $ guard get installer \
     --azure.skip-authz-check=<comma separated list of user email ids for which Azure RBAC will be skipped>
     --azure.authz-resolve-group-memberships=true \
     --azure.skip-authz-for-non-aad-users=true \
+    --azure.allow-nonres-discovery-path-access=true \
     > installer.yaml
 
 $ kubectl apply -f installer.yaml

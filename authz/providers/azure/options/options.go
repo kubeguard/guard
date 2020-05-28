@@ -11,7 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package azure
+package options
 
 import (
 	"fmt"
@@ -33,27 +33,34 @@ const (
 )
 
 type Options struct {
-	AuthzMode                    string
-	ResourceId                   string
-	AKSAuthzURL                  string
-	ARMCallLimit                 int
-	SkipAuthzCheck               []string
-	AuthzResolveGroupMemberships bool
-	SkipAuthzForNonAADUsers      bool
+	AuthzMode                      string
+	ResourceId                     string
+	AKSAuthzURL                    string
+	ARMCallLimit                   int
+	SkipAuthzCheck                 []string
+	AuthzResolveGroupMemberships   bool
+	SkipAuthzForNonAADUsers        bool
+	AllowNonResDiscoveryPathAccess bool
 }
 
 func NewOptions() Options {
-	return Options{}
+	return Options{
+		ARMCallLimit:                   defaultArmCallLimit,
+		SkipAuthzCheck:                 []string{""},
+		AuthzResolveGroupMemberships:   true,
+		SkipAuthzForNonAADUsers:        true,
+		AllowNonResDiscoveryPathAccess: true}
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.AuthzMode, "azure.authz-mode", "", "authz mode to call RBAC api, valid value is either aks or arc")
 	fs.StringVar(&o.ResourceId, "azure.resource-id", "", "azure cluster resource id (//subscription/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/managedClusters/<clustername> for AKS or //subscription/<subName>/resourcegroups/<RGname>/providers/Microsoft.Kubernetes/connectedClusters/<clustername> for arc) to be used as scope for RBAC check")
 	fs.StringVar(&o.AKSAuthzURL, "azure.aks-authz-url", "", "url to call for AKS Authz flow")
-	fs.IntVar(&o.ARMCallLimit, "azure.arm-call-limit", defaultArmCallLimit, "No of calls before which webhook switch to new ARM instance to avoid throttling")
-	fs.StringSliceVar(&o.SkipAuthzCheck, "azure.skip-authz-check", []string{""}, "name of usernames/email for which authz check will be skipped")
+	fs.IntVar(&o.ARMCallLimit, "azure.arm-call-limit", o.ARMCallLimit, "No of calls before which webhook switch to new ARM instance to avoid throttling")
+	fs.StringSliceVar(&o.SkipAuthzCheck, "azure.skip-authz-check", o.SkipAuthzCheck, "name of usernames/email for which authz check will be skipped")
 	fs.BoolVar(&o.AuthzResolveGroupMemberships, "azure.authz-resolve-group-memberships", o.AuthzResolveGroupMemberships, "set to true to resolve group membership by authorizer. Setting to false will use group list from subjectaccessreview request")
 	fs.BoolVar(&o.SkipAuthzForNonAADUsers, "azure.skip-authz-for-non-aad-users", o.SkipAuthzForNonAADUsers, "skip authz for non AAD users")
+	fs.BoolVar(&o.AllowNonResDiscoveryPathAccess, "azure.allow-nonres-discovery-path-access", o.AllowNonResDiscoveryPathAccess, "allow access on Non Resource paths reqired for discovery, setting it false will require explicit non resource path role assignment for all users in Azure RBAC")
 }
 
 func (o *Options) Validate(azure azure.Options) []error {
@@ -62,7 +69,6 @@ func (o *Options) Validate(azure azure.Options) []error {
 	switch o.AuthzMode {
 	case AKSAuthzMode:
 	case ARCAuthzMode:
-	case "":
 	default:
 		errs = append(errs, errors.New("invalid azure.authz-mode. valid value is either aks or arc"))
 	}
@@ -89,15 +95,14 @@ func (o *Options) Validate(azure azure.Options) []error {
 	}
 
 	if o.ARMCallLimit > maxPermissibleArmCallLimit {
-		errs = append(errs, errors.New("azure.arm-call-limit must not be more than 4000"))
+		errs = append(errs, fmt.Errorf("azure.arm-call-limit must not be more than %d", maxPermissibleArmCallLimit))
 	}
 
 	return errs
 }
 
 func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err error) {
-	container := d.Spec.Template.Spec.Containers[0]
-	args := container.Args
+	args := d.Spec.Template.Spec.Containers[0].Args
 	switch o.AuthzMode {
 	case AKSAuthzMode:
 		fallthrough
@@ -119,7 +124,8 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 
 	args = append(args, fmt.Sprintf("--azure.skip-authz-for-non-aad-users=%t", o.SkipAuthzForNonAADUsers))
 
-	container.Args = args
-	d.Spec.Template.Spec.Containers[0] = container
+	args = append(args, fmt.Sprintf("--azure.allow-nonres-discovery-path-access=%t", o.AllowNonResDiscoveryPathAccess))
+
+	d.Spec.Template.Spec.Containers[0].Args = args
 	return extraObjs, nil
 }

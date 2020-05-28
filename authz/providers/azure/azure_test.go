@@ -23,7 +23,10 @@ import (
 	"testing"
 	"time"
 
+	auth "github.com/appscode/guard/auth/providers/azure"
+	"github.com/appscode/guard/authz"
 	"github.com/appscode/guard/authz/providers/azure/data"
+	authzOpts "github.com/appscode/guard/authz/providers/azure/options"
 	"github.com/appscode/guard/authz/providers/azure/rbac"
 	"github.com/appscode/pat"
 
@@ -37,22 +40,28 @@ const (
 
 func clientSetup(serverUrl, mode string) (*Authorizer, error) {
 	c := &Authorizer{}
-
-	var testOptions = data.Options{
-		HardMaxCacheSize:   1,
-		Shards:             1,
-		LifeWindow:         1 * time.Minute,
-		CleanWindow:        1 * time.Minute,
-		MaxEntriesInWindow: 10,
-		MaxEntrySize:       5,
-		Verbose:            false,
-	}
-	dataStore, err := data.NewDataStore(testOptions)
-	if err != nil {
-		return nil, err
+	opts := authzOpts.Options{
+		AuthzMode:                      mode,
+		ResourceId:                     "resourceId",
+		ARMCallLimit:                   2000,
+		SkipAuthzCheck:                 []string{"alpha, tango, charlie"},
+		AuthzResolveGroupMemberships:   true,
+		SkipAuthzForNonAADUsers:        true,
+		AllowNonResDiscoveryPathAccess: true,
 	}
 
-	c.rbacClient, err = rbac.New("client_id", "client_secret", "tenant_id", serverUrl+"/login/", serverUrl+"/arm/", mode, "resourceId", 2000, dataStore, []string{"alpha, tango, charlie"}, true, true)
+	authOpts := auth.Options{
+		ClientID:     "client_id",
+		ClientSecret: "client_secret",
+		TenantID:     "tenant_id",
+	}
+
+	authzInfo := rbac.AuthzInfo{
+		AADEndpoint: serverUrl + "/login/",
+		ARMEndPoint: serverUrl + "/arm/",
+	}
+
+	c.rbacClient, err = rbac.New(opts, authOpts, &authzInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +96,7 @@ func serverSetup(loginResp, checkaccessResp string, loginStatus, checkaccessStat
 	return srv, nil
 }
 
-func getServerAndClient(t *testing.T, loginResp, checkaccessResp string) (*httptest.Server, *Authorizer) {
+func getServerAndClient(t *testing.T, loginResp, checkaccessResp string) (*httptest.Server, *Authorizer, authz.Store) {
 	srv, err := serverSetup(loginResp, checkaccessResp, http.StatusOK, http.StatusOK)
 	if err != nil {
 		t.Fatalf("Error when creating server, reason: %v", err)
@@ -97,7 +106,19 @@ func getServerAndClient(t *testing.T, loginResp, checkaccessResp string) (*httpt
 	if err != nil {
 		t.Fatalf("Error when creatidng azure client. reason : %v", err)
 	}
-	return srv, client
+
+	var testOptions = data.Options{
+		HardMaxCacheSize:   1,
+		Shards:             1,
+		LifeWindow:         1 * time.Minute,
+		CleanWindow:        1 * time.Minute,
+		MaxEntriesInWindow: 10,
+		MaxEntrySize:       5,
+		Verbose:            false,
+	}
+	dataStore, _ := data.NewDataStore(testOptions)
+
+	return srv, client, dataStore
 }
 
 func TestCheck(t *testing.T) {
@@ -106,15 +127,16 @@ func TestCheck(t *testing.T) {
 		"actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete",
 		"isDataAction":true,"roleAssignment":null,"denyAssignment":null,"timeToLiveInMs":300000}]`
 
-		srv, client := getServerAndClient(t, loginResp, validBody)
+		srv, client, store := getServerAndClient(t, loginResp, validBody)
 		defer srv.Close()
+		defer store.Close()
 
 		request := &authzv1.SubjectAccessReviewSpec{
 			User: "beta@bing.com",
 			ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev", Group: "", Resource: "pods",
 				Subresource: "status", Version: "v1", Name: "test", Verb: "delete"}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}}}
 
-		resp, err := client.Check(request)
+		resp, err := client.Check(request, store)
 		assert.Nilf(t, err, "Should not have got error")
 		assert.NotNil(t, resp)
 		assert.Equal(t, resp.Allowed, true)

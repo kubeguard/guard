@@ -20,24 +20,22 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/appscode/guard/auth/providers/azure/graph"
-	"github.com/appscode/guard/authz"
-	"github.com/appscode/guard/authz/providers/azure/data"
 
 	"github.com/stretchr/testify/assert"
 	authzv1 "k8s.io/api/authorization/v1"
 )
 
-func getAPIServerAndAccessInfo(returnCode int, body, clusterType, resourceId string, options data.Options) (*httptest.Server, *AccessInfo, authz.Store) {
+func getAPIServerAndAccessInfo(returnCode int, body, clusterType, resourceId string) (*httptest.Server, *AccessInfo) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(returnCode)
 		_, _ = w.Write([]byte(body))
 	}))
 	apiURL, _ := url.Parse(ts.URL)
-	datastore, _ := data.NewDataStore(options)
 	u := &AccessInfo{
 		client:          http.DefaultClient,
 		apiURL:          apiURL,
@@ -46,8 +44,8 @@ func getAPIServerAndAccessInfo(returnCode int, body, clusterType, resourceId str
 		clusterType:     clusterType,
 		azureResourceId: resourceId,
 		armCallLimit:    0,
-		dataStore:       datastore}
-	return ts, u, datastore
+		lock:            &sync.Mutex{}}
+	return ts, u
 }
 
 func TestCheckAccess(t *testing.T) {
@@ -56,19 +54,8 @@ func TestCheckAccess(t *testing.T) {
 		"actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete",
 		"isDataAction":true,"roleAssignment":null,"denyAssignment":null,"timeToLiveInMs":300000}]`
 
-		var testOptions = data.Options{
-			HardMaxCacheSize:   1,
-			Shards:             1,
-			LifeWindow:         1 * time.Minute,
-			CleanWindow:        1 * time.Minute,
-			MaxEntriesInWindow: 10,
-			MaxEntrySize:       5,
-			Verbose:            false,
-		}
-
-		ts, u, store := getAPIServerAndAccessInfo(http.StatusOK, validBody, "arc", "resourceid", testOptions)
+		ts, u := getAPIServerAndAccessInfo(http.StatusOK, validBody, "arc", "resourceid")
 		defer ts.Close()
-		defer store.Close()
 
 		request := &authzv1.SubjectAccessReviewSpec{
 			User: "alpha@bing.com",
@@ -86,19 +73,8 @@ func TestCheckAccess(t *testing.T) {
 	t.Run("too many requests", func(t *testing.T) {
 		var validBody = `""`
 
-		var testOptions = data.Options{
-			HardMaxCacheSize:   1,
-			Shards:             1,
-			LifeWindow:         1 * time.Minute,
-			CleanWindow:        1 * time.Minute,
-			MaxEntriesInWindow: 10,
-			MaxEntrySize:       5,
-			Verbose:            false,
-		}
-
-		ts, u, store := getAPIServerAndAccessInfo(http.StatusTooManyRequests, validBody, "arc", "resourceid", testOptions)
+		ts, u := getAPIServerAndAccessInfo(http.StatusTooManyRequests, validBody, "arc", "resourceid")
 		defer ts.Close()
-		defer store.Close()
 
 		request := &authzv1.SubjectAccessReviewSpec{
 			User: "alpha@bing.com",
@@ -114,20 +90,9 @@ func TestCheckAccess(t *testing.T) {
 	t.Run("check acess not available", func(t *testing.T) {
 		var validBody = `""`
 
-		var testOptions = data.Options{
-			HardMaxCacheSize:   1,
-			Shards:             1,
-			LifeWindow:         1 * time.Minute,
-			CleanWindow:        1 * time.Minute,
-			MaxEntriesInWindow: 10,
-			MaxEntrySize:       5,
-			Verbose:            false,
-		}
-
-		ts, u, store := getAPIServerAndAccessInfo(http.StatusInternalServerError, validBody,
-			"arc", "resourceid", testOptions)
+		ts, u := getAPIServerAndAccessInfo(http.StatusInternalServerError, validBody,
+			"arc", "resourceid")
 		defer ts.Close()
-		defer store.Close()
 
 		request := &authzv1.SubjectAccessReviewSpec{
 			User: "alpha@bing.com",
@@ -149,6 +114,7 @@ func getAuthServerAndAccessInfo(returnCode int, body, clientID, clientSecret str
 	u := &AccessInfo{
 		client:  http.DefaultClient,
 		headers: http.Header{},
+		lock:    &sync.Mutex{},
 	}
 	u.tokenProvider = graph.NewClientCredentialTokenProvider(clientID, clientSecret, ts.URL, "")
 	return ts, u
@@ -190,6 +156,7 @@ func TestLogin(t *testing.T) {
 		u := &AccessInfo{
 			client:  http.DefaultClient,
 			headers: http.Header{},
+			lock:    &sync.Mutex{},
 		}
 		u.tokenProvider = graph.NewClientCredentialTokenProvider("CIA", "outcome", badURL, "")
 

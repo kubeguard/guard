@@ -25,10 +25,13 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	auth "github.com/appscode/guard/auth/providers/azure"
 	"github.com/appscode/guard/auth/providers/azure/graph"
 	"github.com/appscode/guard/authz"
+	authzOpts "github.com/appscode/guard/authz/providers/azure/options"
 
 	"github.com/golang/glog"
 	"github.com/moul/http2curl"
@@ -37,13 +40,18 @@ import (
 )
 
 const (
-	managedClusters         = "Microsoft.ContainerService/managedClusters"
-	connectedClusters       = "Microsoft.Kubernetes/connectedClusters"
-	checkAccessPath         = "/providers/Microsoft.Authorization/checkaccess"
-	checkAccessAPIVersion   = "2018-09-01-preview"
-	remaingSubReadARMHeader = "x-ms-ratelimit-remaining-subscription-reads"
-	expiryDelta             = 60 * time.Second
+	managedClusters           = "Microsoft.ContainerService/managedClusters"
+	connectedClusters         = "Microsoft.Kubernetes/connectedClusters"
+	checkAccessPath           = "/providers/Microsoft.Authorization/checkaccess"
+	checkAccessAPIVersion     = "2018-09-01-preview"
+	remainingSubReadARMHeader = "x-ms-ratelimit-remaining-subscription-reads"
+	expiryDelta               = 60 * time.Second
 )
+
+type AuthzInfo struct {
+	AADEndpoint string
+	ARMEndPoint string
+}
 
 type void struct{}
 
@@ -55,83 +63,90 @@ type AccessInfo struct {
 	// These allow us to mock out the URL for testing
 	apiURL *url.URL
 
-	tokenProvider            graph.TokenProvider
-	clusterType              string
-	azureResourceId          string
-	armCallLimit             int
-	dataStore                authz.Store
-	skipCheck                map[string]void
-	retrieveGroupMemberships bool
-	skipAuthzForNonAADUsers  bool
+	tokenProvider                  graph.TokenProvider
+	clusterType                    string
+	azureResourceId                string
+	armCallLimit                   int
+	skipCheck                      map[string]void
+	retrieveGroupMemberships       bool
+	skipAuthzForNonAADUsers        bool
+	allowNonResDiscoveryPathAccess bool
+	lock                           *sync.Mutex
 }
 
-func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, clsuterType, resourceId string, armCallLimit int, dataStore authz.Store, skipList []string, retrieveGroupMemberships, skipAuthzForNonAADUsers bool) (*AccessInfo, error) {
+func getClusterType(clsType string) string {
+	switch clsType {
+	case authzOpts.ARCAuthzMode:
+		return connectedClusters
+	case authzOpts.AKSAuthzMode:
+		return managedClusters
+	default:
+		return ""
+	}
+}
+
+func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts authzOpts.Options) (*AccessInfo, error) {
 	u := &AccessInfo{
 		client: http.DefaultClient,
 		headers: http.Header{
 			"Content-Type": []string{"application/json"},
 		},
-		apiURL:                   rbacURL,
-		tokenProvider:            tokenProvider,
-		azureResourceId:          resourceId,
-		armCallLimit:             armCallLimit,
-		dataStore:                dataStore,
-		retrieveGroupMemberships: retrieveGroupMemberships,
-		skipAuthzForNonAADUsers:  skipAuthzForNonAADUsers}
+		apiURL:                         rbacURL,
+		tokenProvider:                  tokenProvider,
+		azureResourceId:                opts.ResourceId,
+		armCallLimit:                   opts.ARMCallLimit,
+		retrieveGroupMemberships:       opts.AuthzResolveGroupMemberships,
+		skipAuthzForNonAADUsers:        opts.SkipAuthzForNonAADUsers,
+		allowNonResDiscoveryPathAccess: opts.AllowNonResDiscoveryPathAccess,
+	}
 
-	u.skipCheck = make(map[string]void, len(skipList))
+	u.skipCheck = make(map[string]void, len(opts.SkipAuthzCheck))
 	var member void
-	for _, s := range skipList {
+	for _, s := range opts.SkipAuthzCheck {
 		u.skipCheck[strings.ToLower(s)] = member
 	}
 
-	if clsuterType == "arc" {
-		u.clusterType = connectedClusters
-	}
-
-	if clsuterType == "aks" {
-		u.clusterType = managedClusters
-	}
+	u.clusterType = getClusterType(opts.AuthzMode)
+	u.lock = &sync.Mutex{}
 
 	return u, nil
 }
 
-func New(clientID, clientSecret, tenantID, aadEndpoint, armEndPoint, clusterType, resourceId string, armCallLimit int, dataStore authz.Store, skipCheck []string, retrieveGroupMemberships, skipAuthzForNonAADUsers bool) (*AccessInfo, error) {
-	rbacURL, err := url.Parse(armEndPoint)
-
+func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo) (*AccessInfo, error) {
+	rbacURL, err := url.Parse(authzInfo.ARMEndPoint)
 	if err != nil {
 		return nil, err
 	}
 
-	tokenProvider := graph.NewClientCredentialTokenProvider(clientID, clientSecret,
-		fmt.Sprintf("%s%s/oauth2/v2.0/token", aadEndpoint, tenantID),
-		fmt.Sprintf("%s.default", armEndPoint))
-
-	return newAccessInfo(tokenProvider, rbacURL, clusterType, resourceId, armCallLimit, dataStore, skipCheck, retrieveGroupMemberships, skipAuthzForNonAADUsers)
-}
-
-func NewWithAKS(tokenURL, tenantID, armEndPoint, clusterType, resourceId string, armCallLimit int, dataStore authz.Store, skipCheck []string, retrieveGroupMemberships, skipAuthzForNonAADUsers bool) (*AccessInfo, error) {
-	rbacURL, err := url.Parse(armEndPoint)
-
-	if err != nil {
-		return nil, err
+	var tokenProvider graph.TokenProvider
+	switch opts.AuthzMode {
+	case authzOpts.ARCAuthzMode:
+		tokenProvider = graph.NewClientCredentialTokenProvider(authopts.ClientID, authopts.ClientSecret,
+			fmt.Sprintf("%s%s/oauth2/v2.0/token", authzInfo.AADEndpoint, authopts.TenantID),
+			fmt.Sprintf("%s.default", authzInfo.ARMEndPoint))
+	case authzOpts.AKSAuthzMode:
+		tokenProvider = graph.NewAKSTokenProvider(opts.AKSAuthzURL, authopts.TenantID)
 	}
-	tokenProvider := graph.NewAKSTokenProvider(tokenURL, tenantID)
 
-	return newAccessInfo(tokenProvider, rbacURL, clusterType, resourceId, armCallLimit, dataStore, skipCheck, retrieveGroupMemberships, skipAuthzForNonAADUsers)
+	return newAccessInfo(tokenProvider, rbacURL, opts)
 }
 
 func (a *AccessInfo) RefreshToken() error {
-	resp, err := a.tokenProvider.Acquire("")
-	if err != nil {
-		glog.Errorf("%s failed to refresh token : %s", a.tokenProvider.Name(), err.Error())
-		return errors.Wrap(err, "failed to refresh rbac token")
-	}
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	if a.IsTokenExpired() {
+		resp, err := a.tokenProvider.Acquire("")
+		if err != nil {
+			glog.Errorf("%s failed to refresh token : %s", a.tokenProvider.Name(), err.Error())
+			return errors.Wrap(err, "failed to refresh rbac token")
+		}
 
-	// Set the authorization headers for future requests
-	a.headers.Set("Authorization", fmt.Sprintf("Bearer %s", resp.Token))
-	expIn := time.Duration(resp.Expires) * time.Second
-	a.expiresAt = time.Now().Add(expIn - expiryDelta)
+		// Set the authorization headers for future requests
+		a.headers.Set("Authorization", fmt.Sprintf("Bearer %s", resp.Token))
+		expIn := time.Duration(resp.Expires) * time.Second
+		a.expiresAt = time.Now().Add(expIn - expiryDelta)
+		glog.Infof("Token refreshed successfully on %s. Expire at:%s", time.Now(), a.expiresAt)
+	}
 
 	return nil
 }
@@ -148,11 +163,11 @@ func (a *AccessInfo) ShouldSkipAuthzCheckForNonAADUsers() bool {
 	return a.skipAuthzForNonAADUsers
 }
 
-func (a *AccessInfo) GetResultFromCache(request *authzv1.SubjectAccessReviewSpec) (bool, bool) {
+func (a *AccessInfo) GetResultFromCache(request *authzv1.SubjectAccessReviewSpec, store authz.Store) (bool, bool) {
 	var result bool
 	key := getResultCacheKey(request)
 	glog.V(10).Infof("Cache search for key: %s", key)
-	found, _ := a.dataStore.Get(key, &result)
+	found, _ := store.Get(key, &result)
 	return found, result
 }
 
@@ -164,10 +179,20 @@ func (a *AccessInfo) SkipAuthzCheck(request *authzv1.SubjectAccessReviewSpec) bo
 	return false
 }
 
-func (a *AccessInfo) SetResultInCache(request *authzv1.SubjectAccessReviewSpec, result bool) error {
+func (a *AccessInfo) SetResultInCache(request *authzv1.SubjectAccessReviewSpec, result bool, store authz.Store) error {
 	key := getResultCacheKey(request)
 	glog.V(10).Infof("Cache set for key: %s, value: %t", key, result)
-	return a.dataStore.Set(key, result)
+	return store.Set(key, result)
+}
+
+func (a *AccessInfo) AllowNonResPathDiscoveryAccess(request *authzv1.SubjectAccessReviewSpec) bool {
+	if request.NonResourceAttributes != nil && a.allowNonResDiscoveryPathAccess && strings.EqualFold(request.NonResourceAttributes.Verb, "get") {
+		path := strings.ToLower(request.NonResourceAttributes.Path)
+		if strings.HasPrefix(path, "/api") || strings.HasPrefix(path, "/openapi") || strings.HasPrefix(path, "/version") || strings.HasPrefix(path, "/healthz") {
+			return true
+		}
+	}
+	return false
 }
 
 func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
@@ -234,14 +259,14 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		}
 		return nil, errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data))
 	} else {
-		remaining := resp.Header.Get(remaingSubReadARMHeader)
+		remaining := resp.Header.Get(remainingSubReadARMHeader)
 		glog.Infof("Remaining request count in ARM instance:%s", remaining)
 		count, _ := strconv.Atoi(remaining)
 		if count < a.armCallLimit {
 			if glog.V(10) {
 				glog.V(10).Infoln("Closing idle TCP connections.")
 			}
-			// Usually ARM connections are cached by destinatio ip and port
+			// Usually ARM connections are cached by destination ip and port
 			// By closing the idle connection, a new request will use different port which
 			// will connect to different ARM instance of the region to ensure there is no ARM throttling
 			a.client.CloseIdleConnections()
@@ -249,11 +274,5 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	}
 
 	// Decode response and prepare k8s response
-	response, err := ConvertCheckAccessResponse(data)
-	if err == nil {
-		_ = a.SetResultInCache(request, response.Allowed)
-	} else {
-		_ = a.SetResultInCache(request, false)
-	}
-	return response, err
+	return ConvertCheckAccessResponse(data)
 }

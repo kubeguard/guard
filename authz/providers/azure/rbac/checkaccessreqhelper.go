@@ -146,11 +146,13 @@ func getValidSecurityGroups(groups []string) []string {
 }
 
 func getActionName(verb string) string {
-	/* special verbs
-	use verb on podsecuritypolicies resources in the policy API group
-	bind and escalate verbs on roles and clusterroles resources in the rbac.authorization.k8s.io API group
-	impersonate verb on users, groups, and serviceaccounts in the core API group
-	userextras in the authentication.k8s.io API group
+	/* Kubernetes supprots some special verbs for which we need to return data action /verb/action.
+	Following is the list of special verbs and their API group/resources in Kubernetes:
+	use:policy/podsecuritypolicies
+	bind:rbac.authorization.k8s.io/roles,clusterroles
+	escalate:rbac.authorization.k8s.io/roles,clusterroles
+	impersonate:core/users,groups,serviceaccounts
+	impersonate:authentication.k8s.io/userextras
 
 	https://kubernetes.io/docs/reference/access-authn-authz/authorization/#determine-the-request-verb
 	*/
@@ -203,16 +205,19 @@ func getDataAction(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType strin
 	return authInfo
 }
 
+func defaultDir(s string) string {
+	if s != "" {
+		return s
+	}
+	return "-" // invalid for a namespace
+}
+
 func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	cacheKey := subRevReq.User
 
 	if subRevReq.ResourceAttributes != nil {
-		if subRevReq.ResourceAttributes.Namespace != "" {
-			cacheKey = path.Join(cacheKey, subRevReq.ResourceAttributes.Namespace)
-		}
-		if subRevReq.ResourceAttributes.Group != "" {
-			cacheKey = path.Join(cacheKey, subRevReq.ResourceAttributes.Group)
-		}
+		cacheKey = path.Join(cacheKey, defaultDir(subRevReq.ResourceAttributes.Namespace))
+		cacheKey = path.Join(cacheKey, defaultDir(subRevReq.ResourceAttributes.Group))
 		cacheKey = path.Join(cacheKey, subRevReq.ResourceAttributes.Resource, getActionName(subRevReq.ResourceAttributes.Verb))
 	} else if subRevReq.NonResourceAttributes != nil {
 		cacheKey = path.Join(cacheKey, subRevReq.NonResourceAttributes.Path, getActionName(subRevReq.NonResourceAttributes.Verb))
@@ -223,51 +228,51 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 
 func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType, resourceId string, retrieveGroupMemberships bool) (*CheckAccessRequest, error) {
 	/* This is how sample SubjectAccessReview request will look like
-		{
-	    	"kind": "SubjectAccessReview",
+	{
+		"kind": "SubjectAccessReview",
 	    	"apiVersion": "authorization.k8s.io/v1beta1",
 	    	"metadata": {
 	        	"creationTimestamp": null
 	    	},
 	    	"spec": {
 	        	"resourceAttributes": {
-	            	"namespace": "default",
-	            	"verb": "get",
-					"group": "extensions",
-					"version": "v1beta1",
-					"resource": "deployments",
-					"name": "obo-deploy"
+	            		"namespace": "default",
+		            	"verb": "get",
+				"group": "extensions",
+				"version": "v1beta1",
+				"resource": "deployments",
+				"name": "obo-deploy"
 	        	},
-				"user": "user@contoso.com",
-				"extra": {
-					"oid": [
-	    				"62103f2e-051d-48cc-af47-b1ff3deec630"
-					]
+			"user": "user@contoso.com",
+			"extra": {
+				"oid": [
+	    			"62103f2e-051d-48cc-af47-b1ff3deec630"
+			]
 	        	}
 	    	},
 	    	"status": {
 	        	"allowed": false
 	    	}
-		}
+	}
 
-		For check access it will be converted into following request for arc cluster:
-		{
-			"Subject": {
-				"Attributes": {
-					"ObjectId": "62103f2e-051d-48cc-af47-b1ff3deec630",
-					"xms-pasrp-retrievegroupmemberships": true
-				}
-			},
-			"Actions": [
-				{
-					"Id": "Microsoft.Kubernetes/connectedClusters/extensions/deployments/read",
-					"IsDataAction": true
-				}
-			],
-			"Resource": {
-				"Id": "<resourceId>/namespaces/<namespace name>"
+	For check access it will be converted into following request for arc cluster:
+	{
+		"Subject": {
+			"Attributes": {
+				"ObjectId": "62103f2e-051d-48cc-af47-b1ff3deec630",
+				"xms-pasrp-retrievegroupmemberships": true
 			}
+		},
+		"Actions": [
+			{
+				"Id": "Microsoft.Kubernetes/connectedClusters/extensions/deployments/read",
+				"IsDataAction": true
+			}
+		],
+		"Resource": {
+			"Id": "<resourceId>/namespaces/<namespace name>"
 		}
+	}
 	*/
 	checkaccessreq := CheckAccessRequest{}
 	var userOid string
@@ -314,15 +319,11 @@ func ConvertCheckAccessResponse(body []byte) (*authzv1.SubjectAccessReviewStatus
 		denied   bool
 		verdict  string
 	)
+
 	err := json.Unmarshal(body, &response)
 	if err != nil {
 		glog.V(10).Infof("Failed to parse checkacccess response. Error:%s", err.Error())
 		return nil, errors.Wrap(err, "Error in unmarshalling check access response.")
-	}
-
-	if glog.V(10) {
-		binaryData, _ := json.MarshalIndent(response, "", "    ")
-		glog.Infof("check access response:%s", binaryData)
 	}
 
 	if strings.ToLower(response[0].Decision) == Allowed {

@@ -53,8 +53,7 @@ func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	binaryData, _ := json.MarshalIndent(&data, "", "    ")
-	glog.V(10).Infof("Authz req:%s", binaryData)
+	glog.V(10).Infof("Authz req:%+v\n", data)
 
 	if !s.AuthzRecommendedOptions.AuthzProvider.Has(org) {
 		writeAuthzResponse(w, &data.Spec, nil, WithCode(errors.Errorf("guard does not provide service for %v", org), http.StatusBadRequest))
@@ -62,19 +61,19 @@ func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	client, err := s.getAuthzProviderClient(org)
-	if err != nil {
+	if client == nil || err != nil {
 		writeAuthzResponse(w, &data.Spec, nil, err)
 		return
 	}
 
-	resp, err := client.Check(&data.Spec)
+	resp, err := client.Check(&data.Spec, s.Store)
 	writeAuthzResponse(w, &data.Spec, resp, err)
 }
 
 func (s *Authzhandler) getAuthzProviderClient(org string) (authz.Interface, error) {
 	switch strings.ToLower(org) {
 	case azure.OrgType:
-		return azure.New(s.AuthzRecommendedOptions.Azure, s.AuthRecommendedOptions.Azure, s.Store)
+		return azure.New(s.AuthzRecommendedOptions.Azure, s.AuthRecommendedOptions.Azure)
 	}
 
 	return nil, errors.Errorf("Client is using unknown organization %s", org)

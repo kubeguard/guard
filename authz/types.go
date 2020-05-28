@@ -27,9 +27,9 @@ type orgs []string
 var SupportedOrgs orgs
 
 func (o orgs) Has(name string) bool {
-	name = strings.TrimSpace(strings.ToLower(name))
+	name = strings.TrimSpace(name)
 	for _, org := range o {
-		if org == name {
+		if strings.EqualFold(name, org) {
 			return true
 		}
 	}
@@ -46,7 +46,7 @@ func (o orgs) String() string {
 }
 
 type Interface interface {
-	Check(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error)
+	Check(request *authzv1.SubjectAccessReviewSpec, store Store) (*authzv1.SubjectAccessReviewStatus, error)
 }
 
 type Store interface {
