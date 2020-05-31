@@ -28,6 +28,7 @@ import (
 	"sync"
 	"time"
 
+	v "github.com/appscode/go/version"
 	auth "github.com/appscode/guard/auth/providers/azure"
 	"github.com/appscode/guard/auth/providers/azure/graph"
 	"github.com/appscode/guard/authz"
@@ -90,6 +91,7 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 		client: http.DefaultClient,
 		headers: http.Header{
 			"Content-Type": []string{"application/json"},
+			"User-Agent":   []string{fmt.Sprintf("%s-%s-%s-%s", v.Version.Platform, v.Version.GoVersion, v.Version.Version, opts.AuthzMode)},
 		},
 		apiURL:                         rbacURL,
 		tokenProvider:                  tokenProvider,
