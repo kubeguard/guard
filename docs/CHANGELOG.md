@@ -17,6 +17,15 @@ aliases:
 
 # Change Log
 
+## [v0.6.0-rc.0](https://github.com/appscode/guard/tree/v0.6.0-rc.0) (2020-06-02)
+[Full Changelog](https://github.com/appscode/guard/compare/v0.5.0...v0.6.0-rc.0)
+
+**Merged pull requests:**
+
+- Adding Authz support for Azure [\#255](https://github.com/appscode/guard/pull/255) ([krdhruva](https://github.com/krdhruva))
+- Fix linter warnings [\#254](https://github.com/appscode/guard/pull/254) ([tamalsaha](https://github.com/tamalsaha))
+- Update to Kubernetes 1.18.3 [\#253](https://github.com/appscode/guard/pull/253) ([tamalsaha](https://github.com/tamalsaha))
+
 ## [v0.5.0](https://github.com/appscode/guard/tree/v0.5.0) (2020-05-11)
 [Full Changelog](https://github.com/appscode/guard/compare/v0.5.0-rc.1...v0.5.0)
 
