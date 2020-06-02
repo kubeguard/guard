@@ -47,7 +47,7 @@ endif
 ### These variables should not need tweaking.
 ###
 
-SRC_PKGS := *.go auth commands docs installer server util
+SRC_PKGS := *.go auth authz commands docs installer server util
 SRC_DIRS := $(SRC_PKGS) test hack/gendocs # directories which hold app source (not vendored)
 
 DOCKER_PLATFORMS := linux/amd64 linux/arm linux/arm64

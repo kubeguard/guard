@@ -37,6 +37,7 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 		rootDir = auth.DefaultDataDir
 		org     string
 		addr    string
+		mode    string
 	)
 	cmd := &cobra.Command{
 		Use:               "webhook-config",
@@ -92,39 +93,73 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 				glog.Fatalf("Failed to load client certificate. Reason: %v.", err)
 			}
 
-			config := clientcmdapi.Config{
-				Kind:       "Config",
-				APIVersion: "v1",
-				Clusters: map[string]*clientcmdapi.Cluster{
-					"guard-server": {
-						Server:                   fmt.Sprintf("https://%s/tokenreviews", addr),
-						CertificateAuthorityData: caCert,
+			if mode == "authn" {
+				config := clientcmdapi.Config{
+					Kind:       "Config",
+					APIVersion: "v1",
+					Clusters: map[string]*clientcmdapi.Cluster{
+						"guard-server": {
+							Server:                   fmt.Sprintf("https://%s/tokenreviews", addr),
+							CertificateAuthorityData: caCert,
+						},
 					},
-				},
-				AuthInfos: map[string]*clientcmdapi.AuthInfo{
-					filename(cfg): {
-						ClientCertificateData: clientCert,
-						ClientKeyData:         clientKey,
+					AuthInfos: map[string]*clientcmdapi.AuthInfo{
+						filename(cfg): {
+							ClientCertificateData: clientCert,
+							ClientKeyData:         clientKey,
+						},
 					},
-				},
-				Contexts: map[string]*clientcmdapi.Context{
-					"webhook": {
-						Cluster:  "guard-server",
-						AuthInfo: filename(cfg),
+					Contexts: map[string]*clientcmdapi.Context{
+						"webhook": {
+							Cluster:  "guard-server",
+							AuthInfo: filename(cfg),
+						},
 					},
-				},
-				CurrentContext: "webhook",
+					CurrentContext: "webhook",
+				}
+				data, err := clientcmd.Write(config)
+				if err != nil {
+					glog.Fatalln(err)
+				}
+				fmt.Println(string(data))
 			}
-			data, err := clientcmd.Write(config)
-			if err != nil {
-				glog.Fatalln(err)
+
+			if mode == "authz" {
+				config := clientcmdapi.Config{
+					Kind:       "Config",
+					APIVersion: "v1",
+					Clusters: map[string]*clientcmdapi.Cluster{
+						"guard-server": {
+							Server:                   fmt.Sprintf("https://%s/subjectaccessreviews", addr),
+							CertificateAuthorityData: caCert,
+						},
+					},
+					AuthInfos: map[string]*clientcmdapi.AuthInfo{
+						filename(cfg): {
+							ClientCertificateData: clientCert,
+							ClientKeyData:         clientKey,
+						},
+					},
+					Contexts: map[string]*clientcmdapi.Context{
+						"webhook": {
+							Cluster:  "guard-server",
+							AuthInfo: filename(cfg),
+						},
+					},
+					CurrentContext: "webhook",
+				}
+				data, err := clientcmd.Write(config)
+				if err != nil {
+					glog.Fatalln(err)
+				}
+				fmt.Println(string(data))
 			}
-			fmt.Println(string(data))
 		},
 	}
 
 	cmd.Flags().StringVar(&rootDir, "pki-dir", rootDir, "Path to directory where pki files are stored.")
 	cmd.Flags().StringVarP(&org, "organization", "o", org, fmt.Sprintf("Name of Organization (%v).", auth.SupportedOrgs))
 	cmd.Flags().StringVar(&addr, "addr", "10.96.10.96:443", "Address (host:port) of guard server.")
+	cmd.Flags().StringVar(&mode, "mode", "authn", "Mode to generate config, Supported mode: authn, authz")
 	return cmd
 }

@@ -128,13 +128,13 @@ var _ = Describe("Installer test", func() {
 	)
 
 	var (
-		setupGuard = func(opts installer.Options) {
+		setupGuard = func(authopts installer.AuthOptions, authzopts installer.AuthzOptions) {
 			By("Validate installer flag options")
-			errs := opts.Validate()
+			errs := authopts.Validate()
 			Expect(errors.NewAggregate(errs)).NotTo(HaveOccurred())
 
 			By("Generating installer yaml")
-			data, err := installer.Generate(opts)
+			data, err := installer.Generate(authopts, authzopts)
 			Expect(err).NotTo(HaveOccurred())
 
 			glog.Info(string(data))
@@ -293,17 +293,20 @@ var _ = Describe("Installer test", func() {
 	Describe("Set up guard for individual auth provider", func() {
 		var (
 			secretName string
-			opts       installer.Options
+			authopts   installer.AuthOptions
+			authzopts  installer.AuthzOptions
 		)
 
 		BeforeEach(func() {
-			opts = installer.Options{
+			authopts = installer.AuthOptions{
 				PkiDir:          certDir,
 				RunOnMaster:     false,
 				Namespace:       root.Namespace(),
 				Addr:            serverAddr + ":443",
 				PrivateRegistry: privateRegistryName,
 			}
+
+			authzopts = installer.AuthzOptions{}
 
 			secretName = pkiSecret
 
@@ -326,11 +329,11 @@ var _ = Describe("Installer test", func() {
 
 		Context("Setting up guard for github", func() {
 			BeforeEach(func() {
-				opts.AuthProvider = providers.AuthProviders{Providers: []string{github.OrgType}}
+				authopts.AuthProvider = providers.AuthProviders{Providers: []string{github.OrgType}}
 			})
 
 			It("Set up guard for github should be successful", func() {
-				setupGuard(opts)
+				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
 				checkClusterRoleCreated()
@@ -341,9 +344,9 @@ var _ = Describe("Installer test", func() {
 			})
 
 			It("Set up guard for github should be successful, provided base url", func() {
-				opts.Github = githubOpts
+				authopts.Github = githubOpts
 
-				setupGuard(opts)
+				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
 				checkClusterRoleCreated()
@@ -356,11 +359,11 @@ var _ = Describe("Installer test", func() {
 
 		Context("Setting up guard for gitlab", func() {
 			BeforeEach(func() {
-				opts.AuthProvider = providers.AuthProviders{Providers: []string{gitlab.OrgType}}
+				authopts.AuthProvider = providers.AuthProviders{Providers: []string{gitlab.OrgType}}
 			})
 
 			It("Set up guard for gitlab should be successful", func() {
-				setupGuard(opts)
+				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
 				checkClusterRoleCreated()
@@ -371,9 +374,9 @@ var _ = Describe("Installer test", func() {
 			})
 
 			It("Set up guard for gitlab should be successful, provided base url", func() {
-				opts.Gitlab = gitlabOpts
+				authopts.Gitlab = gitlabOpts
 
-				setupGuard(opts)
+				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
 				checkClusterRoleCreated()
@@ -386,8 +389,8 @@ var _ = Describe("Installer test", func() {
 
 		Context("Setting up guard for azure", func() {
 			BeforeEach(func() {
-				opts.AuthProvider = providers.AuthProviders{Providers: []string{azure.OrgType}}
-				opts.Azure = azureOpts
+				authopts.AuthProvider = providers.AuthProviders{Providers: []string{azure.OrgType}}
+				authopts.Azure = azureOpts
 
 				checkSecretDeleted(azureSecret)
 			})
@@ -397,7 +400,7 @@ var _ = Describe("Installer test", func() {
 			})
 
 			It("Set up guard for azure should be successful", func() {
-				setupGuard(opts)
+				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
 				checkClusterRoleCreated()
@@ -412,8 +415,8 @@ var _ = Describe("Installer test", func() {
 
 		Context("Setting up guard for LDAP", func() {
 			BeforeEach(func() {
-				opts.AuthProvider = providers.AuthProviders{Providers: []string{ldap.OrgType}}
-				opts.LDAP = ldapOpts
+				authopts.AuthProvider = providers.AuthProviders{Providers: []string{ldap.OrgType}}
+				authopts.LDAP = ldapOpts
 
 				checkSecretDeleted(ldapSecret)
 			})
@@ -423,7 +426,7 @@ var _ = Describe("Installer test", func() {
 			})
 
 			It("Set up guard for LDAP should be successful", func() {
-				setupGuard(opts)
+				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
 				checkClusterRoleCreated()
@@ -438,8 +441,8 @@ var _ = Describe("Installer test", func() {
 
 		Context("Setting up guard for token auth", func() {
 			BeforeEach(func() {
-				opts.AuthProvider = providers.AuthProviders{Providers: []string{token.OrgType}}
-				opts.Token = tokenOpts
+				authopts.AuthProvider = providers.AuthProviders{Providers: []string{token.OrgType}}
+				authopts.Token = tokenOpts
 
 				err := appFs.Mkdir(tokenAuthDir, 0777)
 				Expect(err).NotTo(HaveOccurred())
@@ -456,7 +459,7 @@ var _ = Describe("Installer test", func() {
 			})
 
 			It("Set up guard for token auth should be successful", func() {
-				setupGuard(opts)
+				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
 				checkClusterRoleCreated()
@@ -471,8 +474,8 @@ var _ = Describe("Installer test", func() {
 
 		Context("Setting up guard for google", func() {
 			BeforeEach(func() {
-				opts.AuthProvider = providers.AuthProviders{Providers: []string{google.OrgType}}
-				opts.Google = googleOpts
+				authopts.AuthProvider = providers.AuthProviders{Providers: []string{google.OrgType}}
+				authopts.Google = googleOpts
 
 				err := appFs.Mkdir(saDir, 0777)
 				Expect(err).NotTo(HaveOccurred())
@@ -490,7 +493,7 @@ var _ = Describe("Installer test", func() {
 			})
 
 			It("Set up guard for google should be successful", func() {
-				setupGuard(opts)
+				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
 				checkClusterRoleCreated()
@@ -508,11 +511,12 @@ var _ = Describe("Installer test", func() {
 	Describe("Setting up guard for all providers", func() {
 		var (
 			secretNames []string
-			opts        installer.Options
+			authopts    installer.AuthOptions
+			authzopts   installer.AuthzOptions
 		)
 
 		BeforeEach(func() {
-			opts = installer.Options{
+			authopts = installer.AuthOptions{
 				PkiDir:          certDir,
 				RunOnMaster:     false,
 				Namespace:       root.Namespace(),
@@ -524,7 +528,7 @@ var _ = Describe("Installer test", func() {
 				Google:          googleOpts,
 			}
 
-			opts.AuthProvider = providers.AuthProviders{Providers: []string{
+			authopts.AuthProvider = providers.AuthProviders{Providers: []string{
 				azure.OrgType,
 				github.OrgType,
 				gitlab.OrgType,
@@ -575,7 +579,7 @@ var _ = Describe("Installer test", func() {
 		})
 
 		It("Set up guard for all providers should be successful", func() {
-			setupGuard(opts)
+			setupGuard(authopts, authzopts)
 
 			checkServiceCreated()
 			checkClusterRoleCreated()

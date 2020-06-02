@@ -25,12 +25,16 @@ import (
 	"github.com/appscode/guard/auth/providers/google"
 	"github.com/appscode/guard/auth/providers/ldap"
 	"github.com/appscode/guard/auth/providers/token"
+	authz "github.com/appscode/guard/authz/providers"
+	azureauthz "github.com/appscode/guard/authz/providers/azure"
+	authzOpts "github.com/appscode/guard/authz/providers/azure/options"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type Options struct {
+type AuthOptions struct {
 	PkiDir          string
 	Namespace       string
 	Addr            string
@@ -47,8 +51,13 @@ type Options struct {
 	Gitlab       gitlab.Options
 }
 
-func New() Options {
-	return Options{
+type AuthzOptions struct {
+	AuthzProvider authz.AuthzProviders
+	Azure         authzOpts.Options
+}
+
+func NewAuthOptions() AuthOptions {
+	return AuthOptions{
 		PkiDir:          auth.DefaultDataDir,
 		Namespace:       metav1.NamespaceSystem,
 		Addr:            "10.96.10.96:443",
@@ -63,7 +72,13 @@ func New() Options {
 	}
 }
 
-func (o *Options) AddFlags(fs *pflag.FlagSet) {
+func NewAuthzOptions() AuthzOptions {
+	return AuthzOptions{
+		Azure: authzOpts.NewOptions(),
+	}
+}
+
+func (o *AuthOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.PkiDir, "pki-dir", o.PkiDir, "Path to directory where pki files are stored.")
 	fs.StringVarP(&o.Namespace, "namespace", "n", o.Namespace, "Name of Kubernetes namespace used to run guard server.")
 	fs.StringVar(&o.Addr, "addr", o.Addr, "Address (host:port) of guard server.")
@@ -79,7 +94,11 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	o.Gitlab.AddFlags(fs)
 }
 
-func (o *Options) Validate() []error {
+func (o *AuthzOptions) AddFlags(fs *pflag.FlagSet) {
+	o.AuthzProvider.AddFlags(fs)
+	o.Azure.AddFlags(fs)
+}
+func (o *AuthOptions) Validate() []error {
 	var errs []error
 	errs = append(errs, o.AuthProvider.Validate()...)
 
@@ -100,6 +119,20 @@ func (o *Options) Validate() []error {
 	}
 	if o.AuthProvider.Has(gitlab.OrgType) {
 		errs = append(errs, o.Gitlab.Validate()...)
+	}
+
+	return errs
+}
+
+func (o *AuthzOptions) Validate(opt *AuthOptions) []error {
+	var errs []error
+	errs = append(errs, o.AuthzProvider.Validate()...)
+
+	if o.AuthzProvider.Has(azureauthz.OrgType) {
+		if !opt.AuthProvider.Has(azure.OrgType) {
+			errs = append(errs, errors.New("azure authz option must be used only with azure auth provider."))
+		}
+		errs = append(errs, o.Azure.Validate(opt.Azure)...)
 	}
 
 	return errs
