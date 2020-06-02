@@ -72,7 +72,7 @@ type AccessInfo struct {
 	retrieveGroupMemberships       bool
 	skipAuthzForNonAADUsers        bool
 	allowNonResDiscoveryPathAccess bool
-	lock                           *sync.Mutex
+	lock                           sync.RWMutex
 }
 
 func getClusterType(clsType string) string {
@@ -109,7 +109,7 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 	}
 
 	u.clusterType = getClusterType(opts.AuthzMode)
-	u.lock = &sync.Mutex{}
+	u.lock = sync.RWMutex{}
 
 	return u, nil
 }
@@ -127,7 +127,7 @@ func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo) (*
 			fmt.Sprintf("%s%s/oauth2/v2.0/token", authzInfo.AADEndpoint, authopts.TenantID),
 			fmt.Sprintf("%s.default", authzInfo.ARMEndPoint))
 	case authzOpts.AKSAuthzMode:
-		tokenProvider = graph.NewAKSTokenProvider(opts.AKSAuthzURL, authopts.TenantID)
+		tokenProvider = graph.NewAKSTokenProvider(opts.AKSAuthzTokenURL, authopts.TenantID)
 	}
 
 	return newAccessInfo(tokenProvider, rbacURL, opts)
@@ -154,11 +154,7 @@ func (a *AccessInfo) RefreshToken() error {
 }
 
 func (a *AccessInfo) IsTokenExpired() bool {
-	if a.expiresAt.Before(time.Now()) {
-		return true
-	} else {
-		return false
-	}
+	return a.expiresAt.Before(time.Now())
 }
 
 func (a *AccessInfo) ShouldSkipAuthzCheckForNonAADUsers() bool {
@@ -197,6 +193,19 @@ func (a *AccessInfo) AllowNonResPathDiscoveryAccess(request *authzv1.SubjectAcce
 	return false
 }
 
+func (a *AccessInfo) setReqHeaders(req *http.Request) {
+	a.lock.RLock()
+	defer a.lock.RUnlock()
+	// Set the auth headers for the request
+	if req.Header == nil {
+		req.Header = make(http.Header)
+	}
+
+	for k, value := range a.headers {
+		req.Header[k] = value
+	}
+}
+
 func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
 	checkAccessBody, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.retrieveGroupMemberships)
 
@@ -232,8 +241,8 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating check access request")
 	}
-	// Set the auth headers for the request
-	req.Header = a.headers
+
+	a.setReqHeaders(req)
 
 	if glog.V(10) {
 		cmd, _ := http2curl.GetCurlCommand(req)

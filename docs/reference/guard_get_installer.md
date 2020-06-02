@@ -34,7 +34,7 @@ guard get installer [flags]
       --azure.environment string             Azure cloud environment
       --azure.tenant-id string               MS Graph application tenant id to use
       --azure.use-group-uid                  Use group UID for authentication instead of group display name (default true)
-      --azure.aks-authz-url string           url to call for AKS Authz flow
+      --azure.aks-authz-token-url string     url to call for AKS Authz flow
       --azure.authz-mode string              authz mode to call RBAC api, valid value is either aks or arc
       --azure.resource-id  string            azure cluster resource id (/subscriptions/<SubscriptionId>/resourceGroups/<RGname>/providers/Microsoft.ContainerService/managedClusters/<clustername> for AKS or /subscriptions/<SubscriptionId>/resourceGroups/<RGname>/providers/Microsoft.Kubernetes/connectedClusters/<clustername> for arc) to be used as scope for RBAC check
       --azure.skip-authz-check strings       comma separated list of user email ids for which Azure RBAC will be skipped. (default empty)

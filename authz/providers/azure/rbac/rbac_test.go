@@ -44,7 +44,7 @@ func getAPIServerAndAccessInfo(returnCode int, body, clusterType, resourceId str
 		clusterType:     clusterType,
 		azureResourceId: resourceId,
 		armCallLimit:    0,
-		lock:            &sync.Mutex{}}
+		lock:            sync.RWMutex{}}
 	return ts, u
 }
 
@@ -114,7 +114,7 @@ func getAuthServerAndAccessInfo(returnCode int, body, clientID, clientSecret str
 	u := &AccessInfo{
 		client:  http.DefaultClient,
 		headers: http.Header{},
-		lock:    &sync.Mutex{},
+		lock:    sync.RWMutex{},
 	}
 	u.tokenProvider = graph.NewClientCredentialTokenProvider(clientID, clientSecret, ts.URL, "")
 	return ts, u
@@ -156,7 +156,7 @@ func TestLogin(t *testing.T) {
 		u := &AccessInfo{
 			client:  http.DefaultClient,
 			headers: http.Header{},
-			lock:    &sync.Mutex{},
+			lock:    sync.RWMutex{},
 		}
 		u.tokenProvider = graph.NewClientCredentialTokenProvider("CIA", "outcome", badURL, "")
 
