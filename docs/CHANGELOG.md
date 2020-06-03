@@ -17,6 +17,19 @@ aliases:
 
 # Change Log
 
+## [v0.6.0](https://github.com/appscode/guard/tree/v0.6.0) (2020-06-03)
+[Full Changelog](https://github.com/appscode/guard/compare/v0.6.0-rc.0...v0.6.0)
+
+**Closed issues:**
+
+- Missing files for os x  [\#249](https://github.com/appscode/guard/issues/249)
+
+**Merged pull requests:**
+
+- Fix front matter for authorizer docs [\#258](https://github.com/appscode/guard/pull/258) ([tamalsaha](https://github.com/tamalsaha))
+- Build Mac and Window binaries in GH Actions [\#257](https://github.com/appscode/guard/pull/257) ([tamalsaha](https://github.com/tamalsaha))
+- Update CHANGELOG.md [\#256](https://github.com/appscode/guard/pull/256) ([tamalsaha](https://github.com/tamalsaha))
+
 ## [v0.6.0-rc.0](https://github.com/appscode/guard/tree/v0.6.0-rc.0) (2020-06-02)
 [Full Changelog](https://github.com/appscode/guard/compare/v0.5.0...v0.6.0-rc.0)
 
