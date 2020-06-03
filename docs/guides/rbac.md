@@ -6,7 +6,7 @@ menu:
     identifier: rbac-guides
     name: RBAC Roles
     parent: guides
-    weight: 15
+    weight: 20
 product_name: guard
 menu_name: product_guard_{{ .version }}
 section_menu_id: guides
