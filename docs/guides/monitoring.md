@@ -1,8 +1,22 @@
-# Prometheus monitoring
+---
+title: Prometheus Monitoring | Guard
+description: Prometheus Monitoring
+menu:
+  product_guard_{{ .version }}:
+    identifier: prometheus-monitoring
+    name: Monitoring
+    parent: guides
+    weight: 25
+product_name: guard
+menu_name: product_guard_{{ .version }}
+section_menu_id: guides
+---
+
+# Prometheus Monitoring
 
 ## Service Monitor for Prometheus-Operator
 
-Create a ServiceMonitor for [Prometheus-Operator](https://github.com/coreos/prometheus-operator) to automatically scrape Guard's metrics endpoint. 
+Create a ServiceMonitor for [Prometheus-Operator](https://github.com/coreos/prometheus-operator) to automatically scrape Guard's metrics endpoint.
 
 ```
 apiVersion: monitoring.coreos.com/v1
@@ -50,4 +64,4 @@ prometheus:
 
 # Grafana Dashboard for Guard
 
-A simple Grafana dashbord for Guard can be found [here](../../contrib/Guard-grafana-dashboard.json)
+A simple Grafana dashbord for Guard can be found [here](https://github.com/appscode/guard/raw/master/contrib/Guard-grafana-dashboard.json)
