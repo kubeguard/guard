@@ -31,7 +31,7 @@ import (
 	"github.com/appscode/pat"
 
 	"github.com/stretchr/testify/assert"
-	authzv1 "k8s.io/api/authorization/v1"
+	authzv1beta1 "k8s.io/api/authorization/v1beta1"
 )
 
 const (
@@ -131,10 +131,10 @@ func TestCheck(t *testing.T) {
 		defer srv.Close()
 		defer store.Close()
 
-		request := &authzv1.SubjectAccessReviewSpec{
+		request := &authzv1beta1.SubjectAccessReviewSpec{
 			User: "beta@bing.com",
-			ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev", Group: "", Resource: "pods",
-				Subresource: "status", Version: "v1", Name: "test", Verb: "delete"}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}}}
+			ResourceAttributes: &authzv1beta1.ResourceAttributes{Namespace: "dev", Group: "", Resource: "pods",
+				Subresource: "status", Version: "v1", Name: "test", Verb: "delete"}, Extra: map[string]authzv1beta1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}}}
 
 		resp, err := client.Check(request, store)
 		assert.Nilf(t, err, "Should not have got error")

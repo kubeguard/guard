@@ -27,7 +27,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
-	authzv1 "k8s.io/api/authorization/v1"
+	authzv1beta1 "k8s.io/api/authorization/v1beta1"
 )
 
 const (
@@ -75,7 +75,7 @@ func newAuthzClient(opts authzOpts.Options, authopts auth.Options) (authz.Interf
 	return c, nil
 }
 
-func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec, store authz.Store) (*authzv1.SubjectAccessReviewStatus, error) {
+func (s Authorizer) Check(request *authzv1beta1.SubjectAccessReviewSpec, store authz.Store) (*authzv1beta1.SubjectAccessReviewStatus, error) {
 	if request == nil {
 		return nil, errors.New("subject access review is nil")
 	}
@@ -83,21 +83,21 @@ func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec, store authz.
 	// check if user is system accounts
 	if strings.HasPrefix(strings.ToLower(request.User), "system:") {
 		glog.V(3).Infof("returning no op to system accounts")
-		return &authzv1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
+		return &authzv1beta1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
 	}
 
 	if s.rbacClient.SkipAuthzCheck(request) {
 		glog.V(3).Infof("user %s is part of skip authz list. returning no op.", request.User)
-		return &authzv1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
+		return &authzv1beta1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
 	}
 
 	if _, ok := request.Extra["oid"]; !ok {
 		if s.rbacClient.ShouldSkipAuthzCheckForNonAADUsers() {
 			glog.V(3).Infof("Skip RBAC is set for non AAD users. Returning no opinion for user %s. You may observe this for AAD users for 'can-i' requests.", request.User)
-			return &authzv1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
+			return &authzv1beta1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
 		} else {
 			glog.V(3).Infof("Skip RBAC for non AAD user is not set. Returning deny access for non AAD user %s. You may observe this for AAD users for 'can-i' requests.", request.User)
-			return &authzv1.SubjectAccessReviewStatus{Allowed: false, Denied: true, Reason: rbac.NotAllowedForNonAADUsers}, nil
+			return &authzv1beta1.SubjectAccessReviewStatus{Allowed: false, Denied: true, Reason: rbac.NotAllowedForNonAADUsers}, nil
 		}
 	}
 
@@ -105,10 +105,10 @@ func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec, store authz.
 	if exist {
 		if result {
 			glog.V(3).Infof("cache hit: returning allowed to user %s", request.User)
-			return &authzv1.SubjectAccessReviewStatus{Allowed: result, Reason: rbac.AccessAllowedVerdict}, nil
+			return &authzv1beta1.SubjectAccessReviewStatus{Allowed: result, Reason: rbac.AccessAllowedVerdict}, nil
 		} else {
 			glog.V(3).Infof("cache hit: returning denied to user %s", request.User)
-			return &authzv1.SubjectAccessReviewStatus{Allowed: result, Denied: true, Reason: rbac.AccessNotAllowedVerdict}, nil
+			return &authzv1beta1.SubjectAccessReviewStatus{Allowed: result, Denied: true, Reason: rbac.AccessNotAllowedVerdict}, nil
 		}
 	}
 
@@ -116,7 +116,7 @@ func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec, store authz.
 	if s.rbacClient.AllowNonResPathDiscoveryAccess(request) {
 		glog.V(3).Infof("Allowing user %s access for discovery check.", request.User)
 		_ = s.rbacClient.SetResultInCache(request, true, store)
-		return &authzv1.SubjectAccessReviewStatus{Allowed: true, Reason: rbac.AccessAllowedVerdict}, nil
+		return &authzv1beta1.SubjectAccessReviewStatus{Allowed: true, Reason: rbac.AccessAllowedVerdict}, nil
 	}
 
 	if s.rbacClient.IsTokenExpired() {

@@ -37,7 +37,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/moul/http2curl"
 	"github.com/pkg/errors"
-	authzv1 "k8s.io/api/authorization/v1"
+	authzv1beta1 "k8s.io/api/authorization/v1beta1"
 )
 
 const (
@@ -161,7 +161,7 @@ func (a *AccessInfo) ShouldSkipAuthzCheckForNonAADUsers() bool {
 	return a.skipAuthzForNonAADUsers
 }
 
-func (a *AccessInfo) GetResultFromCache(request *authzv1.SubjectAccessReviewSpec, store authz.Store) (bool, bool) {
+func (a *AccessInfo) GetResultFromCache(request *authzv1beta1.SubjectAccessReviewSpec, store authz.Store) (bool, bool) {
 	var result bool
 	key := getResultCacheKey(request)
 	glog.V(10).Infof("Cache search for key: %s", key)
@@ -169,7 +169,7 @@ func (a *AccessInfo) GetResultFromCache(request *authzv1.SubjectAccessReviewSpec
 	return found, result
 }
 
-func (a *AccessInfo) SkipAuthzCheck(request *authzv1.SubjectAccessReviewSpec) bool {
+func (a *AccessInfo) SkipAuthzCheck(request *authzv1beta1.SubjectAccessReviewSpec) bool {
 	if a.clusterType == connectedClusters {
 		_, ok := a.skipCheck[strings.ToLower(request.User)]
 		return ok
@@ -177,13 +177,13 @@ func (a *AccessInfo) SkipAuthzCheck(request *authzv1.SubjectAccessReviewSpec) bo
 	return false
 }
 
-func (a *AccessInfo) SetResultInCache(request *authzv1.SubjectAccessReviewSpec, result bool, store authz.Store) error {
+func (a *AccessInfo) SetResultInCache(request *authzv1beta1.SubjectAccessReviewSpec, result bool, store authz.Store) error {
 	key := getResultCacheKey(request)
 	glog.V(10).Infof("Cache set for key: %s, value: %t", key, result)
 	return store.Set(key, result)
 }
 
-func (a *AccessInfo) AllowNonResPathDiscoveryAccess(request *authzv1.SubjectAccessReviewSpec) bool {
+func (a *AccessInfo) AllowNonResPathDiscoveryAccess(request *authzv1beta1.SubjectAccessReviewSpec) bool {
 	if request.NonResourceAttributes != nil && a.allowNonResDiscoveryPathAccess && strings.EqualFold(request.NonResourceAttributes.Verb, "get") {
 		path := strings.ToLower(request.NonResourceAttributes.Path)
 		if strings.HasPrefix(path, "/api") || strings.HasPrefix(path, "/openapi") || strings.HasPrefix(path, "/version") || strings.HasPrefix(path, "/healthz") {
@@ -206,7 +206,7 @@ func (a *AccessInfo) setReqHeaders(req *http.Request) {
 	}
 }
 
-func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
+func (a *AccessInfo) CheckAccess(request *authzv1beta1.SubjectAccessReviewSpec) (*authzv1beta1.SubjectAccessReviewStatus, error) {
 	checkAccessBody, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.retrieveGroupMemberships)
 
 	if err != nil {

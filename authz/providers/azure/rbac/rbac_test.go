@@ -27,7 +27,7 @@ import (
 	"github.com/appscode/guard/auth/providers/azure/graph"
 
 	"github.com/stretchr/testify/assert"
-	authzv1 "k8s.io/api/authorization/v1"
+	authzv1beta1 "k8s.io/api/authorization/v1beta1"
 )
 
 func getAPIServerAndAccessInfo(returnCode int, body, clusterType, resourceId string) (*httptest.Server, *AccessInfo) {
@@ -57,10 +57,10 @@ func TestCheckAccess(t *testing.T) {
 		ts, u := getAPIServerAndAccessInfo(http.StatusOK, validBody, "arc", "resourceid")
 		defer ts.Close()
 
-		request := &authzv1.SubjectAccessReviewSpec{
+		request := &authzv1beta1.SubjectAccessReviewSpec{
 			User: "alpha@bing.com",
-			ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev", Group: "", Resource: "pods",
-				Subresource: "status", Version: "v1", Name: "test", Verb: "delete"}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}}}
+			ResourceAttributes: &authzv1beta1.ResourceAttributes{Namespace: "dev", Group: "", Resource: "pods",
+				Subresource: "status", Version: "v1", Name: "test", Verb: "delete"}, Extra: map[string]authzv1beta1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}}}
 
 		response, err := u.CheckAccess(request)
 
@@ -76,10 +76,10 @@ func TestCheckAccess(t *testing.T) {
 		ts, u := getAPIServerAndAccessInfo(http.StatusTooManyRequests, validBody, "arc", "resourceid")
 		defer ts.Close()
 
-		request := &authzv1.SubjectAccessReviewSpec{
+		request := &authzv1beta1.SubjectAccessReviewSpec{
 			User: "alpha@bing.com",
-			ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev", Group: "", Resource: "pods",
-				Subresource: "status", Version: "v1", Name: "test", Verb: "delete"}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}}}
+			ResourceAttributes: &authzv1beta1.ResourceAttributes{Namespace: "dev", Group: "", Resource: "pods",
+				Subresource: "status", Version: "v1", Name: "test", Verb: "delete"}, Extra: map[string]authzv1beta1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}}}
 
 		response, err := u.CheckAccess(request)
 
@@ -94,10 +94,10 @@ func TestCheckAccess(t *testing.T) {
 			"arc", "resourceid")
 		defer ts.Close()
 
-		request := &authzv1.SubjectAccessReviewSpec{
+		request := &authzv1beta1.SubjectAccessReviewSpec{
 			User: "alpha@bing.com",
-			ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev", Group: "", Resource: "pods",
-				Subresource: "status", Version: "v1", Name: "test", Verb: "delete"}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}}}
+			ResourceAttributes: &authzv1beta1.ResourceAttributes{Namespace: "dev", Group: "", Resource: "pods",
+				Subresource: "status", Version: "v1", Name: "test", Verb: "delete"}, Extra: map[string]authzv1beta1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}}}
 
 		response, err := u.CheckAccess(request)
 
