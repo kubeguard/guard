@@ -24,7 +24,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
-	authzv1 "k8s.io/api/authorization/v1"
+	authzv1beta1 "k8s.io/api/authorization/v1beta1"
 )
 
 type Authzhandler struct {
@@ -46,7 +46,7 @@ func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	org := crt.Subject.Organization[0]
 	glog.Infof("Received subject access review request for %s/%s", org, crt.Subject.CommonName)
 
-	data := authzv1.SubjectAccessReview{}
+	data := authzv1beta1.SubjectAccessReview{}
 	err := json.NewDecoder(req.Body).Decode(&data)
 	if err != nil {
 		writeAuthzResponse(w, nil, nil, WithCode(errors.Wrap(err, "Failed to parse request"), http.StatusBadRequest))

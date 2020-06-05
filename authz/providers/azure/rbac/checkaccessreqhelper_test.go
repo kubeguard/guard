@@ -21,13 +21,13 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
-	authzv1 "k8s.io/api/authorization/v1"
+	authzv1beta1 "k8s.io/api/authorization/v1beta1"
 )
 
 func Test_getScope(t *testing.T) {
 	type args struct {
 		resourceId string
-		attr       *authzv1.ResourceAttributes
+		attr       *authzv1beta1.ResourceAttributes
 	}
 	tests := []struct {
 		name string
@@ -36,9 +36,9 @@ func Test_getScope(t *testing.T) {
 	}{
 		{"nilAttr", args{"resourceId", nil}, "resourceId"},
 		{"bothnil", args{"", nil}, ""},
-		{"emptyRes", args{"", &authzv1.ResourceAttributes{Namespace: ""}}, ""},
-		{"emptyNS", args{"resourceId", &authzv1.ResourceAttributes{Namespace: ""}}, "resourceId"},
-		{"bothPresent", args{"resourceId", &authzv1.ResourceAttributes{Namespace: "test"}}, "resourceId/namespaces/test"},
+		{"emptyRes", args{"", &authzv1beta1.ResourceAttributes{Namespace: ""}}, ""},
+		{"emptyNS", args{"resourceId", &authzv1beta1.ResourceAttributes{Namespace: ""}}, "resourceId"},
+		{"bothPresent", args{"resourceId", &authzv1beta1.ResourceAttributes{Namespace: "test"}}, "resourceId/namespaces/test"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -76,7 +76,7 @@ func Test_getValidSecurityGroups(t *testing.T) {
 
 func Test_getDataAction(t *testing.T) {
 	type args struct {
-		subRevReq   *authzv1.SubjectAccessReviewSpec
+		subRevReq   *authzv1beta1.SubjectAccessReviewSpec
 		clusterType string
 	}
 	tests := []struct {
@@ -85,63 +85,63 @@ func Test_getDataAction(t *testing.T) {
 		want AuthorizationActionInfo
 	}{
 		{"aks", args{
-			subRevReq: &authzv1.SubjectAccessReviewSpec{
-				NonResourceAttributes: &authzv1.NonResourceAttributes{Path: "/apis", Verb: "list"}}, clusterType: "aks"},
+			subRevReq: &authzv1beta1.SubjectAccessReviewSpec{
+				NonResourceAttributes: &authzv1beta1.NonResourceAttributes{Path: "/apis", Verb: "list"}}, clusterType: "aks"},
 			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "aks/apis/read"}, IsDataAction: true}},
 
 		{"aks2", args{
-			subRevReq: &authzv1.SubjectAccessReviewSpec{
-				NonResourceAttributes: &authzv1.NonResourceAttributes{Path: "/logs", Verb: "get"}}, clusterType: "aks"},
+			subRevReq: &authzv1beta1.SubjectAccessReviewSpec{
+				NonResourceAttributes: &authzv1beta1.NonResourceAttributes{Path: "/logs", Verb: "get"}}, clusterType: "aks"},
 			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "aks/logs/read"}, IsDataAction: true}},
 
 		{"arc", args{
-			subRevReq: &authzv1.SubjectAccessReviewSpec{
-				ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "pods", Subresource: "status", Version: "v1", Name: "test", Verb: "delete"}}, clusterType: "arc"},
+			subRevReq: &authzv1beta1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1beta1.ResourceAttributes{Group: "", Resource: "pods", Subresource: "status", Version: "v1", Name: "test", Verb: "delete"}}, clusterType: "arc"},
 			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "arc/pods/delete"}, IsDataAction: true}},
 
 		{"arc2", args{
-			subRevReq: &authzv1.SubjectAccessReviewSpec{
-				ResourceAttributes: &authzv1.ResourceAttributes{Group: "apps", Resource: "deployments", Subresource: "status", Version: "v1", Name: "test", Verb: "create"}}, clusterType: "arc"},
+			subRevReq: &authzv1beta1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1beta1.ResourceAttributes{Group: "apps", Resource: "deployments", Subresource: "status", Version: "v1", Name: "test", Verb: "create"}}, clusterType: "arc"},
 			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "arc/apps/deployments/write"}, IsDataAction: true}},
 
 		{"arc3", args{
-			subRevReq: &authzv1.SubjectAccessReviewSpec{
-				ResourceAttributes: &authzv1.ResourceAttributes{Group: "policy", Resource: "podsecuritypolicies", Subresource: "status", Version: "v1", Name: "test", Verb: "use"}}, clusterType: "arc"},
+			subRevReq: &authzv1beta1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1beta1.ResourceAttributes{Group: "policy", Resource: "podsecuritypolicies", Subresource: "status", Version: "v1", Name: "test", Verb: "use"}}, clusterType: "arc"},
 			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "arc/policy/podsecuritypolicies/use/action"}, IsDataAction: true}},
 
 		{"aks3", args{
-			subRevReq: &authzv1.SubjectAccessReviewSpec{
-				ResourceAttributes: &authzv1.ResourceAttributes{Group: "authentication.k8s.io", Resource: "userextras", Subresource: "scopes", Version: "v1", Name: "test", Verb: "impersonate"}}, clusterType: "aks"},
+			subRevReq: &authzv1beta1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1beta1.ResourceAttributes{Group: "authentication.k8s.io", Resource: "userextras", Subresource: "scopes", Version: "v1", Name: "test", Verb: "impersonate"}}, clusterType: "aks"},
 			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "aks/authentication.k8s.io/userextras/impersonate/action"}, IsDataAction: true}},
 
 		{"arc4", args{
-			subRevReq: &authzv1.SubjectAccessReviewSpec{
-				ResourceAttributes: &authzv1.ResourceAttributes{Group: "rbac.authorization.k8s.io", Resource: "clusterroles", Subresource: "status", Version: "v1", Name: "test", Verb: "bind"}}, clusterType: "arc"},
+			subRevReq: &authzv1beta1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1beta1.ResourceAttributes{Group: "rbac.authorization.k8s.io", Resource: "clusterroles", Subresource: "status", Version: "v1", Name: "test", Verb: "bind"}}, clusterType: "arc"},
 			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "arc/rbac.authorization.k8s.io/clusterroles/bind/action"}, IsDataAction: true}},
 
 		{"aks4", args{
-			subRevReq: &authzv1.SubjectAccessReviewSpec{
-				ResourceAttributes: &authzv1.ResourceAttributes{Group: "rbac.authorization.k8s.io", Resource: "clusterroles", Subresource: "status", Version: "v1", Name: "test", Verb: "escalate"}}, clusterType: "aks"},
+			subRevReq: &authzv1beta1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1beta1.ResourceAttributes{Group: "rbac.authorization.k8s.io", Resource: "clusterroles", Subresource: "status", Version: "v1", Name: "test", Verb: "escalate"}}, clusterType: "aks"},
 			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "aks/rbac.authorization.k8s.io/clusterroles/escalate/action"}, IsDataAction: true}},
 
 		{"arc5", args{
-			subRevReq: &authzv1.SubjectAccessReviewSpec{
-				ResourceAttributes: &authzv1.ResourceAttributes{Group: "scheduling.k8s.io", Resource: "priorityclasses", Subresource: "status", Version: "v1", Name: "test", Verb: "update"}}, clusterType: "arc"},
+			subRevReq: &authzv1beta1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1beta1.ResourceAttributes{Group: "scheduling.k8s.io", Resource: "priorityclasses", Subresource: "status", Version: "v1", Name: "test", Verb: "update"}}, clusterType: "arc"},
 			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "arc/scheduling.k8s.io/priorityclasses/write"}, IsDataAction: true}},
 
 		{"aks5", args{
-			subRevReq: &authzv1.SubjectAccessReviewSpec{
-				ResourceAttributes: &authzv1.ResourceAttributes{Group: "events.k8s.io", Resource: "events", Subresource: "status", Version: "v1", Name: "test", Verb: "watch"}}, clusterType: "aks"},
+			subRevReq: &authzv1beta1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1beta1.ResourceAttributes{Group: "events.k8s.io", Resource: "events", Subresource: "status", Version: "v1", Name: "test", Verb: "watch"}}, clusterType: "aks"},
 			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "aks/events.k8s.io/events/read"}, IsDataAction: true}},
 
 		{"arc6", args{
-			subRevReq: &authzv1.SubjectAccessReviewSpec{
-				ResourceAttributes: &authzv1.ResourceAttributes{Group: "batch", Resource: "cronjobs", Subresource: "status", Version: "v1", Name: "test", Verb: "patch"}}, clusterType: "arc"},
+			subRevReq: &authzv1beta1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1beta1.ResourceAttributes{Group: "batch", Resource: "cronjobs", Subresource: "status", Version: "v1", Name: "test", Verb: "patch"}}, clusterType: "arc"},
 			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "arc/batch/cronjobs/write"}, IsDataAction: true}},
 
 		{"aks6", args{
-			subRevReq: &authzv1.SubjectAccessReviewSpec{
-				ResourceAttributes: &authzv1.ResourceAttributes{Group: "certificates.k8s.io", Resource: "certificatesigningrequests", Subresource: "approvals", Version: "v1", Name: "test", Verb: "deletecollection"}}, clusterType: "aks"},
+			subRevReq: &authzv1beta1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1beta1.ResourceAttributes{Group: "certificates.k8s.io", Resource: "certificatesigningrequests", Subresource: "approvals", Version: "v1", Name: "test", Verb: "deletecollection"}}, clusterType: "aks"},
 			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "aks/certificates.k8s.io/certificatesigningrequests/delete"}, IsDataAction: true}},
 	}
 	for _, tt := range tests {
@@ -154,23 +154,23 @@ func Test_getDataAction(t *testing.T) {
 }
 
 func Test_getNameSpaceScope(t *testing.T) {
-	req := authzv1.SubjectAccessReviewSpec{ResourceAttributes: nil}
+	req := authzv1beta1.SubjectAccessReviewSpec{ResourceAttributes: nil}
 	want := false
 	got, str := getNameSpaceScope(&req)
 	if got || str != "" {
 		t.Errorf("Want:%v, got:%v", want, got)
 	}
 
-	req = authzv1.SubjectAccessReviewSpec{
-		ResourceAttributes: &authzv1.ResourceAttributes{Namespace: ""}}
+	req = authzv1beta1.SubjectAccessReviewSpec{
+		ResourceAttributes: &authzv1beta1.ResourceAttributes{Namespace: ""}}
 	want = false
 	got, str = getNameSpaceScope(&req)
 	if got || str != "" {
 		t.Errorf("Want:%v, got:%v", want, got)
 	}
 
-	req = authzv1.SubjectAccessReviewSpec{
-		ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev"}}
+	req = authzv1beta1.SubjectAccessReviewSpec{
+		ResourceAttributes: &authzv1beta1.ResourceAttributes{Namespace: "dev"}}
 	outputstring := "namespaces/dev"
 	want = true
 	got, str = getNameSpaceScope(&req)
@@ -180,7 +180,7 @@ func Test_getNameSpaceScope(t *testing.T) {
 }
 
 func Test_prepareCheckAccessRequestBody(t *testing.T) {
-	req := &authzv1.SubjectAccessReviewSpec{Extra: nil}
+	req := &authzv1beta1.SubjectAccessReviewSpec{Extra: nil}
 	resouceId := "resourceId"
 	clusterType := "aks"
 	var want *CheckAccessRequest = nil
@@ -192,7 +192,7 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", want, wantErr, got, gotErr)
 	}
 
-	req = &authzv1.SubjectAccessReviewSpec{Extra: map[string]authzv1.ExtraValue{"oid": {"test"}}}
+	req = &authzv1beta1.SubjectAccessReviewSpec{Extra: map[string]authzv1beta1.ExtraValue{"oid": {"test"}}}
 	resouceId = "resourceId"
 	clusterType = "arc"
 	want = nil
@@ -207,7 +207,7 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 
 func Test_getResultCacheKey(t *testing.T) {
 	type args struct {
-		subRevReq *authzv1.SubjectAccessReviewSpec
+		subRevReq *authzv1beta1.SubjectAccessReviewSpec
 	}
 	tests := []struct {
 		name string
@@ -215,36 +215,36 @@ func Test_getResultCacheKey(t *testing.T) {
 		want string
 	}{
 		{"aks", args{
-			subRevReq: &authzv1.SubjectAccessReviewSpec{
+			subRevReq: &authzv1beta1.SubjectAccessReviewSpec{
 				User:                  "charlie@yahoo.com",
-				NonResourceAttributes: &authzv1.NonResourceAttributes{Path: "/apis/v1", Verb: "list"}}},
+				NonResourceAttributes: &authzv1beta1.NonResourceAttributes{Path: "/apis/v1", Verb: "list"}}},
 			"charlie@yahoo.com/apis/v1/read"},
 
 		{"aks", args{
-			subRevReq: &authzv1.SubjectAccessReviewSpec{
+			subRevReq: &authzv1beta1.SubjectAccessReviewSpec{
 				User:                  "echo@outlook.com",
-				NonResourceAttributes: &authzv1.NonResourceAttributes{Path: "/logs", Verb: "get"}}},
+				NonResourceAttributes: &authzv1beta1.NonResourceAttributes{Path: "/logs", Verb: "get"}}},
 			"echo@outlook.com/logs/read"},
 
 		{"aks", args{
-			subRevReq: &authzv1.SubjectAccessReviewSpec{
+			subRevReq: &authzv1beta1.SubjectAccessReviewSpec{
 				User: "alpha@bing.com",
-				ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev", Group: "", Resource: "pods",
+				ResourceAttributes: &authzv1beta1.ResourceAttributes{Namespace: "dev", Group: "", Resource: "pods",
 					Subresource: "status", Version: "v1", Name: "test", Verb: "delete"}}},
 			"alpha@bing.com/dev/-/pods/delete"},
 
 		{"arc", args{
-			subRevReq: &authzv1.SubjectAccessReviewSpec{
+			subRevReq: &authzv1beta1.SubjectAccessReviewSpec{
 				User: "beta@msn.com",
-				ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "azure-arc",
+				ResourceAttributes: &authzv1beta1.ResourceAttributes{Namespace: "azure-arc",
 					Group: "authentication.k8s.io", Resource: "userextras", Subresource: "scopes", Version: "v1",
 					Name: "test", Verb: "impersonate"}}},
 			"beta@msn.com/azure-arc/authentication.k8s.io/userextras/impersonate/action"},
 
 		{"arc", args{
-			subRevReq: &authzv1.SubjectAccessReviewSpec{
+			subRevReq: &authzv1beta1.SubjectAccessReviewSpec{
 				User: "beta@msn.com",
-				ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "", Group: "", Resource: "nodes",
+				ResourceAttributes: &authzv1beta1.ResourceAttributes{Namespace: "", Group: "", Resource: "nodes",
 					Subresource: "scopes", Version: "v1", Name: "", Verb: "list"}}},
 			"beta@msn.com/-/-/nodes/read"},
 	}

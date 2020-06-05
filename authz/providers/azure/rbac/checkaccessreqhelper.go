@@ -23,7 +23,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	authzv1 "k8s.io/api/authorization/v1"
+	authzv1beta1 "k8s.io/api/authorization/v1beta1"
 )
 
 const (
@@ -123,7 +123,7 @@ type AuthorizationDecision struct {
 	TimeToLiveInMs      int                 `json:"timeToLiveInMs"`
 }
 
-func getScope(resourceId string, attr *authzv1.ResourceAttributes) string {
+func getScope(resourceId string, attr *authzv1beta1.ResourceAttributes) string {
 	if attr != nil && attr.Namespace != "" {
 		return path.Join(resourceId, namespaces, attr.Namespace)
 	}
@@ -189,7 +189,7 @@ func getActionName(verb string) string {
 	}
 }
 
-func getDataAction(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string) AuthorizationActionInfo {
+func getDataAction(subRevReq *authzv1beta1.SubjectAccessReviewSpec, clusterType string) AuthorizationActionInfo {
 	authInfo := AuthorizationActionInfo{
 		IsDataAction: true}
 
@@ -212,7 +212,7 @@ func defaultDir(s string) string {
 	return "-" // invalid for a namespace
 }
 
-func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
+func getResultCacheKey(subRevReq *authzv1beta1.SubjectAccessReviewSpec) string {
 	cacheKey := subRevReq.User
 
 	if subRevReq.ResourceAttributes != nil {
@@ -226,7 +226,7 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	return cacheKey
 }
 
-func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType, resourceId string, retrieveGroupMemberships bool) (*CheckAccessRequest, error) {
+func prepareCheckAccessRequestBody(req *authzv1beta1.SubjectAccessReviewSpec, clusterType, resourceId string, retrieveGroupMemberships bool) (*CheckAccessRequest, error) {
 	/* This is how sample SubjectAccessReview request will look like
 	{
 		"kind": "SubjectAccessReview",
@@ -303,7 +303,7 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 	return &checkaccessreq, nil
 }
 
-func getNameSpaceScope(req *authzv1.SubjectAccessReviewSpec) (bool, string) {
+func getNameSpaceScope(req *authzv1beta1.SubjectAccessReviewSpec) (bool, string) {
 	var namespace string = ""
 	if req.ResourceAttributes != nil && req.ResourceAttributes.Namespace != "" {
 		namespace = path.Join(namespaces, req.ResourceAttributes.Namespace)
@@ -312,7 +312,7 @@ func getNameSpaceScope(req *authzv1.SubjectAccessReviewSpec) (bool, string) {
 	return false, namespace
 }
 
-func ConvertCheckAccessResponse(body []byte) (*authzv1.SubjectAccessReviewStatus, error) {
+func ConvertCheckAccessResponse(body []byte) (*authzv1beta1.SubjectAccessReviewStatus, error) {
 	var (
 		response []AuthorizationDecision
 		allowed  bool
@@ -335,5 +335,5 @@ func ConvertCheckAccessResponse(body []byte) (*authzv1.SubjectAccessReviewStatus
 		verdict = AccessNotAllowedVerdict
 	}
 
-	return &authzv1.SubjectAccessReviewStatus{Allowed: allowed, Reason: verdict, Denied: denied}, nil
+	return &authzv1beta1.SubjectAccessReviewStatus{Allowed: allowed, Reason: verdict, Denied: denied}, nil
 }
