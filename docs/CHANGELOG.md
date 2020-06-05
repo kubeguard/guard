@@ -17,6 +17,13 @@ aliases:
 
 # Change Log
 
+## [v0.6.1](https://github.com/appscode/guard/tree/v0.6.1) (2020-06-05)
+[Full Changelog](https://github.com/appscode/guard/compare/v0.6.0...v0.6.1)
+
+**Merged pull requests:**
+
+- Changed azure authz support to use v1beta1 version instead of v1 for SubjectAccessReview [\#259](https://github.com/appscode/guard/pull/259) ([Anumita](https://github.com/Anumita))
+
 ## [v0.6.0](https://github.com/appscode/guard/tree/v0.6.0) (2020-06-03)
 [Full Changelog](https://github.com/appscode/guard/compare/v0.6.0-rc.0...v0.6.0)
 
