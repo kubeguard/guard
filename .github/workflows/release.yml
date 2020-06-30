@@ -3,56 +3,54 @@ name: Release
 on:
   push:
     tags:
-      - '*.*'
+      - "*.*"
 
 jobs:
-
   build:
     name: Build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v1
 
-    - uses: actions/checkout@v1
+      - name: Print version info
+        id: semver
+        run: |
+          make version
 
-    - name: Print version info
-      id: semver
-      run: |
-        make version
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: crazy-max/ghaction-docker-buildx@v1
+        with:
+          buildx-version: latest
+          qemu-version: latest
 
-    - name: Set up Docker Buildx
-      id: buildx
-      uses: crazy-max/ghaction-docker-buildx@v1
-      with:
-        buildx-version: latest
-        qemu-version: latest
+      - name: Available platforms
+        run: echo ${{ steps.buildx.outputs.platforms }}
 
-    - name: Available platforms
-      run: echo ${{ steps.buildx.outputs.platforms }}
+      - name: Build
+        env:
+          APPSCODE_ENV: prod
+          DOCKER_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          USERNAME: 1gtm
+        run: |
+          docker login --username ${USERNAME} --password ${DOCKER_TOKEN}
+          make release
 
-    - name: Build
-      env:
-        APPSCODE_ENV: prod
-        DOCKER_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-        USERNAME: 1gtm
-      run: |
-        docker login --username ${USERNAME} --password ${DOCKER_TOKEN}
-        make release
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          draft: true
+          files: |
+            bin/guard-linux-amd64
+            bin/guard-linux-arm
+            bin/guard-linux-arm64
+            bin/guard-windows-amd64.exe
+            bin/guard-darwin-amd64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Release
-      uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-        draft: true
-        files: |
-          bin/guard-linux-amd64
-          bin/guard-linux-arm
-          bin/guard-linux-arm64
-          bin/guard-windows-amd64.exe
-          bin/guard-darwin-amd64
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - uses: actions/upload-artifact@master
-      with:
-        name: guard-binaries
-        path:  bin
+      - uses: actions/upload-artifact@master
+        with:
+          name: guard-binaries
+          path: bin
