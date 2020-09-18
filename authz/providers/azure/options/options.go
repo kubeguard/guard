@@ -38,7 +38,6 @@ type Options struct {
 	AKSAuthzTokenURL               string
 	ARMCallLimit                   int
 	SkipAuthzCheck                 []string
-	AuthzResolveGroupMemberships   bool
 	SkipAuthzForNonAADUsers        bool
 	AllowNonResDiscoveryPathAccess bool
 }
@@ -47,7 +46,6 @@ func NewOptions() Options {
 	return Options{
 		ARMCallLimit:                   defaultArmCallLimit,
 		SkipAuthzCheck:                 []string{""},
-		AuthzResolveGroupMemberships:   true,
 		SkipAuthzForNonAADUsers:        true,
 		AllowNonResDiscoveryPathAccess: true}
 }
@@ -58,7 +56,6 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.AKSAuthzTokenURL, "azure.aks-authz-token-url", "", "url to call for AKS Authz flow")
 	fs.IntVar(&o.ARMCallLimit, "azure.arm-call-limit", o.ARMCallLimit, "No of calls before which webhook switch to new ARM instance to avoid throttling")
 	fs.StringSliceVar(&o.SkipAuthzCheck, "azure.skip-authz-check", o.SkipAuthzCheck, "name of usernames/email for which authz check will be skipped")
-	fs.BoolVar(&o.AuthzResolveGroupMemberships, "azure.authz-resolve-group-memberships", o.AuthzResolveGroupMemberships, "set to true to resolve group membership by authorizer. Setting to false will use group list from subjectaccessreview request")
 	fs.BoolVar(&o.SkipAuthzForNonAADUsers, "azure.skip-authz-for-non-aad-users", o.SkipAuthzForNonAADUsers, "skip authz for non AAD users")
 	fs.BoolVar(&o.AllowNonResDiscoveryPathAccess, "azure.allow-nonres-discovery-path-access", o.AllowNonResDiscoveryPathAccess, "allow access on Non Resource paths required for discovery, setting it false will require explicit non resource path role assignment for all users in Azure RBAC")
 }
@@ -119,8 +116,6 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 	if len(o.SkipAuthzCheck) > 0 {
 		args = append(args, fmt.Sprintf("--azure.skip-authz-check=%s", strings.Join(o.SkipAuthzCheck, ",")))
 	}
-
-	args = append(args, fmt.Sprintf("--azure.authz-resolve-group-memberships=%t", o.AuthzResolveGroupMemberships))
 
 	args = append(args, fmt.Sprintf("--azure.skip-authz-for-non-aad-users=%t", o.SkipAuthzForNonAADUsers))
 

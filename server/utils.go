@@ -105,9 +105,11 @@ func writeAuthzResponse(w http.ResponseWriter, spec *authzv1beta1.SubjectAccessR
 	}
 
 	w.WriteHeader(http.StatusOK)
-	if glog.V(10) {
-		data, _ := json.MarshalIndent(resp, "", "  ")
-		glog.V(10).Infof("final data:%s", string(data))
+	if glog.V(7) {
+		if _, ok := spec.Extra["oid"]; ok {
+			data, _ := json.Marshal(resp)
+			glog.V(7).Infof("final data:%s", string(data))
+		}
 	}
 
 	err = json.NewEncoder(w).Encode(resp)

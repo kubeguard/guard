@@ -186,7 +186,7 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	var want *CheckAccessRequest = nil
 	wantErr := errors.New("oid info not sent from authenticatoin module")
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resouceId, true)
+	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resouceId)
 
 	if got != want && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", want, wantErr, got, gotErr)
@@ -198,7 +198,7 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	want = nil
 	wantErr = errors.New("oid info sent from authenticatoin module is not valid")
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resouceId, true)
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resouceId)
 
 	if got != want && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", want, wantErr, got, gotErr)

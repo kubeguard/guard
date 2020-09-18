@@ -82,7 +82,7 @@ func (s Authorizer) Check(request *authzv1beta1.SubjectAccessReviewSpec, store a
 
 	// check if user is system accounts
 	if strings.HasPrefix(strings.ToLower(request.User), "system:") {
-		glog.V(3).Infof("returning no op to system accounts")
+		glog.V(10).Infof("returning no op to system accounts")
 		return &authzv1beta1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
 	}
 
@@ -93,28 +93,25 @@ func (s Authorizer) Check(request *authzv1beta1.SubjectAccessReviewSpec, store a
 
 	if _, ok := request.Extra["oid"]; !ok {
 		if s.rbacClient.ShouldSkipAuthzCheckForNonAADUsers() {
-			glog.V(3).Infof("Skip RBAC is set for non AAD users. Returning no opinion for user %s. You may observe this for AAD users for 'can-i' requests.", request.User)
-			return &authzv1beta1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
+			return &authzv1beta1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NonAADUserNoOpVerdict}, nil
 		} else {
-			glog.V(3).Infof("Skip RBAC for non AAD user is not set. Returning deny access for non AAD user %s. You may observe this for AAD users for 'can-i' requests.", request.User)
-			return &authzv1beta1.SubjectAccessReviewStatus{Allowed: false, Denied: true, Reason: rbac.NotAllowedForNonAADUsers}, nil
+			return &authzv1beta1.SubjectAccessReviewStatus{Allowed: false, Denied: true, Reason: rbac.NonAADUserNotAllowedVerdict}, nil
 		}
 	}
 
 	exist, result := s.rbacClient.GetResultFromCache(request, store)
+
 	if exist {
 		if result {
-			glog.V(3).Infof("cache hit: returning allowed to user %s", request.User)
 			return &authzv1beta1.SubjectAccessReviewStatus{Allowed: result, Reason: rbac.AccessAllowedVerdict}, nil
 		} else {
-			glog.V(3).Infof("cache hit: returning denied to user %s", request.User)
 			return &authzv1beta1.SubjectAccessReviewStatus{Allowed: result, Denied: true, Reason: rbac.AccessNotAllowedVerdict}, nil
 		}
 	}
 
 	// if set true, webhook will allow access to discovery APIs for authenticated users. If false, access check will be performed on Azure.
 	if s.rbacClient.AllowNonResPathDiscoveryAccess(request) {
-		glog.V(3).Infof("Allowing user %s access for discovery check.", request.User)
+		glog.V(10).Infof("Allowing user %s access for discovery check.", request.User)
 		_ = s.rbacClient.SetResultInCache(request, true, store)
 		return &authzv1beta1.SubjectAccessReviewStatus{Allowed: true, Reason: rbac.AccessAllowedVerdict}, nil
 	}
