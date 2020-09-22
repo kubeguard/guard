@@ -117,7 +117,6 @@ type metadataJSON struct {
 // https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-convert-app-to-be-multi-tenant
 func getMetadata(aadEndpoint, tenantID string) (*metadataJSON, error) {
 	metadataURL := aadEndpoint + tenantID + "/.well-known/openid-configuration"
-	glog.V(5).Infof("Querying metadata URL: %v", metadataURL)
 
 	response, err := http.Get(metadataURL)
 	if err != nil {

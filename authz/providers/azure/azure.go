@@ -122,6 +122,7 @@ func (s Authorizer) Check(request *authzv1beta1.SubjectAccessReviewSpec, store a
 
 	response, err := s.rbacClient.CheckAccess(request)
 	if err == nil {
+		glog.V(5).Infof(response.Reason)
 		_ = s.rbacClient.SetResultInCache(request, response.Allowed, store)
 	} else {
 		_ = s.rbacClient.SetResultInCache(request, false, store)

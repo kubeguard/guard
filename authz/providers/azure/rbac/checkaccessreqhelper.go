@@ -17,6 +17,7 @@ package rbac
 
 import (
 	"encoding/json"
+	"fmt"
 	"path"
 	"strings"
 
@@ -27,7 +28,8 @@ import (
 )
 
 const (
-	AccessAllowedVerdict        = "Access allowed"
+	AccessAllowedVerdict        = "Access allowed by Azure RBAC"
+	AccessAllowedVerboseVerdict = "Access allowed by Azure RBAC Role Assignment %s of Role %s to user %s"
 	Allowed                     = "allowed"
 	AccessNotAllowedVerdict     = "User does not have access to the resource in Azure. Update role assignment to allow access."
 	namespaces                  = "namespaces"
@@ -118,8 +120,8 @@ type AuthorizationDecision struct {
 	Decision            string              `json:"accessDecision"`
 	ActionId            string              `json:"actionId"`
 	IsDataAction        bool                `json:"isDataAction"`
-	AzureRoleAssignment AzureRoleAssignment `json:"roleAssignment"`
-	AzureDenyAssignment AzureDenyAssignment `json:"denyAssignment"`
+	AzureRoleAssignment AzureRoleAssignment `json:"roleAssignment,omitempty"`
+	AzureDenyAssignment AzureDenyAssignment `json:"denyAssignment,omitempty"`
 	TimeToLiveInMs      int                 `json:"timeToLiveInMs"`
 }
 
@@ -324,7 +326,7 @@ func ConvertCheckAccessResponse(body []byte) (*authzv1beta1.SubjectAccessReviewS
 
 	if strings.ToLower(response[0].Decision) == Allowed {
 		allowed = true
-		verdict = AccessAllowedVerdict
+		verdict = fmt.Sprintf(AccessAllowedVerboseVerdict, response[0].AzureRoleAssignment.Id, response[0].AzureRoleAssignment.RoleDefinitionId, response[0].AzureRoleAssignment.PrincipalId)
 	} else {
 		allowed = false
 		denied = true

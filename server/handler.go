@@ -44,7 +44,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	org := crt.Subject.Organization[0]
-	glog.Infof("Received token review request for %s/%s", org, crt.Subject.CommonName)
+	glog.V(7).Infof("Received token review request for %s/%s", org, crt.Subject.CommonName)
 
 	data := authv1.TokenReview{}
 	err := json.NewDecoder(req.Body).Decode(&data)
