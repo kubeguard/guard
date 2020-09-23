@@ -13,7 +13,7 @@ require (
 	github.com/coreos/go-oidc v2.1.0+incompatible
 	github.com/fatih/color v1.9.0 // indirect
 	github.com/go-ldap/ldap v3.0.3+incompatible
-	github.com/go-openapi/spec v0.19.7 // indirect
+	github.com/go-openapi/spec v0.19.8 // indirect
 	github.com/go-openapi/swag v0.19.9 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/groupcache v0.0.0-20191227052852-215e87163ea7 // indirect
@@ -65,11 +65,11 @@ require (
 	gopkg.in/jcmturner/gokrb5.v4 v4.1.2
 	gopkg.in/square/go-jose.v2 v2.2.2
 	gopkg.in/yaml.v2 v2.3.0 // indirect
-	k8s.io/api v0.18.3
-	k8s.io/apimachinery v0.18.3
-	k8s.io/client-go v12.0.0+incompatible
+	k8s.io/api v0.18.9
+	k8s.io/apimachinery v0.18.9
+	k8s.io/client-go v0.18.9
 	k8s.io/utils v0.0.0-20200414100711-2df71ebbae66 // indirect
-	kmodules.xyz/client-go v0.0.0-20200915091229-7df16c29f4e8
+	kmodules.xyz/client-go v0.0.0-20200922200830-63d86b6e5b63
 )
 
 replace bitbucket.org/ww/goautoneg => gomodules.xyz/goautoneg v0.0.0-20120707110453-a547fc61f48d
@@ -110,6 +110,8 @@ replace github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.3.1
 
 replace github.com/imdario/mergo => github.com/imdario/mergo v0.3.5
 
+replace github.com/prometheus-operator/prometheus-operator => github.com/prometheus-operator/prometheus-operator v0.42.0
+
 replace github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring => github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.42.0
 
 replace github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.7.1
@@ -122,18 +124,20 @@ replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20191115
 
 replace google.golang.org/grpc => google.golang.org/grpc v1.26.0
 
-replace k8s.io/api => github.com/kmodules/api v0.18.4-0.20200524125823-c8bc107809b9
+replace k8s.io/api => github.com/kmodules/api v0.18.10-0.20200922195318-d60fe725dea0
 
-replace k8s.io/apimachinery => github.com/kmodules/apimachinery v0.19.0-alpha.0.0.20200520235721-10b58e57a423
+replace k8s.io/apimachinery => github.com/kmodules/apimachinery v0.19.0-alpha.0.0.20200922195535-0c9a1b86beec
 
-replace k8s.io/apiserver => github.com/kmodules/apiserver v0.18.4-0.20200521000930-14c5f6df9625
+replace k8s.io/apiserver => github.com/kmodules/apiserver v0.18.10-0.20200922195747-1bd1cc8f00d1
 
-replace k8s.io/cli-runtime => k8s.io/cli-runtime v0.18.3
+replace k8s.io/cli-runtime => k8s.io/cli-runtime v0.18.9
 
-replace k8s.io/client-go => k8s.io/client-go v0.18.3
+replace k8s.io/client-go => github.com/kmodules/k8s-client-go v0.18.10-0.20200922201634-73fedf3d677e
 
-replace k8s.io/component-base => k8s.io/component-base v0.18.3
+replace k8s.io/component-base => k8s.io/component-base v0.18.9
 
 replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6
 
-replace k8s.io/kubernetes => github.com/kmodules/kubernetes v1.19.0-alpha.0.0.20200521033432-49d3646051ad
+replace k8s.io/kubernetes => github.com/kmodules/kubernetes v1.19.0-alpha.0.0.20200922200158-8b13196d8dc4
+
+replace k8s.io/utils => k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89

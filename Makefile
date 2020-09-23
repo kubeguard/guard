@@ -47,8 +47,8 @@ endif
 ### These variables should not need tweaking.
 ###
 
-SRC_PKGS := *.go auth authz commands docs installer server util
-SRC_DIRS := $(SRC_PKGS) test hack/gendocs # directories which hold app source (not vendored)
+SRC_PKGS := auth authz commands docs installer server util
+SRC_DIRS := $(SRC_PKGS) *.go test hack/gendocs # directories which hold app source (not vendored)
 
 DOCKER_PLATFORMS := linux/amd64 linux/arm linux/arm64
 BIN_PLATFORMS    := $(DOCKER_PLATFORMS) windows/amd64 darwin/amd64
@@ -253,7 +253,7 @@ unit-tests: $(BUILD_DIRS)
 	    -v $$(pwd)/.go/cache:/.cache                            \
 	    --env HTTP_PROXY=$(HTTP_PROXY)                          \
 	    --env HTTPS_PROXY=$(HTTPS_PROXY)                        \
-	    $(BUILD_IMAGE)                                           \
+	    $(BUILD_IMAGE)                                          \
 	    /bin/bash -c "                                          \
 	        ARCH=$(ARCH)                                        \
 	        OS=$(OS)                                            \
