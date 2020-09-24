@@ -17,6 +17,35 @@ aliases:
 
 # Change Log
 
+## [v0.6.2](https://github.com/appscode/guard/tree/v0.6.2) (2020-09-24)
+[Full Changelog](https://github.com/appscode/guard/compare/v0.6.1...v0.6.2)
+
+**Closed issues:**
+
+- Download latest guard binary without specifying version [\#273](https://github.com/appscode/guard/issues/273)
+- Guard's pod crashing after some time [\#248](https://github.com/appscode/guard/issues/248)
+
+**Merged pull requests:**
+
+- Update repository config [\#279](https://github.com/appscode/guard/pull/279) ([1gtm](https://github.com/1gtm))
+- Fix CI [\#278](https://github.com/appscode/guard/pull/278) ([tamalsaha](https://github.com/tamalsaha))
+- Update repository config [\#277](https://github.com/appscode/guard/pull/277) ([1gtm](https://github.com/1gtm))
+- Diagnosability improvements in authz scenarios [\#276](https://github.com/appscode/guard/pull/276) ([krdhruva](https://github.com/krdhruva))
+- Update Kubernetes v1.18.9 dependencies [\#275](https://github.com/appscode/guard/pull/275) ([1gtm](https://github.com/1gtm))
+- Update Kubernetes v1.18.3 dependencies [\#274](https://github.com/appscode/guard/pull/274) ([1gtm](https://github.com/1gtm))
+- Update Kubernetes v1.18.3 dependencies [\#272](https://github.com/appscode/guard/pull/272) ([1gtm](https://github.com/1gtm))
+- Update Kubernetes v1.18.3 dependencies [\#270](https://github.com/appscode/guard/pull/270) ([1gtm](https://github.com/1gtm))
+- Update Kubernetes v1.18.3 dependencies [\#269](https://github.com/appscode/guard/pull/269) ([1gtm](https://github.com/1gtm))
+- Update Kubernetes v1.18.3 dependencies [\#268](https://github.com/appscode/guard/pull/268) ([1gtm](https://github.com/1gtm))
+- Update Kubernetes v1.18.3 dependencies [\#267](https://github.com/appscode/guard/pull/267) ([1gtm](https://github.com/1gtm))
+- Update Kubernetes v1.18.3 dependencies [\#266](https://github.com/appscode/guard/pull/266) ([1gtm](https://github.com/1gtm))
+- Update to Kubernetes v1.18.3 [\#265](https://github.com/appscode/guard/pull/265) ([1gtm](https://github.com/1gtm))
+- Update to Kubernetes v1.18.3 [\#264](https://github.com/appscode/guard/pull/264) ([1gtm](https://github.com/1gtm))
+- Update to Kubernetes v1.18.3 [\#263](https://github.com/appscode/guard/pull/263) ([1gtm](https://github.com/1gtm))
+- Update to Kubernetes v1.18.3 [\#262](https://github.com/appscode/guard/pull/262) ([1gtm](https://github.com/1gtm))
+- Add script to update release tracker on pr merge [\#261](https://github.com/appscode/guard/pull/261) ([tamalsaha](https://github.com/tamalsaha))
+- Update to Kubernetes v1.18.3 [\#260](https://github.com/appscode/guard/pull/260) ([1gtm](https://github.com/1gtm))
+
 ## [v0.6.1](https://github.com/appscode/guard/tree/v0.6.1) (2020-06-05)
 [Full Changelog](https://github.com/appscode/guard/compare/v0.6.0...v0.6.1)
 
