@@ -39,7 +39,7 @@ guard get installer [flags]
       --azure.resource-id  string            azure cluster resource id (/subscriptions/<SubscriptionId>/resourceGroups/<RGname>/providers/Microsoft.ContainerService/managedClusters/<clustername> for AKS or /subscriptions/<SubscriptionId>/resourceGroups/<RGname>/providers/Microsoft.Kubernetes/connectedClusters/<clustername> for arc) to be used as scope for RBAC check
       --azure.skip-authz-check strings       comma separated list of user email ids for which Azure RBAC will be skipped. (default empty)
       --azure.skip-authz-for-non-aad-users   If true, Azure RBAC will be skipped for certificate users (non AAD users). Setting to false, all non AAD user requests will be denied. Azure RBAC will always be skipped for service accounts. This setting does not affect Azure RBAC behavior for service accounts. (default true)
-      --azure.authz-resolve-group-memberships If true, authroizer will resolve group membership. Setting to false will use group list from subjectaccessreview request. (default true)
+      --azure.graph-call-on-overage-claim    If true, authorizer will resolve group membership only when overage claim is present. Setting to false will always call graph api to resolve group membership (default true)
       --azure.azure.allow-nonres-discovery-path-access If true, all users by default will get read access on non-resource paths required for api discovery, setting to false will require role assignment for all users in Azure RBAC for non-resource paths.(default true)
       --github.base-url string               Base url for enterprise, keep empty to use default github base url
       --gitlab.base-url string               Base url for GitLab, including the API path, keep empty to use default gitlab base url.

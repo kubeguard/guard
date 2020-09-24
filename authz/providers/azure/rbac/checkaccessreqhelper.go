@@ -17,6 +17,7 @@ package rbac
 
 import (
 	"encoding/json"
+	"fmt"
 	"path"
 	"strings"
 
@@ -27,18 +28,19 @@ import (
 )
 
 const (
-	AccessAllowedVerdict     = "Access allowed"
-	Allowed                  = "allowed"
-	AccessNotAllowedVerdict  = "User does not have access to the resource in Azure. Update role assignment to allow access."
-	namespaces               = "namespaces"
-	NotAllowedForNonAADUsers = "Access denied by Azure RBAC for non AAD users. Configure --azure.skip-authz-for-non-aad-users to enable access."
-	NoOpinionVerdict         = "Azure does not have opinion for this user."
+	AccessAllowedVerdict        = "Access allowed by Azure RBAC"
+	AccessAllowedVerboseVerdict = "Access allowed by Azure RBAC Role Assignment %s of Role %s to user %s"
+	Allowed                     = "allowed"
+	AccessNotAllowedVerdict     = "User does not have access to the resource in Azure. Update role assignment to allow access."
+	namespaces                  = "namespaces"
+	NoOpinionVerdict            = "Azure does not have opinion for this user."
+	NonAADUserNoOpVerdict       = "Azure does not have opinion for this non AAD user. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig"
+	NonAADUserNotAllowedVerdict = "Access denied by Azure RBAC for non AAD users. Configure --azure.skip-authz-for-non-aad-users to enable access. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig."
 )
 
 type SubjectInfoAttributes struct {
-	ObjectId                 string   `json:"ObjectId"`
-	Groups                   []string `json:"Groups,omitempty"`
-	RetrieveGroupMemberships bool     `json:"xms-pasrp-retrievegroupmemberships"`
+	ObjectId string   `json:"ObjectId"`
+	Groups   []string `json:"Groups,omitempty"`
 }
 
 type SubjectInfo struct {
@@ -118,8 +120,8 @@ type AuthorizationDecision struct {
 	Decision            string              `json:"accessDecision"`
 	ActionId            string              `json:"actionId"`
 	IsDataAction        bool                `json:"isDataAction"`
-	AzureRoleAssignment AzureRoleAssignment `json:"roleAssignment"`
-	AzureDenyAssignment AzureDenyAssignment `json:"denyAssignment"`
+	AzureRoleAssignment AzureRoleAssignment `json:"roleAssignment,omitempty"`
+	AzureDenyAssignment AzureDenyAssignment `json:"denyAssignment,omitempty"`
 	TimeToLiveInMs      int                 `json:"timeToLiveInMs"`
 }
 
@@ -226,53 +228,52 @@ func getResultCacheKey(subRevReq *authzv1beta1.SubjectAccessReviewSpec) string {
 	return cacheKey
 }
 
-func prepareCheckAccessRequestBody(req *authzv1beta1.SubjectAccessReviewSpec, clusterType, resourceId string, retrieveGroupMemberships bool) (*CheckAccessRequest, error) {
+func prepareCheckAccessRequestBody(req *authzv1beta1.SubjectAccessReviewSpec, clusterType, resourceId string) (*CheckAccessRequest, error) {
 	/* This is how sample SubjectAccessReview request will look like
-	{
-		"kind": "SubjectAccessReview",
-	    	"apiVersion": "authorization.k8s.io/v1beta1",
-	    	"metadata": {
-	        	"creationTimestamp": null
-	    	},
-	    	"spec": {
-	        	"resourceAttributes": {
-	            		"namespace": "default",
-		            	"verb": "get",
-				"group": "extensions",
-				"version": "v1beta1",
-				"resource": "deployments",
-				"name": "obo-deploy"
-	        	},
-			"user": "user@contoso.com",
-			"extra": {
-				"oid": [
-	    			"62103f2e-051d-48cc-af47-b1ff3deec630"
-			]
-	        	}
-	    	},
-	    	"status": {
-	        	"allowed": false
-	    	}
-	}
-
-	For check access it will be converted into following request for arc cluster:
-	{
-		"Subject": {
-			"Attributes": {
-				"ObjectId": "62103f2e-051d-48cc-af47-b1ff3deec630",
-				"xms-pasrp-retrievegroupmemberships": true
-			}
-		},
-		"Actions": [
-			{
-				"Id": "Microsoft.Kubernetes/connectedClusters/extensions/deployments/read",
-				"IsDataAction": true
-			}
-		],
-		"Resource": {
-			"Id": "<resourceId>/namespaces/<namespace name>"
+		{
+			"kind": "SubjectAccessReview",
+		    	"apiVersion": "authorization.k8s.io/v1beta1",
+		    	"metadata": {
+		        	"creationTimestamp": null
+		    	},
+		    	"spec": {
+		        	"resourceAttributes": {
+		            		"namespace": "default",
+			            	"verb": "get",
+					"group": "extensions",
+					"version": "v1beta1",
+					"resource": "deployments",
+					"name": "obo-deploy"
+		        	},
+				"user": "user@contoso.com",
+				"extra": {
+					"oid": [
+		    			"62103f2e-051d-48cc-af47-b1ff3deec630"
+				]
+		        	}
+		    	},
+		    	"status": {
+		        	"allowed": false
+		    	}
 		}
-	}
+
+		For check access it will be converted into following request for arc cluster:
+		{
+			"Subject": {
+				"Attributes": {
+	                                "ObjectId": "62103f2e-051d-48cc-af47-b1ff3deec630"
+				}
+			},
+			"Actions": [
+				{
+					"Id": "Microsoft.Kubernetes/connectedClusters/extensions/deployments/read",
+					"IsDataAction": true
+				}
+			],
+			"Resource": {
+				"Id": "<resourceId>/namespaces/<namespace name>"
+			}
+		}
 	*/
 	checkaccessreq := CheckAccessRequest{}
 	var userOid string
@@ -289,12 +290,9 @@ func prepareCheckAccessRequestBody(req *authzv1beta1.SubjectAccessReviewSpec, cl
 		return nil, errors.New("oid info sent from authentication module is not valid")
 	}
 
-	if !retrieveGroupMemberships {
-		groups := getValidSecurityGroups(req.Groups)
-		checkaccessreq.Subject.Attributes.Groups = groups
-	}
+	groups := getValidSecurityGroups(req.Groups)
+	checkaccessreq.Subject.Attributes.Groups = groups
 
-	checkaccessreq.Subject.Attributes.RetrieveGroupMemberships = retrieveGroupMemberships
 	action := make([]AuthorizationActionInfo, 1)
 	action[0] = getDataAction(req, clusterType)
 	checkaccessreq.Actions = action
@@ -328,7 +326,7 @@ func ConvertCheckAccessResponse(body []byte) (*authzv1beta1.SubjectAccessReviewS
 
 	if strings.ToLower(response[0].Decision) == Allowed {
 		allowed = true
-		verdict = AccessAllowedVerdict
+		verdict = fmt.Sprintf(AccessAllowedVerboseVerdict, response[0].AzureRoleAssignment.Id, response[0].AzureRoleAssignment.RoleDefinitionId, response[0].AzureRoleAssignment.PrincipalId)
 	} else {
 		allowed = false
 		denied = true

@@ -35,8 +35,9 @@ import (
 	authzOpts "github.com/appscode/guard/authz/providers/azure/options"
 
 	"github.com/golang/glog"
-	"github.com/moul/http2curl"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	authzv1beta1 "k8s.io/api/authorization/v1beta1"
 )
 
@@ -69,11 +70,17 @@ type AccessInfo struct {
 	azureResourceId                string
 	armCallLimit                   int
 	skipCheck                      map[string]void
-	retrieveGroupMemberships       bool
 	skipAuthzForNonAADUsers        bool
 	allowNonResDiscoveryPathAccess bool
 	lock                           sync.RWMutex
 }
+
+var (
+	checkAccessFailed = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "guard_azure_checkaccess_throttling_failure_total",
+		Help: "Azure checkaccess call throttled.",
+	})
+)
 
 func getClusterType(clsType string) string {
 	switch clsType {
@@ -91,13 +98,12 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 		client: http.DefaultClient,
 		headers: http.Header{
 			"Content-Type": []string{"application/json"},
-			"User-Agent":   []string{fmt.Sprintf("%s-%s-%s-%s", v.Version.Platform, v.Version.GoVersion, v.Version.Version, opts.AuthzMode)},
+			"User-Agent":   []string{fmt.Sprintf("guard-%s-%s-%s-%s", v.Version.Platform, v.Version.GoVersion, v.Version.Version, opts.AuthzMode)},
 		},
 		apiURL:                         rbacURL,
 		tokenProvider:                  tokenProvider,
 		azureResourceId:                opts.ResourceId,
 		armCallLimit:                   opts.ARMCallLimit,
-		retrieveGroupMemberships:       opts.AuthzResolveGroupMemberships,
 		skipAuthzForNonAADUsers:        opts.SkipAuthzForNonAADUsers,
 		allowNonResDiscoveryPathAccess: opts.AllowNonResDiscoveryPathAccess,
 	}
@@ -166,6 +172,15 @@ func (a *AccessInfo) GetResultFromCache(request *authzv1beta1.SubjectAccessRevie
 	key := getResultCacheKey(request)
 	glog.V(10).Infof("Cache search for key: %s", key)
 	found, _ := store.Get(key, &result)
+
+	if found {
+		if result {
+			glog.V(5).Infof("cache hit: returning allowed for key %s", key)
+		} else {
+			glog.V(5).Infof("cache hit: returning denied for key %s", key)
+		}
+	}
+
 	return found, result
 }
 
@@ -179,7 +194,7 @@ func (a *AccessInfo) SkipAuthzCheck(request *authzv1beta1.SubjectAccessReviewSpe
 
 func (a *AccessInfo) SetResultInCache(request *authzv1beta1.SubjectAccessReviewSpec, result bool, store authz.Store) error {
 	key := getResultCacheKey(request)
-	glog.V(10).Infof("Cache set for key: %s, value: %t", key, result)
+	glog.V(5).Infof("Cache set for key: %s, value: %t", key, result)
 	return store.Set(key, result)
 }
 
@@ -207,7 +222,7 @@ func (a *AccessInfo) setReqHeaders(req *http.Request) {
 }
 
 func (a *AccessInfo) CheckAccess(request *authzv1beta1.SubjectAccessReviewSpec) (*authzv1beta1.SubjectAccessReviewStatus, error) {
-	checkAccessBody, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.retrieveGroupMemberships)
+	checkAccessBody, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "error in preparing check access request")
@@ -244,11 +259,6 @@ func (a *AccessInfo) CheckAccess(request *authzv1beta1.SubjectAccessReviewSpec) 
 
 	a.setReqHeaders(req)
 
-	if glog.V(10) {
-		cmd, _ := http2curl.GetCurlCommand(req)
-		glog.V(10).Infoln(cmd)
-	}
-
 	resp, err := a.client.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in check access request execution")
@@ -260,13 +270,13 @@ func (a *AccessInfo) CheckAccess(request *authzv1beta1.SubjectAccessReviewSpec) 
 	}
 
 	defer resp.Body.Close()
-	glog.V(10).Infof("checkaccess response: %s, Configured ARM call limit: %d", string(data), a.armCallLimit)
+	glog.V(7).Infof("checkaccess response: %s, Configured ARM call limit: %d", string(data), a.armCallLimit)
 	if resp.StatusCode != http.StatusOK {
 		glog.Errorf("error in check access response. error code: %d, response: %s", resp.StatusCode, string(data))
 		if resp.StatusCode == http.StatusTooManyRequests {
 			glog.V(10).Infoln("Closing idle TCP connections.")
 			a.client.CloseIdleConnections()
-			// TODO: add prom metrics for this scenario
+			checkAccessFailed.Inc()
 		}
 		return nil, errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data))
 	} else {

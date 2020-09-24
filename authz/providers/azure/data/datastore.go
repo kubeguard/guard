@@ -29,8 +29,8 @@ import (
 const (
 	maxCacheSizeInMB = 5
 	totalShards      = 128
-	ttlInMins        = 5
-	cleanupInMins    = 2
+	ttlInMins        = 3
+	cleanupInMins    = 1
 	maxEntrySize     = 100
 	maxEntriesInWin  = 10 * 10 * 60
 )

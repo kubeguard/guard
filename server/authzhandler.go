@@ -22,7 +22,6 @@ import (
 	"github.com/appscode/guard/authz"
 	"github.com/appscode/guard/authz/providers/azure"
 
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	authzv1beta1 "k8s.io/api/authorization/v1beta1"
 )
@@ -44,7 +43,6 @@ func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	org := crt.Subject.Organization[0]
-	glog.Infof("Received subject access review request for %s/%s", org, crt.Subject.CommonName)
 
 	data := authzv1beta1.SubjectAccessReview{}
 	err := json.NewDecoder(req.Body).Decode(&data)
@@ -52,8 +50,6 @@ func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		writeAuthzResponse(w, nil, nil, WithCode(errors.Wrap(err, "Failed to parse request"), http.StatusBadRequest))
 		return
 	}
-
-	glog.V(10).Infof("Authz req:%+v\n", data)
 
 	if !s.AuthzRecommendedOptions.AuthzProvider.Has(org) {
 		writeAuthzResponse(w, &data.Spec, nil, WithCode(errors.Errorf("guard does not provide service for %v", org), http.StatusBadRequest))
