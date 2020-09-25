@@ -672,7 +672,7 @@ k8s.io/kube-openapi/pkg/common
 k8s.io/kube-openapi/pkg/util/proto
 # k8s.io/utils v0.0.0-20200414100711-2df71ebbae66 => k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89
 k8s.io/utils/integer
-# kmodules.xyz/client-go v0.0.0-20200922200830-63d86b6e5b63
+# kmodules.xyz/client-go v0.0.0-20200924114038-ef01fa7ccbed
 kmodules.xyz/client-go
 kmodules.xyz/client-go/meta
 kmodules.xyz/client-go/tools/analytics
