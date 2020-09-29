@@ -18,7 +18,7 @@ github.com/PuerkitoBio/urlesc
 # github.com/allegro/bigcache v1.2.1
 github.com/allegro/bigcache
 github.com/allegro/bigcache/queue
-# github.com/appscode/go v0.0.0-20200323182826-54e98e09185a
+# github.com/appscode/go v0.0.0-20200928211031-cc0c23082d91
 github.com/appscode/go/analytics
 github.com/appscode/go/context
 github.com/appscode/go/crypto/rand
@@ -375,6 +375,8 @@ gomodules.xyz/cert
 gomodules.xyz/cert/certstore
 # gomodules.xyz/jsonpatch/v2 v2.1.0
 gomodules.xyz/jsonpatch/v2
+# gomodules.xyz/password-generator v0.2.3
+gomodules.xyz/password-generator
 # gomodules.xyz/version v0.1.0
 gomodules.xyz/version
 # google.golang.org/api v0.26.0 => google.golang.org/api v0.14.0
@@ -672,7 +674,7 @@ k8s.io/kube-openapi/pkg/common
 k8s.io/kube-openapi/pkg/util/proto
 # k8s.io/utils v0.0.0-20200414100711-2df71ebbae66 => k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89
 k8s.io/utils/integer
-# kmodules.xyz/client-go v0.0.0-20200924114038-ef01fa7ccbed
+# kmodules.xyz/client-go v0.0.0-20200929030759-cce6a3c623c1
 kmodules.xyz/client-go
 kmodules.xyz/client-go/meta
 kmodules.xyz/client-go/tools/analytics
