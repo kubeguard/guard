@@ -121,6 +121,79 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 			Effect:   core.TaintEffectNoSchedule,
 		})
 	}
+	if authopts.HttpsProxy != "" || authopts.HttpProxy != "" || authopts.NoProxy != "" {
+		proxyEnvVarRef := core.EnvFromSource{
+			SecretRef: &core.SecretEnvSource{},
+		}
+
+		proxyEnvVarRef.SecretRef.Name = "guard-proxy"
+		d.Spec.Template.Spec.Containers[0].EnvFrom = append(d.Spec.Template.Spec.Containers[0].EnvFrom, proxyEnvVarRef)
+		if authopts.ProxyCert != "" {
+			proxycertVolumeRef := core.Volume{
+				Name: "proxy-certstore",
+				VolumeSource: core.VolumeSource{
+					Secret: &core.SecretVolumeSource{
+						SecretName: "guard-proxy-cert",
+					},
+				},
+			}
+
+			sslCertsVolumeRef := core.Volume{
+				Name: "ssl-certs",
+				VolumeSource: core.VolumeSource{
+					EmptyDir: &core.EmptyDirVolumeSource{},
+				},
+			}
+
+			d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, proxycertVolumeRef)
+			d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, sslCertsVolumeRef)
+
+			sslCertsVolumeMount := core.VolumeMount{
+				Name:      "ssl-certs",
+				MountPath: "/etc/ssl/certs/",
+			}
+
+			d.Spec.Template.Spec.Containers[0].VolumeMounts = append(d.Spec.Template.Spec.Containers[0].VolumeMounts, sslCertsVolumeMount)
+
+			optionalSecret := false
+			initContainer := []core.Container{
+				{
+					Name:  "add-certs",
+					Image: "alpine:3.10.3",
+					Command: []string{
+						"sh",
+						"-c",
+						"|",
+						"apk add --update bash curl",
+						"update-ca-certificates",
+					},
+					EnvFrom: []core.EnvFromSource{
+						{
+							SecretRef: &core.SecretEnvSource{
+								LocalObjectReference: core.LocalObjectReference{
+									Name: "guard-proxy",
+								},
+								Optional: &optionalSecret,
+							},
+						},
+					},
+					VolumeMounts: []core.VolumeMount{
+						{
+							Name:      "proxy-certstore",
+							MountPath: "/usr/local/share/ca-certificates/proxy-cert.crt",
+							SubPath:   "proxy-cert.crt",
+						},
+						{
+							Name:      "ssl-certs",
+							MountPath: "/etc/ssl/certs/",
+						},
+					},
+				},
+			}
+
+			d.Spec.Template.Spec.InitContainers = initContainer
+		}
+	}
 	objects = append(objects, d)
 
 	servingOpts := server.NewSecureServingOptionsFromDir(authopts.PkiDir)

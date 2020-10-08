@@ -259,6 +259,12 @@ func (a *AccessInfo) CheckAccess(request *authzv1beta1.SubjectAccessReviewSpec) 
 
 	a.setReqHeaders(req)
 
+	tr := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+	}
+
+	a.client.Transport = tr
+
 	resp, err := a.client.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in check access request execution")

@@ -41,6 +41,10 @@ type AuthOptions struct {
 	RunOnMaster     bool
 	PrivateRegistry string
 	imagePullSecret string
+	HttpsProxy      string
+	HttpProxy       string
+	NoProxy         string
+	ProxyCert       string
 
 	AuthProvider providers.AuthProviders
 	Token        token.Options
@@ -85,6 +89,10 @@ func (o *AuthOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.RunOnMaster, "run-on-master", o.RunOnMaster, "If true, runs Guard server on master instances")
 	fs.StringVar(&o.PrivateRegistry, "private-registry", o.PrivateRegistry, "Private Docker registry")
 	fs.StringVar(&o.imagePullSecret, "image-pull-secret", o.imagePullSecret, "Name of image pull secret")
+	fs.StringVar(&o.HttpsProxy, "proxy-https", o.HttpsProxy, "Https proxy URL to be used")
+	fs.StringVar(&o.HttpProxy, "proxy-http", o.HttpProxy, "Http proxy URL to be used")
+	fs.StringVar(&o.NoProxy, "proxy-skip-range", o.NoProxy, "List of URLs/CIDRs for which proxy should not to be used")
+	fs.StringVar(&o.ProxyCert, "proxy-cert", o.ProxyCert, "Path to the certificate file for proxy")
 	o.AuthProvider.AddFlags(fs)
 	o.Token.AddFlags(fs)
 	o.Google.AddFlags(fs)
