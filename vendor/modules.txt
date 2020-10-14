@@ -22,7 +22,6 @@ github.com/allegro/bigcache/queue
 github.com/appscode/go/analytics
 github.com/appscode/go/context
 github.com/appscode/go/crypto/rand
-github.com/appscode/go/encoding/json/types
 github.com/appscode/go/env
 github.com/appscode/go/flags
 github.com/appscode/go/homedir
@@ -674,7 +673,7 @@ k8s.io/kube-openapi/pkg/common
 k8s.io/kube-openapi/pkg/util/proto
 # k8s.io/utils v0.0.0-20200414100711-2df71ebbae66 => k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89
 k8s.io/utils/integer
-# kmodules.xyz/client-go v0.0.0-20201008164401-74d81f261ec5
+# kmodules.xyz/client-go v0.0.0-20201013083546-b17c1e15f1a3
 kmodules.xyz/client-go
 kmodules.xyz/client-go/meta
 kmodules.xyz/client-go/tools/analytics
