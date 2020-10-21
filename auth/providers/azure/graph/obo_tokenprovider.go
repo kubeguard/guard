@@ -39,9 +39,12 @@ type oboTokenProvider struct {
 // NewOBOTokenProvider returns a TokenProvider that implements OAuth On-Behalf-Of flow on Azure Active Directory
 // https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow
 func NewOBOTokenProvider(clientID, clientSecret, loginURL, scope string) TokenProvider {
+	tr := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+	}
 	return &oboTokenProvider{
 		name:         "OBOTokenProvider",
-		client:       &http.Client{},
+		client:       &http.Client{Transport: tr},
 		clientID:     clientID,
 		clientSecret: clientSecret,
 		scope:        scope,

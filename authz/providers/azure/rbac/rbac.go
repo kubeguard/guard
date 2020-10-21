@@ -76,9 +76,21 @@ type AccessInfo struct {
 }
 
 var (
-	checkAccessFailed = promauto.NewCounter(prometheus.CounterOpts{
+	checkAccessThrottled = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "guard_azure_checkaccess_throttling_failure_total",
 		Help: "Azure checkaccess call throttled.",
+	})
+	checkAccessTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "guard_azure_check_access_requests_total",
+		Help: "Azure number of checkaccess request calls.",
+	})
+	checkAccessFailed = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "guard_azure_checkaccess_failure_total",
+		Help: "Azure checkaccess failed calls.",
+	})
+	checkAccessSucceeded = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "guard_azure_checkaccess_success_total",
+		Help: "Azure checkaccess success calls.",
 	})
 )
 
@@ -259,10 +271,18 @@ func (a *AccessInfo) CheckAccess(request *authzv1beta1.SubjectAccessReviewSpec) 
 
 	a.setReqHeaders(req)
 
+	tr := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+	}
+
+	a.client.Transport = tr
+
 	resp, err := a.client.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in check access request execution")
 	}
+
+	checkAccessTotal.Inc()
 
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -273,9 +293,14 @@ func (a *AccessInfo) CheckAccess(request *authzv1beta1.SubjectAccessReviewSpec) 
 	glog.V(7).Infof("checkaccess response: %s, Configured ARM call limit: %d", string(data), a.armCallLimit)
 	if resp.StatusCode != http.StatusOK {
 		glog.Errorf("error in check access response. error code: %d, response: %s", resp.StatusCode, string(data))
-		if resp.StatusCode == http.StatusTooManyRequests {
-			glog.V(10).Infoln("Closing idle TCP connections.")
-			a.client.CloseIdleConnections()
+		// metrics for calls with StatusCode >= 300
+		if resp.StatusCode >= http.StatusMultipleChoices {
+			if resp.StatusCode == http.StatusTooManyRequests {
+				glog.V(10).Infoln("Closing idle TCP connections.")
+				a.client.CloseIdleConnections()
+				checkAccessThrottled.Inc()
+			}
+
 			checkAccessFailed.Inc()
 		}
 		return nil, errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data))
@@ -292,6 +317,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1beta1.SubjectAccessReviewSpec) 
 			// will connect to different ARM instance of the region to ensure there is no ARM throttling
 			a.client.CloseIdleConnections()
 		}
+		checkAccessSucceeded.Inc()
 	}
 
 	// Decode response and prepare k8s response

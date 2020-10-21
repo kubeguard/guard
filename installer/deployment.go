@@ -65,7 +65,7 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 							Image: fmt.Sprintf("%s/guard:%v", authopts.PrivateRegistry, stringz.Val(v.Version.Version, "canary")),
 							Args: []string{
 								"run",
-								"--v=3",
+								fmt.Sprintf("--v=%s", authopts.VerbosityLevel),
 							},
 							Ports: []core.ContainerPort{
 								{
@@ -120,6 +120,77 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 			Operator: core.TolerationOpExists,
 			Effect:   core.TaintEffectNoSchedule,
 		})
+	}
+	if authopts.HttpsProxy != "" || authopts.HttpProxy != "" || authopts.NoProxy != "" {
+		proxyEnvVarRef := core.EnvFromSource{
+			SecretRef: &core.SecretEnvSource{},
+		}
+
+		proxyEnvVarRef.SecretRef.Name = "guard-proxy"
+		d.Spec.Template.Spec.Containers[0].EnvFrom = append(d.Spec.Template.Spec.Containers[0].EnvFrom, proxyEnvVarRef)
+		if authopts.ProxyCert != "" {
+			proxycertVolumeRef := core.Volume{
+				Name: "proxy-certstore",
+				VolumeSource: core.VolumeSource{
+					Secret: &core.SecretVolumeSource{
+						SecretName: "guard-proxy-cert",
+					},
+				},
+			}
+
+			sslCertsVolumeRef := core.Volume{
+				Name: "ssl-certs",
+				VolumeSource: core.VolumeSource{
+					EmptyDir: &core.EmptyDirVolumeSource{},
+				},
+			}
+
+			d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, proxycertVolumeRef)
+			d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, sslCertsVolumeRef)
+
+			sslCertsVolumeMount := core.VolumeMount{
+				Name:      "ssl-certs",
+				MountPath: "/etc/ssl/certs/",
+			}
+
+			d.Spec.Template.Spec.Containers[0].VolumeMounts = append(d.Spec.Template.Spec.Containers[0].VolumeMounts, sslCertsVolumeMount)
+
+			optionalSecret := false
+			initContainer := []core.Container{
+				{
+					Name:  "update-proxy-certs",
+					Image: "nginx:stable-alpine",
+					Command: []string{
+						"sh",
+						"-c",
+						"update-ca-certificates",
+					},
+					EnvFrom: []core.EnvFromSource{
+						{
+							SecretRef: &core.SecretEnvSource{
+								LocalObjectReference: core.LocalObjectReference{
+									Name: "guard-proxy",
+								},
+								Optional: &optionalSecret,
+							},
+						},
+					},
+					VolumeMounts: []core.VolumeMount{
+						{
+							Name:      "proxy-certstore",
+							MountPath: "/usr/local/share/ca-certificates/proxy-cert.crt",
+							SubPath:   "proxy-cert.crt",
+						},
+						{
+							Name:      "ssl-certs",
+							MountPath: "/etc/ssl/certs/",
+						},
+					},
+				},
+			}
+
+			d.Spec.Template.Spec.InitContainers = initContainer
+		}
 	}
 	objects = append(objects, d)
 
