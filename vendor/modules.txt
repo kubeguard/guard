@@ -167,7 +167,7 @@ github.com/gregjones/httpcache/diskcache
 github.com/hashicorp/go-cleanhttp
 # github.com/hashicorp/go-retryablehttp v0.6.4
 github.com/hashicorp/go-retryablehttp
-# github.com/hashicorp/go-uuid v1.0.2
+# github.com/hashicorp/go-uuid v1.0.1
 github.com/hashicorp/go-uuid
 # github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c
 github.com/howeyc/gopass
@@ -673,7 +673,7 @@ k8s.io/kube-openapi/pkg/common
 k8s.io/kube-openapi/pkg/util/proto
 # k8s.io/utils v0.0.0-20200414100711-2df71ebbae66 => k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89
 k8s.io/utils/integer
-# kmodules.xyz/client-go v0.0.0-20201013083546-b17c1e15f1a3
+# kmodules.xyz/client-go v0.0.0-20201021051118-03dac1aea508
 kmodules.xyz/client-go
 kmodules.xyz/client-go/meta
 kmodules.xyz/client-go/tools/analytics
