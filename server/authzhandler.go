@@ -23,7 +23,7 @@ import (
 	"github.com/appscode/guard/authz/providers/azure"
 
 	"github.com/pkg/errors"
-	authzv1beta1 "k8s.io/api/authorization/v1beta1"
+	authzv1 "k8s.io/api/authorization/v1"
 )
 
 type Authzhandler struct {
@@ -44,7 +44,7 @@ func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	org := crt.Subject.Organization[0]
 
-	data := authzv1beta1.SubjectAccessReview{}
+	data := authzv1.SubjectAccessReview{}
 	err := json.NewDecoder(req.Body).Decode(&data)
 	if err != nil {
 		writeAuthzResponse(w, nil, nil, WithCode(errors.Wrap(err, "Failed to parse request"), http.StatusBadRequest))

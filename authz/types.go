@@ -19,7 +19,7 @@ import (
 	"sort"
 	"strings"
 
-	authzv1beta1 "k8s.io/api/authorization/v1beta1"
+	authzv1 "k8s.io/api/authorization/v1"
 )
 
 type orgs []string
@@ -46,7 +46,7 @@ func (o orgs) String() string {
 }
 
 type Interface interface {
-	Check(request *authzv1beta1.SubjectAccessReviewSpec, store Store) (*authzv1beta1.SubjectAccessReviewStatus, error)
+	Check(request *authzv1.SubjectAccessReviewSpec, store Store) (*authzv1.SubjectAccessReviewStatus, error)
 }
 
 type Store interface {

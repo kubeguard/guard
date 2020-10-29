@@ -25,7 +25,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	auth "k8s.io/api/authentication/v1"
-	authzv1beta1 "k8s.io/api/authorization/v1beta1"
+	authzv1 "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -75,13 +75,13 @@ func write(w http.ResponseWriter, info *auth.UserInfo, err error) {
 	}
 }
 
-func writeAuthzResponse(w http.ResponseWriter, spec *authzv1beta1.SubjectAccessReviewSpec, accessInfo *authzv1beta1.SubjectAccessReviewStatus, err error) {
+func writeAuthzResponse(w http.ResponseWriter, spec *authzv1.SubjectAccessReviewSpec, accessInfo *authzv1.SubjectAccessReviewStatus, err error) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("x-content-type-options", "nosniff")
 
-	resp := authzv1beta1.SubjectAccessReview{
+	resp := authzv1.SubjectAccessReview{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: authzv1beta1.SchemeGroupVersion.String(),
+			APIVersion: authzv1.SchemeGroupVersion.String(),
 			Kind:       "SubjectAccessReview",
 		},
 	}
@@ -93,7 +93,7 @@ func writeAuthzResponse(w http.ResponseWriter, spec *authzv1beta1.SubjectAccessR
 	if accessInfo != nil {
 		resp.Status = *accessInfo
 	} else {
-		accessInfo := authzv1beta1.SubjectAccessReviewStatus{Allowed: false, Denied: true}
+		accessInfo := authzv1.SubjectAccessReviewStatus{Allowed: false, Denied: true}
 		if err != nil {
 			accessInfo.Reason = err.Error()
 		}

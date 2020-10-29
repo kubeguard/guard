@@ -27,7 +27,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
-	authzv1beta1 "k8s.io/api/authorization/v1beta1"
+	authzv1 "k8s.io/api/authorization/v1"
 )
 
 const (
@@ -75,7 +75,7 @@ func newAuthzClient(opts authzOpts.Options, authopts auth.Options) (authz.Interf
 	return c, nil
 }
 
-func (s Authorizer) Check(request *authzv1beta1.SubjectAccessReviewSpec, store authz.Store) (*authzv1beta1.SubjectAccessReviewStatus, error) {
+func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec, store authz.Store) (*authzv1.SubjectAccessReviewStatus, error) {
 	if request == nil {
 		return nil, errors.New("subject access review is nil")
 	}
@@ -83,19 +83,19 @@ func (s Authorizer) Check(request *authzv1beta1.SubjectAccessReviewSpec, store a
 	// check if user is system accounts
 	if strings.HasPrefix(strings.ToLower(request.User), "system:") {
 		glog.V(10).Infof("returning no op to system accounts")
-		return &authzv1beta1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
+		return &authzv1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
 	}
 
 	if s.rbacClient.SkipAuthzCheck(request) {
 		glog.V(3).Infof("user %s is part of skip authz list. returning no op.", request.User)
-		return &authzv1beta1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
+		return &authzv1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
 	}
 
 	if _, ok := request.Extra["oid"]; !ok {
 		if s.rbacClient.ShouldSkipAuthzCheckForNonAADUsers() {
-			return &authzv1beta1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NonAADUserNoOpVerdict}, nil
+			return &authzv1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NonAADUserNoOpVerdict}, nil
 		} else {
-			return &authzv1beta1.SubjectAccessReviewStatus{Allowed: false, Denied: true, Reason: rbac.NonAADUserNotAllowedVerdict}, nil
+			return &authzv1.SubjectAccessReviewStatus{Allowed: false, Denied: true, Reason: rbac.NonAADUserNotAllowedVerdict}, nil
 		}
 	}
 
@@ -103,9 +103,9 @@ func (s Authorizer) Check(request *authzv1beta1.SubjectAccessReviewSpec, store a
 
 	if exist {
 		if result {
-			return &authzv1beta1.SubjectAccessReviewStatus{Allowed: result, Reason: rbac.AccessAllowedVerdict}, nil
+			return &authzv1.SubjectAccessReviewStatus{Allowed: result, Reason: rbac.AccessAllowedVerdict}, nil
 		} else {
-			return &authzv1beta1.SubjectAccessReviewStatus{Allowed: result, Denied: true, Reason: rbac.AccessNotAllowedVerdict}, nil
+			return &authzv1.SubjectAccessReviewStatus{Allowed: result, Denied: true, Reason: rbac.AccessNotAllowedVerdict}, nil
 		}
 	}
 
@@ -113,7 +113,7 @@ func (s Authorizer) Check(request *authzv1beta1.SubjectAccessReviewSpec, store a
 	if s.rbacClient.AllowNonResPathDiscoveryAccess(request) {
 		glog.V(10).Infof("Allowing user %s access for discovery check.", request.User)
 		_ = s.rbacClient.SetResultInCache(request, true, store)
-		return &authzv1beta1.SubjectAccessReviewStatus{Allowed: true, Reason: rbac.AccessAllowedVerdict}, nil
+		return &authzv1.SubjectAccessReviewStatus{Allowed: true, Reason: rbac.AccessAllowedVerdict}, nil
 	}
 
 	if s.rbacClient.IsTokenExpired() {
