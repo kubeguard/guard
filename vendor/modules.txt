@@ -103,13 +103,13 @@ github.com/fsnotify/fsnotify
 github.com/ghodss/yaml
 # github.com/go-ldap/ldap v3.0.3+incompatible
 github.com/go-ldap/ldap
-# github.com/go-openapi/jsonpointer v0.19.3
+# github.com/go-openapi/jsonpointer v0.19.3 => github.com/go-openapi/jsonpointer v0.19.3
 github.com/go-openapi/jsonpointer
-# github.com/go-openapi/jsonreference v0.19.3
+# github.com/go-openapi/jsonreference v0.19.3 => github.com/go-openapi/jsonreference v0.19.3
 github.com/go-openapi/jsonreference
-# github.com/go-openapi/spec v0.19.8
+# github.com/go-openapi/spec v0.19.8 => github.com/go-openapi/spec v0.19.3
 github.com/go-openapi/spec
-# github.com/go-openapi/swag v0.19.9
+# github.com/go-openapi/swag v0.19.9 => github.com/go-openapi/swag v0.19.5
 github.com/go-openapi/swag
 # github.com/gogo/protobuf v1.3.1 => github.com/gogo/protobuf v1.3.1
 github.com/gogo/protobuf/proto
@@ -190,7 +190,7 @@ github.com/jpillora/go-ogle-analytics
 github.com/json-iterator/go
 # github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de
 github.com/liggitt/tabwriter
-# github.com/mailru/easyjson v0.7.1
+# github.com/mailru/easyjson v0.7.0
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter

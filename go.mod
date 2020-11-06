@@ -27,7 +27,6 @@ require (
 	github.com/jcmturner/gofork v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.10
 	github.com/kr/pretty v0.2.0 // indirect
-	github.com/mailru/easyjson v0.7.1 // indirect
 	github.com/mitchellh/mapstructure v1.2.2 // indirect
 	github.com/moul/http2curl v1.0.0
 	github.com/nmcclain/asn1-ber v0.0.0-20170104154839-2661553a0484 // indirect
@@ -97,6 +96,26 @@ replace github.com/Azure/go-autorest/autorest/validation => github.com/Azure/go-
 replace github.com/Azure/go-autorest/logger => github.com/Azure/go-autorest/logger v0.1.0
 
 replace github.com/Azure/go-autorest/tracing => github.com/Azure/go-autorest/tracing v0.5.0
+
+replace github.com/go-openapi/analysis => github.com/go-openapi/analysis v0.19.5
+
+replace github.com/go-openapi/errors => github.com/go-openapi/errors v0.19.2
+
+replace github.com/go-openapi/jsonpointer => github.com/go-openapi/jsonpointer v0.19.3
+
+replace github.com/go-openapi/jsonreference => github.com/go-openapi/jsonreference v0.19.3
+
+replace github.com/go-openapi/loads => github.com/go-openapi/loads v0.19.4
+
+replace github.com/go-openapi/runtime => github.com/go-openapi/runtime v0.19.4
+
+replace github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.3
+
+replace github.com/go-openapi/strfmt => github.com/go-openapi/strfmt v0.19.3
+
+replace github.com/go-openapi/swag => github.com/go-openapi/swag v0.19.5
+
+replace github.com/go-openapi/validate => github.com/go-openapi/validate v0.19.5
 
 replace github.com/gogo/protobuf => github.com/gogo/protobuf v1.3.1
 
