@@ -43,8 +43,7 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/xanzy/go-gitlab v0.31.0
 	go.opencensus.io v0.22.2 // indirect
-	golang.org/x/crypto v0.0.0-20200429183012-4b2356b1ed79 // indirect
-	golang.org/x/net v0.0.0-20200602114024-627f9648deb9
+	golang.org/x/net v0.0.0-20200625001655-4c5254603344
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
 	gomodules.xyz/cert v1.0.3
