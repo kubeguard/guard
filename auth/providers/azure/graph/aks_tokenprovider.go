@@ -33,9 +33,12 @@ type aksTokenProvider struct {
 
 // NewAKSTokenProvider returns a TokenProvider that implements On-Behalf-Of flow using AKS first party service
 func NewAKSTokenProvider(tokenURL, tenantID string) TokenProvider {
+	tr := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+	}
 	return &aksTokenProvider{
 		name:     "AKSTokenProvider",
-		client:   &http.Client{},
+		client:   &http.Client{Transport: tr},
 		tokenURL: tokenURL,
 		tenantID: tenantID,
 	}

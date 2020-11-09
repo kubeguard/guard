@@ -39,9 +39,12 @@ type clientCredentialTokenProvider struct {
 // NewClientCredentialTokenProvider returns a TokenProvider that implements OAuth client credential flow on Azure Active Directory
 // https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-client-creds-grant-flow#get-a-token
 func NewClientCredentialTokenProvider(clientID, clientSecret, loginURL, scope string) TokenProvider {
+	tr := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+	}
 	return &clientCredentialTokenProvider{
 		name:         "ClientCredentialTokenProvider",
-		client:       &http.Client{},
+		client:       &http.Client{Transport: tr},
 		clientID:     clientID,
 		clientSecret: clientSecret,
 		scope:        scope,

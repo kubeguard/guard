@@ -38,6 +38,10 @@ const (
 	NonAADUserNotAllowedVerdict = "Access denied by Azure RBAC for non AAD users. Configure --azure.skip-authz-for-non-aad-users to enable access. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig."
 )
 
+var (
+	username string
+)
+
 type SubjectInfoAttributes struct {
 	ObjectId string   `json:"ObjectId"`
 	Groups   []string `json:"Groups,omitempty"`
@@ -293,6 +297,7 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 	groups := getValidSecurityGroups(req.Groups)
 	checkaccessreq.Subject.Attributes.Groups = groups
 
+	username = req.User
 	action := make([]AuthorizationActionInfo, 1)
 	action[0] = getDataAction(req, clusterType)
 	checkaccessreq.Actions = action
@@ -326,7 +331,7 @@ func ConvertCheckAccessResponse(body []byte) (*authzv1.SubjectAccessReviewStatus
 
 	if strings.ToLower(response[0].Decision) == Allowed {
 		allowed = true
-		verdict = fmt.Sprintf(AccessAllowedVerboseVerdict, response[0].AzureRoleAssignment.Id, response[0].AzureRoleAssignment.RoleDefinitionId, response[0].AzureRoleAssignment.PrincipalId)
+		verdict = fmt.Sprintf(AccessAllowedVerboseVerdict, response[0].AzureRoleAssignment.Id, response[0].AzureRoleAssignment.RoleDefinitionId, username)
 	} else {
 		allowed = false
 		denied = true

@@ -69,6 +69,10 @@ guard get installer [flags]
   -n, --namespace string                     Name of Kubernetes namespace used to run guard server. (default "kube-system")
       --pki-dir string                       Path to directory where pki files are stored. (default "$HOME/.guard")
       --private-registry string              Private Docker registry (default "appscode")
+      --proxy-https                          Https proxy URL to be used
+      --proxy-http                           Http proxy URL to be used
+      --proxy-skip-range                     List of URLs/CIDRs for which proxy should not to be used
+      --proxy-cert                           Path to the certificate file for proxy
       --run-on-master                        If true, runs Guard server on master instances (default true)
       --token-auth-file string               To enable static token authentication
 ```

@@ -18,6 +18,7 @@ package installer
 
 import (
 	"bytes"
+	"os"
 
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,6 +40,21 @@ func Generate(authopts AuthOptions, authzopts AuthzOptions) ([]byte, error) {
 	objects = append(objects, newServiceAccount(authopts.Namespace))
 	objects = append(objects, newClusterRole(authopts.Namespace))
 	objects = append(objects, newClusterRoleBinding(authopts.Namespace))
+	if authopts.HttpsProxy != "" || authopts.HttpProxy != "" || authopts.NoProxy != "" {
+		objects = append(objects, newProxySecret(authopts.Namespace, authopts.HttpsProxy, authopts.HttpProxy, authopts.NoProxy))
+		if authopts.ProxyCert != "" {
+			_, err := os.Stat(authopts.ProxyCert)
+			if err != nil {
+				return nil, err
+			}
+
+			if proxyCertObject, err := newProxyCertSecret(authopts.Namespace, authopts.ProxyCert); err != nil {
+				return nil, err
+			} else {
+				objects = append(objects, proxyCertObject)
+			}
+		}
+	}
 	if deployObjects, err := newDeployment(authopts, authzopts); err != nil {
 		return nil, err
 	} else {

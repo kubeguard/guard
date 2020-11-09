@@ -35,12 +35,17 @@ import (
 )
 
 type AuthOptions struct {
+	VerbosityLevel  string
 	PkiDir          string
 	Namespace       string
 	Addr            string
 	RunOnMaster     bool
 	PrivateRegistry string
 	imagePullSecret string
+	HttpsProxy      string
+	HttpProxy       string
+	NoProxy         string
+	ProxyCert       string
 
 	AuthProvider providers.AuthProviders
 	Token        token.Options
@@ -58,6 +63,7 @@ type AuthzOptions struct {
 
 func NewAuthOptions() AuthOptions {
 	return AuthOptions{
+		VerbosityLevel:  "3",
 		PkiDir:          auth.DefaultDataDir,
 		Namespace:       metav1.NamespaceSystem,
 		Addr:            "10.96.10.96:443",
@@ -79,12 +85,17 @@ func NewAuthzOptions() AuthzOptions {
 }
 
 func (o *AuthOptions) AddFlags(fs *pflag.FlagSet) {
+	fs.StringVar(&o.VerbosityLevel, "v", o.VerbosityLevel, "Log level for V logs")
 	fs.StringVar(&o.PkiDir, "pki-dir", o.PkiDir, "Path to directory where pki files are stored.")
 	fs.StringVarP(&o.Namespace, "namespace", "n", o.Namespace, "Name of Kubernetes namespace used to run guard server.")
 	fs.StringVar(&o.Addr, "addr", o.Addr, "Address (host:port) of guard server.")
 	fs.BoolVar(&o.RunOnMaster, "run-on-master", o.RunOnMaster, "If true, runs Guard server on master instances")
 	fs.StringVar(&o.PrivateRegistry, "private-registry", o.PrivateRegistry, "Private Docker registry")
 	fs.StringVar(&o.imagePullSecret, "image-pull-secret", o.imagePullSecret, "Name of image pull secret")
+	fs.StringVar(&o.HttpsProxy, "proxy-https", o.HttpsProxy, "Https proxy URL to be used")
+	fs.StringVar(&o.HttpProxy, "proxy-http", o.HttpProxy, "Http proxy URL to be used")
+	fs.StringVar(&o.NoProxy, "proxy-skip-range", o.NoProxy, "List of URLs/CIDRs for which proxy should not to be used")
+	fs.StringVar(&o.ProxyCert, "proxy-cert", o.ProxyCert, "Path to the certificate file for proxy")
 	o.AuthProvider.AddFlags(fs)
 	o.Token.AddFlags(fs)
 	o.Google.AddFlags(fs)
