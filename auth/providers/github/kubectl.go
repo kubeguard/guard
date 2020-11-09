@@ -19,9 +19,8 @@ package github
 import (
 	"log"
 
-	"github.com/appscode/go/term"
-
 	"github.com/skratchdot/open-golang/open"
+	"gomodules.xyz/x/term"
 )
 
 func IssueToken() {

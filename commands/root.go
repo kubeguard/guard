@@ -20,10 +20,9 @@ import (
 	"flag"
 	"log"
 
-	"github.com/appscode/go/flags"
-	v "github.com/appscode/go/version"
-
 	"github.com/spf13/cobra"
+	"gomodules.xyz/x/flags"
+	v "gomodules.xyz/x/version"
 	"kmodules.xyz/client-go/tools/cli"
 )
 

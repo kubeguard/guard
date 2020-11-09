@@ -19,8 +19,9 @@ package main
 import (
 	"os"
 
-	logs "github.com/appscode/go/log/golog"
 	"github.com/appscode/guard/commands"
+
+	logs "gomodules.xyz/x/log/golog"
 )
 
 func main() {

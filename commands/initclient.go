@@ -23,14 +23,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/appscode/go/term"
 	"github.com/appscode/guard/auth"
 
 	"github.com/golang/glog"
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"gomodules.xyz/blobfs"
 	"gomodules.xyz/cert"
 	"gomodules.xyz/cert/certstore"
+	"gomodules.xyz/x/term"
 )
 
 func NewCmdInitClient() *cobra.Command {
@@ -74,7 +74,7 @@ func NewCmdInitClient() *cobra.Command {
 				cfg.Organization = []string{org}
 			}
 
-			store, err := certstore.NewCertStore(afero.NewOsFs(), filepath.Join(rootDir, "pki"), cfg.Organization...)
+			store, err := certstore.New(blobfs.New("file:///"), filepath.Join(rootDir, "pki"), cfg.Organization...)
 			if err != nil {
 				glog.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}

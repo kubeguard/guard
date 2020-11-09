@@ -25,9 +25,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/appscode/go/ntp"
-	"github.com/appscode/go/signals"
-	v "github.com/appscode/go/version"
 	"github.com/appscode/guard/auth/providers/token"
 	"github.com/appscode/guard/authz/providers/azure"
 	"github.com/appscode/guard/authz/providers/azure/data"
@@ -37,6 +34,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
+	"gomodules.xyz/signals"
+	"gomodules.xyz/x/ntp"
+	v "gomodules.xyz/x/version"
 	"kmodules.xyz/client-go/meta"
 	"kmodules.xyz/client-go/tools/fsnotify"
 )

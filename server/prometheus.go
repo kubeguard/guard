@@ -17,9 +17,8 @@ limitations under the License.
 package server
 
 import (
-	v "github.com/appscode/go/version"
-
 	"github.com/prometheus/client_golang/prometheus"
+	v "gomodules.xyz/x/version"
 )
 
 var (

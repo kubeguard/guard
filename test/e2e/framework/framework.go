@@ -17,13 +17,10 @@ limitations under the License.
 package framework
 
 import (
-	"path/filepath"
-
-	"github.com/appscode/go/crypto/rand"
-
 	. "github.com/onsi/gomega"
-	"github.com/spf13/afero"
+	"gomodules.xyz/blobfs"
 	"gomodules.xyz/cert/certstore"
+	"gomodules.xyz/x/crypto/rand"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -34,7 +31,7 @@ type Framework struct {
 }
 
 func New(kubeClient kubernetes.Interface) *Framework {
-	store, err := certstore.NewCertStore(afero.NewMemMapFs(), filepath.Join("", "pki"))
+	store, err := certstore.New(blobfs.NewInMemoryFS(), "pki")
 	Expect(err).NotTo(HaveOccurred())
 
 	err = store.InitCA()

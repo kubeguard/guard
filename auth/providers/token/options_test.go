@@ -19,10 +19,9 @@ package token
 import (
 	"testing"
 
-	aggregator "github.com/appscode/go/util/errors"
-
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 const (
@@ -66,7 +65,7 @@ func TestOptionsValidate(t *testing.T) {
 				assert.Nil(t, errs, "expected error nil")
 			} else {
 				if assert.NotNil(t, errs, "expected errors") {
-					assert.EqualError(t, aggregator.NewAggregate(errs), aggregator.NewAggregate(test.expectedErr).Error(), "token auth options validation")
+					assert.EqualError(t, utilerrors.NewAggregate(errs), utilerrors.NewAggregate(test.expectedErr).Error(), "token auth options validation")
 				}
 			}
 		})

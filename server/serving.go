@@ -20,12 +20,11 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/appscode/go/types"
-
 	"github.com/pkg/errors"
-	"github.com/spf13/afero"
 	"github.com/spf13/pflag"
+	"gomodules.xyz/blobfs"
 	"gomodules.xyz/cert/certstore"
+	"gomodules.xyz/pointer"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -87,7 +86,7 @@ func (o *SecureServingOptions) Validate() []error {
 
 func (o SecureServingOptions) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err error) {
 	// create auth secret
-	store, err := certstore.NewCertStore(afero.NewOsFs(), filepath.Join(o.pkiDir, "pki"))
+	store, err := certstore.New(blobfs.New("file:///"), filepath.Join(o.pkiDir, "pki"))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create certificate store.")
 	}
@@ -133,7 +132,7 @@ func (o SecureServingOptions) Apply(d *apps.Deployment) (extraObjs []runtime.Obj
 		VolumeSource: core.VolumeSource{
 			Secret: &core.SecretVolumeSource{
 				SecretName:  authSecret.Name,
-				DefaultMode: types.Int32P(0555),
+				DefaultMode: pointer.Int32P(0555),
 			},
 		},
 	}

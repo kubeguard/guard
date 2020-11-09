@@ -24,8 +24,8 @@ import (
 	"github.com/appscode/guard/auth"
 
 	"github.com/golang/glog"
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"gomodules.xyz/blobfs"
 	"gomodules.xyz/cert"
 	"gomodules.xyz/cert/certstore"
 	"k8s.io/client-go/tools/clientcmd"
@@ -73,7 +73,7 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 				cfg.Organization = []string{org}
 			}
 
-			store, err := certstore.NewCertStore(afero.NewOsFs(), filepath.Join(rootDir, "pki"))
+			store, err := certstore.New(blobfs.New("file:///"), filepath.Join(rootDir, "pki"))
 			if err != nil {
 				glog.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}

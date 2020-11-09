@@ -19,10 +19,9 @@ package azure
 import (
 	"testing"
 
-	aggregator "github.com/appscode/go/util/errors"
-
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 const (
@@ -153,7 +152,7 @@ func TestOptionsValidate(t *testing.T) {
 				assert.Nil(t, errs)
 			} else {
 				if assert.NotNil(t, errs, "errors expected") {
-					assert.EqualError(t, aggregator.NewAggregate(errs), aggregator.NewAggregate(test.expectedErr).Error())
+					assert.EqualError(t, utilerrors.NewAggregate(errs), utilerrors.NewAggregate(test.expectedErr).Error())
 				}
 			}
 		})

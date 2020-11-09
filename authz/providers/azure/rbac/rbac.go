@@ -28,7 +28,6 @@ import (
 	"sync"
 	"time"
 
-	v "github.com/appscode/go/version"
 	auth "github.com/appscode/guard/auth/providers/azure"
 	"github.com/appscode/guard/auth/providers/azure/graph"
 	"github.com/appscode/guard/authz"
@@ -38,6 +37,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	v "gomodules.xyz/x/version"
 	authzv1 "k8s.io/api/authorization/v1"
 )
 
