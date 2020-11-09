@@ -253,6 +253,7 @@ unit-tests: $(BUILD_DIRS)
 	    -v $$(pwd)/.go/cache:/.cache                            \
 	    --env HTTP_PROXY=$(HTTP_PROXY)                          \
 	    --env HTTPS_PROXY=$(HTTPS_PROXY)                        \
+	    --env GUARD_DATA_DIR=/tmp/.guard                        \
 	    $(BUILD_IMAGE)                                          \
 	    /bin/bash -c "                                          \
 	        ARCH=$(ARCH)                                        \

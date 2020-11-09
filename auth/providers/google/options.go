@@ -20,12 +20,11 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/appscode/go/types"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/jwt"
+	"gomodules.xyz/pointer"
 	gdir "google.golang.org/api/admin/directory/v1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
@@ -112,7 +111,7 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 		VolumeSource: core.VolumeSource{
 			Secret: &core.SecretVolumeSource{
 				SecretName:  authSecret.Name,
-				DefaultMode: types.Int32P(0555),
+				DefaultMode: pointer.Int32P(0555),
 			},
 		},
 	}

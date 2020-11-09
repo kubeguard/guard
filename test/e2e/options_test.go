@@ -20,10 +20,9 @@ import (
 	"flag"
 	"path/filepath"
 
-	"github.com/appscode/go/flags"
-	logs "github.com/appscode/go/log/golog"
-
 	"github.com/golang/glog"
+	"gomodules.xyz/x/flags"
+	logs "gomodules.xyz/x/log/golog"
 	"k8s.io/client-go/util/homedir"
 )
 

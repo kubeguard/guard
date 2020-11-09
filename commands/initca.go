@@ -21,13 +21,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/appscode/go/term"
 	"github.com/appscode/guard/auth"
 
 	"github.com/golang/glog"
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"gomodules.xyz/blobfs"
 	"gomodules.xyz/cert/certstore"
+	"gomodules.xyz/x/term"
 )
 
 func NewCmdInitCA() *cobra.Command {
@@ -39,7 +39,7 @@ func NewCmdInitCA() *cobra.Command {
 		Short:             "Init CA",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			store, err := certstore.NewCertStore(afero.NewOsFs(), filepath.Join(rootDir, "pki"))
+			store, err := certstore.New(blobfs.New("file:///"), filepath.Join(rootDir, "pki"))
 			if err != nil {
 				glog.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}
@@ -53,7 +53,7 @@ func NewCmdInitCA() *cobra.Command {
 			if err != nil {
 				glog.Fatalf("Failed to init ca. Reason: %v.", err)
 			}
-			term.Successln("Wrote ca certificates in ", store.Location())
+			term.Successln("Wrote ca certificates in", store.Location())
 		},
 	}
 

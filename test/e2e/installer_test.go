@@ -23,7 +23,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/appscode/go/util/errors"
 	"github.com/appscode/guard/auth/providers"
 	"github.com/appscode/guard/auth/providers/azure"
 	"github.com/appscode/guard/auth/providers/github"
@@ -41,6 +40,7 @@ import (
 	"gomodules.xyz/cert"
 	kerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 var _ = Describe("Installer test", func() {
@@ -131,7 +131,7 @@ var _ = Describe("Installer test", func() {
 		setupGuard = func(authopts installer.AuthOptions, authzopts installer.AuthzOptions) {
 			By("Validate installer flag options")
 			errs := authopts.Validate()
-			Expect(errors.NewAggregate(errs)).NotTo(HaveOccurred())
+			Expect(utilerrors.NewAggregate(errs)).NotTo(HaveOccurred())
 
 			By("Generating installer yaml")
 			data, err := installer.Generate(authopts, authzopts)

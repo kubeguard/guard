@@ -19,9 +19,6 @@ package installer
 import (
 	"fmt"
 
-	stringz "github.com/appscode/go/strings"
-	"github.com/appscode/go/types"
-	v "github.com/appscode/go/version"
 	"github.com/appscode/guard/auth/providers/azure"
 	"github.com/appscode/guard/auth/providers/github"
 	"github.com/appscode/guard/auth/providers/gitlab"
@@ -31,6 +28,9 @@ import (
 	azureauthz "github.com/appscode/guard/authz/providers/azure"
 	"github.com/appscode/guard/server"
 
+	"gomodules.xyz/pointer"
+	stringz "gomodules.xyz/x/strings"
+	v "gomodules.xyz/x/version"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,7 +46,7 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 			Labels:    labels,
 		},
 		Spec: apps.DeploymentSpec{
-			Replicas: types.Int32P(1),
+			Replicas: pointer.Int32P(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},

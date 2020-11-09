@@ -29,8 +29,8 @@ import (
 
 	"github.com/golang/glog"
 	ldapserver "github.com/nmcclain/ldap"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"gomodules.xyz/blobfs"
 	"gomodules.xyz/cert"
 	"gomodules.xyz/cert/certstore"
 )
@@ -90,7 +90,7 @@ func ldapServerSetup(secureConn bool) (*ldapServer, error) {
 	}
 
 	if secureConn {
-		store, err := certstore.NewCertStore(afero.NewOsFs(), filepath.Join(os.TempDir(), "ldap-certs"), "test")
+		store, err := certstore.New(blobfs.New("file:///"), filepath.Join(os.TempDir(), "ldap-certs"), "test")
 		if err != nil {
 			return nil, err
 		}

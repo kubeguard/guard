@@ -26,10 +26,10 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/appscode/go/runtime"
 	"github.com/appscode/guard/commands"
 
 	"github.com/spf13/cobra/doc"
+	"gomodules.xyz/runtime"
 )
 
 var (

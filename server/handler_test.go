@@ -31,8 +31,8 @@ import (
 
 	fuzz "github.com/google/gofuzz"
 	"github.com/pkg/errors"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"gomodules.xyz/blobfs"
 	"gomodules.xyz/cert"
 	"gomodules.xyz/cert/certstore"
 	auth "k8s.io/api/authentication/v1"
@@ -43,7 +43,7 @@ func TestServeHTTP(t *testing.T) {
 		AuthRecommendedOptions: NewAuthRecommendedOptions(),
 	}
 
-	store, err := certstore.NewCertStore(afero.NewMemMapFs(), "/pki", "foo")
+	store, err := certstore.New(blobfs.NewInMemoryFS(), "/pki", "foo")
 	if err != nil {
 		t.Fatal(err)
 	}
