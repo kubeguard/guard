@@ -86,7 +86,7 @@ func (o *SecureServingOptions) Validate() []error {
 
 func (o SecureServingOptions) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err error) {
 	// create auth secret
-	store, err := certstore.New(blobfs.New("file:///"), filepath.Join(o.pkiDir, "pki"))
+	store, err := certstore.New(blobfs.NewOsFs(), filepath.Join(o.pkiDir, "pki"))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create certificate store.")
 	}

@@ -39,7 +39,7 @@ func NewCmdInitCA() *cobra.Command {
 		Short:             "Init CA",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			store, err := certstore.New(blobfs.New("file:///"), filepath.Join(rootDir, "pki"))
+			store, err := certstore.New(blobfs.NewOsFs(), filepath.Join(rootDir, "pki"))
 			if err != nil {
 				glog.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}

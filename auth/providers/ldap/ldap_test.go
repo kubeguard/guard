@@ -90,7 +90,7 @@ func ldapServerSetup(secureConn bool) (*ldapServer, error) {
 	}
 
 	if secureConn {
-		store, err := certstore.New(blobfs.New("file:///"), filepath.Join(os.TempDir(), "ldap-certs"), "test")
+		store, err := certstore.New(blobfs.NewOsFs(), filepath.Join(os.TempDir(), "ldap-certs"), "test")
 		if err != nil {
 			return nil, err
 		}

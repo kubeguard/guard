@@ -54,7 +54,7 @@ func NewCmdInitServer() *cobra.Command {
 				Usages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 			}
 
-			store, err := certstore.New(blobfs.New("file:///"), filepath.Join(rootDir, "pki"), cfg.Organization...)
+			store, err := certstore.New(blobfs.NewOsFs(), filepath.Join(rootDir, "pki"), cfg.Organization...)
 			if err != nil {
 				glog.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}

@@ -730,8 +730,8 @@ golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 h1:E7g+9GITq07hpfrRu66IV
 golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 gomodules.xyz/blobfs v0.1.2 h1:IlxhjNbBFqiUXLMj+1hwqU57qXKC2Km61/VUrCw4S1o=
 gomodules.xyz/blobfs v0.1.2/go.mod h1:BorUG/XXbImFG51pMb7mFDnS/mCjrqshFLvfBEMteOQ=
-gomodules.xyz/blobfs v0.1.6 h1:HT/5JIkO/pBud0RY8YN0gtRnDU95orM8C3TwWnRDMAo=
-gomodules.xyz/blobfs v0.1.6/go.mod h1:DTBwaFUwRuDuk/rqpmgINkmo1fQR8oNMjj1DihfCpg4=
+gomodules.xyz/blobfs v0.1.7 h1:EH5TDvx9v21vd0K1oYIBddjkZA5YTFrsGS1P7EUrCyk=
+gomodules.xyz/blobfs v0.1.7/go.mod h1:DTBwaFUwRuDuk/rqpmgINkmo1fQR8oNMjj1DihfCpg4=
 gomodules.xyz/cert v1.2.0 h1:9RbkQVQlEZFYyx9gp7lq2eW5A6duQWeIRlZ2RRS/emw=
 gomodules.xyz/cert v1.2.0/go.mod h1:3p4FzumuJeDY0l+Byr3zK5vRL8f1r2RxyamgGWncDso=
 gomodules.xyz/homedir v0.0.0-20201104190528-bcd4d5d94b84 h1:RH11GBm37fGstaCcoFB5KtcUijofDS0yxcdkCS6vx/A=

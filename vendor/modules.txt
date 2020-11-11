@@ -365,7 +365,7 @@ golang.org/x/time/rate
 # golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 golang.org/x/xerrors
 golang.org/x/xerrors/internal
-# gomodules.xyz/blobfs v0.1.6
+# gomodules.xyz/blobfs v0.1.7
 gomodules.xyz/blobfs
 # gomodules.xyz/cert v1.2.0
 gomodules.xyz/cert

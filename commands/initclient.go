@@ -74,7 +74,7 @@ func NewCmdInitClient() *cobra.Command {
 				cfg.Organization = []string{org}
 			}
 
-			store, err := certstore.New(blobfs.New("file:///"), filepath.Join(rootDir, "pki"), cfg.Organization...)
+			store, err := certstore.New(blobfs.NewOsFs(), filepath.Join(rootDir, "pki"), cfg.Organization...)
 			if err != nil {
 				glog.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}
