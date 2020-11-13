@@ -24,20 +24,15 @@ import (
 
 	"github.com/golang/glog"
 	authv1 "k8s.io/api/authentication/v1"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/util/homedir"
 )
 
 var DefaultDataDir = func() string {
-	dir := func() string {
-		if v, ok := os.LookupEnv("GUARD_DATA_DIR"); ok {
-			glog.Infof("Using data dir %s found in GUARD_DATA_DIR env variable", v)
-			return v
-		}
-		return filepath.Join(homedir.HomeDir(), ".guard")
-	}()
-	utilruntime.Must(os.MkdirAll(dir, 0755))
-	return dir
+	if v, ok := os.LookupEnv("GUARD_DATA_DIR"); ok {
+		glog.Infof("Using data dir %s found in GUARD_DATA_DIR env variable", v)
+		return v
+	}
+	return filepath.Join(homedir.HomeDir(), ".guard")
 }()
 
 type orgs []string
