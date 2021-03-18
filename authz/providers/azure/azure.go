@@ -72,6 +72,8 @@ func newAuthzClient(opts authzOpts.Options, authopts auth.Options) (authz.Interf
 		return nil, errors.Wrap(err, "failed to create ms rbac client")
 	}
 
+	c.rbacClient.InitSkipAuthzConfig()
+
 	return c, nil
 }
 

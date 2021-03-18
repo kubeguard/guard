@@ -44,7 +44,7 @@ func clientSetup(serverUrl, mode string) (*Authorizer, error) {
 		AuthzMode:                      mode,
 		ResourceId:                     "resourceId",
 		ARMCallLimit:                   2000,
-		SkipAuthzCheck:                 []string{"alpha, tango, charlie"},
+		SkipAuthzCheckConfig:           "",
 		SkipAuthzForNonAADUsers:        true,
 		AllowNonResDiscoveryPathAccess: true,
 	}

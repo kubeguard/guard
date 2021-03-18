@@ -16,13 +16,18 @@ limitations under the License.
 package rbac
 
 import (
+	"bufio"
 	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -37,8 +42,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"gomodules.xyz/signals"
 	v "gomodules.xyz/x/version"
 	authzv1 "k8s.io/api/authorization/v1"
+	"kmodules.xyz/client-go/tools/fsnotify"
 )
 
 const (
@@ -69,10 +76,12 @@ type AccessInfo struct {
 	clusterType                    string
 	azureResourceId                string
 	armCallLimit                   int
+	skipCheckConfig                string
 	skipCheck                      map[string]void
 	skipAuthzForNonAADUsers        bool
 	allowNonResDiscoveryPathAccess bool
 	lock                           sync.RWMutex
+	configLock                     sync.RWMutex
 }
 
 var (
@@ -118,12 +127,7 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 		armCallLimit:                   opts.ARMCallLimit,
 		skipAuthzForNonAADUsers:        opts.SkipAuthzForNonAADUsers,
 		allowNonResDiscoveryPathAccess: opts.AllowNonResDiscoveryPathAccess,
-	}
-
-	u.skipCheck = make(map[string]void, len(opts.SkipAuthzCheck))
-	var member void
-	for _, s := range opts.SkipAuthzCheck {
-		u.skipCheck[strings.ToLower(s)] = member
+		skipCheckConfig:                opts.SkipAuthzCheckConfig,
 	}
 
 	u.clusterType = getClusterType(opts.AuthzMode)
@@ -144,11 +148,71 @@ func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo) (*
 		tokenProvider = graph.NewClientCredentialTokenProvider(authopts.ClientID, authopts.ClientSecret,
 			fmt.Sprintf("%s%s/oauth2/v2.0/token", authzInfo.AADEndpoint, authopts.TenantID),
 			fmt.Sprintf("%s.default", authzInfo.ARMEndPoint))
+
 	case authzOpts.AKSAuthzMode:
 		tokenProvider = graph.NewAKSTokenProvider(opts.AKSAuthzTokenURL, authopts.TenantID)
 	}
 
 	return newAccessInfo(tokenProvider, rbacURL, opts)
+}
+
+func (a *AccessInfo) loadAuthzConfig() error {
+	glog.Info("Inside load authz config")
+	if a.skipCheckConfig != "" {
+		a.configLock.Lock()
+		defer a.configLock.Unlock()
+		data, err := LoadConfigFile(a.skipCheckConfig)
+		if err != nil {
+			glog.Fatal(err)
+		}
+		a.skipCheck = data
+	}
+	return nil
+}
+
+func LoadConfigFile(file string) (map[string]void, error) {
+	csvFile, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	defer csvFile.Close()
+
+	reader := csv.NewReader(bufio.NewReader(csvFile))
+	reader.FieldsPerRecord = -1
+	data := map[string]void{}
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, errors.Wrap(err, "failed to parse skip authz config file ")
+		}
+		var member void
+		for _, s := range record {
+			glog.Infof("adding user in skip list: %s", s)
+			data[strings.ToLower(s)] = member
+		}
+	}
+	return data, nil
+}
+
+func (a *AccessInfo) InitSkipAuthzConfig() {
+	glog.Info("Init config skip check")
+	err := a.loadAuthzConfig()
+	if err != nil {
+		glog.Fatal(err)
+	}
+	w := fsnotify.Watcher{
+		WatchDir: filepath.Dir(a.skipCheckConfig),
+		Reload: func() error {
+			return a.loadAuthzConfig()
+		},
+	}
+	stopCh := signals.SetupSignalHandler()
+	err = w.Run(stopCh)
+	if err != nil {
+		glog.Fatal(err)
+	}
 }
 
 func (a *AccessInfo) RefreshToken() error {
@@ -198,6 +262,8 @@ func (a *AccessInfo) GetResultFromCache(request *authzv1.SubjectAccessReviewSpec
 
 func (a *AccessInfo) SkipAuthzCheck(request *authzv1.SubjectAccessReviewSpec) bool {
 	if a.clusterType == connectedClusters {
+		a.configLock.RLock()
+		defer a.configLock.RUnlock()
 		_, ok := a.skipCheck[strings.ToLower(request.User)]
 		return ok
 	}
