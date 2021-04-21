@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 )
@@ -124,7 +125,7 @@ func TestGetGroupIDs(t *testing.T) {
 		ts, u := getAPIServerAndUserInfo(http.StatusOK, validBody)
 		defer ts.Close()
 
-		groups, err := u.getGroupIDs("john.michael.kane@yacht.io")
+		groups, err := u.getGroupIDs("john.michael.kane@yacht.io", "")
 		if err != nil {
 			t.Errorf("Should not have gotten error: %s", err)
 		}
@@ -136,7 +137,7 @@ func TestGetGroupIDs(t *testing.T) {
 		ts, u := getAPIServerAndUserInfo(http.StatusInternalServerError, "shutdown")
 		defer ts.Close()
 
-		groups, err := u.getGroupIDs("alexander.conklin@cia.gov")
+		groups, err := u.getGroupIDs("alexander.conklin@cia.gov", "")
 		if err == nil {
 			t.Error("Should have gotten error")
 		}
@@ -154,7 +155,7 @@ func TestGetGroupIDs(t *testing.T) {
 			groupsPerCall: expandedGroupsPerCall,
 		}
 
-		groups, err := u.getGroupIDs("richard.webb@cia.gov")
+		groups, err := u.getGroupIDs("richard.webb@cia.gov", "")
 		if err == nil {
 			t.Error("Should have gotten error")
 		}
@@ -166,7 +167,7 @@ func TestGetGroupIDs(t *testing.T) {
 		ts, u := getAPIServerAndUserInfo(http.StatusOK, "{bad_json")
 		defer ts.Close()
 
-		groups, err := u.getGroupIDs("nicky.parsons@cia.gov")
+		groups, err := u.getGroupIDs("nicky.parsons@cia.gov", "")
 		if err == nil {
 			t.Error("Should have gotten error")
 		}
@@ -282,7 +283,7 @@ func TestGetGroups(t *testing.T) {
 	}
 	defer ts.Close()
 
-	groups, err := u.GetGroups("blackbriar@cia.gov")
+	groups, err := u.GetGroups("blackbriar@cia.gov", "")
 	if err != nil {
 		t.Errorf("Should not have gotten error: %s", err)
 	}
@@ -300,7 +301,7 @@ func TestGetGroups(t *testing.T) {
 	}
 	defer ts.Close()
 
-	groups, err = uWithGroupID.GetGroups("blackbriar@cia.gov")
+	groups, err = uWithGroupID.GetGroups("blackbriar@cia.gov", "")
 	if err != nil {
 		t.Errorf("Should not have gotten error: %s", err)
 	}
@@ -375,12 +376,51 @@ func TestGetGroupsPaging(t *testing.T) {
 	}
 	defer ts.Close()
 
-	groups, err := u.GetGroups("blackbriar@cia.gov")
+	groups, err := u.GetGroups("blackbriar@cia.gov", "")
 	if err != nil {
 		t.Errorf("Should not have gotten error: %s", err)
 	}
 
 	if len(groups) != 3 {
 		t.Errorf("Should have gotten a list of groups with 3 entries. Got: %d", len(groups))
+	}
+}
+
+func TestGetMemberGroupsGraphURL(t *testing.T) {
+	baseUrl, _ := url.Parse("https://graph.microsoft.com/v1/")
+	userInfo := UserInfo{apiURL: baseUrl}
+
+	dataset := []struct {
+		upn         string
+		oid         string
+		shouldError bool
+	}{
+		{upn: "", oid: "", shouldError: true},
+		{upn: "pasten@microsoft.com", oid: "aef59702-f7e5-44c3-94f5-ba0952ec1337"},
+		{upn: "pistun@microsoft.com"},
+		{upn: "pasten@external.com#EXT#_pasten.onmicrosofGBJPS#EXT#@pasten.onmicrosoft.com"},
+	}
+
+	for _, test := range dataset {
+		t.Run(fmt.Sprintf("upn=%s, oid=%s, shouldError=%v", test.upn, test.oid, test.shouldError), func(t *testing.T) {
+			graphURL, err := userInfo.getMemberGroupsGraphURL(test.upn, test.oid)
+			if test.shouldError && err == nil {
+				t.Fatalf("Error expected for upn: %s, oid: %s", test.upn, test.oid)
+			}
+
+			if err != nil {
+				return
+			}
+
+			expectedPath := fmt.Sprintf(usersGetMemberGroupsPathFormat, url.PathEscape(test.upn))
+			if test.oid != "" {
+				expectedPath = fmt.Sprintf(directoryObjectsGetMemberGroupsPathFormat, url.PathEscape(test.oid))
+			}
+
+			expectedUrl := userInfo.apiURL.String() + strings.TrimLeft(expectedPath, "/")
+			if graphURL.String() != expectedUrl {
+				t.Fatalf("Expected url: %s but got: %s", expectedUrl, graphURL.String())
+			}
+		})
 	}
 }

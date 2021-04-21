@@ -150,7 +150,7 @@ $ kubectl apply -f installer.yaml
 You will still need to create client application and server application as you do in "client credential" mode.
 The only differences are:
 
-1. server application requires `User.Read` and `GroupMember.Read.All` **delegated permissions** to Microsoft Graph API.
+1. server application requires `User.Read`, `GroupMember.Read.All` and `Application.Read.All` **delegated permissions** to Microsoft Graph API.
 
     ![obo-server-app](/docs/images/azure/obo-server-app.png)
 

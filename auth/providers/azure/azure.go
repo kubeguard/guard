@@ -169,17 +169,18 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 		}
 		if skipGraphAPI {
 			resp.Groups = groups
-			return resp, nil
+			return resp.UserInfo, nil
 		}
 	}
 	if err := s.graphClient.RefreshToken(token); err != nil {
 		return nil, err
 	}
-	resp.Groups, err = s.graphClient.GetGroups(resp.Username)
+
+	resp.Groups, err = s.graphClient.GetGroups(resp.upn, resp.oid)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get groups")
 	}
-	return resp, nil
+	return resp.UserInfo, nil
 }
 
 // getGroupsAndCheckOverage will extract groups when groups claim is already present
@@ -271,10 +272,18 @@ func getClaims(token *oidc.IDToken) (claims, error) {
 	return c, nil
 }
 
+type userInfo struct {
+	*authv1.UserInfo
+	upn string
+	oid string
+}
+
 // ReviewFromClaims creates a new TokenReview object from the claims object
 // the claims object
-func (c claims) getUserInfo(usernameClaim, userObjectIDClaim string) (*authv1.UserInfo, error) {
-	username, err := c.string(usernameClaim)
+func (c claims) getUserInfo(usernameClaim, userObjectIDClaim string) (*userInfo, error) {
+	upn, err := c.string(usernameClaim)
+	username := upn
+
 	if err != nil && err == ErrClaimNotFound {
 		username, err = c.string(userObjectIDClaim)
 	}
@@ -287,9 +296,14 @@ func (c claims) getUserInfo(usernameClaim, userObjectIDClaim string) (*authv1.Us
 
 	useroid, _ := c.string(userObjectIDClaim)
 
-	return &authv1.UserInfo{
-		Username: username,
-		Extra:    map[string]authv1.ExtraValue{"oid": {useroid}}}, nil
+	return &userInfo{
+		UserInfo: &authv1.UserInfo{
+			Username: username,
+			Extra:    map[string]authv1.ExtraValue{"oid": {useroid}},
+		},
+		upn: upn,
+		oid: useroid,
+	}, nil
 }
 
 // String gets a string value from claims given a key. Returns error if

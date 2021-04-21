@@ -46,8 +46,10 @@ var (
 )
 
 const (
-	expiryDelta = 60 * time.Second
-	getterName  = "ms-graph"
+	expiryDelta                               = 60 * time.Second
+	getterName                                = "ms-graph"
+	usersGetMemberGroupsPathFormat            = "/users/%s/getMemberGroups"
+	directoryObjectsGetMemberGroupsPathFormat = "/directoryObjects/%s/getMemberGroups"
 )
 
 // UserInfo allows you to get user data from MS Graph
@@ -64,15 +66,15 @@ type UserInfo struct {
 	tokenProvider TokenProvider
 }
 
-func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
-	// Create a new request for finding the user.
-	// Shallow copy of the base API URL
-	userSearchURL := *u.apiURL
-	// Append the path for the member list
-	userSearchURL.Path = path.Join(userSearchURL.Path, fmt.Sprintf("/users/%s/getMemberGroups", userPrincipal))
+func (u *UserInfo) getGroupIDs(upn string, objectID string) ([]string, error) {
+	// Create a new request for finding the group ids the principal is a member of.
+	searchUrl, err := u.getMemberGroupsGraphURL(upn, objectID)
+	if err != nil {
+		return nil, errors.Errorf("failed retrieving member groups graph url for upn: %s and oid: %s", upn, objectID)
+	}
 
 	// The body being sent makes sure that all groups are returned, not just security groups
-	req, err := http.NewRequest(http.MethodPost, userSearchURL.String(), strings.NewReader(`{"securityEnabledOnly": false}`))
+	req, err := http.NewRequest(http.MethodPost, searchUrl.String(), strings.NewReader(`{"securityEnabledOnly": false}`))
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating group IDs request")
 	}
@@ -87,7 +89,7 @@ func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
 	resp, err := u.client.Do(req)
 	if err != nil {
 		getMemberGroupsFailed.Inc()
-		return nil, errors.Wrap(err, "error listing users")
+		return nil, errors.Wrap(err, "error listing group IDs")
 	}
 	defer resp.Body.Close()
 
@@ -103,6 +105,26 @@ func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
 		return nil, errors.Wrapf(err, "failed to decode response for request %s", req.URL.Path)
 	}
 	return objects.Value, nil
+}
+
+func (u *UserInfo) getMemberGroupsGraphURL(upn string, objectID string) (*url.URL, error) {
+	if upn == "" && objectID == "" {
+		return nil, errors.New("both upn and object ID are blank")
+	}
+
+	// UPN may contain '#' which needs to be escaped; escaping the oid as well just in case
+	upn, objectID = url.PathEscape(upn), url.PathEscape(objectID)
+
+	// Only the /users/ API supports retrieving group memberships via a UPN
+	urlPath := path.Join(u.apiURL.Path, fmt.Sprintf(usersGetMemberGroupsPathFormat, upn))
+
+	if objectID != "" {
+		// If a non-blank object ID was passed, it'll take precedence - and we'll use the new API endpoint
+		// which supports both users & service principals
+		urlPath = path.Join(u.apiURL.Path, fmt.Sprintf(directoryObjectsGetMemberGroupsPathFormat, objectID))
+	}
+
+	return u.apiURL.Parse(urlPath)
 }
 
 func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
@@ -167,11 +189,11 @@ func (u *UserInfo) RefreshToken(token string) error {
 	return nil
 }
 
-// GetGroups gets a list of all groups that the given user principal is part of
+// GetGroups gets a list of all groups that the given user / service principal is part of
 // Generally in federated directories the email address is the userPrincipalName
-func (u *UserInfo) GetGroups(userPrincipal string) ([]string, error) {
-	// Get the group IDs for the user
-	groupIDs, err := u.getGroupIDs(userPrincipal)
+func (u *UserInfo) GetGroups(upn, objectID string) ([]string, error) {
+	// Get the group IDs for the principal
+	groupIDs, err := u.getGroupIDs(upn, objectID)
 	if err != nil {
 		return nil, err
 	}
@@ -280,9 +302,5 @@ func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string, useGroupUID b
 		useGroupUID:   useGroupUID,
 	}
 	u.tokenProvider = NewClientCredentialTokenProvider(clientID, clientSecret, loginUrl, "")
-	if err != nil {
-		return nil, err
-	}
-
 	return u, nil
 }

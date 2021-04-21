@@ -156,7 +156,7 @@ func serverSetup(loginResp string, loginStatus int, jwkResp, groupIds, groupList
 		_, _ = w.Write(groupIds)
 	}))
 
-	m.Post("/api/users/abc-123d4/getMemberGroups", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	m.Post("/api/directoryObjects/abc-123d4/getMemberGroups", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if len(groupStatus) > 0 {
 			w.WriteHeader(groupStatus[0])
 		} else {
@@ -446,9 +446,13 @@ var testClaims = claims{
 func TestReviewFromClaims(t *testing.T) {
 	// valid user claim
 	t.Run("valid user claim", func(t *testing.T) {
-		var validUserInfo = &authv1.UserInfo{
-			Username: username,
-			Extra:    map[string]authv1.ExtraValue{"oid": {"abc-123d4"}},
+		var validUserInfo = &userInfo{
+			UserInfo: &authv1.UserInfo{
+				Username: username,
+				Extra:    map[string]authv1.ExtraValue{"oid": {objectID}},
+			},
+			upn: username,
+			oid: objectID,
 		}
 
 		resp, err := testClaims.getUserInfo("upn", "oid")
@@ -486,7 +490,7 @@ func TestString(t *testing.T) {
 		assert.Empty(t, v, "expected empty")
 	})
 
-	//non-string claim should error
+	// non-string claim should error
 	t.Run("non-string claim should error", func(t *testing.T) {
 		v, err := testClaims.string("bad_upn")
 		assert.NotNil(t, err)
