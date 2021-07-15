@@ -19,11 +19,11 @@ package e2e_test
 import (
 	"flag"
 	"path/filepath"
+	"strconv"
 
-	"github.com/golang/glog"
-	"gomodules.xyz/x/flags"
-	logs "gomodules.xyz/x/log/golog"
+	"gomodules.xyz/logs"
 	"k8s.io/client-go/util/homedir"
+	"k8s.io/klog/v2"
 )
 
 type E2EOptions struct {
@@ -51,7 +51,7 @@ func enableLogging() {
 	}()
 	err := flag.Set("logtostderr", "true")
 	if err != nil {
-		glog.Fatal(err)
+		klog.Fatal(err)
 	}
 	logLevelFlag := flag.Lookup("v")
 	if logLevelFlag != nil {
@@ -59,5 +59,5 @@ func enableLogging() {
 			return
 		}
 	}
-	flags.SetLogLevel(2)
+	flag.Set("v", strconv.Itoa(2))
 }

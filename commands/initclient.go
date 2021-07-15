@@ -25,12 +25,12 @@ import (
 
 	"github.com/appscode/guard/auth"
 
-	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 	"gomodules.xyz/blobfs"
 	"gomodules.xyz/cert"
 	"gomodules.xyz/cert/certstore"
 	"gomodules.xyz/x/term"
+	"k8s.io/klog/v2"
 )
 
 func NewCmdInitClient() *cobra.Command {
@@ -53,10 +53,10 @@ func NewCmdInitClient() *cobra.Command {
 			}
 
 			if len(args) == 0 {
-				glog.Fatalln("Missing client name.")
+				klog.Fatalln("Missing client name.")
 			}
 			if len(args) > 1 {
-				glog.Fatalln("Multiple client name found.")
+				klog.Fatalln("Multiple client name found.")
 			}
 
 			cfg := cert.Config{
@@ -67,16 +67,16 @@ func NewCmdInitClient() *cobra.Command {
 			}
 
 			if org == "" {
-				glog.Fatalf("Missing organization name. Set flag -o %s", auth.SupportedOrgs)
+				klog.Fatalf("Missing organization name. Set flag -o %s", auth.SupportedOrgs)
 			} else if !auth.SupportedOrgs.Has(org) {
-				glog.Fatalf("Unknown organization %s.", org)
+				klog.Fatalf("Unknown organization %s.", org)
 			} else {
 				cfg.Organization = []string{org}
 			}
 
 			store, err := certstore.New(blobfs.NewOsFs(), filepath.Join(rootDir, "pki"), cfg.Organization...)
 			if err != nil {
-				glog.Fatalf("Failed to create certificate store. Reason: %v.", err)
+				klog.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}
 			if store.IsExists(filename(cfg)) {
 				if !term.Ask(fmt.Sprintf("Client certificate found at %s. Do you want to overwrite?", store.Location()), false) {
@@ -85,16 +85,16 @@ func NewCmdInitClient() *cobra.Command {
 			}
 
 			if err = store.LoadCA(); err != nil {
-				glog.Fatalf("Failed to load ca certificate. Reason: %v.", err)
+				klog.Fatalf("Failed to load ca certificate. Reason: %v.", err)
 			}
 
 			crt, key, err := store.NewClientCertPairBytes(cfg.AltNames, cfg.Organization...)
 			if err != nil {
-				glog.Fatalf("Failed to generate certificate pair. Reason: %v.", err)
+				klog.Fatalf("Failed to generate certificate pair. Reason: %v.", err)
 			}
 			err = store.WriteBytes(filename(cfg), crt, key)
 			if err != nil {
-				glog.Fatalf("Failed to init client certificate pair. Reason: %v.", err)
+				klog.Fatalf("Failed to init client certificate pair. Reason: %v.", err)
 			}
 			term.Successln("Wrote client certificates in ", store.Location())
 		},

@@ -22,8 +22,8 @@ import (
 
 	"github.com/appscode/guard/auth/providers/eks"
 
-	"github.com/golang/glog"
 	"github.com/spf13/cobra"
+	"k8s.io/klog/v2"
 )
 
 func NewCmdLogin() *cobra.Command {
@@ -40,18 +40,18 @@ func NewCmdLogin() *cobra.Command {
 			case eks.OrgType:
 				token, err := eks.Get(cluster)
 				if err != nil {
-					glog.Fatal(err)
+					klog.Fatal(err)
 				}
 				printToken, err := eks.PrintToken(token)
 				if err != nil {
-					glog.Fatal(err)
+					klog.Fatal(err)
 				}
 				fmt.Println(printToken)
 				return
 			case "":
-				glog.Fatalln("Missing cloud provider name. Set flag -p.")
+				klog.Fatalln("Missing cloud provider name. Set flag -p.")
 			default:
-				glog.Fatalf("Unsupported cloud provider %s.", provider)
+				klog.Fatalf("Unsupported cloud provider %s.", provider)
 			}
 		},
 	}

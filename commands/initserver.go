@@ -26,12 +26,12 @@ import (
 
 	"github.com/appscode/guard/auth"
 
-	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 	"gomodules.xyz/blobfs"
 	"gomodules.xyz/cert"
 	"gomodules.xyz/cert/certstore"
 	"gomodules.xyz/x/term"
+	"k8s.io/klog/v2"
 )
 
 func NewCmdInitServer() *cobra.Command {
@@ -56,7 +56,7 @@ func NewCmdInitServer() *cobra.Command {
 
 			store, err := certstore.New(blobfs.NewOsFs(), filepath.Join(rootDir, "pki"), cfg.Organization...)
 			if err != nil {
-				glog.Fatalf("Failed to create certificate store. Reason: %v.", err)
+				klog.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}
 			if store.IsExists(filename(cfg)) {
 				if !term.Ask(fmt.Sprintf("Server certificate found at %s. Do you want to overwrite?", store.Location()), false) {
@@ -65,16 +65,16 @@ func NewCmdInitServer() *cobra.Command {
 			}
 
 			if err = store.LoadCA(); err != nil {
-				glog.Fatalf("Failed to load ca certificate. Reason: %v.", err)
+				klog.Fatalf("Failed to load ca certificate. Reason: %v.", err)
 			}
 
 			crt, key, err := store.NewServerCertPairBytes(cfg.AltNames)
 			if err != nil {
-				glog.Fatalf("Failed to generate certificate pair. Reason: %v.", err)
+				klog.Fatalf("Failed to generate certificate pair. Reason: %v.", err)
 			}
 			err = store.WriteBytes(filename(cfg), crt, key)
 			if err != nil {
-				glog.Fatalf("Failed to init server certificate pair. Reason: %v.", err)
+				klog.Fatalf("Failed to init server certificate pair. Reason: %v.", err)
 			}
 			term.Successln("Wrote server certificates in ", store.Location())
 		},

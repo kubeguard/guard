@@ -22,14 +22,14 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/golang/glog"
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/client-go/util/homedir"
+	"k8s.io/klog/v2"
 )
 
 var DefaultDataDir = func() string {
 	if v, ok := os.LookupEnv("GUARD_DATA_DIR"); ok {
-		glog.Infof("Using data dir %s found in GUARD_DATA_DIR env variable", v)
+		klog.Infof("Using data dir %s found in GUARD_DATA_DIR env variable", v)
 		return v
 	}
 	return filepath.Join(homedir.HomeDir(), ".guard")

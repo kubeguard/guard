@@ -30,13 +30,13 @@ import (
 	"github.com/appscode/guard/authz/providers/azure/data"
 	"github.com/appscode/pat"
 
-	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
 	"gomodules.xyz/signals"
 	"gomodules.xyz/x/ntp"
 	v "gomodules.xyz/x/version"
+	"k8s.io/klog/v2"
 	"kmodules.xyz/client-go/meta"
 	"kmodules.xyz/client-go/tools/fsnotify"
 )
@@ -54,11 +54,11 @@ func (s *Server) AddFlags(fs *pflag.FlagSet) {
 
 func (s Server) ListenAndServe() {
 	if errs := s.AuthRecommendedOptions.Validate(); errs != nil {
-		glog.Fatal(errs)
+		klog.Fatal(errs)
 	}
 
 	if errs := s.AuthzRecommendedOptions.Validate(s.AuthRecommendedOptions); errs != nil {
-		glog.Fatal(errs)
+		klog.Fatal(errs)
 	}
 
 	if s.AuthRecommendedOptions.NTP.Enabled() {
@@ -66,7 +66,7 @@ func (s Server) ListenAndServe() {
 		go func() {
 			for range ticker.C {
 				if err := ntp.CheckSkewFromServer(s.AuthRecommendedOptions.NTP.NTPServer, s.AuthRecommendedOptions.NTP.MaxClodkSkew); err != nil {
-					glog.Fatal(err)
+					klog.Fatal(err)
 				}
 			}
 		}()
@@ -77,7 +77,7 @@ func (s Server) ListenAndServe() {
 
 		err := s.TokenAuthenticator.Configure()
 		if err != nil {
-			glog.Fatalln(err)
+			klog.Fatalln(err)
 		}
 		if meta.PossiblyInCluster() {
 			w := fsnotify.Watcher{
@@ -89,17 +89,17 @@ func (s Server) ListenAndServe() {
 			stopCh := signals.SetupSignalHandler()
 			err = w.Run(stopCh)
 			if err != nil {
-				glog.Fatal(err)
+				klog.Fatal(err)
 			}
 		}
 	}
 
 	// loading file read related data
 	if err := s.AuthRecommendedOptions.LDAP.Configure(); err != nil {
-		glog.Fatal(err)
+		klog.Fatal(err)
 	}
 	if err := s.AuthRecommendedOptions.Google.Configure(); err != nil {
-		glog.Fatal(err)
+		klog.Fatal(err)
 	}
 
 	/*
@@ -111,12 +111,12 @@ func (s Server) ListenAndServe() {
 	*/
 	caCert, err := ioutil.ReadFile(s.AuthRecommendedOptions.SecureServing.CACertFile)
 	if err != nil {
-		glog.Fatal(err)
+		klog.Fatal(err)
 	}
 	caCertPool := x509.NewCertPool()
 	ok := caCertPool.AppendCertsFromPEM(caCert)
 	if !ok {
-		glog.Fatal("Failed to add CA cert in CertPool for guard server")
+		klog.Fatal("Failed to add CA cert in CertPool for guard server")
 	}
 
 	tlsConfig := &tls.Config{
@@ -159,11 +159,11 @@ func (s Server) ListenAndServe() {
 		w.Header().Set("x-content-type-options", "nosniff")
 		err := json.NewEncoder(w).Encode(v.Version)
 		if err != nil {
-			glog.Fatal(err)
+			klog.Fatal(err)
 		}
 	}))
 
-	glog.Infoln("setting up authz providers")
+	klog.Infoln("setting up authz providers")
 	if len(s.AuthzRecommendedOptions.AuthzProvider.Providers) > 0 {
 		authzhandler := Authzhandler{
 			AuthRecommendedOptions:  s.AuthRecommendedOptions,
@@ -182,7 +182,7 @@ func (s Server) ListenAndServe() {
 			options := data.DefaultOptions
 			authzhandler.Store, err = data.NewDataStore(options)
 			if authzhandler.Store == nil || err != nil {
-				glog.Fatalf("Error in initalizing cache. Error:%s", err.Error())
+				klog.Fatalf("Error in initalizing cache. Error:%s", err.Error())
 			}
 		}
 	}
@@ -194,5 +194,5 @@ func (s Server) ListenAndServe() {
 		Handler:      m,
 		TLSConfig:    tlsConfig,
 	}
-	glog.Fatalln(srv.ListenAndServeTLS(s.AuthRecommendedOptions.SecureServing.CertFile, s.AuthRecommendedOptions.SecureServing.KeyFile))
+	klog.Fatalln(srv.ListenAndServeTLS(s.AuthRecommendedOptions.SecureServing.CertFile, s.AuthRecommendedOptions.SecureServing.KeyFile))
 }

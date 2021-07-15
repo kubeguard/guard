@@ -22,9 +22,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/moul/http2curl"
 	"github.com/pkg/errors"
+	"k8s.io/klog/v2"
 )
 
 type oboTokenProvider struct {
@@ -69,9 +69,9 @@ func (u *oboTokenProvider) Acquire(token string) (AuthResponse, error) {
 		return authResp, errors.Wrap(err, "failed to create request")
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	if glog.V(10) {
+	if klog.V(10).Enabled() {
 		cmd, _ := http2curl.GetCurlCommand(req)
-		glog.V(10).Infoln(cmd)
+		klog.V(10).Infoln(cmd)
 	}
 
 	resp, err := u.client.Do(req)

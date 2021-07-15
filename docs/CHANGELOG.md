@@ -179,7 +179,7 @@ aliases:
 - Add readme images to logo folder [\#186](https://github.com/appscode/guard/pull/186) ([tamalsaha](https://github.com/tamalsaha))
 - Add Logos for Guard [\#185](https://github.com/appscode/guard/pull/185) ([area55git](https://github.com/area55git))
 - Cleanup error handling for Azure provider [\#182](https://github.com/appscode/guard/pull/182) ([tamalsaha](https://github.com/tamalsaha))
-- Log userinfo at glog.V\(10\) [\#180](https://github.com/appscode/guard/pull/180) ([tamalsaha](https://github.com/tamalsaha))
+- Log userinfo at klog.V\(10\) [\#180](https://github.com/appscode/guard/pull/180) ([tamalsaha](https://github.com/tamalsaha))
 
 ## [0.2.1](https://github.com/appscode/guard/tree/0.2.1) (2018-07-10)
 [Full Changelog](https://github.com/appscode/guard/compare/0.2.0...0.2.1)

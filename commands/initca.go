@@ -23,11 +23,11 @@ import (
 
 	"github.com/appscode/guard/auth"
 
-	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 	"gomodules.xyz/blobfs"
 	"gomodules.xyz/cert/certstore"
 	"gomodules.xyz/x/term"
+	"k8s.io/klog/v2"
 )
 
 func NewCmdInitCA() *cobra.Command {
@@ -41,7 +41,7 @@ func NewCmdInitCA() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			store, err := certstore.New(blobfs.NewOsFs(), filepath.Join(rootDir, "pki"))
 			if err != nil {
-				glog.Fatalf("Failed to create certificate store. Reason: %v.", err)
+				klog.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}
 			if store.IsExists("ca") {
 				if !term.Ask(fmt.Sprintf("CA certificate found at %s. Do you want to overwrite?", store.Location()), false) {
@@ -51,7 +51,7 @@ func NewCmdInitCA() *cobra.Command {
 
 			err = store.NewCA()
 			if err != nil {
-				glog.Fatalf("Failed to init ca. Reason: %v.", err)
+				klog.Fatalf("Failed to init ca. Reason: %v.", err)
 			}
 			term.Successln("Wrote ca certificates in", store.Location())
 		},

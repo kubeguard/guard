@@ -25,9 +25,9 @@ import (
 	"github.com/appscode/guard/authz/providers/azure/rbac"
 
 	"github.com/Azure/go-autorest/autorest/azure"
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	authzv1 "k8s.io/api/authorization/v1"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -50,10 +50,10 @@ type Authorizer struct {
 
 func New(opts authzOpts.Options, authopts auth.Options) (authz.Interface, error) {
 	once.Do(func() {
-		glog.Info("Creating Azure global authz client")
+		klog.Info("Creating Azure global authz client")
 		client, err = newAuthzClient(opts, authopts)
 		if client == nil || err != nil {
-			glog.Fatalf("Authz RBAC client creation failed. Error: %s", err)
+			klog.Fatalf("Authz RBAC client creation failed. Error: %s", err)
 		}
 	})
 	return client, err
@@ -82,12 +82,12 @@ func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec, store authz.
 
 	// check if user is system accounts
 	if strings.HasPrefix(strings.ToLower(request.User), "system:") {
-		glog.V(10).Infof("returning no op to system accounts")
+		klog.V(10).Infof("returning no op to system accounts")
 		return &authzv1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
 	}
 
 	if s.rbacClient.SkipAuthzCheck(request) {
-		glog.V(3).Infof("user %s is part of skip authz list. returning no op.", request.User)
+		klog.V(3).Infof("user %s is part of skip authz list. returning no op.", request.User)
 		return &authzv1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
 	}
 
@@ -111,7 +111,7 @@ func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec, store authz.
 
 	// if set true, webhook will allow access to discovery APIs for authenticated users. If false, access check will be performed on Azure.
 	if s.rbacClient.AllowNonResPathDiscoveryAccess(request) {
-		glog.V(10).Infof("Allowing user %s access for discovery check.", request.User)
+		klog.V(10).Infof("Allowing user %s access for discovery check.", request.User)
 		_ = s.rbacClient.SetResultInCache(request, true, store)
 		return &authzv1.SubjectAccessReviewStatus{Allowed: true, Reason: rbac.AccessAllowedVerdict}, nil
 	}
@@ -122,7 +122,7 @@ func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec, store authz.
 
 	response, err := s.rbacClient.CheckAccess(request)
 	if err == nil {
-		glog.V(5).Infof(response.Reason)
+		klog.V(5).Infof(response.Reason)
 		_ = s.rbacClient.SetResultInCache(request, response.Allowed, store)
 	} else {
 		_ = s.rbacClient.SetResultInCache(request, false, store)

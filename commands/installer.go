@@ -21,8 +21,8 @@ import (
 
 	"github.com/appscode/guard/installer"
 
-	"github.com/golang/glog"
 	"github.com/spf13/cobra"
+	"k8s.io/klog/v2"
 )
 
 func NewCmdInstaller() *cobra.Command {
@@ -36,17 +36,17 @@ func NewCmdInstaller() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			errs := authopts.Validate()
 			if errs != nil {
-				glog.Fatal(errs)
+				klog.Fatal(errs)
 			}
 
 			errs = authzopts.Validate(&authopts)
 			if errs != nil {
-				glog.Fatal(errs)
+				klog.Fatal(errs)
 			}
 
 			data, err := installer.Generate(authopts, authzopts)
 			if err != nil {
-				glog.Fatal(err)
+				klog.Fatal(err)
 			}
 			fmt.Println(string(data))
 		},

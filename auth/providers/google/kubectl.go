@@ -26,13 +26,13 @@ import (
 
 	"github.com/appscode/guard/util/kubeconfig"
 
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	goauth "golang.org/x/oauth2/google"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/klog/v2"
 )
 
 var gauthConfig oauth2.Config
@@ -43,7 +43,7 @@ func IssueToken() error {
 		return err
 	}
 	defer listener.Close()
-	glog.Infoln("Oauth2 callback receiver listening on", listener.Addr())
+	klog.Infoln("Oauth2 callback receiver listening on", listener.Addr())
 
 	// https://developers.google.com/identity/protocols/OpenIDConnect#validatinganidtoken
 	gauthConfig = oauth2.Config{
@@ -59,7 +59,7 @@ func IssueToken() error {
 	promptSelectAccount := oauth2.SetAuthURLParam("prompt", "select_account")
 	codeURL := gauthConfig.AuthCodeURL("/", promptSelectAccount)
 
-	glog.Infoln("Auhtorization code URL:", codeURL)
+	klog.Infoln("Auhtorization code URL:", codeURL)
 
 	err = open.Start(codeURL)
 	if err != nil {

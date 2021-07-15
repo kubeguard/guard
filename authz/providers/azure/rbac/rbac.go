@@ -33,12 +33,12 @@ import (
 	"github.com/appscode/guard/authz"
 	authzOpts "github.com/appscode/guard/authz/providers/azure/options"
 
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	v "gomodules.xyz/x/version"
 	authzv1 "k8s.io/api/authorization/v1"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -157,7 +157,7 @@ func (a *AccessInfo) RefreshToken() error {
 	if a.IsTokenExpired() {
 		resp, err := a.tokenProvider.Acquire("")
 		if err != nil {
-			glog.Errorf("%s failed to refresh token : %s", a.tokenProvider.Name(), err.Error())
+			klog.Errorf("%s failed to refresh token : %s", a.tokenProvider.Name(), err.Error())
 			return errors.Wrap(err, "failed to refresh rbac token")
 		}
 
@@ -165,7 +165,7 @@ func (a *AccessInfo) RefreshToken() error {
 		a.headers.Set("Authorization", fmt.Sprintf("Bearer %s", resp.Token))
 		expIn := time.Duration(resp.Expires) * time.Second
 		a.expiresAt = time.Now().Add(expIn - expiryDelta)
-		glog.Infof("Token refreshed successfully on %s. Expire at:%s", time.Now(), a.expiresAt)
+		klog.Infof("Token refreshed successfully on %s. Expire at:%s", time.Now(), a.expiresAt)
 	}
 
 	return nil
@@ -182,14 +182,14 @@ func (a *AccessInfo) ShouldSkipAuthzCheckForNonAADUsers() bool {
 func (a *AccessInfo) GetResultFromCache(request *authzv1.SubjectAccessReviewSpec, store authz.Store) (bool, bool) {
 	var result bool
 	key := getResultCacheKey(request)
-	glog.V(10).Infof("Cache search for key: %s", key)
+	klog.V(10).Infof("Cache search for key: %s", key)
 	found, _ := store.Get(key, &result)
 
 	if found {
 		if result {
-			glog.V(5).Infof("cache hit: returning allowed for key %s", key)
+			klog.V(5).Infof("cache hit: returning allowed for key %s", key)
 		} else {
-			glog.V(5).Infof("cache hit: returning denied for key %s", key)
+			klog.V(5).Infof("cache hit: returning denied for key %s", key)
 		}
 	}
 
@@ -206,7 +206,7 @@ func (a *AccessInfo) SkipAuthzCheck(request *authzv1.SubjectAccessReviewSpec) bo
 
 func (a *AccessInfo) SetResultInCache(request *authzv1.SubjectAccessReviewSpec, result bool, store authz.Store) error {
 	key := getResultCacheKey(request)
-	glog.V(5).Infof("Cache set for key: %s, value: %t", key, result)
+	klog.V(5).Infof("Cache set for key: %s, value: %t", key, result)
 	return store.Set(key, result)
 }
 
@@ -258,10 +258,10 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		return nil, errors.Wrap(err, "error encoding check access request")
 	}
 
-	if glog.V(10) {
+	if klog.V(10).Enabled() {
 		binaryData, _ := json.MarshalIndent(checkAccessBody, "", "    ")
-		glog.V(10).Infof("checkAccessURI:%s", checkAccessURL.String())
-		glog.V(10).Infof("binary data:%s", binaryData)
+		klog.V(10).Infof("checkAccessURI:%s", checkAccessURL.String())
+		klog.V(10).Infof("binary data:%s", binaryData)
 	}
 
 	req, err := http.NewRequest(http.MethodPost, checkAccessURL.String(), buf)
@@ -290,13 +290,13 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	}
 
 	defer resp.Body.Close()
-	glog.V(7).Infof("checkaccess response: %s, Configured ARM call limit: %d", string(data), a.armCallLimit)
+	klog.V(7).Infof("checkaccess response: %s, Configured ARM call limit: %d", string(data), a.armCallLimit)
 	if resp.StatusCode != http.StatusOK {
-		glog.Errorf("error in check access response. error code: %d, response: %s", resp.StatusCode, string(data))
+		klog.Errorf("error in check access response. error code: %d, response: %s", resp.StatusCode, string(data))
 		// metrics for calls with StatusCode >= 300
 		if resp.StatusCode >= http.StatusMultipleChoices {
 			if resp.StatusCode == http.StatusTooManyRequests {
-				glog.V(10).Infoln("Closing idle TCP connections.")
+				klog.V(10).Infoln("Closing idle TCP connections.")
 				a.client.CloseIdleConnections()
 				checkAccessThrottled.Inc()
 			}
@@ -306,11 +306,11 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		return nil, errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data))
 	} else {
 		remaining := resp.Header.Get(remainingSubReadARMHeader)
-		glog.Infof("Remaining request count in ARM instance:%s", remaining)
+		klog.Infof("Remaining request count in ARM instance:%s", remaining)
 		count, _ := strconv.Atoi(remaining)
 		if count < a.armCallLimit {
-			if glog.V(10) {
-				glog.V(10).Infoln("Closing idle TCP connections.")
+			if klog.V(10).Enabled() {
+				klog.V(10).Infoln("Closing idle TCP connections.")
 			}
 			// Usually ARM connections are cached by destination ip and port
 			// By closing the idle connection, a new request will use different port which

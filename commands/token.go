@@ -26,8 +26,8 @@ import (
 	"github.com/appscode/guard/auth/providers/google"
 	"github.com/appscode/guard/auth/providers/ldap"
 
-	"github.com/golang/glog"
 	"github.com/spf13/cobra"
+	"k8s.io/klog/v2"
 )
 
 type tokenOptions struct {
@@ -54,19 +54,19 @@ func NewCmdGetToken() *cobra.Command {
 			case google.OrgType:
 				err := google.IssueToken()
 				if err != nil {
-					glog.Fatal(err)
+					klog.Fatal(err)
 				}
 				return
 			case ldap.OrgType:
 				err := opts.LDAP.IssueToken()
 				if err != nil {
-					glog.Fatal("For LDAP:", err)
+					klog.Fatal("For LDAP:", err)
 				}
 				return
 			case "":
-				glog.Fatalln("Missing organization name. Set flag -o Google|Github.")
+				klog.Fatalln("Missing organization name. Set flag -o Google|Github.")
 			default:
-				glog.Fatalf("Unknown organization %s.", opts.Org)
+				klog.Fatalf("Unknown organization %s.", opts.Org)
 			}
 		},
 	}

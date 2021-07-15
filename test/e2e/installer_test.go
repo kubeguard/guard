@@ -33,7 +33,6 @@ import (
 	"github.com/appscode/guard/installer"
 	"github.com/appscode/guard/test/e2e/framework"
 
-	"github.com/golang/glog"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/afero"
@@ -41,6 +40,7 @@ import (
 	kerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/klog/v2"
 )
 
 var _ = Describe("Installer test", func() {
@@ -137,7 +137,7 @@ var _ = Describe("Installer test", func() {
 			data, err := installer.Generate(authopts, authzopts)
 			Expect(err).NotTo(HaveOccurred())
 
-			glog.Info(string(data))
+			klog.Info(string(data))
 
 			file := filepath.Join(yamlDir, installerfileName)
 			By("Writing installer yaml in " + file)

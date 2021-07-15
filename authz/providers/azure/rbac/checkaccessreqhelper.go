@@ -21,10 +21,10 @@ import (
 	"path"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	authzv1 "k8s.io/api/authorization/v1"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -325,7 +325,7 @@ func ConvertCheckAccessResponse(body []byte) (*authzv1.SubjectAccessReviewStatus
 
 	err := json.Unmarshal(body, &response)
 	if err != nil {
-		glog.V(10).Infof("Failed to parse checkacccess response. Error:%s", err.Error())
+		klog.V(10).Infof("Failed to parse checkacccess response. Error:%s", err.Error())
 		return nil, errors.Wrap(err, "Error in unmarshalling check access response.")
 	}
 
