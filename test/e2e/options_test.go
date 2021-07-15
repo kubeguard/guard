@@ -59,5 +59,5 @@ func enableLogging() {
 			return
 		}
 	}
-	flag.Set("v", strconv.Itoa(2))
+	_ = flag.Set("v", strconv.Itoa(2))
 }
