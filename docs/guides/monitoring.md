@@ -64,4 +64,4 @@ prometheus:
 
 # Grafana Dashboard for Guard
 
-A simple Grafana dashbord for Guard can be found [here](https://github.com/appscode/guard/raw/master/contrib/Guard-grafana-dashboard.json)
+A simple Grafana dashbord for Guard can be found [here](https://go.kubeguard.dev/guard/raw/master/contrib/Guard-grafana-dashboard.json)

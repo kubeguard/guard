@@ -19,7 +19,7 @@ package ldap
 import (
 	"encoding/base64"
 
-	"github.com/appscode/guard/util/kubeconfig"
+	"go.kubeguard.dev/guard/util/kubeconfig"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"

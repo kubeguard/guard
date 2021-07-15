@@ -17,7 +17,7 @@ limitations under the License.
 package commands
 
 import (
-	"github.com/appscode/guard/server"
+	"go.kubeguard.dev/guard/server"
 
 	"github.com/spf13/cobra"
 	"gomodules.xyz/flags"

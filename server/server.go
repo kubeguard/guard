@@ -25,11 +25,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/appscode/guard/auth/providers/token"
-	"github.com/appscode/guard/authz/providers/azure"
-	"github.com/appscode/guard/authz/providers/azure/data"
-	"github.com/appscode/pat"
+	"go.kubeguard.dev/guard/auth/providers/token"
+	"go.kubeguard.dev/guard/authz/providers/azure"
+	"go.kubeguard.dev/guard/authz/providers/azure/data"
 
+	"github.com/appscode/pat"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"

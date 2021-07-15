@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/appscode/guard/auth/providers/eks"
+	"go.kubeguard.dev/guard/auth/providers/eks"
 
 	"github.com/spf13/cobra"
 	"k8s.io/klog/v2"

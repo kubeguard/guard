@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/appscode/guard/auth/providers/azure"
+	"go.kubeguard.dev/guard/auth/providers/azure"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"

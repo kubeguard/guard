@@ -17,13 +17,13 @@ limitations under the License.
 package server
 
 import (
-	"github.com/appscode/guard/auth/providers"
-	"github.com/appscode/guard/auth/providers/azure"
-	"github.com/appscode/guard/auth/providers/github"
-	"github.com/appscode/guard/auth/providers/gitlab"
-	"github.com/appscode/guard/auth/providers/google"
-	"github.com/appscode/guard/auth/providers/ldap"
-	"github.com/appscode/guard/auth/providers/token"
+	"go.kubeguard.dev/guard/auth/providers"
+	"go.kubeguard.dev/guard/auth/providers/azure"
+	"go.kubeguard.dev/guard/auth/providers/github"
+	"go.kubeguard.dev/guard/auth/providers/gitlab"
+	"go.kubeguard.dev/guard/auth/providers/google"
+	"go.kubeguard.dev/guard/auth/providers/ldap"
+	"go.kubeguard.dev/guard/auth/providers/token"
 
 	"github.com/spf13/pflag"
 )

@@ -17,7 +17,7 @@ limitations under the License.
 package main
 
 import (
-	"github.com/appscode/guard/commands"
+	"go.kubeguard.dev/guard/commands"
 
 	"gomodules.xyz/logs"
 	"k8s.io/klog/v2"

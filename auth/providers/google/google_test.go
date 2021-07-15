@@ -32,7 +32,6 @@ import (
 	"testing"
 
 	"github.com/appscode/pat"
-
 	oidc "github.com/coreos/go-oidc"
 	"github.com/stretchr/testify/assert"
 	gdir "google.golang.org/api/admin/directory/v1"

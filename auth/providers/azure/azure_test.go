@@ -28,9 +28,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/appscode/guard/auth/providers/azure/graph"
-	"github.com/appscode/pat"
+	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 
+	"github.com/appscode/pat"
 	oidc "github.com/coreos/go-oidc"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"

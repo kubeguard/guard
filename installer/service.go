@@ -20,7 +20,7 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/appscode/guard/server"
+	"go.kubeguard.dev/guard/server"
 
 	"github.com/pkg/errors"
 	core "k8s.io/api/core/v1"

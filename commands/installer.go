@@ -19,7 +19,7 @@ package commands
 import (
 	"fmt"
 
-	"github.com/appscode/guard/installer"
+	"go.kubeguard.dev/guard/installer"
 
 	"github.com/spf13/cobra"
 	"k8s.io/klog/v2"

@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/appscode/guard/auth/providers/azure/graph"
+	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 
 	"github.com/stretchr/testify/assert"
 	authzv1 "k8s.io/api/authorization/v1"

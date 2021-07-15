@@ -19,8 +19,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/appscode/guard/authz"
-	"github.com/appscode/guard/authz/providers/azure"
+	"go.kubeguard.dev/guard/authz"
+	"go.kubeguard.dev/guard/authz/providers/azure"
 
 	"github.com/pkg/errors"
 	authzv1 "k8s.io/api/authorization/v1"

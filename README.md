@@ -1,11 +1,10 @@
 <p align="center"><img src="/logo/LOGO_GUARD_Readme.jpg"></p>
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/appscode/guard)](https://goreportcard.com/report/github.com/appscode/guard)
-[![Build Status](https://github.com/appscode/guard/workflows/CI/badge.svg)](https://github.com/appscode/guard/actions?workflow=CI)
-[![codecov](https://codecov.io/gh/appscode/guard/branch/master/graph/badge.svg)](https://codecov.io/gh/appscode/guard)
+[![Go Report Card](https://goreportcard.com/badge/go.kubeguard.dev/guard)](https://goreportcard.com/report/go.kubeguard.dev/guard)
+[![Build Status](https://github.com/kubeguard/guard/workflows/CI/badge.svg)](https://github.com/kubeguard/guard/actions?workflow=CI)
+[![codecov](https://codecov.io/gh/kubeguard/guard/branch/master/graph/badge.svg)](https://codecov.io/gh/kubeguard/guard)
 [![Docker Pulls](https://img.shields.io/docker/pulls/appscode/guard.svg)](https://hub.docker.com/r/appscode/guard/)
-[![Slack](https://slack.appscode.com/badge.svg)](https://slack.appscode.com)
-[![Twitter](https://img.shields.io/twitter/follow/appscodehq.svg?style=social&logo=twitter&label=Follow)](https://twitter.com/intent/follow?screen_name=AppsCodeHQ)
+[![Twitter](https://img.shields.io/twitter/follow/kubeguard.svg?style=social&logo=twitter&label=Follow)](https://twitter.com/intent/follow?screen_name=KubeGuard)
 
 # Guard
 Guard by AppsCode is a [Kubernetes Webhook Authentication](https://kubernetes.io/docs/admin/authentication/#webhook-token-authentication) server. Using guard, you can log into your Kubernetes cluster using various auth providers. Guard also configures groups of authenticated user appropriately. This allows cluster administrator to setup RBAC rules based on membership in groups. Guard supports following auth providers:
@@ -38,6 +37,6 @@ Want to help improve Guard? Please start [here](https://appscode.com/products/gu
 ## Support
 We use Slack for public discussions. To chit chat with us or the rest of the community, join us in the [AppsCode Slack team](https://appscode.slack.com/messages/C8M8HANQ0/details/) channel `#guard`. To sign up, use our [Slack inviter](https://slack.appscode.com/).
 
-If you have found a bug with Guard or want to request for new features, please [file an issue](https://github.com/appscode/guard/issues/new).
+If you have found a bug with Guard or want to request for new features, please [file an issue](https://github.com/kubeguard/guard/issues/new).
 
 <p align="center"><img src="/logo/Separador.jpg"></p>

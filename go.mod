@@ -1,4 +1,4 @@
-module github.com/appscode/guard
+module go.kubeguard.dev/guard
 
 go 1.12
 

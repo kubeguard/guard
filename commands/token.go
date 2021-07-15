@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/appscode/guard/auth"
-	"github.com/appscode/guard/auth/providers/github"
-	"github.com/appscode/guard/auth/providers/gitlab"
-	"github.com/appscode/guard/auth/providers/google"
-	"github.com/appscode/guard/auth/providers/ldap"
+	"go.kubeguard.dev/guard/auth"
+	"go.kubeguard.dev/guard/auth/providers/github"
+	"go.kubeguard.dev/guard/auth/providers/gitlab"
+	"go.kubeguard.dev/guard/auth/providers/google"
+	"go.kubeguard.dev/guard/auth/providers/ldap"
 
 	"github.com/spf13/cobra"
 	"k8s.io/klog/v2"

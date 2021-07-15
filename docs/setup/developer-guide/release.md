@@ -22,7 +22,7 @@ The following steps must be done from a Linux x64 bit machine.
 - Build and push guard docker image:
 
 ```console
-cd ~/go/src/github.com/appscode/guard
+cd ~/go/src/go.kubeguard.dev/guard
 ./hack/release.sh
 ```
 

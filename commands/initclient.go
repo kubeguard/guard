@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/appscode/guard/auth"
+	"go.kubeguard.dev/guard/auth"
 
 	"github.com/spf13/cobra"
 	"gomodules.xyz/blobfs"

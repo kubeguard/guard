@@ -27,7 +27,6 @@ import (
 	"testing"
 
 	"github.com/appscode/pat"
-
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/authentication/v1"

@@ -19,7 +19,7 @@ package gitlab
 import (
 	"strconv"
 
-	"github.com/appscode/guard/auth"
+	"go.kubeguard.dev/guard/auth"
 
 	"github.com/pkg/errors"
 	gitlab "github.com/xanzy/go-gitlab"

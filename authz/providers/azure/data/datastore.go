@@ -21,7 +21,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/appscode/guard/authz"
+	"go.kubeguard.dev/guard/authz"
 
 	"github.com/allegro/bigcache"
 )

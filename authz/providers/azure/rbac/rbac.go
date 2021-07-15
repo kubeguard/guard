@@ -28,10 +28,10 @@ import (
 	"sync"
 	"time"
 
-	auth "github.com/appscode/guard/auth/providers/azure"
-	"github.com/appscode/guard/auth/providers/azure/graph"
-	"github.com/appscode/guard/authz"
-	authzOpts "github.com/appscode/guard/authz/providers/azure/options"
+	auth "go.kubeguard.dev/guard/auth/providers/azure"
+	"go.kubeguard.dev/guard/auth/providers/azure/graph"
+	"go.kubeguard.dev/guard/authz"
+	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
