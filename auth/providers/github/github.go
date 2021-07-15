@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/appscode/guard/auth"
+	"go.kubeguard.dev/guard/auth"
 
 	"github.com/google/go-github/v25/github"
 	"github.com/pkg/errors"

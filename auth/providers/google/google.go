@@ -19,7 +19,7 @@ package google
 import (
 	"context"
 
-	"github.com/appscode/guard/auth"
+	"go.kubeguard.dev/guard/auth"
 
 	oidc "github.com/coreos/go-oidc"
 	"github.com/pkg/errors"

@@ -24,7 +24,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/appscode/guard/util/kubeconfig"
+	"go.kubeguard.dev/guard/util/kubeconfig"
 
 	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"

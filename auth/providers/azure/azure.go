@@ -24,8 +24,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/appscode/guard/auth"
-	"github.com/appscode/guard/auth/providers/azure/graph"
+	"go.kubeguard.dev/guard/auth"
+	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 
 	"github.com/Azure/go-autorest/autorest/azure"
 	oidc "github.com/coreos/go-oidc"

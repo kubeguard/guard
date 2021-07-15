@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/appscode/guard/test/e2e/framework"
+	"go.kubeguard.dev/guard/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/reporters"

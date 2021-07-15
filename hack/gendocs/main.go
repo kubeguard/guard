@@ -26,7 +26,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/appscode/guard/commands"
+	"go.kubeguard.dev/guard/commands"
 
 	"github.com/spf13/cobra/doc"
 	"gomodules.xyz/runtime"
@@ -69,7 +69,7 @@ aliases:
 // ref: https://github.com/spf13/cobra/blob/master/doc/md_docs.md
 func main() {
 	rootCmd := commands.NewRootCmd()
-	dir := runtime.GOPath() + "/src/github.com/appscode/guard/docs/reference"
+	dir := runtime.GOPath() + "/src/go.kubeguard.dev/guard/docs/reference"
 	fmt.Printf("Generating util markdown tree in: %v\n", dir)
 	err := os.RemoveAll(dir)
 	if err != nil {

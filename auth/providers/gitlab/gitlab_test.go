@@ -25,7 +25,6 @@ import (
 	"testing"
 
 	"github.com/appscode/pat"
-
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"

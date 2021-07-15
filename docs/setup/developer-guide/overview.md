@@ -32,8 +32,8 @@ development environment, please follow [these instructions](https://golang.org/d
 #### Download Source
 
 ```console
-$ go get github.com/appscode/guard
-$ cd $(go env GOPATH)/src/github.com/appscode/guard
+$ go get go.kubeguard.dev/guard
+$ cd $(go env GOPATH)/src/go.kubeguard.dev/guard
 ```
 
 #### Install Dev tools

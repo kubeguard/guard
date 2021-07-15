@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/appscode/guard/auth"
+	"go.kubeguard.dev/guard/auth"
 
 	"github.com/go-ldap/ldap"
 	"github.com/pkg/errors"

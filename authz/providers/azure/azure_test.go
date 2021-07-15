@@ -23,13 +23,13 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/appscode/guard/auth/providers/azure"
-	"github.com/appscode/guard/authz"
-	"github.com/appscode/guard/authz/providers/azure/data"
-	authzOpts "github.com/appscode/guard/authz/providers/azure/options"
-	"github.com/appscode/guard/authz/providers/azure/rbac"
-	"github.com/appscode/pat"
+	auth "go.kubeguard.dev/guard/auth/providers/azure"
+	"go.kubeguard.dev/guard/authz"
+	"go.kubeguard.dev/guard/authz/providers/azure/data"
+	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
+	"go.kubeguard.dev/guard/authz/providers/azure/rbac"
 
+	"github.com/appscode/pat"
 	"github.com/stretchr/testify/assert"
 	authzv1 "k8s.io/api/authorization/v1"
 )

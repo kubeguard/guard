@@ -19,10 +19,10 @@ import (
 	"strings"
 	"sync"
 
-	auth "github.com/appscode/guard/auth/providers/azure"
-	"github.com/appscode/guard/authz"
-	authzOpts "github.com/appscode/guard/authz/providers/azure/options"
-	"github.com/appscode/guard/authz/providers/azure/rbac"
+	auth "go.kubeguard.dev/guard/auth/providers/azure"
+	"go.kubeguard.dev/guard/authz"
+	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
+	"go.kubeguard.dev/guard/authz/providers/azure/rbac"
 
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/pkg/errors"

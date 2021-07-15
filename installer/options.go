@@ -17,17 +17,17 @@ limitations under the License.
 package installer
 
 import (
-	"github.com/appscode/guard/auth"
-	"github.com/appscode/guard/auth/providers"
-	"github.com/appscode/guard/auth/providers/azure"
-	"github.com/appscode/guard/auth/providers/github"
-	"github.com/appscode/guard/auth/providers/gitlab"
-	"github.com/appscode/guard/auth/providers/google"
-	"github.com/appscode/guard/auth/providers/ldap"
-	"github.com/appscode/guard/auth/providers/token"
-	authz "github.com/appscode/guard/authz/providers"
-	azureauthz "github.com/appscode/guard/authz/providers/azure"
-	authzOpts "github.com/appscode/guard/authz/providers/azure/options"
+	"go.kubeguard.dev/guard/auth"
+	"go.kubeguard.dev/guard/auth/providers"
+	"go.kubeguard.dev/guard/auth/providers/azure"
+	"go.kubeguard.dev/guard/auth/providers/github"
+	"go.kubeguard.dev/guard/auth/providers/gitlab"
+	"go.kubeguard.dev/guard/auth/providers/google"
+	"go.kubeguard.dev/guard/auth/providers/ldap"
+	"go.kubeguard.dev/guard/auth/providers/token"
+	authz "go.kubeguard.dev/guard/authz/providers"
+	azureauthz "go.kubeguard.dev/guard/authz/providers/azure"
+	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"

@@ -24,7 +24,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/appscode/guard/auth"
+	"go.kubeguard.dev/guard/auth"
 
 	"github.com/pkg/errors"
 	authv1 "k8s.io/api/authentication/v1"

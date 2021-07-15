@@ -23,11 +23,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/appscode/guard/auth/providers/azure"
-	"github.com/appscode/guard/auth/providers/github"
-	"github.com/appscode/guard/auth/providers/gitlab"
-	"github.com/appscode/guard/auth/providers/google"
-	"github.com/appscode/guard/auth/providers/ldap"
+	"go.kubeguard.dev/guard/auth/providers/azure"
+	"go.kubeguard.dev/guard/auth/providers/github"
+	"go.kubeguard.dev/guard/auth/providers/gitlab"
+	"go.kubeguard.dev/guard/auth/providers/google"
+	"go.kubeguard.dev/guard/auth/providers/ldap"
 
 	fuzz "github.com/google/gofuzz"
 	"github.com/pkg/errors"

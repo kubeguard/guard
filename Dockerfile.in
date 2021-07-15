@@ -14,9 +14,10 @@
 
 FROM {ARG_FROM}
 
+LABEL org.opencontainers.image.source https://github.com/kubeguard/guard
+
 ADD bin/{ARG_BIN}-{ARG_OS}-{ARG_ARCH} /{ARG_BIN}
 
-# This would be nicer as `nobody:nobody` but distroless has no such entries.
-USER 65535:65535
+USER nobody
 
 ENTRYPOINT ["/{ARG_BIN}"]
