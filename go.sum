@@ -321,7 +321,6 @@ github.com/jmespath/go-jmespath v0.3.0/go.mod h1:9QtRXoHjLGCJ5IBSaohpXITPlowMeeY
 github.com/joho/godotenv v1.3.0/go.mod h1:7hK45KPybAkOC6peb+G5yklZfMxEjkZhHbwpqxOKXbg=
 github.com/jonboulle/clockwork v0.1.0/go.mod h1:Ii8DK3G1RaLaWxj9trq07+26W01tbo22gdxWY5EU2bo=
 github.com/jpillora/backoff v1.0.0/go.mod h1:J/6gKK9jxlEcS3zixgDgUAsiuZ7yrSoa/FX5e0EB2j4=
-github.com/jpillora/go-ogle-analytics v0.0.0-20161213085824-14b04e0594ef h1:jLpa0vamfyIGeIJ/CfUJEWoKriw4ODeOgF1XxDvgMZ4=
 github.com/jpillora/go-ogle-analytics v0.0.0-20161213085824-14b04e0594ef/go.mod h1:PlwhC7q1VSK73InDzdDatVetQrTsQHIbOvcJAZzitY0=
 github.com/json-iterator/go v1.1.6/go.mod h1:+SdeFBvtyEkXs7REEP0seUULqWtbJapLOCVDaaPEHmU=
 github.com/json-iterator/go v1.1.7/go.mod h1:KdQUCv79m/52Kvf8AW2vK1V8akMuk1QjK/uOdHXbAo4=
@@ -768,7 +767,6 @@ gomodules.xyz/clock v0.0.0-20200817085942-06523dba733f h1:hTyhR4r+tj1Uq7/PpFxLTz
 gomodules.xyz/clock v0.0.0-20200817085942-06523dba733f/go.mod h1:K3m7N+nBOlf91/tpv8REUGwsAgaKFwElQCuiLhm12AQ=
 gomodules.xyz/flags v0.1.0 h1:e8Hp1akUD7FYxMHAD8h28F86v4OFBMKtBbGTt4cIYTw=
 gomodules.xyz/flags v0.1.0/go.mod h1:H9lmar5MMXuxHBrSgrGZt4q2gkD+8GCm/3Fs2FCE2zA=
-gomodules.xyz/homedir v0.0.0-20201104190528-bcd4d5d94b84 h1:RH11GBm37fGstaCcoFB5KtcUijofDS0yxcdkCS6vx/A=
 gomodules.xyz/homedir v0.0.0-20201104190528-bcd4d5d94b84/go.mod h1:rNt5O0KsgdJjAD/UXuxhO2N3b5TegqEk1T8HG9eraH4=
 gomodules.xyz/jsonpatch/v2 v2.2.0 h1:4pT439QV83L+G9FkcCriY6EkpcK6r6bK+A5FBUMI7qY=
 gomodules.xyz/jsonpatch/v2 v2.2.0/go.mod h1:WXp+iVDkoLQqPudfQ9GBlwB2eZ5DKOnjQZCYdOS8GPY=

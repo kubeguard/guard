@@ -18,11 +18,10 @@ package commands
 
 import (
 	"github.com/appscode/guard/server"
+	"gomodules.xyz/flags"
 
 	"github.com/spf13/cobra"
-	v "gomodules.xyz/x/version"
 	"k8s.io/klog/v2"
-	"kmodules.xyz/client-go/tools/cli"
 )
 
 func NewCmdRun() *cobra.Command {
@@ -37,7 +36,7 @@ func NewCmdRun() *cobra.Command {
 		Short:             "Run server",
 		DisableAutoGenTag: true,
 		PreRun: func(c *cobra.Command, args []string) {
-			cli.SendPeriodicAnalytics(c, v.Version.Version)
+			flags.PrintFlags(c.Flags())
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if !srv.AuthRecommendedOptions.SecureServing.UseTLS() {

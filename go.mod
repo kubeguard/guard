@@ -31,6 +31,7 @@ require (
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	gomodules.xyz/blobfs v0.1.7
 	gomodules.xyz/cert v1.3.0
+	gomodules.xyz/flags v0.1.0
 	gomodules.xyz/logs v0.0.3
 	gomodules.xyz/pointer v0.0.0-20201105071923-daf60fa55209
 	gomodules.xyz/runtime v0.2.0

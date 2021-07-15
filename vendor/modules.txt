@@ -154,8 +154,6 @@ github.com/jcmturner/gofork/encoding/asn1
 github.com/jcmturner/gofork/x/crypto/pbkdf2
 # github.com/jmespath/go-jmespath v0.3.0
 github.com/jmespath/go-jmespath
-# github.com/jpillora/go-ogle-analytics v0.0.0-20161213085824-14b04e0594ef
-github.com/jpillora/go-ogle-analytics
 # github.com/json-iterator/go v1.1.10
 github.com/json-iterator/go
 # github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de
@@ -385,8 +383,6 @@ gomodules.xyz/cert/certstore
 gomodules.xyz/clock
 # gomodules.xyz/flags v0.1.0
 gomodules.xyz/flags
-# gomodules.xyz/homedir v0.0.0-20201104190528-bcd4d5d94b84
-gomodules.xyz/homedir
 # gomodules.xyz/jsonpatch/v2 v2.2.0
 gomodules.xyz/jsonpatch/v2
 # gomodules.xyz/logs v0.0.3
@@ -404,7 +400,6 @@ gomodules.xyz/signals
 # gomodules.xyz/wait v0.0.0-20210218105358-639bd9211545
 gomodules.xyz/wait
 # gomodules.xyz/x v0.0.5
-gomodules.xyz/x/analytics
 gomodules.xyz/x/crypto/rand
 gomodules.xyz/x/env
 gomodules.xyz/x/ioutil
@@ -780,10 +775,7 @@ k8s.io/utils/integer
 # kmodules.xyz/client-go v0.0.0-20210702123511-a25836cf4332
 kmodules.xyz/client-go
 kmodules.xyz/client-go/meta
-kmodules.xyz/client-go/tools/analytics
-kmodules.xyz/client-go/tools/cli
 kmodules.xyz/client-go/tools/clientcmd
-kmodules.xyz/client-go/tools/clusterid
 kmodules.xyz/client-go/tools/fsnotify
 # sigs.k8s.io/kustomize/api v0.8.8
 sigs.k8s.io/kustomize/api/builtins
