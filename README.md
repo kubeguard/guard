@@ -30,12 +30,6 @@ Want to learn how to use Guard? Please start [here](https://appscode.com/product
 ## Contribution guidelines
 Want to help improve Guard? Please start [here](https://appscode.com/products/guard/latest/welcome/contributing/).
 
----
-
-**Guard binaries collects anonymous usage statistics to help us learn how the software is being used and how we can improve it. To disable stats collection, run the operator with the flag** `--analytics=false`.
-
----
-
 ## Acknowledgement
 
 - [apprenda-kismatic/kubernetes-ldap](https://github.com/apprenda-kismatic/kubernetes-ldap)

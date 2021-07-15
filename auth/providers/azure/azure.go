@@ -29,9 +29,9 @@ import (
 
 	"github.com/Azure/go-autorest/autorest/azure"
 	oidc "github.com/coreos/go-oidc"
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	authv1 "k8s.io/api/authentication/v1"
+	"k8s.io/klog/v2"
 )
 
 /*
@@ -86,7 +86,7 @@ func New(opts Options) (auth.Interface, error) {
 		return nil, err
 	}
 
-	glog.V(3).Infof("Using issuer url: %v", authInfoVal.Issuer)
+	klog.V(3).Infof("Using issuer url: %v", authInfoVal.Issuer)
 
 	provider, err := oidc.NewProvider(c.ctx, authInfoVal.Issuer)
 	if err != nil {

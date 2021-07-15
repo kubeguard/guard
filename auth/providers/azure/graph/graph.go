@@ -26,12 +26,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/moul/http2curl"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"k8s.io/klog/v2"
 )
 
 // These are the base URL endpoints for MS graph
@@ -128,9 +128,9 @@ func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
 	// Set the auth headers
 	req.Header = u.headers
 
-	if glog.V(10) {
+	if klog.V(10).Enabled() {
 		cmd, _ := http2curl.GetCurlCommand(req)
-		glog.V(10).Infoln(cmd)
+		klog.V(10).Infoln(cmd)
 	}
 
 	resp, err := u.client.Do(req)
@@ -181,13 +181,13 @@ func (u *UserInfo) GetGroups(userPrincipal string) ([]string, error) {
 	}
 
 	totalGroups := len(groupIDs)
-	glog.V(10).Infof("totalGroups: %d", totalGroups)
+	klog.V(10).Infof("totalGroups: %d", totalGroups)
 
 	groupNames := make([]string, 0, totalGroups)
 	for i := 0; i < totalGroups; i += u.groupsPerCall {
 		startIndex := i
 		endIndex := min(i+u.groupsPerCall, totalGroups)
-		glog.V(10).Infof("Getting group names for IDs between startIndex: %d and endIndex: %d", startIndex, endIndex)
+		klog.V(10).Infof("Getting group names for IDs between startIndex: %d and endIndex: %d", startIndex, endIndex)
 
 		// Expand the group IDs
 		groups, err := u.getExpandedGroups(groupIDs[startIndex:endIndex])

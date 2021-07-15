@@ -28,9 +28,9 @@ import (
 	"github.com/appscode/guard/auth/providers/ldap"
 	"github.com/appscode/guard/auth/providers/token"
 
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	authv1 "k8s.io/api/authentication/v1"
+	"k8s.io/klog/v2"
 )
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -44,7 +44,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	org := crt.Subject.Organization[0]
-	glog.V(7).Infof("Received token review request for %s/%s", org, crt.Subject.CommonName)
+	klog.V(7).Infof("Received token review request for %s/%s", org, crt.Subject.CommonName)
 
 	data := authv1.TokenReview{}
 	err := json.NewDecoder(req.Body).Decode(&data)

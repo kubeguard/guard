@@ -19,9 +19,9 @@ package commands
 import (
 	"github.com/appscode/guard/server"
 
-	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 	v "gomodules.xyz/x/version"
+	"k8s.io/klog/v2"
 	"kmodules.xyz/client-go/tools/cli"
 )
 
@@ -41,7 +41,7 @@ func NewCmdRun() *cobra.Command {
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if !srv.AuthRecommendedOptions.SecureServing.UseTLS() {
-				glog.Fatalln("Guard server must use SSL.")
+				klog.Fatalln("Guard server must use SSL.")
 			}
 			srv.ListenAndServe()
 		},

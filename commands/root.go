@@ -17,13 +17,8 @@ limitations under the License.
 package commands
 
 import (
-	"flag"
-	"log"
-
 	"github.com/spf13/cobra"
-	"gomodules.xyz/x/flags"
 	v "gomodules.xyz/x/version"
-	"kmodules.xyz/client-go/tools/cli"
 )
 
 func NewRootCmd() *cobra.Command {
@@ -32,20 +27,7 @@ func NewRootCmd() *cobra.Command {
 		Short:              `Guard by AppsCode - Kubernetes Authentication WebHook Server`,
 		DisableAutoGenTag:  true,
 		DisableFlagParsing: true,
-		PersistentPreRun: func(c *cobra.Command, args []string) {
-			flags.DumpAll(c.Flags())
-			cli.SendAnalytics(c, v.Version.Version)
-		},
 	}
-	cmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
-	// ref: https://github.com/kubernetes/kubernetes/issues/17162#issuecomment-225596212
-	err := flag.CommandLine.Parse([]string{})
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	cmd.PersistentFlags().BoolVar(&cli.EnableAnalytics, "analytics", cli.EnableAnalytics, "Send analytical events to Google Guard")
-
 	cmd.AddCommand(NewCmdInit())
 	cmd.AddCommand(NewCmdGet())
 	cmd.AddCommand(NewCmdRun())

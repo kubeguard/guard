@@ -25,7 +25,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
-	logs "gomodules.xyz/x/log/golog"
+	"gomodules.xyz/logs"
 	"k8s.io/client-go/kubernetes"
 	"kmodules.xyz/client-go/tools/clientcmd"
 )

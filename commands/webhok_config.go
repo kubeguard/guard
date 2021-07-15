@@ -23,13 +23,13 @@ import (
 
 	"github.com/appscode/guard/auth"
 
-	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 	"gomodules.xyz/blobfs"
 	"gomodules.xyz/cert"
 	"gomodules.xyz/cert/certstore"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/klog/v2"
 )
 
 func NewCmdGetWebhookConfig() *cobra.Command {
@@ -54,10 +54,10 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 			}
 
 			if len(args) == 0 {
-				glog.Fatalln("Missing client name.")
+				klog.Fatalln("Missing client name.")
 			}
 			if len(args) > 1 {
-				glog.Fatalln("Multiple client name found.")
+				klog.Fatalln("Multiple client name found.")
 			}
 
 			cfg := cert.Config{
@@ -66,31 +66,31 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 				},
 			}
 			if org == "" {
-				glog.Fatalf("Missing organization name. Set flag -o %s", auth.SupportedOrgs)
+				klog.Fatalf("Missing organization name. Set flag -o %s", auth.SupportedOrgs)
 			} else if !auth.SupportedOrgs.Has(org) {
-				glog.Fatalf("Unknown organization %s.", org)
+				klog.Fatalf("Unknown organization %s.", org)
 			} else {
 				cfg.Organization = []string{org}
 			}
 
 			store, err := certstore.New(blobfs.NewOsFs(), filepath.Join(rootDir, "pki"))
 			if err != nil {
-				glog.Fatalf("Failed to create certificate store. Reason: %v.", err)
+				klog.Fatalf("Failed to create certificate store. Reason: %v.", err)
 			}
 			if !store.PairExists("ca") {
-				glog.Fatalf("CA certificates not found in %s. Run `guard init ca`", store.Location())
+				klog.Fatalf("CA certificates not found in %s. Run `guard init ca`", store.Location())
 			}
 			if !store.PairExists(filename(cfg)) {
-				glog.Fatalf("Client certificate not found in %s. Run `guard init client %s -o %s`", store.Location(), cfg.AltNames.DNSNames[0], cfg.Organization[0])
+				klog.Fatalf("Client certificate not found in %s. Run `guard init client %s -o %s`", store.Location(), cfg.AltNames.DNSNames[0], cfg.Organization[0])
 			}
 
 			caCert, _, err := store.ReadBytes("ca")
 			if err != nil {
-				glog.Fatalf("Failed to load ca certificate. Reason: %v.", err)
+				klog.Fatalf("Failed to load ca certificate. Reason: %v.", err)
 			}
 			clientCert, clientKey, err := store.ReadBytes(filename(cfg))
 			if err != nil {
-				glog.Fatalf("Failed to load client certificate. Reason: %v.", err)
+				klog.Fatalf("Failed to load client certificate. Reason: %v.", err)
 			}
 
 			if mode == "authn" {
@@ -119,7 +119,7 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 				}
 				data, err := clientcmd.Write(config)
 				if err != nil {
-					glog.Fatalln(err)
+					klog.Fatalln(err)
 				}
 				fmt.Println(string(data))
 			}
@@ -150,7 +150,7 @@ func NewCmdGetWebhookConfig() *cobra.Command {
 				}
 				data, err := clientcmd.Write(config)
 				if err != nil {
-					glog.Fatalln(err)
+					klog.Fatalln(err)
 				}
 				fmt.Println(string(data))
 			}

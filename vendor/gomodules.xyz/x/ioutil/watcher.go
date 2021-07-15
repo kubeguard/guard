@@ -7,7 +7,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"gomodules.xyz/sets"
-	"gomodules.xyz/x/log"
+	"k8s.io/klog/v2"
 )
 
 type Watcher struct {
@@ -20,7 +20,7 @@ type Watcher struct {
 
 func (w *Watcher) incReloadCount(filename string) {
 	atomic.AddUint64(&w.reloadCount, 1)
-	log.Infof("file %s reloaded: %d", filename, atomic.LoadUint64(&w.reloadCount))
+	klog.Infof("file %s reloaded: %d", filename, atomic.LoadUint64(&w.reloadCount))
 }
 
 func (w *Watcher) Run(stopCh <-chan struct{}) error {
@@ -39,7 +39,7 @@ func (w *Watcher) Run(stopCh <-chan struct{}) error {
 		for {
 			select {
 			case event := <-watcher.Events:
-				log.Infoln("file watcher event: --------------------------------------", event)
+				klog.Infoln("file watcher event: --------------------------------------", event)
 
 				filename := filepath.Clean(event.Name)
 				if !fileset.Has(filename) {
@@ -49,28 +49,28 @@ func (w *Watcher) Run(stopCh <-chan struct{}) error {
 				switch event.Op {
 				case fsnotify.Create:
 					if err = watcher.Add(filename); err != nil {
-						log.Errorln("error:", err)
+						klog.Errorln("error:", err)
 					}
 				case fsnotify.Write:
 					if err := w.Reload(); err != nil {
-						log.Errorln(err)
+						klog.Errorln(err)
 					} else {
 						w.incReloadCount(filename)
 					}
 				case fsnotify.Remove, fsnotify.Rename:
 					if err = watcher.Remove(filename); err != nil {
-						log.Errorln("error:", err)
+						klog.Errorln("error:", err)
 					}
 				}
 			case err := <-watcher.Errors:
-				log.Errorln("error:", err)
+				klog.Errorln("error:", err)
 			}
 		}
 	}()
 
 	for _, filename := range w.WatchFiles {
 		if err = watcher.Add(filename); err != nil {
-			log.Errorf("error watching file %s. Reason: %s", filename, err)
+			klog.Errorf("error watching file %s. Reason: %s", filename, err)
 		}
 	}
 	if err = watcher.Add(w.WatchDir); err != nil {

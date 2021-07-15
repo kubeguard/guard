@@ -27,12 +27,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/glog"
 	ldapserver "github.com/nmcclain/ldap"
 	"github.com/stretchr/testify/assert"
 	"gomodules.xyz/blobfs"
 	"gomodules.xyz/cert"
 	"gomodules.xyz/cert/certstore"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -54,20 +54,20 @@ func (s *ldapServer) start() {
 			IPs:      []net.IP{net.ParseIP(serverAddr)},
 		})
 		if err != nil {
-			glog.Fatal(err)
+			klog.Fatal(err)
 		}
 
 		err = s.certStore.WriteBytes("srv", srvCert, srvKey)
 		if err != nil {
-			glog.Fatal(err)
+			klog.Fatal(err)
 		}
 
 		if err := s.server.ListenAndServeTLS(serverAddr+":"+securePort, s.certStore.CertFile("srv"), s.certStore.KeyFile("srv")); err != nil {
-			glog.Fatal(err)
+			klog.Fatal(err)
 		}
 	} else {
 		if err := s.server.ListenAndServe(serverAddr + ":" + inSecurePort); err != nil {
-			glog.Fatal(err)
+			klog.Fatal(err)
 		}
 	}
 }

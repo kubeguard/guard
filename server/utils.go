@@ -21,12 +21,12 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/golang/glog"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	auth "k8s.io/api/authentication/v1"
 	authzv1 "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -64,9 +64,9 @@ func write(w http.ResponseWriter, info *auth.UserInfo, err error) {
 		}
 	}
 
-	if glog.V(10) {
+	if klog.V(10).Enabled() {
 		data, _ := json.MarshalIndent(resp, "", "  ")
-		glog.V(10).Infoln(string(data))
+		klog.V(10).Infoln(string(data))
 	}
 
 	err = json.NewEncoder(w).Encode(resp)
@@ -105,10 +105,10 @@ func writeAuthzResponse(w http.ResponseWriter, spec *authzv1.SubjectAccessReview
 	}
 
 	w.WriteHeader(http.StatusOK)
-	if glog.V(7) {
+	if klog.V(7).Enabled() {
 		if _, ok := spec.Extra["oid"]; ok {
 			data, _ := json.Marshal(resp)
-			glog.V(7).Infof("final data:%s", string(data))
+			klog.V(7).Infof("final data:%s", string(data))
 		}
 	}
 
@@ -127,11 +127,11 @@ type httpStatusCode interface {
 }
 
 func printStackTrace(err error) {
-	glog.Errorln(err)
+	klog.Errorln(err)
 
 	if c, ok := errors.Cause(err).(stackTracer); ok {
 		st := c.StackTrace()
-		glog.V(5).Infof("Stacktrace: %+v", st) // top two frames
+		klog.V(5).Infof("Stacktrace: %+v", st) // top two frames
 	}
 }
 
@@ -162,7 +162,7 @@ func (w *withCode) Format(s fmt.State, verb rune) {
 		if s.Flag('+') {
 			_, err := fmt.Fprintf(s, "%+v\n", w.Cause())
 			if err != nil {
-				glog.Fatal(err)
+				klog.Fatal(err)
 			}
 			return
 		}
@@ -170,7 +170,7 @@ func (w *withCode) Format(s fmt.State, verb rune) {
 	case 's', 'q':
 		_, err := io.WriteString(s, w.Error())
 		if err != nil {
-			glog.Fatal(err)
+			klog.Fatal(err)
 		}
 	}
 }
