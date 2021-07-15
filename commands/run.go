@@ -18,9 +18,9 @@ package commands
 
 import (
 	"github.com/appscode/guard/server"
-	"gomodules.xyz/flags"
 
 	"github.com/spf13/cobra"
+	"gomodules.xyz/flags"
 	"k8s.io/klog/v2"
 )
 
