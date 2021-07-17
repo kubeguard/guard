@@ -1,0 +1,4 @@
+* @kubeguard/reviewers
+
+auth/providers/azure/* @kubeguard/azure-reviewers
+authz/providers/azure/* @kubeguard/azure-reviewers
