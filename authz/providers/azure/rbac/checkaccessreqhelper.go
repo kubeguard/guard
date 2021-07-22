@@ -196,7 +196,7 @@ func getActionName(verb string) string {
 }
 
 func getResourceAndAction(subRevReq *authzv1.SubjectAccessReviewSpec) string {
-	action := subRevReq.ResourceAttributes.Resource
+	var action string
 	if subRevReq.ResourceAttributes.Resource == "pods" && subRevReq.ResourceAttributes.Subresource == "exec" {
 		action = path.Join(subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Subresource, "action")
 	} else {
