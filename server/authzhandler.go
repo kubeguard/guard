@@ -22,6 +22,7 @@ import (
 	"go.kubeguard.dev/guard/authz"
 	"go.kubeguard.dev/guard/authz/providers/azure"
 
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	authzv1 "k8s.io/api/authorization/v1"
 )
@@ -33,6 +34,7 @@ type Authzhandler struct {
 }
 
 func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	glog.Infof("Recieved subject access review request")
 	if req.TLS == nil || len(req.TLS.PeerCertificates) == 0 {
 		writeAuthzResponse(w, nil, nil, WithCode(errors.New("Missing client certificate"), http.StatusBadRequest))
 		return
