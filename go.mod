@@ -9,7 +9,6 @@ require (
 	github.com/aws/aws-sdk-go v1.31.13
 	github.com/coreos/go-oidc v2.1.0+incompatible
 	github.com/go-ldap/ldap v3.0.3+incompatible
-	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/google/go-github/v25 v25.1.3
 	github.com/google/gofuzz v1.1.0
 	github.com/google/uuid v1.1.2
