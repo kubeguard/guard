@@ -16,9 +16,9 @@ limitations under the License.
 package server
 
 import (
+	"io/ioutil"
 	"net/http"
 	"strings"
-	"io/ioutil"
 
 	"go.kubeguard.dev/guard/authz"
 	"go.kubeguard.dev/guard/authz/providers/azure"
@@ -37,9 +37,9 @@ type Authzhandler struct {
 func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-                writeAuthzResponse(w, nil, nil, WithCode(errors.Wrap(err, "Failed to read body"), http.StatusBadRequest))
-                return
-        }
+		writeAuthzResponse(w, nil, nil, WithCode(errors.Wrap(err, "Failed to read body"), http.StatusBadRequest))
+		return
+	}
 
 	klog.V(6).Infof("Recieved subject access review request. Request: %s", body)
 	if req.TLS == nil || len(req.TLS.PeerCertificates) == 0 {

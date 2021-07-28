@@ -143,6 +143,11 @@ func Test_getDataAction(t *testing.T) {
 			subRevReq: &authzv1.SubjectAccessReviewSpec{
 				ResourceAttributes: &authzv1.ResourceAttributes{Group: "certificates.k8s.io", Resource: "certificatesigningrequests", Subresource: "approvals", Version: "v1", Name: "test", Verb: "deletecollection"}}, clusterType: "aks"},
 			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "aks/certificates.k8s.io/certificatesigningrequests/delete"}, IsDataAction: true}},
+
+		{"aks", args{
+			subRevReq: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "pods", Subresource: "exec", Version: "v1", Name: "test", Verb: "create"}}, clusterType: "aks"},
+			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "aks/pods/exec/action"}, IsDataAction: true}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
