@@ -16,7 +16,6 @@ limitations under the License.
 package server
 
 import (
-	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -35,13 +34,7 @@ type Authzhandler struct {
 }
 
 func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	body, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		writeAuthzResponse(w, nil, nil, WithCode(errors.Wrap(err, "Failed to read body"), http.StatusBadRequest))
-		return
-	}
-
-	klog.V(6).Infof("Recieved subject access review request. Request: %s", body)
+	klog.Infof("Recieved subject access review request")
 	if req.TLS == nil || len(req.TLS.PeerCertificates) == 0 {
 		writeAuthzResponse(w, nil, nil, WithCode(errors.New("Missing client certificate"), http.StatusBadRequest))
 		return
@@ -54,7 +47,7 @@ func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	org := crt.Subject.Organization[0]
 
 	data := authzv1.SubjectAccessReview{}
-	err = json.Unmarshal(body, &data)
+	err := json.NewDecoder(req.Body).Decode(&data)
 	if err != nil {
 		writeAuthzResponse(w, nil, nil, WithCode(errors.Wrap(err, "Failed to parse request"), http.StatusBadRequest))
 		return
