@@ -195,6 +195,17 @@ func getActionName(verb string) string {
 	}
 }
 
+func getResourceAndAction(subRevReq *authzv1.SubjectAccessReviewSpec) string {
+	var action string
+	if subRevReq.ResourceAttributes.Resource == "pods" && subRevReq.ResourceAttributes.Subresource == "exec" {
+		action = path.Join(subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Subresource, "action")
+	} else {
+		action = path.Join(subRevReq.ResourceAttributes.Resource, getActionName(subRevReq.ResourceAttributes.Verb))
+	}
+
+	return action
+}
+
 func getDataAction(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string) AuthorizationActionInfo {
 	authInfo := AuthorizationActionInfo{
 		IsDataAction: true}
@@ -204,7 +215,9 @@ func getDataAction(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType strin
 		if subRevReq.ResourceAttributes.Group != "" {
 			authInfo.AuthorizationEntity.Id = path.Join(authInfo.AuthorizationEntity.Id, subRevReq.ResourceAttributes.Group)
 		}
-		authInfo.AuthorizationEntity.Id = path.Join(authInfo.AuthorizationEntity.Id, subRevReq.ResourceAttributes.Resource, getActionName(subRevReq.ResourceAttributes.Verb))
+
+		action := getResourceAndAction(subRevReq)
+		authInfo.AuthorizationEntity.Id = path.Join(authInfo.AuthorizationEntity.Id, action)
 	} else if subRevReq.NonResourceAttributes != nil {
 		authInfo.AuthorizationEntity.Id = path.Join(authInfo.AuthorizationEntity.Id, subRevReq.NonResourceAttributes.Path, getActionName(subRevReq.NonResourceAttributes.Verb))
 	}
