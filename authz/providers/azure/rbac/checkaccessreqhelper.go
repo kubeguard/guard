@@ -237,7 +237,8 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	if subRevReq.ResourceAttributes != nil {
 		cacheKey = path.Join(cacheKey, defaultDir(subRevReq.ResourceAttributes.Namespace))
 		cacheKey = path.Join(cacheKey, defaultDir(subRevReq.ResourceAttributes.Group))
-		cacheKey = path.Join(cacheKey, subRevReq.ResourceAttributes.Resource, getActionName(subRevReq.ResourceAttributes.Verb))
+		action := getResourceAndAction(subRevReq)
+		cacheKey = path.Join(cacheKey, action)
 	} else if subRevReq.NonResourceAttributes != nil {
 		cacheKey = path.Join(cacheKey, subRevReq.NonResourceAttributes.Path, getActionName(subRevReq.NonResourceAttributes.Verb))
 	}
