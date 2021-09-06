@@ -190,7 +190,7 @@ func (s Server) ListenAndServe() {
 	srv := &http.Server{
 		Addr:         s.AuthRecommendedOptions.SecureServing.SecureAddr,
 		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: 25 * time.Second,
 		Handler:      m,
 		TLSConfig:    tlsConfig,
 	}
