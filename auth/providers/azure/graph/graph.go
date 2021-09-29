@@ -265,6 +265,16 @@ func NewWithAKS(tokenURL, tenantID, msgraphHost string) (*UserInfo, error) {
 	return newUserInfo(tokenProvider, graphURL, true)
 }
 
+// NewWithPOP returns a new UserInfo object used in POP
+func NewWithPOP(clientID, tenantID, popHostName, msgraphHost string, validTill time.Duration) (*UserInfo, error) {
+	graphEndpoint := "https://" + msgraphHost + "/"
+	graphURL, _ := url.Parse(graphEndpoint + "v1.0")
+
+	tokenProvider := NewPoPTokenProvider(clientID, tenantID, popHostName, validTill)
+
+	return newUserInfo(tokenProvider, graphURL, true)
+}
+
 func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string, useGroupUID bool) (*UserInfo, error) {
 	parsedApi, err := url.Parse(apiUrl)
 	if err != nil {

@@ -102,6 +102,8 @@ func New(opts Options) (auth.Interface, error) {
 		c.graphClient, err = graph.NewWithOBO(c.ClientID, c.ClientSecret, c.TenantID, authInfoVal.AADEndpoint, authInfoVal.MSGraphHost)
 	case AKSAuthMode:
 		c.graphClient, err = graph.NewWithAKS(c.AKSTokenURL, c.TenantID, authInfoVal.MSGraphHost)
+	case POPAuthMode:
+		c.graphClient, err = graph.NewWithPOP(c.ClientID, c.TenantID, c.POPTokenHostname, authInfoVal.MSGraphHost, c.POPTokenValidTill)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create ms graph client")
@@ -147,6 +149,7 @@ func (s Authenticator) UID() string {
 }
 
 func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
+	// pop validation should done here
 	idToken, err := s.verifier.Verify(s.ctx, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to verify token for azure")
@@ -172,6 +175,7 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 			return resp, nil
 		}
 	}
+	// This is not needed for pop
 	if err := s.graphClient.RefreshToken(token); err != nil {
 		return nil, err
 	}
