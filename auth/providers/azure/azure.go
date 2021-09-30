@@ -65,9 +65,10 @@ type claims map[string]interface{}
 
 type Authenticator struct {
 	Options
-	graphClient *graph.UserInfo
-	verifier    *oidc.IDTokenVerifier
-	ctx         context.Context
+	graphClient      *graph.UserInfo
+	verifier         *oidc.IDTokenVerifier
+	popTokenVerifier *PopTokenVerifier
+	ctx              context.Context
 }
 
 type authInfo struct {
@@ -94,6 +95,7 @@ func New(opts Options) (auth.Interface, error) {
 	}
 
 	c.verifier = provider.Verifier(&oidc.Config{SkipClientIDCheck: !opts.VerifyClientID, ClientID: opts.ClientID})
+	c.popTokenVerifier = NewPoPVerifier(c.POPTokenHostname, c.POPTokenValidTill)
 
 	switch opts.AuthMode {
 	case ClientCredentialAuthMode:
@@ -102,8 +104,8 @@ func New(opts Options) (auth.Interface, error) {
 		c.graphClient, err = graph.NewWithOBO(c.ClientID, c.ClientSecret, c.TenantID, authInfoVal.AADEndpoint, authInfoVal.MSGraphHost)
 	case AKSAuthMode:
 		c.graphClient, err = graph.NewWithAKS(c.AKSTokenURL, c.TenantID, authInfoVal.MSGraphHost)
-	case POPAuthMode:
-		c.graphClient, err = graph.NewWithPOP(c.ClientID, c.TenantID, c.POPTokenHostname, authInfoVal.MSGraphHost, c.POPTokenValidTill)
+	case PassthroughAuthMode:
+		c.graphClient, err = graph.NewWithPassthrough(authInfoVal.MSGraphHost)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create ms graph client")
@@ -149,7 +151,14 @@ func (s Authenticator) UID() string {
 }
 
 func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
-	// pop validation should done here
+	var err error
+	if s.EnablePOP {
+		token, err = s.popTokenVerifier.ValidatePopToken(token)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to verify pop token")
+		}
+	}
+
 	idToken, err := s.verifier.Verify(s.ctx, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to verify token for azure")
