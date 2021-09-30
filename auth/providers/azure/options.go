@@ -35,7 +35,7 @@ const (
 	AKSAuthMode              = "aks"
 	OBOAuthMode              = "obo"
 	ClientCredentialAuthMode = "client-credential"
-	POPAuthMode              = "pop"
+	PassthroughAuthMode      = "passthrough"
 )
 
 type Options struct {
@@ -46,6 +46,7 @@ type Options struct {
 	UseGroupUID                              bool
 	AuthMode                                 string
 	AKSTokenURL                              string
+	EnablePOP                                bool
 	POPTokenHostname                         string
 	POPTokenValidTill                        time.Duration
 	ResolveGroupMembershipOnlyOnOverageClaim bool
@@ -68,6 +69,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.AuthMode, "azure.auth-mode", "client-credential", "auth mode to call graph api, valid value is either aks, obo, or client-credential")
 	fs.StringVar(&o.AKSTokenURL, "azure.aks-token-url", "", "url to call for AKS OBO flow")
 	fs.StringVar(&o.POPTokenHostname, "azure.pop-hostname", "", "hostname used to run the pop hostname verification; 'u' claim")
+	fs.BoolVar(&o.EnablePOP, "azure.enable-pop", false, "Enabling pop token verification")
 	fs.DurationVar(&o.POPTokenValidTill, "azure.pop-token-validtill", 15, "time duration till what PoP token considered valid from creation time, default 15 min")
 	fs.BoolVar(&o.ResolveGroupMembershipOnlyOnOverageClaim, "azure.graph-call-on-overage-claim", o.ResolveGroupMembershipOnlyOnOverageClaim, "set to true to resolve group membership only when overage claim is present. setting to false will always call graph api to resolve group membership")
 	fs.BoolVar(&o.VerifyClientID, "azure.verify-clientID", o.VerifyClientID, "set to true to validate token's audience claim matches clientID")
@@ -80,12 +82,12 @@ func (o *Options) Validate() []error {
 	case AKSAuthMode:
 	case OBOAuthMode:
 	case ClientCredentialAuthMode:
-	case POPAuthMode:
+	case PassthroughAuthMode:
 	default:
 		errs = append(errs, errors.New("invalid azure.auth-mode. valid value is either aks, obo, client-credential or pop"))
 	}
 
-	if o.AuthMode != AKSAuthMode && o.AuthMode != POPAuthMode {
+	if o.AuthMode != AKSAuthMode && o.AuthMode != PassthroughAuthMode {
 		if o.ClientSecret == "" {
 			errs = append(errs, errors.New("azure.client-secret must be non-empty"))
 		}
@@ -99,7 +101,7 @@ func (o *Options) Validate() []error {
 	if o.VerifyClientID && o.ClientID == "" {
 		errs = append(errs, errors.New("azure.client-id must be non-empty when azure.verify-clientID is set"))
 	}
-	if o.AuthMode == POPAuthMode {
+	if o.EnablePOP {
 		if o.POPTokenHostname == "" {
 			errs = append(errs, errors.New("azure.pop-hostname must be non-empty"))
 		}
@@ -169,8 +171,6 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 	case AKSAuthMode:
 		fallthrough
 	case OBOAuthMode:
-		fallthrough
-	case POPAuthMode:
 		fallthrough
 	case ClientCredentialAuthMode:
 		args = append(args, fmt.Sprintf("--azure.auth-mode=%s", o.AuthMode))
