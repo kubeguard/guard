@@ -546,10 +546,11 @@ gopkg.in/jcmturner/gokrb5.v4/ndr
 gopkg.in/jcmturner/gokrb5.v4/pac
 gopkg.in/jcmturner/gokrb5.v4/service
 gopkg.in/jcmturner/gokrb5.v4/types
-# gopkg.in/square/go-jose.v2 v2.2.2
+# gopkg.in/square/go-jose.v2 v2.6.0
 gopkg.in/square/go-jose.v2
 gopkg.in/square/go-jose.v2/cipher
 gopkg.in/square/go-jose.v2/json
+gopkg.in/square/go-jose.v2/jwt
 # gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 gopkg.in/tomb.v1
 # gopkg.in/yaml.v2 v2.4.0
