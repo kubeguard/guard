@@ -265,16 +265,6 @@ func NewWithAKS(tokenURL, tenantID, msgraphHost string) (*UserInfo, error) {
 	return newUserInfo(tokenProvider, graphURL, true)
 }
 
-// NewWithPassthrough returns a new UserInfo object based on the passed token
-func NewWithPassthrough(msgraphHost string) (*UserInfo, error) {
-	graphEndpoint := "https://" + msgraphHost + "/"
-	graphURL, _ := url.Parse(graphEndpoint + "v1.0")
-
-	tokenProvider := NewPassthroughTokenProvider()
-
-	return newUserInfo(tokenProvider, graphURL, true)
-}
-
 func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string, useGroupUID bool) (*UserInfo, error) {
 	parsedApi, err := url.Parse(apiUrl)
 	if err != nil {

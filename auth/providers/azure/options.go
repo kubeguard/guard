@@ -50,6 +50,7 @@ type Options struct {
 	POPTokenHostname                         string
 	POPTokenValidTill                        time.Duration
 	ResolveGroupMembershipOnlyOnOverageClaim bool
+	SkipGroupMembershipResolution            bool
 	VerifyClientID                           bool
 }
 
@@ -73,6 +74,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&o.POPTokenValidTill, "azure.pop-token-validtill", 15, "time duration till what PoP token considered valid from creation time, default 15 min")
 	fs.BoolVar(&o.ResolveGroupMembershipOnlyOnOverageClaim, "azure.graph-call-on-overage-claim", o.ResolveGroupMembershipOnlyOnOverageClaim, "set to true to resolve group membership only when overage claim is present. setting to false will always call graph api to resolve group membership")
 	fs.BoolVar(&o.VerifyClientID, "azure.verify-clientID", o.VerifyClientID, "set to true to validate token's audience claim matches clientID")
+	fs.BoolVar(&o.SkipGroupMembershipResolution, "azure.skip-group-membership-resolution", false, "set to true this will bypass the getting the groups from graph")
 }
 
 func (o *Options) Validate() []error {
@@ -84,7 +86,7 @@ func (o *Options) Validate() []error {
 	case ClientCredentialAuthMode:
 	case PassthroughAuthMode:
 	default:
-		errs = append(errs, errors.New("invalid azure.auth-mode. valid value is either aks, obo, client-credential or pop"))
+		errs = append(errs, errors.New("invalid azure.auth-mode. valid value is either aks, obo, client-credential or passtrough"))
 	}
 
 	if o.AuthMode != AKSAuthMode && o.AuthMode != PassthroughAuthMode {
@@ -103,7 +105,7 @@ func (o *Options) Validate() []error {
 	}
 	if o.EnablePOP {
 		if o.POPTokenHostname == "" {
-			errs = append(errs, errors.New("azure.pop-hostname must be non-empty"))
+			errs = append(errs, errors.New("azure.pop-hostname must be non-empty when pop token are enabled"))
 		}
 	}
 	return errs
