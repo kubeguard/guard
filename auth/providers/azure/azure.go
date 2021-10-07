@@ -104,8 +104,6 @@ func New(opts Options) (auth.Interface, error) {
 		c.graphClient, err = graph.NewWithOBO(c.ClientID, c.ClientSecret, c.TenantID, authInfoVal.AADEndpoint, authInfoVal.MSGraphHost)
 	case AKSAuthMode:
 		c.graphClient, err = graph.NewWithAKS(c.AKSTokenURL, c.TenantID, authInfoVal.MSGraphHost)
-	case PassthroughAuthMode:
-		c.graphClient, err = graph.NewWithPassthrough(authInfoVal.MSGraphHost)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create ms graph client")
@@ -184,13 +182,14 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 			return resp, nil
 		}
 	}
-	// This is not needed for pop
-	if err := s.graphClient.RefreshToken(token); err != nil {
-		return nil, err
-	}
-	resp.Groups, err = s.graphClient.GetGroups(resp.Username)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get groups")
+	if !s.Options.SkipGroupMembershipResolution {
+		if err := s.graphClient.RefreshToken(token); err != nil {
+			return nil, err
+		}
+		resp.Groups, err = s.graphClient.GetGroups(resp.Username)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get groups")
+		}
 	}
 	return resp, nil
 }

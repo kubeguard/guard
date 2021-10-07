@@ -80,6 +80,7 @@ func (p *PopTokenVerifier) ValidatePopToken(token string) (string, error) {
 	var claims Claims
 	_ = ptoken.UnsafeClaimsWithoutVerification(&claims)
 
+	// This can never happens since the first 'if len(date) != 3' check if the header is present
 	if len(ptoken.Headers) <= 0 {
 		return "", errors.Errorf("No header found in PoP token")
 	}
@@ -112,7 +113,7 @@ func (p *PopTokenVerifier) ValidatePopToken(token string) (string, error) {
 		convertTime(ts, &issuedTime)
 		expireat := issuedTime.Add(p.ValidTill * time.Minute)
 		if expireat.Before(now) {
-			return "", errors.Errorf("Tokken is expired. Now: %v, Valid till: %v", now, expireat)
+			return "", errors.Errorf("Token is expired. Now: %v, Valid till: %v", now, expireat)
 		}
 	} else {
 		return "", errors.Errorf("Invalid token. ts claim missing")
@@ -122,10 +123,10 @@ func (p *PopTokenVerifier) ValidatePopToken(token string) (string, error) {
 	if uc, ok := claims["u"]; ok {
 		if reqHostName, ok := uc.(string); ok {
 			if klog.V(10).Enabled() {
-				klog.V(10).Infoln("pop token validation running with hostNames-%s. Request is coming for hostName-%s", p.hostName, ",", reqHostName)
+				klog.V(10).Infoln("pop token validation running with hostName: %s. Request is coming for hostName: %s", p.hostName, reqHostName)
 			}
-			if !strings.HasSuffix(strings.ToLower(reqHostName), p.hostName) {
-				return "", errors.Errorf("Invalid Pop token. Host mismatch. Expected either of -%s, Req received-%s", p.hostName, ",", reqHostName)
+			if !strings.EqualFold(reqHostName, p.hostName) {
+				return "", errors.Errorf("Invalid Pop token. Host mismatch. Expected: %s, Req received: %s", p.hostName, reqHostName)
 			}
 		} else {
 			return "", errors.Errorf("Invalid token. u claim should be string")
