@@ -67,7 +67,7 @@ type Authenticator struct {
 	Options
 	graphClient      *graph.UserInfo
 	verifier         *oidc.IDTokenVerifier
-	popTokenVerifier *PopTokenVerifier
+	popTokenVerifier *PoPTokenVerifier
 	ctx              context.Context
 }
 
@@ -94,8 +94,14 @@ func New(opts Options) (auth.Interface, error) {
 		return nil, errors.Wrap(err, "failed to create provider for azure")
 	}
 
-	c.verifier = provider.Verifier(&oidc.Config{SkipClientIDCheck: !opts.VerifyClientID, ClientID: opts.ClientID})
-	c.popTokenVerifier = NewPoPVerifier(c.POPTokenHostname, c.POPTokenValidTill)
+	c.verifier = provider.Verifier(&oidc.Config{
+		SkipClientIDCheck: !opts.VerifyClientID,
+		ClientID:          opts.ClientID,
+		SkipIssuerCheck:   true,
+	})
+	if opts.EnablePOP {
+		c.popTokenVerifier = NewPoPVerifier(c.POPTokenHostname, c.PoPTokenValidityDuration)
+	}
 
 	switch opts.AuthMode {
 	case ClientCredentialAuthMode:
@@ -150,6 +156,7 @@ func (s Authenticator) UID() string {
 
 func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 	var err error
+
 	if s.EnablePOP {
 		token, err = s.popTokenVerifier.ValidatePopToken(token)
 		if err != nil {

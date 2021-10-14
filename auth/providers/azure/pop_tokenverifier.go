@@ -35,15 +35,15 @@ import (
 )
 
 // PopTokenVerifier is validator for PoP tokens.
-type PopTokenVerifier struct {
-	hostName  string
-	ValidTill time.Duration
+type PoPTokenVerifier struct {
+	hostName                 string
+	PoPTokenValidityDuration time.Duration
 }
 
-func NewPoPVerifier(hostName string, validTill time.Duration) *PopTokenVerifier {
-	return &PopTokenVerifier{
-		ValidTill: validTill,
-		hostName:  hostName,
+func NewPoPVerifier(hostName string, popTokenValidityDuration time.Duration) *PoPTokenVerifier {
+	return &PoPTokenVerifier{
+		PoPTokenValidityDuration: popTokenValidityDuration,
+		hostName:                 hostName,
 	}
 }
 
@@ -52,22 +52,23 @@ type Claims map[string]interface{}
 
 const (
 	//TypPoP signifies pop token
-	TypPoP = "pop"
+	typPoP = "pop"
 	//TypJWT signifies AAD JWT token
-	TypJWT = "JWT"
+	typJWT = "JWT"
 	//AlgoRS256 signifies signing algorithm
-	AlgoRS256 = "RS256"
+	algoRS256 = "RS256"
 )
 
 // Jwk maintains public key info
 type Jwk struct {
-	E   string `json:"e"`
-	Kty string `json:"kty"`
-	N   string `json:"n"`
+	e   string `json:"e"`
+	kty string `json:"kty"`
+	n   string `json:"n"`
 }
 
-// Acquire is validating the pop token
-func (p *PopTokenVerifier) ValidatePopToken(token string) (string, error) {
+// ValidatePopToken is validating the pop token
+// RFC : https://datatracker.ietf.org/doc/html/rfc7800
+func (p *PoPTokenVerifier) ValidatePopToken(token string) (string, error) {
 	data := strings.Split(token, ".")
 	if len(data) != 3 || data[0] == "" || data[1] == "" || data[2] == "" {
 		return "", errors.Errorf("PoP token invalid schema. Token length: %d", len(data))
@@ -78,7 +79,10 @@ func (p *PopTokenVerifier) ValidatePopToken(token string) (string, error) {
 		return "", errors.Errorf("Could not parse PoP token. Error: %+v", err)
 	}
 	var claims Claims
-	_ = ptoken.UnsafeClaimsWithoutVerification(&claims)
+	err = ptoken.UnsafeClaimsWithoutVerification(&claims)
+	if err != nil {
+		return "", errors.Errorf("Cannot deserializes the claims from the PoP token. Error: %+v", err)
+	}
 
 	// This can never happens since the first 'if len(date) != 3' check if the header is present
 	if len(ptoken.Headers) <= 0 {
@@ -89,74 +93,87 @@ func (p *PopTokenVerifier) ValidatePopToken(token string) (string, error) {
 		return "", errors.Errorf("No KeyID found in PoP token header")
 	}
 
-	if ptoken.Headers[0].Algorithm != AlgoRS256 {
-		return "", errors.Errorf("Wrong algorithm found in PoP token header")
+	if ptoken.Headers[0].Algorithm != algoRS256 {
+		return "", errors.Errorf("Wrong algorithm found in PoP token header, expected '%s' having '%s'", algoRS256, ptoken.Headers[0].Algorithm)
 	}
 
 	if typ, ok := ptoken.Headers[0].ExtraHeaders["typ"]; ok {
 		if tokenType, ok := typ.(string); ok {
-			if !strings.EqualFold(tokenType, TypPoP) {
-				return "", errors.Errorf("Wrong typ of token. Expected pop token")
+			if !strings.EqualFold(tokenType, typPoP) {
+				return "", errors.Errorf("Wrong typ. Expected '%s' having '%s'", typPoP, tokenType)
 			}
 		} else {
-			return "", errors.Errorf("Invalid token. Typ claim should be string")
+			return "", errors.Errorf("Invalid token. 'typ' claim should be of string")
 		}
 	} else {
-		return "", errors.Errorf("Invalid token. Typ claim missing")
+		return "", errors.Errorf("Invalid token. 'typ' claim is missing")
 	}
 
-	/* Verify expiry time */
-	// This is useful for fail fast.
+	// Verify expiry time
+	// This is useful to fail fast
 	now := time.Now()
 	var issuedTime time.Time
 	if ts, ok := claims["ts"]; ok {
 		convertTime(ts, &issuedTime)
-		expireat := issuedTime.Add(p.ValidTill * time.Minute)
+		expireat := issuedTime.Add(p.PoPTokenValidityDuration * time.Minute)
 		if expireat.Before(now) {
 			return "", errors.Errorf("Token is expired. Now: %v, Valid till: %v", now, expireat)
 		}
 	} else {
-		return "", errors.Errorf("Invalid token. ts claim missing")
+		return "", errors.Errorf("Invalid token. 'ts' claim is missing")
 	}
 
-	/* Verify host */
+	// Verify host 'u' claim
 	if uc, ok := claims["u"]; ok {
 		if reqHostName, ok := uc.(string); ok {
 			if klog.V(10).Enabled() {
 				klog.V(10).Infoln("pop token validation running with hostName: %s. Request is coming for hostName: %s", p.hostName, reqHostName)
 			}
 			if !strings.EqualFold(reqHostName, p.hostName) {
-				return "", errors.Errorf("Invalid Pop token. Host mismatch. Expected: %s, Req received: %s", p.hostName, reqHostName)
+				return "", errors.Errorf("Invalid Pop token due to host mismatch. Expected: %q, received: %q", p.hostName, reqHostName)
 			}
 		} else {
-			return "", errors.Errorf("Invalid token. u claim should be string")
+			return "", errors.Errorf("Invalid token. 'u' claim should be of string")
 		}
 	} else {
-		return "", errors.Errorf("Invalid token. u claim missing")
+		return "", errors.Errorf("Invalid token. 'u' claim is missing")
 	}
 
+	// "cnf" (confirmation) claim used to cryptographically confirm
+	// that the presenter has possession of that key.
+	// The value of the "cnf" claim is a JSON object and the
+	// members of that object identify the proof-of-possession key.
 	var cnf map[string]interface{}
 	if cnfclaim, ok := claims["cnf"]; ok {
 		if cnf, ok = cnfclaim.(map[string]interface{}); !ok {
-			return "", errors.Errorf("Invalid token. Cnf claim missing")
+			return "", errors.Errorf("Invalid token. 'Cnf' claim is missing")
 		}
 	}
 
+	// When the key held by the presenter is an asymmetric private key, the
+	// "jwk" member is a JSON Web Key [JWK] representing the corresponding
+	// asymmetric public key.
 	var jwk Jwk
 	if err := marshalGenericTo(cnf["jwk"], &jwk); err != nil {
-		return "", errors.Errorf("failed while parsing jwk claim in PoP token : %v", err)
+		return "", errors.Errorf("failed while parsing 'jwk' claim in PoP token : %v", err)
 	}
 
-	/* Verify signing of PoP token */
+	// Verify signing of PoP token
 	message := fmt.Sprintf("%s.%s", data[0], data[1])
 
 	signature, err := base64.RawURLEncoding.DecodeString(data[2])
 	if err != nil {
-		return "", errors.Errorf("Failed to decode signed message with url decoding .Error: %+v", err)
+		return "", errors.Errorf("Failed to base64 url decode message signature. Error: %+v", err)
 	}
 
-	n, _ := base64.RawURLEncoding.DecodeString(jwk.N)
-	e, _ := base64.RawURLEncoding.DecodeString(jwk.E)
+	n, err := base64.RawURLEncoding.DecodeString(jwk.n)
+	if err != nil {
+		return "", errors.Errorf("Failed to decode jwk.n .Error: %+v", err)
+	}
+	e, err := base64.RawURLEncoding.DecodeString(jwk.e)
+	if err != nil {
+		return "", errors.Errorf("Failed to decode jwk.e .Error: %+v", err)
+	}
 	z := new(big.Int)
 	z.SetBytes(n)
 
@@ -189,5 +206,7 @@ func convertTime(i interface{}, tm *time.Time) {
 	case string:
 		v, _ := strconv.ParseInt(iat, 10, 64)
 		*tm = time.Unix(v, 0)
+	default:
+		*tm = time.Unix(0, 0)
 	}
 }
