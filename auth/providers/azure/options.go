@@ -48,7 +48,7 @@ type Options struct {
 	AKSTokenURL                              string
 	EnablePOP                                bool
 	POPTokenHostname                         string
-	POPTokenValidTill                        time.Duration
+	PoPTokenValidityDuration                 time.Duration
 	ResolveGroupMembershipOnlyOnOverageClaim bool
 	SkipGroupMembershipResolution            bool
 	VerifyClientID                           bool
@@ -71,10 +71,10 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.AKSTokenURL, "azure.aks-token-url", "", "url to call for AKS OBO flow")
 	fs.StringVar(&o.POPTokenHostname, "azure.pop-hostname", "", "hostname used to run the pop hostname verification; 'u' claim")
 	fs.BoolVar(&o.EnablePOP, "azure.enable-pop", false, "Enabling pop token verification")
-	fs.DurationVar(&o.POPTokenValidTill, "azure.pop-token-validtill", 15, "time duration till what PoP token considered valid from creation time, default 15 min")
+	fs.DurationVar(&o.PoPTokenValidityDuration, "azure.pop-token-validity-duration", 15, "time duration for PoP token to be considered valid from creation time, default 15 min")
 	fs.BoolVar(&o.ResolveGroupMembershipOnlyOnOverageClaim, "azure.graph-call-on-overage-claim", o.ResolveGroupMembershipOnlyOnOverageClaim, "set to true to resolve group membership only when overage claim is present. setting to false will always call graph api to resolve group membership")
 	fs.BoolVar(&o.VerifyClientID, "azure.verify-clientID", o.VerifyClientID, "set to true to validate token's audience claim matches clientID")
-	fs.BoolVar(&o.SkipGroupMembershipResolution, "azure.skip-group-membership-resolution", false, "set to true this will bypass the getting the groups from graph")
+	fs.BoolVar(&o.SkipGroupMembershipResolution, "azure.skip-group-membership-resolution", false, "when set to true, this will bypass the getting group membership from graph api")
 }
 
 func (o *Options) Validate() []error {
@@ -86,7 +86,7 @@ func (o *Options) Validate() []error {
 	case ClientCredentialAuthMode:
 	case PassthroughAuthMode:
 	default:
-		errs = append(errs, errors.New("invalid azure.auth-mode. valid value is either aks, obo, client-credential or passtrough"))
+		errs = append(errs, errors.New("invalid azure.auth-mode. valid value is either aks, obo, client-credential or passthrough"))
 	}
 
 	if o.AuthMode != AKSAuthMode && o.AuthMode != PassthroughAuthMode {
@@ -103,10 +103,8 @@ func (o *Options) Validate() []error {
 	if o.VerifyClientID && o.ClientID == "" {
 		errs = append(errs, errors.New("azure.client-id must be non-empty when azure.verify-clientID is set"))
 	}
-	if o.EnablePOP {
-		if o.POPTokenHostname == "" {
-			errs = append(errs, errors.New("azure.pop-hostname must be non-empty when pop token are enabled"))
-		}
+	if o.EnablePOP && o.POPTokenHostname == "" {
+		errs = append(errs, errors.New("azure.pop-hostname must be non-empty when pop token is enabled"))
 	}
 	return errs
 }
