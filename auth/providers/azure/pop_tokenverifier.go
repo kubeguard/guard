@@ -60,7 +60,7 @@ const (
 )
 
 // Jwk maintains public key info
-type Jwk struct {
+type jwk struct {
 	e   string `json:"e"`
 	kty string `json:"kty"`
 	n   string `json:"n"`
@@ -153,7 +153,7 @@ func (p *PoPTokenVerifier) ValidatePopToken(token string) (string, error) {
 	// When the key held by the presenter is an asymmetric private key, the
 	// "jwk" member is a JSON Web Key [JWK] representing the corresponding
 	// asymmetric public key.
-	var jwk Jwk
+	var jwk jwk
 	if err := marshalGenericTo(cnf["jwk"], &jwk); err != nil {
 		return "", errors.Errorf("failed while parsing 'jwk' claim in PoP token : %v", err)
 	}
