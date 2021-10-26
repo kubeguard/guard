@@ -65,9 +65,10 @@ type claims map[string]interface{}
 
 type Authenticator struct {
 	Options
-	graphClient *graph.UserInfo
-	verifier    *oidc.IDTokenVerifier
-	ctx         context.Context
+	graphClient      *graph.UserInfo
+	verifier         *oidc.IDTokenVerifier
+	popTokenVerifier *PoPTokenVerifier
+	ctx              context.Context
 }
 
 type authInfo struct {
@@ -93,7 +94,14 @@ func New(opts Options) (auth.Interface, error) {
 		return nil, errors.Wrap(err, "failed to create provider for azure")
 	}
 
-	c.verifier = provider.Verifier(&oidc.Config{SkipClientIDCheck: !opts.VerifyClientID, ClientID: opts.ClientID})
+	c.verifier = provider.Verifier(&oidc.Config{
+		SkipClientIDCheck: !opts.VerifyClientID,
+		ClientID:          opts.ClientID,
+		SkipIssuerCheck:   true,
+	})
+	if opts.EnablePOP {
+		c.popTokenVerifier = NewPoPVerifier(c.POPTokenHostname, c.PoPTokenValidityDuration)
+	}
 
 	switch opts.AuthMode {
 	case ClientCredentialAuthMode:
@@ -147,6 +155,15 @@ func (s Authenticator) UID() string {
 }
 
 func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
+	var err error
+
+	if s.EnablePOP {
+		token, err = s.popTokenVerifier.ValidatePopToken(token)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to verify pop token")
+		}
+	}
+
 	idToken, err := s.verifier.Verify(s.ctx, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to verify token for azure")
@@ -172,12 +189,14 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 			return resp, nil
 		}
 	}
-	if err := s.graphClient.RefreshToken(token); err != nil {
-		return nil, err
-	}
-	resp.Groups, err = s.graphClient.GetGroups(resp.Username)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get groups")
+	if !s.Options.SkipGroupMembershipResolution {
+		if err := s.graphClient.RefreshToken(token); err != nil {
+			return nil, err
+		}
+		resp.Groups, err = s.graphClient.GetGroups(resp.Username)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get groups")
+		}
 	}
 	return resp, nil
 }

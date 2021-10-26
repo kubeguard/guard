@@ -50,7 +50,7 @@ var (
 				o.AuthMode = empty
 				return o
 			},
-			errors.New("invalid azure.auth-mode. valid value is either aks, obo, or client-credential"),
+			errors.New("invalid azure.auth-mode. valid value is either aks, obo, client-credential or passtrough"),
 			true,
 		},
 		{
@@ -88,6 +88,16 @@ var (
 				return o
 			},
 			errors.New("azure.aks-token-url must be non-empty"),
+			false,
+		},
+		{
+			"azure.enable-pop is set without a hostname",
+			func(o Options) Options {
+				o.AuthMode = PassthroughAuthMode
+				o.EnablePOP = true
+				return o
+			},
+			errors.New("azure.pop-hostname must be non-empty when pop token are enabled"),
 			false,
 		},
 	}
