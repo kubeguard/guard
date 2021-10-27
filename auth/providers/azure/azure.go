@@ -94,11 +94,7 @@ func New(opts Options) (auth.Interface, error) {
 		return nil, errors.Wrap(err, "failed to create provider for azure")
 	}
 
-	c.verifier = provider.Verifier(&oidc.Config{
-		SkipClientIDCheck: !opts.VerifyClientID,
-		ClientID:          opts.ClientID,
-		SkipIssuerCheck:   true,
-	})
+	c.verifier = provider.Verifier(&oidc.Config{SkipClientIDCheck: !opts.VerifyClientID, ClientID: opts.ClientID})
 	if opts.EnablePOP {
 		c.popTokenVerifier = NewPoPVerifier(c.POPTokenHostname, c.PoPTokenValidityDuration)
 	}
@@ -189,7 +185,7 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 			return resp, nil
 		}
 	}
-	if !s.Options.SkipGroupMembershipResolution {
+	if !s.Options.SkipGroupMembershipResolution || !strings.EqualFold(s.Options.AuthMode, PassthroughAuthMode) {
 		if err := s.graphClient.RefreshToken(token); err != nil {
 			return nil, err
 		}
