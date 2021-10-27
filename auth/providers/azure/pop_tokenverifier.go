@@ -28,10 +28,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"gopkg.in/square/go-jose.v2/jwt"
 	"k8s.io/klog/v2"
-
-	"github.com/pkg/errors"
 )
 
 // PopTokenVerifier is validator for PoP tokens.
