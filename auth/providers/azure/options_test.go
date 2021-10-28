@@ -50,7 +50,7 @@ var (
 				o.AuthMode = empty
 				return o
 			},
-			errors.New("invalid azure.auth-mode. valid value is either aks, obo, client-credential or passtrough"),
+			errors.New("invalid azure.auth-mode. valid value is either aks, obo, client-credential or passthrough"),
 			true,
 		},
 		{
@@ -97,7 +97,7 @@ var (
 				o.EnablePOP = true
 				return o
 			},
-			errors.New("azure.pop-hostname must be non-empty when pop token are enabled"),
+			errors.New("azure.pop-hostname must be non-empty when pop token is enabled"),
 			false,
 		},
 	}
