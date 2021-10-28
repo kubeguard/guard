@@ -52,17 +52,14 @@ type Claims map[string]interface{}
 const (
 	//TypPoP signifies pop token
 	typPoP = "pop"
-	//TypJWT signifies AAD JWT token
-	typJWT = "JWT"
 	//AlgoRS256 signifies signing algorithm
 	algoRS256 = "RS256"
 )
 
 // jwk maintains public key info
 type jwk struct {
-	e   string `json:"e"`
-	kty string `json:"kty"`
-	n   string `json:"n"`
+	e string
+	n string
 }
 
 // ValidatePopToken is validating the pop token

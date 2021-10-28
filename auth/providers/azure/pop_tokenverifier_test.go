@@ -141,7 +141,6 @@ const (
 	headerBadtypType    = "headerBadtypType"
 	headerBadtypMissing = "headerBadtypMissing"
 	uClaimsMissing      = "uClaimsMissing"
-	uClaimsWrong        = "uClaimsWrong"
 	tsClaimsMissing     = "tsClaimsMissing"
 	cnfClaimsMissing    = "cnfClaimsMissing"
 	cnfJwkClaimsWrong   = "cnfJwkClaimsWrong"
