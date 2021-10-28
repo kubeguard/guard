@@ -58,7 +58,7 @@ const (
 	algoRS256 = "RS256"
 )
 
-// Jwk maintains public key info
+// jwk maintains public key info
 type jwk struct {
 	e   string `json:"e"`
 	kty string `json:"kty"`
