@@ -97,6 +97,14 @@ func (o *Options) Validate() []error {
 	if o.AuthMode == AKSAuthMode && o.AKSTokenURL == "" {
 		errs = append(errs, errors.New("azure.aks-token-url must be non-empty"))
 	}
+	if o.AuthMode == PassthroughAuthMode {
+		if !o.ResolveGroupMembershipOnlyOnOverageClaim {
+			errs = append(errs, errors.New("azure.graph-call-on-overage-claim cannot be false when passthrough azure.auth-mode is used"))
+		}
+		if !o.SkipGroupMembershipResolution {
+			errs = append(errs, errors.New("azure.skip-group-membership-resolution cannot be false when passthrough azure.auth-mode is used"))
+		}
+	}
 	if o.TenantID == "" {
 		errs = append(errs, errors.New("azure.tenant-id must be non-empty"))
 	}

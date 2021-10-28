@@ -122,8 +122,8 @@ func (p *PoPTokenVerifier) ValidatePopToken(token string) (string, error) {
 	// Verify host 'u' claim
 	if uc, ok := claims["u"]; ok {
 		if reqHostName, ok := uc.(string); ok {
-			if klog.V(10).Enabled() {
-				klog.V(10).Infoln("pop token validation running with hostName: %s. Request is coming for hostName: %s", p.hostName, reqHostName)
+			if klog.V(5).Enabled() {
+				klog.V(5).Infoln("pop token validation running with hostName: %s. Request is coming for hostName: %s", p.hostName, reqHostName)
 			}
 			if !strings.EqualFold(reqHostName, p.hostName) {
 				return "", errors.Errorf("Invalid Pop token due to host mismatch. Expected: %q, received: %q", p.hostName, reqHostName)

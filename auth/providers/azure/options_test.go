@@ -95,9 +95,31 @@ var (
 			func(o Options) Options {
 				o.AuthMode = PassthroughAuthMode
 				o.EnablePOP = true
+				o.ResolveGroupMembershipOnlyOnOverageClaim = true
+				o.SkipGroupMembershipResolution = true
 				return o
 			},
 			errors.New("azure.pop-hostname must be non-empty when pop token is enabled"),
+			false,
+		},
+		{
+			"passthrough Auth Mode should force ResolveGroupMembershipOnlyOnOverageClaim to be set",
+			func(o Options) Options {
+				o.AuthMode = PassthroughAuthMode
+				o.SkipGroupMembershipResolution = true
+				return o
+			},
+			errors.New("azure.graph-call-on-overage-claim cannot be false when passthrough azure.auth-mode is used"),
+			false,
+		},
+		{
+			"passthrough Auth Mode should force SkipGroupMembershipResolution to be set",
+			func(o Options) Options {
+				o.AuthMode = PassthroughAuthMode
+				o.ResolveGroupMembershipOnlyOnOverageClaim = true
+				return o
+			},
+			errors.New("azure.skip-group-membership-resolution cannot be false when passthrough azure.auth-mode is used"),
 			false,
 		},
 	}

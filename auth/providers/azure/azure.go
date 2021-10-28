@@ -185,7 +185,7 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 			return resp, nil
 		}
 	}
-	if !s.Options.SkipGroupMembershipResolution || !strings.EqualFold(s.Options.AuthMode, PassthroughAuthMode) {
+	if !s.Options.SkipGroupMembershipResolution {
 		if err := s.graphClient.RefreshToken(token); err != nil {
 			return nil, err
 		}
