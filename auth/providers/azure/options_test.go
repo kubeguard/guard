@@ -50,7 +50,7 @@ var (
 				o.AuthMode = empty
 				return o
 			},
-			errors.New("invalid azure.auth-mode. valid value is either aks, obo, or client-credential"),
+			errors.New("invalid azure.auth-mode. valid value is either aks, obo, client-credential or passthrough"),
 			true,
 		},
 		{
@@ -88,6 +88,38 @@ var (
 				return o
 			},
 			errors.New("azure.aks-token-url must be non-empty"),
+			false,
+		},
+		{
+			"azure.enable-pop is set without a hostname",
+			func(o Options) Options {
+				o.AuthMode = PassthroughAuthMode
+				o.EnablePOP = true
+				o.ResolveGroupMembershipOnlyOnOverageClaim = true
+				o.SkipGroupMembershipResolution = true
+				return o
+			},
+			errors.New("azure.pop-hostname must be non-empty when pop token is enabled"),
+			false,
+		},
+		{
+			"passthrough Auth Mode should force ResolveGroupMembershipOnlyOnOverageClaim to be set",
+			func(o Options) Options {
+				o.AuthMode = PassthroughAuthMode
+				o.SkipGroupMembershipResolution = true
+				return o
+			},
+			errors.New("azure.graph-call-on-overage-claim cannot be false when passthrough azure.auth-mode is used"),
+			false,
+		},
+		{
+			"passthrough Auth Mode should force SkipGroupMembershipResolution to be set",
+			func(o Options) Options {
+				o.AuthMode = PassthroughAuthMode
+				o.ResolveGroupMembershipOnlyOnOverageClaim = true
+				return o
+			},
+			errors.New("azure.skip-group-membership-resolution cannot be false when passthrough azure.auth-mode is used"),
 			false,
 		},
 	}

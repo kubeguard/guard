@@ -43,7 +43,7 @@ require (
 	gopkg.in/jcmturner/dnsutils.v1 v1.0.1 // indirect
 	gopkg.in/jcmturner/goidentity.v1 v1.0.0 // indirect
 	gopkg.in/jcmturner/gokrb5.v4 v4.1.2
-	gopkg.in/square/go-jose.v2 v2.2.2
+	gopkg.in/square/go-jose.v2 v2.6.0
 	k8s.io/api v0.21.1
 	k8s.io/apimachinery v0.21.1
 	k8s.io/client-go v0.21.1
