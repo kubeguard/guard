@@ -58,8 +58,8 @@ const (
 
 // jwk maintains public key info
 type jwk struct {
-	e string
-	n string
+	E string
+	N string
 }
 
 // ValidatePopToken is validating the pop token
@@ -162,11 +162,11 @@ func (p *PoPTokenVerifier) ValidatePopToken(token string) (string, error) {
 		return "", errors.Errorf("Failed to base64 url decode message signature. Error: %+v", err)
 	}
 
-	n, err := base64.RawURLEncoding.DecodeString(jwk.n)
+	n, err := base64.RawURLEncoding.DecodeString(jwk.N)
 	if err != nil {
 		return "", errors.Errorf("Failed to decode jwk.n .Error: %+v", err)
 	}
-	e, err := base64.RawURLEncoding.DecodeString(jwk.e)
+	e, err := base64.RawURLEncoding.DecodeString(jwk.E)
 	if err != nil {
 		return "", errors.Errorf("Failed to decode jwk.e .Error: %+v", err)
 	}

@@ -245,15 +245,15 @@ func TestPopTokenVerifier_Verify(t *testing.T) {
 
 	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "", headerBadAlgo)
 	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "Wrong algorithm found in PoP token header")
+	assert.EqualError(t, err, "Wrong algorithm found in PoP token header, expected 'RS256' having 'wrong'")
 
 	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "", headerBadtyp)
 	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "Wrong typ of token. Expected pop token")
+	assert.EqualError(t, err, "Wrong typ. Expected 'pop' having 'wrong'")
 
 	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "", headerBadtypMissing)
 	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "Invalid token. Typ claim missing")
+	assert.EqualError(t, err, "Invalid token. 'typ' claim is missing")
 
 	expiredToken, _ := GeneratePoPToken(time.Now().Add(time.Minute*-20).Unix(), "", "")
 	_, err = verifier.ValidatePopToken(expiredToken)
@@ -261,13 +261,13 @@ func TestPopTokenVerifier_Verify(t *testing.T) {
 
 	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "", tsClaimsMissing)
 	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "Invalid token. ts claim missing")
+	assert.EqualError(t, err, "Invalid token. 'ts' claim is missing")
 
 	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "wrongHostnme", "")
 	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "Invalid Pop token. Host mismatch. Expected: testHostname, Req received: wrongHostnme")
+	assert.EqualError(t, err, "Invalid Pop token due to host mismatch. Expected: \"testHostname\", received: \"wrongHostnme\"")
 
 	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "", uClaimsMissing)
 	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "Invalid token. u claim missing")
+	assert.EqualError(t, err, "Invalid token. 'u' claim is missing")
 }
