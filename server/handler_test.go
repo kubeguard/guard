@@ -158,7 +158,6 @@ func TestGetAuthProviderClient(t *testing.T) {
 
 	for _, test := range testData {
 		t.Run(test.testName, func(t *testing.T) {
-
 			client, err := s.getAuthProviderClient(test.authProvider, "")
 
 			if test.expectedErr == nil {

@@ -44,13 +44,14 @@ func getAPIServerAndAccessInfo(returnCode int, body, clusterType, resourceId str
 		clusterType:     clusterType,
 		azureResourceId: resourceId,
 		armCallLimit:    0,
-		lock:            sync.RWMutex{}}
+		lock:            sync.RWMutex{},
+	}
 	return ts, u
 }
 
 func TestCheckAccess(t *testing.T) {
 	t.Run("successful request", func(t *testing.T) {
-		var validBody = `[{"accessDecision":"Allowed",
+		validBody := `[{"accessDecision":"Allowed",
 		"actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete",
 		"isDataAction":true,"roleAssignment":null,"denyAssignment":null,"timeToLiveInMs":300000}]`
 
@@ -59,8 +60,11 @@ func TestCheckAccess(t *testing.T) {
 
 		request := &authzv1.SubjectAccessReviewSpec{
 			User: "alpha@bing.com",
-			ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev", Group: "", Resource: "pods",
-				Subresource: "status", Version: "v1", Name: "test", Verb: "delete"}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}}}
+			ResourceAttributes: &authzv1.ResourceAttributes{
+				Namespace: "dev", Group: "", Resource: "pods",
+				Subresource: "status", Version: "v1", Name: "test", Verb: "delete",
+			}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
+		}
 
 		response, err := u.CheckAccess(request)
 
@@ -71,15 +75,18 @@ func TestCheckAccess(t *testing.T) {
 	})
 
 	t.Run("too many requests", func(t *testing.T) {
-		var validBody = `""`
+		validBody := `""`
 
 		ts, u := getAPIServerAndAccessInfo(http.StatusTooManyRequests, validBody, "arc", "resourceid")
 		defer ts.Close()
 
 		request := &authzv1.SubjectAccessReviewSpec{
 			User: "alpha@bing.com",
-			ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev", Group: "", Resource: "pods",
-				Subresource: "status", Version: "v1", Name: "test", Verb: "delete"}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}}}
+			ResourceAttributes: &authzv1.ResourceAttributes{
+				Namespace: "dev", Group: "", Resource: "pods",
+				Subresource: "status", Version: "v1", Name: "test", Verb: "delete",
+			}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
+		}
 
 		response, err := u.CheckAccess(request)
 
@@ -88,7 +95,7 @@ func TestCheckAccess(t *testing.T) {
 	})
 
 	t.Run("check acess not available", func(t *testing.T) {
-		var validBody = `""`
+		validBody := `""`
 
 		ts, u := getAPIServerAndAccessInfo(http.StatusInternalServerError, validBody,
 			"arc", "resourceid")
@@ -96,8 +103,11 @@ func TestCheckAccess(t *testing.T) {
 
 		request := &authzv1.SubjectAccessReviewSpec{
 			User: "alpha@bing.com",
-			ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev", Group: "", Resource: "pods",
-				Subresource: "status", Version: "v1", Name: "test", Verb: "delete"}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}}}
+			ResourceAttributes: &authzv1.ResourceAttributes{
+				Namespace: "dev", Group: "", Resource: "pods",
+				Subresource: "status", Version: "v1", Name: "test", Verb: "delete",
+			}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
+		}
 
 		response, err := u.CheckAccess(request)
 
@@ -122,8 +132,8 @@ func getAuthServerAndAccessInfo(returnCode int, body, clientID, clientSecret str
 
 func TestLogin(t *testing.T) {
 	t.Run("successful login", func(t *testing.T) {
-		var validToken = "blackbriar"
-		var validBody = `{
+		validToken := "blackbriar"
+		validBody := `{
 							"token_type": "Bearer",
 							"expires_in": 3599,
 							"access_token": "%s"

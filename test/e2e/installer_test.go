@@ -44,7 +44,6 @@ import (
 )
 
 var _ = Describe("Installer test", func() {
-
 	const (
 		privateRegistryName    = "appscode"
 		serverAddr             = "10.96.10.96"
@@ -141,7 +140,7 @@ var _ = Describe("Installer test", func() {
 
 			file := filepath.Join(yamlDir, installerfileName)
 			By("Writing installer yaml in " + file)
-			err = afero.WriteFile(appFs, file, data, 0777)
+			err = afero.WriteFile(appFs, file, data, 0o777)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Executing command : kubectl apply -f " + file)
@@ -260,17 +259,17 @@ var _ = Describe("Installer test", func() {
 		By("Setting up certificates")
 		appFs = afero.NewOsFs()
 		f = root.Invoke()
-		err := appFs.MkdirAll(yamlDir, 0777)
+		err := appFs.MkdirAll(yamlDir, 0o777)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = appFs.MkdirAll(filepath.Join(certDir, "pki"), 0777)
+		err = appFs.MkdirAll(filepath.Join(certDir, "pki"), 0o777)
 		Expect(err).NotTo(HaveOccurred())
 
 		// write ca
-		err = afero.WriteFile(appFs, filepath.Join(certDir, "pki", "ca.crt"), f.CertStore.CACertBytes(), 0777)
+		err = afero.WriteFile(appFs, filepath.Join(certDir, "pki", "ca.crt"), f.CertStore.CACertBytes(), 0o777)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = afero.WriteFile(appFs, filepath.Join(certDir, "pki", "ca.key"), f.CertStore.CAKeyBytes(), 0777)
+		err = afero.WriteFile(appFs, filepath.Join(certDir, "pki", "ca.key"), f.CertStore.CAKeyBytes(), 0o777)
 		Expect(err).NotTo(HaveOccurred())
 
 		// write server cert, key
@@ -279,9 +278,9 @@ var _ = Describe("Installer test", func() {
 			IPs:      []net.IP{net.ParseIP(serverAddr)},
 		})
 		Expect(err).NotTo(HaveOccurred())
-		err = afero.WriteFile(appFs, filepath.Join(certDir, "pki", "server.crt"), srvCert, 0777)
+		err = afero.WriteFile(appFs, filepath.Join(certDir, "pki", "server.crt"), srvCert, 0o777)
 		Expect(err).NotTo(HaveOccurred())
-		err = afero.WriteFile(appFs, filepath.Join(certDir, "pki", "server.key"), srvKey, 0777)
+		err = afero.WriteFile(appFs, filepath.Join(certDir, "pki", "server.key"), srvKey, 0o777)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -316,7 +315,6 @@ var _ = Describe("Installer test", func() {
 			checkClusterRoleDeleted()
 			checkPodDeleted()
 			checkSecretDeleted(secretName)
-
 		})
 
 		AfterEach(func() {
@@ -444,9 +442,9 @@ var _ = Describe("Installer test", func() {
 				authopts.AuthProvider = providers.AuthProviders{Providers: []string{token.OrgType}}
 				authopts.Token = tokenOpts
 
-				err := appFs.Mkdir(tokenAuthDir, 0777)
+				err := appFs.Mkdir(tokenAuthDir, 0o777)
 				Expect(err).NotTo(HaveOccurred())
-				err = afero.WriteFile(appFs, filepath.Join(tokenAuthDir, tokenFileName), []byte(tokenData), 0777)
+				err = afero.WriteFile(appFs, filepath.Join(tokenAuthDir, tokenFileName), []byte(tokenData), 0o777)
 				Expect(err).NotTo(HaveOccurred())
 
 				checkSecretDeleted(tokenSecret)
@@ -477,10 +475,10 @@ var _ = Describe("Installer test", func() {
 				authopts.AuthProvider = providers.AuthProviders{Providers: []string{google.OrgType}}
 				authopts.Google = googleOpts
 
-				err := appFs.Mkdir(saDir, 0777)
+				err := appFs.Mkdir(saDir, 0o777)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = afero.WriteFile(appFs, filepath.Join(saDir, saFileName), []byte(saData), 0777)
+				err = afero.WriteFile(appFs, filepath.Join(saDir, saFileName), []byte(saData), 0o777)
 				Expect(err).NotTo(HaveOccurred())
 
 				checkSecretDeleted(googleSecret)
@@ -505,7 +503,6 @@ var _ = Describe("Installer test", func() {
 				// time.Sleep(55 * time.Minute)
 			})
 		})
-
 	})
 
 	Describe("Setting up guard for all providers", func() {
@@ -528,14 +525,15 @@ var _ = Describe("Installer test", func() {
 				Google:          googleOpts,
 			}
 
-			authopts.AuthProvider = providers.AuthProviders{Providers: []string{
-				azure.OrgType,
-				github.OrgType,
-				gitlab.OrgType,
-				google.OrgType,
-				ldap.OrgType,
-				token.OrgType,
-			},
+			authopts.AuthProvider = providers.AuthProviders{
+				Providers: []string{
+					azure.OrgType,
+					github.OrgType,
+					gitlab.OrgType,
+					google.OrgType,
+					ldap.OrgType,
+					token.OrgType,
+				},
 			}
 
 			secretNames = []string{
@@ -546,14 +544,14 @@ var _ = Describe("Installer test", func() {
 				googleSecret,
 			}
 
-			err := appFs.Mkdir(tokenAuthDir, 0777)
+			err := appFs.Mkdir(tokenAuthDir, 0o777)
 			Expect(err).NotTo(HaveOccurred())
-			err = afero.WriteFile(appFs, filepath.Join(tokenAuthDir, tokenFileName), []byte(tokenData), 0777)
+			err = afero.WriteFile(appFs, filepath.Join(tokenAuthDir, tokenFileName), []byte(tokenData), 0o777)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = appFs.Mkdir(saDir, 0777)
+			err = appFs.Mkdir(saDir, 0o777)
 			Expect(err).NotTo(HaveOccurred())
-			err = afero.WriteFile(appFs, filepath.Join(saDir, saFileName), []byte(saData), 0777)
+			err = afero.WriteFile(appFs, filepath.Join(saDir, saFileName), []byte(saData), 0o777)
 			Expect(err).NotTo(HaveOccurred())
 
 			checkServiceDeleted()
@@ -590,8 +588,6 @@ var _ = Describe("Installer test", func() {
 			for _, name := range secretNames {
 				checkSecretCreated(name)
 			}
-
 		})
 	})
-
 })

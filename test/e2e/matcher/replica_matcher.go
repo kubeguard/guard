@@ -43,11 +43,11 @@ func (matcher *replicaMatcher) Match(actual interface{}) (success bool, err erro
 		return *obj.Spec.Replicas == int32(matcher.expected), nil
 	case *extensions.Deployment:
 		return *obj.Spec.Replicas == int32(matcher.expected), nil
-	//case *extensions.DaemonSet:
+	// case *extensions.DaemonSet:
 	//	return matcher.find(obj.Spec.Template.Spec.Containers)
 	case *apps.Deployment:
 		return *obj.Spec.Replicas == int32(matcher.expected), nil
-	//case *apps.StatefulSet:
+	// case *apps.StatefulSet:
 	//	return matcher.find(obj.Spec.Template.Spec.Containers)
 
 	default:

@@ -169,7 +169,8 @@ func (s Server) ListenAndServe() {
 	if len(s.AuthzRecommendedOptions.AuthzProvider.Providers) > 0 {
 		authzhandler := Authzhandler{
 			AuthRecommendedOptions:  s.AuthRecommendedOptions,
-			AuthzRecommendedOptions: s.AuthzRecommendedOptions}
+			AuthzRecommendedOptions: s.AuthzRecommendedOptions,
+		}
 		authzPromHandler := promhttp.InstrumentHandlerInFlight(inFlightGaugeAuthz,
 			promhttp.InstrumentHandlerDuration(duration.MustCurryWith(prometheus.Labels{"handler": "subjectaccessreviews"}),
 				promhttp.InstrumentHandlerCounter(counterAuthz,

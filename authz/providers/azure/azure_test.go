@@ -106,7 +106,7 @@ func getServerAndClient(t *testing.T, loginResp, checkaccessResp string) (*httpt
 		t.Fatalf("Error when creatidng azure client. reason : %v", err)
 	}
 
-	var testOptions = data.Options{
+	testOptions := data.Options{
 		HardMaxCacheSize:   1,
 		Shards:             1,
 		LifeWindow:         1 * time.Minute,
@@ -122,7 +122,7 @@ func getServerAndClient(t *testing.T, loginResp, checkaccessResp string) (*httpt
 
 func TestCheck(t *testing.T) {
 	t.Run("successful request", func(t *testing.T) {
-		var validBody = `[{"accessDecision":"Allowed",
+		validBody := `[{"accessDecision":"Allowed",
 		"actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete",
 		"isDataAction":true,"roleAssignment":null,"denyAssignment":null,"timeToLiveInMs":300000}]`
 
@@ -132,8 +132,11 @@ func TestCheck(t *testing.T) {
 
 		request := &authzv1.SubjectAccessReviewSpec{
 			User: "beta@bing.com",
-			ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev", Group: "", Resource: "pods",
-				Subresource: "status", Version: "v1", Name: "test", Verb: "delete"}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}}}
+			ResourceAttributes: &authzv1.ResourceAttributes{
+				Namespace: "dev", Group: "", Resource: "pods",
+				Subresource: "status", Version: "v1", Name: "test", Verb: "delete",
+			}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
+		}
 
 		resp, err := client.Check(request, store)
 		assert.Nilf(t, err, "Should not have got error")

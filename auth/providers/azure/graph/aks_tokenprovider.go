@@ -47,7 +47,7 @@ func NewAKSTokenProvider(tokenURL, tenantID string) TokenProvider {
 func (u *aksTokenProvider) Name() string { return u.name }
 
 func (u *aksTokenProvider) Acquire(token string) (AuthResponse, error) {
-	var authResp = AuthResponse{}
+	authResp := AuthResponse{}
 	tokenReq := struct {
 		TenantID    string `json:"tenantID,omitempty"`
 		AccessToken string `json:"accessToken,omitempty"`

@@ -111,7 +111,7 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 		VolumeSource: core.VolumeSource{
 			Secret: &core.SecretVolumeSource{
 				SecretName:  authSecret.Name,
-				DefaultMode: pointer.Int32P(0555),
+				DefaultMode: pointer.Int32P(0o555),
 			},
 		},
 	}

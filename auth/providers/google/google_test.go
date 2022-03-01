@@ -124,7 +124,6 @@ func googleGetGroups(pageToken string, groupStartNo, groupPerPage int) gdir.Grou
 }
 
 func googleGetGroupResp(totalGroups, groupPerPage, totalPage int) googleGroupResp {
-
 	groupData := map[string]gdir.Groups{}
 	for i := 1; i <= totalPage; i++ {
 		nextPageToken := strconv.Itoa(i + 1)
@@ -410,7 +409,7 @@ func TestCheckGoogleAuthenticationFailed(t *testing.T) {
 			client.domainName = domain
 
 			resp, err := client.Check(token)
-			//t.Log(test)
+			// t.Log(test)
 			assert.NotNil(t, err)
 			assert.Nil(t, resp)
 		})

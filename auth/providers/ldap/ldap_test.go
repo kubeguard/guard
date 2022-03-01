@@ -73,11 +73,10 @@ func (s *ldapServer) start() {
 }
 
 func (s *ldapServer) stop() {
-
 }
 
 func ldapServerSetup(secureConn bool) (*ldapServer, error) {
-	//Create a new LDAP Server
+	// Create a new LDAP Server
 	server := ldapserver.NewServer()
 	handler := ldapHandler{}
 
@@ -105,8 +104,7 @@ func ldapServerSetup(secureConn bool) (*ldapServer, error) {
 	return srv, nil
 }
 
-type ldapHandler struct {
-}
+type ldapHandler struct{}
 
 func (h ldapHandler) Bind(bindDN, bindSimplePw string, conn net.Conn) (ldapserver.LDAPResultCode, error) {
 	fmt.Println("*********bind**************")
@@ -195,7 +193,6 @@ func (h ldapHandler) Search(boundDN string, searchReq ldapserver.SearchRequest, 
 }
 
 func TestCheckLdapInSecure(t *testing.T) {
-
 	opts := Options{
 		ServerAddress:        serverAddr,
 		ServerPort:           inSecurePort,

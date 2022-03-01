@@ -55,7 +55,7 @@ func NewOBOTokenProvider(clientID, clientSecret, loginURL, scope string) TokenPr
 func (u *oboTokenProvider) Name() string { return u.name }
 
 func (u *oboTokenProvider) Acquire(token string) (AuthResponse, error) {
-	var authResp = AuthResponse{}
+	authResp := AuthResponse{}
 	form := url.Values{}
 	form.Set("client_id", u.clientID)
 	form.Set("client_secret", u.clientSecret)

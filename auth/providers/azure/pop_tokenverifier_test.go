@@ -115,7 +115,7 @@ func (swk *swKey) GenerateToken(payload []byte) (string, error) {
 	pKey := &jose.JSONWebKey{Key: swk.pKey, Algorithm: swk.Alg(), KeyID: swk.KeyID()}
 
 	// create a Square.jose RSA signer, used to sign the JWT
-	var signerOpts = jose.SignerOptions{}
+	signerOpts := jose.SignerOptions{}
 	signerOpts.WithType("JWT")
 	rsaSigner, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.RS256, Key: pKey}, &signerOpts)
 	if err != nil {

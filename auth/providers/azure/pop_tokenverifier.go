@@ -50,9 +50,9 @@ func NewPoPVerifier(hostName string, popTokenValidityDuration time.Duration) *Po
 type Claims map[string]interface{}
 
 const (
-	//TypPoP signifies pop token
+	// TypPoP signifies pop token
 	typPoP = "pop"
-	//AlgoRS256 signifies signing algorithm
+	// AlgoRS256 signifies signing algorithm
 	algoRS256 = "RS256"
 )
 
