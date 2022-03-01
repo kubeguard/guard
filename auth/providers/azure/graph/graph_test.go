@@ -41,8 +41,8 @@ func getAuthServerAndUserInfo(returnCode int, body, clientID, clientSecret strin
 
 func TestLogin(t *testing.T) {
 	t.Run("successful login", func(t *testing.T) {
-		var validToken = "blackbriar"
-		var validBody = `{
+		validToken := "blackbriar"
+		validBody := `{
   "token_type": "Bearer",
   "expires_in": 3599,
   "access_token": "%s"
@@ -116,7 +116,7 @@ func getAPIServerAndUserInfo(returnCode int, body string) (*httptest.Server, *Us
 
 func TestGetGroupIDs(t *testing.T) {
 	t.Run("successful request", func(t *testing.T) {
-		var validBody = `{
+		validBody := `{
   "value": [
       "f36ec2c5-fa5t-4f05-b87f-deadbeef"
   ]
@@ -178,7 +178,7 @@ func TestGetGroupIDs(t *testing.T) {
 
 func TestGetExpandedGroups(t *testing.T) {
 	t.Run("successful request", func(t *testing.T) {
-		var validBody = `{
+		validBody := `{
   "value": [
     {
       "@odata.type": "#microsoft.graph.group",
@@ -243,13 +243,13 @@ func TestGetExpandedGroups(t *testing.T) {
 
 // This is only testing the full function run, error cases are handled in the tests above
 func TestGetGroups(t *testing.T) {
-	var validBody1 = `
+	validBody1 := `
 {
     "value": [
         "f36ec2c5-fa5t-4f05-b87f-deadbeef"
     ]
 }`
-	var validBody2 = `{
+	validBody2 := `{
 	"value": [
 		{
 		    "@odata.type": "#microsoft.graph.group",
@@ -313,7 +313,7 @@ func TestGetGroups(t *testing.T) {
 }
 
 func TestGetGroupsPaging(t *testing.T) {
-	var validBody1 = `
+	validBody1 := `
 {
     "value": [
 		"f36ec2c5-fa5t-4f05-b87f-deadbeef",
@@ -321,7 +321,7 @@ func TestGetGroupsPaging(t *testing.T) {
 		"f16ec2c5-fa5t-4f05-b87f-deadbeef"
     ]
 }`
-	var validBody2 = `{
+	validBody2 := `{
 	"value": [
 		{
 		    "@odata.type": "#microsoft.graph.group",
@@ -334,7 +334,7 @@ func TestGetGroupsPaging(t *testing.T) {
 	]
 }`
 
-	var validBody3 = `{
+	validBody3 := `{
 	"value": [
 		{
 		    "@odata.type": "#microsoft.graph.group",
@@ -351,7 +351,7 @@ func TestGetGroupsPaging(t *testing.T) {
 	mux.Handle("/directoryObjects/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
 
-		var objectQuery = &ObjectQuery{}
+		objectQuery := &ObjectQuery{}
 		err := json.NewDecoder(r.Body).Decode(objectQuery)
 		if err != nil {
 			t.Errorf("Error decoding request body: %s", err)

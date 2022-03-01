@@ -235,7 +235,6 @@ func (a *AccessInfo) setReqHeaders(req *http.Request) {
 
 func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
 	checkAccessBody, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId)
-
 	if err != nil {
 		return nil, errors.Wrap(err, "error in preparing check access request")
 	}

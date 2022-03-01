@@ -57,7 +57,7 @@ func AddAuthInfo(username string, authInfo *clientcmdapi.AuthInfo) error {
 
 	konfig.AuthInfos[username] = authInfo
 
-	err := os.MkdirAll(filepath.Dir(Path()), 0755)
+	err := os.MkdirAll(filepath.Dir(Path()), 0o755)
 	if err != nil {
 		return err
 	}

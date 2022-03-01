@@ -31,12 +31,10 @@ type E2EOptions struct {
 	KubeConfig  string
 }
 
-var (
-	options = &E2EOptions{
-		KubeConfig:  filepath.Join(homedir.HomeDir(), ".kube", "config"),
-		KubeContext: "minikube",
-	}
-)
+var options = &E2EOptions{
+	KubeConfig:  filepath.Join(homedir.HomeDir(), ".kube", "config"),
+	KubeContext: "minikube",
+}
 
 func init() {
 	flag.StringVar(&options.KubeConfig, "kubeconfig", "", "Path to kubeconfig file with authorization information (the master location is set by the master flag).")

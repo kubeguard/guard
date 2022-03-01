@@ -126,7 +126,7 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 	}
 
 	var groups []string
-	//default use `cn` as group name
+	// default use `cn` as group name
 	for _, en := range res.Entries {
 		for _, g := range en.Attributes {
 			if g.Name == s.opts.GroupNameAttribute {
@@ -147,7 +147,7 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 
 func (s Authenticator) authenticateUser(conn *ldap.Conn, token string) (string, error) {
 	if s.opts.AuthenticationChoice == AuthChoiceSimple {
-		//simple authentication
+		// simple authentication
 		username, password, ok := parseEncodedToken(token)
 		if !ok {
 			return "", errors.New("Invalid basic auth token")

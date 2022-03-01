@@ -25,7 +25,6 @@ import (
 )
 
 func newProxySecret(namespace string, httpsProxy string, httpProxy string, noProxy string) runtime.Object {
-
 	return &core.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "guard-proxy",

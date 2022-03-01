@@ -37,30 +37,28 @@ type testInfo struct {
 	expectedErr []error
 }
 
-var (
-	validationErrorData = []struct {
-		testName    string
-		optsFunc    optionFunc
-		expectedErr error
-	}{
-		{
-			"google.sa-json-file is empty",
-			func(o Options) Options {
-				o.ServiceAccountJsonFile = empty
-				return o
-			},
-			errors.New("google.sa-json-file must be non-empty"),
+var validationErrorData = []struct {
+	testName    string
+	optsFunc    optionFunc
+	expectedErr error
+}{
+	{
+		"google.sa-json-file is empty",
+		func(o Options) Options {
+			o.ServiceAccountJsonFile = empty
+			return o
 		},
-		{
-			"google.admin-email is empty",
-			func(o Options) Options {
-				o.AdminEmail = empty
-				return o
-			},
-			errors.New("google.admin-email must be non-empty"),
+		errors.New("google.sa-json-file must be non-empty"),
+	},
+	{
+		"google.admin-email is empty",
+		func(o Options) Options {
+			o.AdminEmail = empty
+			return o
 		},
-	}
-)
+		errors.New("google.admin-email must be non-empty"),
+	},
+}
 
 func getNonEmptyOptions() Options {
 	return Options{

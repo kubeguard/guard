@@ -55,10 +55,8 @@ func init() {
 	auth.SupportedOrgs = append(auth.SupportedOrgs, OrgType)
 }
 
-var (
-	// ErrorClaimNotFound indicates the given key was not found in the claims
-	ErrClaimNotFound = fmt.Errorf("claim not found")
-)
+// ErrorClaimNotFound indicates the given key was not found in the claims
+var ErrClaimNotFound = fmt.Errorf("claim not found")
 
 // claims represents a map of claims provided with a JWT
 type claims map[string]interface{}
@@ -278,7 +276,7 @@ func marshalGenericTo(src interface{}, dst interface{}) error {
 
 // GetClaims returns a Claims object
 func getClaims(token *oidc.IDToken) (claims, error) {
-	var c = claims{}
+	c := claims{}
 	err := token.Claims(&c)
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshalling claims: %s", err)
@@ -304,7 +302,8 @@ func (c claims) getUserInfo(usernameClaim, userObjectIDClaim string) (*authv1.Us
 
 	return &authv1.UserInfo{
 		Username: username,
-		Extra:    map[string]authv1.ExtraValue{"oid": {useroid}}}, nil
+		Extra:    map[string]authv1.ExtraValue{"oid": {useroid}},
+	}, nil
 }
 
 // String gets a string value from claims given a key. Returns error if

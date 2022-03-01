@@ -55,7 +55,7 @@ func NewClientCredentialTokenProvider(clientID, clientSecret, loginURL, scope st
 func (u *clientCredentialTokenProvider) Name() string { return u.name }
 
 func (u *clientCredentialTokenProvider) Acquire(token string) (AuthResponse, error) {
-	var authResp = AuthResponse{}
+	authResp := AuthResponse{}
 	form := url.Values{}
 	form.Set("client_id", u.clientID)
 	form.Set("client_secret", u.clientSecret)

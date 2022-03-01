@@ -37,88 +37,86 @@ type testInfo struct {
 	expectedErr []error
 }
 
-var (
-	validationErrorData = []struct {
-		testName    string
-		optsFunc    optionFunc
-		expectedErr error
-	}{
-		{
-			"ldap.server-address is empty",
-			func(o Options) Options {
-				o.ServerAddress = empty
-				return o
-			},
-			errors.New("ldap.server-address must be non-empty"),
+var validationErrorData = []struct {
+	testName    string
+	optsFunc    optionFunc
+	expectedErr error
+}{
+	{
+		"ldap.server-address is empty",
+		func(o Options) Options {
+			o.ServerAddress = empty
+			return o
 		},
-		{
-			"ldap.server-port is empty",
-			func(o Options) Options {
-				o.ServerPort = empty
-				return o
-			},
-			errors.New("ldap.server-port must be non-empty"),
+		errors.New("ldap.server-address must be non-empty"),
+	},
+	{
+		"ldap.server-port is empty",
+		func(o Options) Options {
+			o.ServerPort = empty
+			return o
 		},
-		{
-			"ldap.user-search-dn is empty",
-			func(o Options) Options {
-				o.UserSearchDN = empty
-				return o
-			},
-			errors.New("ldap.user-search-dn must be non-empty"),
+		errors.New("ldap.server-port must be non-empty"),
+	},
+	{
+		"ldap.user-search-dn is empty",
+		func(o Options) Options {
+			o.UserSearchDN = empty
+			return o
 		},
-		{
-			"ldap.user-attribute is empty",
-			func(o Options) Options {
-				o.UserAttribute = empty
-				return o
-			},
-			errors.New("ldap.user-attribute must be non-empty"),
+		errors.New("ldap.user-search-dn must be non-empty"),
+	},
+	{
+		"ldap.user-attribute is empty",
+		func(o Options) Options {
+			o.UserAttribute = empty
+			return o
 		},
-		{
-			"ldap.group-search-dn is empty",
-			func(o Options) Options {
-				o.GroupSearchDN = empty
-				return o
-			},
-			errors.New("ldap.group-search-dn must be non-empty"),
+		errors.New("ldap.user-attribute must be non-empty"),
+	},
+	{
+		"ldap.group-search-dn is empty",
+		func(o Options) Options {
+			o.GroupSearchDN = empty
+			return o
 		},
-		{
-			"ldap.group-member-attribute is empty",
-			func(o Options) Options {
-				o.GroupMemberAttribute = empty
-				return o
-			},
-			errors.New("ldap.group-member-attribute must be non-empty"),
+		errors.New("ldap.group-search-dn must be non-empty"),
+	},
+	{
+		"ldap.group-member-attribute is empty",
+		func(o Options) Options {
+			o.GroupMemberAttribute = empty
+			return o
 		},
-		{
-			"ldap.group-name-attribute is empty",
-			func(o Options) Options {
-				o.GroupNameAttribute = empty
-				return o
-			},
-			errors.New("ldap.group-name-attribute must be non-empty"),
+		errors.New("ldap.group-member-attribute must be non-empty"),
+	},
+	{
+		"ldap.group-name-attribute is empty",
+		func(o Options) Options {
+			o.GroupNameAttribute = empty
+			return o
 		},
-		{
-			"ldap.is-secure-ldap and ldap.start-tls both are true",
-			func(o Options) Options {
-				o.IsSecureLDAP = true
-				o.StartTLS = true
-				return o
-			},
-			errors.New("ldap.is-secure-ldap and ldap.start-tls both can not be true at the same time"),
+		errors.New("ldap.group-name-attribute must be non-empty"),
+	},
+	{
+		"ldap.is-secure-ldap and ldap.start-tls both are true",
+		func(o Options) Options {
+			o.IsSecureLDAP = true
+			o.StartTLS = true
+			return o
 		},
-		{
-			"auth choice kerberos and ldap.keytab-file is empty",
-			func(o Options) Options {
-				o.KeytabFile = empty
-				o.AuthenticationChoice = AuthChoiceKerberos
-				return o
-			},
-			errors.New("for kerberos ldap.keytab-file must be non-empty"),
+		errors.New("ldap.is-secure-ldap and ldap.start-tls both can not be true at the same time"),
+	},
+	{
+		"auth choice kerberos and ldap.keytab-file is empty",
+		func(o Options) Options {
+			o.KeytabFile = empty
+			o.AuthenticationChoice = AuthChoiceKerberos
+			return o
 		},
-	}
-)
+		errors.New("for kerberos ldap.keytab-file must be non-empty"),
+	},
+}
 
 func getNonEmptyOptions() Options {
 	return Options{
@@ -168,7 +166,6 @@ func getTestDataForIndivitualError() []testInfo {
 }
 
 func TestOptionsValidate(t *testing.T) {
-
 	testData := []testInfo{
 		{
 			"validation failed, all empty",

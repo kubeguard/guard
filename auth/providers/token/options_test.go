@@ -42,7 +42,8 @@ func TestOptionsValidate(t *testing.T) {
 		opts        Options
 		expectedErr []error
 	}{
-		{Options{empty},
+		{
+			Options{empty},
 			[]error{validateData.err},
 		},
 		{

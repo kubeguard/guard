@@ -221,7 +221,6 @@ func gitlabClientSetup(serverUrl string, useGroupId bool) *Authenticator {
 }
 
 func TestGitlab(t *testing.T) {
-
 	dataset := []struct {
 		testName       string
 		userResp       string

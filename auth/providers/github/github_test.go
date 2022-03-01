@@ -248,7 +248,6 @@ func githubClientSetup(serverUrl, githubOrg string) *Authenticator {
 }
 
 func TestCheckGithub(t *testing.T) {
-
 	dataset := []struct {
 		testName      string
 		memRespBody   string

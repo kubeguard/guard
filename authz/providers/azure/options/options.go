@@ -47,7 +47,8 @@ func NewOptions() Options {
 		ARMCallLimit:                   defaultArmCallLimit,
 		SkipAuthzCheck:                 []string{""},
 		SkipAuthzForNonAADUsers:        true,
-		AllowNonResDiscoveryPathAccess: true}
+		AllowNonResDiscoveryPathAccess: true,
+	}
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {

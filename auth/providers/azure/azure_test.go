@@ -308,7 +308,6 @@ func TestCheckAzureAuthenticationSuccess(t *testing.T) {
 	for _, test := range dataset {
 		// authenticated : true
 		t.Run(fmt.Sprintf("authentication successful, group size %v", test.groupSize), func(t *testing.T) {
-
 			srv, client := getServerAndClient(t, signKey, loginResp, test.groupSize, false, false)
 			defer srv.Close()
 
@@ -326,7 +325,6 @@ func TestCheckAzureAuthenticationSuccess(t *testing.T) {
 	for _, test := range dataset {
 		// authenticated : true
 		t.Run(fmt.Sprintf("authentication (with group IDs) successful, group size %v", test.groupSize), func(t *testing.T) {
-
 			srv, client := getServerAndClient(t, signKey, loginResp, test.groupSize, true, false)
 			defer srv.Close()
 
@@ -362,7 +360,6 @@ func TestCheckAzureAuthenticationWithOverageCheckOption(t *testing.T) {
 	for _, verifyClientID := range verifyClientIDs {
 		for _, test := range datasetForSuccess {
 			t.Run(fmt.Sprintf("authentication successful, verifyClientID: %t, group size %v", verifyClientID, test.groupSize), func(t *testing.T) {
-
 				srv, client := getServerAndClient(t, signKey, loginResp, test.groupSize, true, verifyClientID)
 				client.Options.ResolveGroupMembershipOnlyOnOverageClaim = true
 				client.Options.UseGroupUID = true
@@ -446,7 +443,7 @@ var testClaims = claims{
 func TestReviewFromClaims(t *testing.T) {
 	// valid user claim
 	t.Run("valid user claim", func(t *testing.T) {
-		var validUserInfo = &authv1.UserInfo{
+		validUserInfo := &authv1.UserInfo{
 			Username: username,
 			Extra:    map[string]authv1.ExtraValue{"oid": {"abc-123d4"}},
 		}
@@ -486,7 +483,7 @@ func TestString(t *testing.T) {
 		assert.Empty(t, v, "expected empty")
 	})
 
-	//non-string claim should error
+	// non-string claim should error
 	t.Run("non-string claim should error", func(t *testing.T) {
 		v, err := testClaims.string("bad_upn")
 		assert.NotNil(t, err)

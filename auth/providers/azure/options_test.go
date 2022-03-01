@@ -37,93 +37,91 @@ type testInfo struct {
 	expectedErr []error
 }
 
-var (
-	validationErrorData = []struct {
-		testName    string
-		optsFunc    optionFunc
-		expectedErr error
-		allError    bool
-	}{
-		{
-			"azure.auth-mode is invalid",
-			func(o Options) Options {
-				o.AuthMode = empty
-				return o
-			},
-			errors.New("invalid azure.auth-mode. valid value is either aks, obo, client-credential or passthrough"),
-			true,
+var validationErrorData = []struct {
+	testName    string
+	optsFunc    optionFunc
+	expectedErr error
+	allError    bool
+}{
+	{
+		"azure.auth-mode is invalid",
+		func(o Options) Options {
+			o.AuthMode = empty
+			return o
 		},
-		{
-			"azure.client-secret must be non-empty",
-			func(o Options) Options {
-				o.ClientSecret = empty
-				return o
-			},
-			errors.New("azure.client-secret must be non-empty"),
-			true,
+		errors.New("invalid azure.auth-mode. valid value is either aks, obo, client-credential or passthrough"),
+		true,
+	},
+	{
+		"azure.client-secret must be non-empty",
+		func(o Options) Options {
+			o.ClientSecret = empty
+			return o
 		},
-		{
-			"azure.client-id is empty when verify-clientID is true",
-			func(o Options) Options {
-				o.ClientID = empty
-				o.VerifyClientID = true
-				return o
-			},
-			errors.New("azure.client-id must be non-empty when azure.verify-clientID is set"),
-			false,
+		errors.New("azure.client-secret must be non-empty"),
+		true,
+	},
+	{
+		"azure.client-id is empty when verify-clientID is true",
+		func(o Options) Options {
+			o.ClientID = empty
+			o.VerifyClientID = true
+			return o
 		},
-		{
-			"azure.tenant-id is empty",
-			func(o Options) Options {
-				o.TenantID = empty
-				return o
-			},
-			errors.New("azure.tenant-id must be non-empty"),
-			true,
+		errors.New("azure.client-id must be non-empty when azure.verify-clientID is set"),
+		false,
+	},
+	{
+		"azure.tenant-id is empty",
+		func(o Options) Options {
+			o.TenantID = empty
+			return o
 		},
-		{
-			"azure.aks-token-url is empty for aks auth mode",
-			func(o Options) Options {
-				o.AuthMode = AKSAuthMode
-				return o
-			},
-			errors.New("azure.aks-token-url must be non-empty"),
-			false,
+		errors.New("azure.tenant-id must be non-empty"),
+		true,
+	},
+	{
+		"azure.aks-token-url is empty for aks auth mode",
+		func(o Options) Options {
+			o.AuthMode = AKSAuthMode
+			return o
 		},
-		{
-			"azure.enable-pop is set without a hostname",
-			func(o Options) Options {
-				o.AuthMode = PassthroughAuthMode
-				o.EnablePOP = true
-				o.ResolveGroupMembershipOnlyOnOverageClaim = true
-				o.SkipGroupMembershipResolution = true
-				return o
-			},
-			errors.New("azure.pop-hostname must be non-empty when pop token is enabled"),
-			false,
+		errors.New("azure.aks-token-url must be non-empty"),
+		false,
+	},
+	{
+		"azure.enable-pop is set without a hostname",
+		func(o Options) Options {
+			o.AuthMode = PassthroughAuthMode
+			o.EnablePOP = true
+			o.ResolveGroupMembershipOnlyOnOverageClaim = true
+			o.SkipGroupMembershipResolution = true
+			return o
 		},
-		{
-			"passthrough Auth Mode should force ResolveGroupMembershipOnlyOnOverageClaim to be set",
-			func(o Options) Options {
-				o.AuthMode = PassthroughAuthMode
-				o.SkipGroupMembershipResolution = true
-				return o
-			},
-			errors.New("azure.graph-call-on-overage-claim cannot be false when passthrough azure.auth-mode is used"),
-			false,
+		errors.New("azure.pop-hostname must be non-empty when pop token is enabled"),
+		false,
+	},
+	{
+		"passthrough Auth Mode should force ResolveGroupMembershipOnlyOnOverageClaim to be set",
+		func(o Options) Options {
+			o.AuthMode = PassthroughAuthMode
+			o.SkipGroupMembershipResolution = true
+			return o
 		},
-		{
-			"passthrough Auth Mode should force SkipGroupMembershipResolution to be set",
-			func(o Options) Options {
-				o.AuthMode = PassthroughAuthMode
-				o.ResolveGroupMembershipOnlyOnOverageClaim = true
-				return o
-			},
-			errors.New("azure.skip-group-membership-resolution cannot be false when passthrough azure.auth-mode is used"),
-			false,
+		errors.New("azure.graph-call-on-overage-claim cannot be false when passthrough azure.auth-mode is used"),
+		false,
+	},
+	{
+		"passthrough Auth Mode should force SkipGroupMembershipResolution to be set",
+		func(o Options) Options {
+			o.AuthMode = PassthroughAuthMode
+			o.ResolveGroupMembershipOnlyOnOverageClaim = true
+			return o
 		},
-	}
-)
+		errors.New("azure.skip-group-membership-resolution cannot be false when passthrough azure.auth-mode is used"),
+		false,
+	},
+}
 
 func getNonEmptyOptions() Options {
 	return Options{

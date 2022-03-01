@@ -57,7 +57,7 @@ type Options struct {
 	// default : uid
 	UserAttribute string
 
-	//BaseDN to start the search group
+	// BaseDN to start the search group
 	GroupSearchDN string
 
 	// filter to apply when searching the groups that user is member of
@@ -271,7 +271,7 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 		VolumeSource: core.VolumeSource{
 			Secret: &core.SecretVolumeSource{
 				SecretName:  authSecret.Name,
-				DefaultMode: pointer.Int32P(0444),
+				DefaultMode: pointer.Int32P(0o444),
 			},
 		},
 	}

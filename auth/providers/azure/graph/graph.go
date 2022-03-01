@@ -97,7 +97,7 @@ func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
 	}
 
 	// Decode the group response
-	var objects = ObjectList{}
+	objects := ObjectList{}
 	err = json.NewDecoder(resp.Body).Decode(&objects)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to decode response for request %s", req.URL.Path)
@@ -145,7 +145,7 @@ func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
 	}
 
 	// Decode the response
-	var groups = &GroupList{}
+	groups := &GroupList{}
 	err = json.NewDecoder(resp.Body).Decode(groups)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to decode response for request %s", req.URL.Path)

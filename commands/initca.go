@@ -31,9 +31,7 @@ import (
 )
 
 func NewCmdInitCA() *cobra.Command {
-	var (
-		rootDir = auth.DefaultDataDir
-	)
+	rootDir := auth.DefaultDataDir
 	cmd := &cobra.Command{
 		Use:               "ca",
 		Short:             "Init CA",

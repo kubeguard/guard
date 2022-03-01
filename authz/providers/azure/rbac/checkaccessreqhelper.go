@@ -38,9 +38,7 @@ const (
 	NonAADUserNotAllowedVerdict = "Access denied by Azure RBAC for non AAD users. Configure --azure.skip-authz-for-non-aad-users to enable access. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig."
 )
 
-var (
-	username string
-)
+var username string
 
 type SubjectInfoAttributes struct {
 	ObjectId string   `json:"ObjectId"`
@@ -180,7 +178,7 @@ func getActionName(verb string) string {
 		return "impersonate/action"
 
 	case "create":
-		fallthrough //instead of action create will be mapped to write
+		fallthrough // instead of action create will be mapped to write
 	case "patch":
 		fallthrough
 	case "update":
@@ -208,7 +206,8 @@ func getResourceAndAction(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 
 func getDataAction(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string) AuthorizationActionInfo {
 	authInfo := AuthorizationActionInfo{
-		IsDataAction: true}
+		IsDataAction: true,
+	}
 
 	authInfo.AuthorizationEntity.Id = clusterType
 	if subRevReq.ResourceAttributes != nil {

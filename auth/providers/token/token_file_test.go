@@ -66,7 +66,7 @@ func assertLoadTokenResp(t *testing.T, got, want map[string]auth.UserInfo) {
 }
 
 func TestLoadTokenFile(t *testing.T) {
-	var loadTokenTests = []struct {
+	loadTokenTests := []struct {
 		tokens        []string
 		expectedResp  map[string]auth.UserInfo
 		expectedError error
@@ -195,7 +195,7 @@ func TestLoadTokenFile(t *testing.T) {
 
 	appFs := afero.NewOsFs()
 	filePath := "token-auth/load-file/test"
-	err := appFs.MkdirAll(filePath, 0775)
+	err := appFs.MkdirAll(filePath, 0o775)
 	if err != nil {
 		t.Errorf("Error when making directory. reason : %v", err)
 	}
@@ -207,7 +207,7 @@ func TestLoadTokenFile(t *testing.T) {
 		t.Run(fmt.Sprintf("testing load token file, error %v", testData.expectedError), func(t *testing.T) {
 			file := filePath + "/token.csv"
 			tokenData := stringArrayToBytes(testData.tokens)
-			err := afero.WriteFile(appFs, file, tokenData, 0644)
+			err := afero.WriteFile(appFs, file, tokenData, 0o644)
 			if err != nil {
 				t.Errorf("Error when creating file. reason : %v", err)
 			} else {

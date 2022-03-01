@@ -109,6 +109,7 @@ func (o *AuthzOptions) AddFlags(fs *pflag.FlagSet) {
 	o.AuthzProvider.AddFlags(fs)
 	o.Azure.AddFlags(fs)
 }
+
 func (o *AuthOptions) Validate() []error {
 	var errs []error
 	errs = append(errs, o.AuthProvider.Validate()...)
