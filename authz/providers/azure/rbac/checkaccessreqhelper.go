@@ -32,6 +32,7 @@ const (
 	AccessAllowedVerboseVerdict = "Access allowed by Azure RBAC Role Assignment %s of Role %s to user %s"
 	Allowed                     = "allowed"
 	AccessNotAllowedVerdict     = "User does not have access to the resource in Azure. Update role assignment to allow access."
+	NamespaceResourceFormat     = "Microsoft.KubernetesConfiguration/namespaces"
 	namespaces                  = "namespaces"
 	NoOpinionVerdict            = "Azure does not have opinion for this user."
 	NonAADUserNoOpVerdict       = "Azure does not have opinion for this non AAD user. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig"
@@ -127,9 +128,13 @@ type AuthorizationDecision struct {
 	TimeToLiveInMs      int                 `json:"timeToLiveInMs"`
 }
 
-func getScope(resourceId string, attr *authzv1.ResourceAttributes) string {
+func getScope(resourceId string, attr *authzv1.ResourceAttributes, useLegacyNsScopeFormat bool) string {
 	if attr != nil && attr.Namespace != "" {
-		return path.Join(resourceId, namespaces, attr.Namespace)
+		if useLegacyNsScopeFormat {
+			return path.Join(resourceId, namespaces, attr.Namespace)
+		} else {
+			return path.Join(resourceId, NamespaceResourceFormat, attr.Namespace)
+		}
 	}
 	return resourceId
 }
@@ -245,7 +250,7 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	return cacheKey
 }
 
-func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType, resourceId string) (*CheckAccessRequest, error) {
+func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType, resourceId string, useLegacyNsScopeFormat bool) (*CheckAccessRequest, error) {
 	/* This is how sample SubjectAccessReview request will look like
 		{
 			"kind": "SubjectAccessReview",
@@ -314,7 +319,7 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 	action := make([]AuthorizationActionInfo, 1)
 	action[0] = getDataAction(req, clusterType)
 	checkaccessreq.Actions = action
-	checkaccessreq.Resource.Id = getScope(resourceId, req.ResourceAttributes)
+	checkaccessreq.Resource.Id = getScope(resourceId, req.ResourceAttributes, useLegacyNsScopeFormat)
 
 	return &checkaccessreq, nil
 }

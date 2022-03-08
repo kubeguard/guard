@@ -40,6 +40,7 @@ type Options struct {
 	SkipAuthzCheck                 []string
 	SkipAuthzForNonAADUsers        bool
 	AllowNonResDiscoveryPathAccess bool
+	UseLegacyNsScopeFormat         bool
 }
 
 func NewOptions() Options {
@@ -48,6 +49,7 @@ func NewOptions() Options {
 		SkipAuthzCheck:                 []string{""},
 		SkipAuthzForNonAADUsers:        true,
 		AllowNonResDiscoveryPathAccess: true,
+		UseLegacyNsScopeFormat:         true,
 	}
 }
 
@@ -59,6 +61,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringSliceVar(&o.SkipAuthzCheck, "azure.skip-authz-check", o.SkipAuthzCheck, "name of usernames/email for which authz check will be skipped")
 	fs.BoolVar(&o.SkipAuthzForNonAADUsers, "azure.skip-authz-for-non-aad-users", o.SkipAuthzForNonAADUsers, "skip authz for non AAD users")
 	fs.BoolVar(&o.AllowNonResDiscoveryPathAccess, "azure.allow-nonres-discovery-path-access", o.AllowNonResDiscoveryPathAccess, "allow access on Non Resource paths required for discovery, setting it false will require explicit non resource path role assignment for all users in Azure RBAC")
+	fs.BoolVar(&o.UseLegacyNsScopeFormat, "azure.use-legacy-ns-scope-format", o.UseLegacyNsScopeFormat, "use old format for making rbac checkaccess calls for namespace scope")
 }
 
 func (o *Options) Validate(azure azure.Options) []error {

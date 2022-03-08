@@ -72,6 +72,7 @@ type AccessInfo struct {
 	skipCheck                      map[string]void
 	skipAuthzForNonAADUsers        bool
 	allowNonResDiscoveryPathAccess bool
+	useLegacyNsScopeFormat         bool
 	lock                           sync.RWMutex
 }
 
@@ -118,6 +119,7 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 		armCallLimit:                   opts.ARMCallLimit,
 		skipAuthzForNonAADUsers:        opts.SkipAuthzForNonAADUsers,
 		allowNonResDiscoveryPathAccess: opts.AllowNonResDiscoveryPathAccess,
+		useLegacyNsScopeFormat:         opts.UseLegacyNsScopeFormat,
 	}
 
 	u.skipCheck = make(map[string]void, len(opts.SkipAuthzCheck))
@@ -234,7 +236,7 @@ func (a *AccessInfo) setReqHeaders(req *http.Request) {
 }
 
 func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
-	checkAccessBody, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId)
+	checkAccessBody, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.useLegacyNsScopeFormat)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in preparing check access request")
 	}
