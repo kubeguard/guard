@@ -32,7 +32,7 @@ const (
 	AccessAllowedVerboseVerdict = "Access allowed by Azure RBAC Role Assignment %s of Role %s to user %s"
 	Allowed                     = "allowed"
 	AccessNotAllowedVerdict     = "User does not have access to the resource in Azure. Update role assignment to allow access."
-	NamespaceResourceFormat     = "Microsoft.KubernetesConfiguration/namespaces"
+	NamespaceResourceFormat     = "/providers/Microsoft.KubernetesConfiguration/namespaces"
 	namespaces                  = "namespaces"
 	NoOpinionVerdict            = "Azure does not have opinion for this user."
 	NonAADUserNoOpVerdict       = "Azure does not have opinion for this non AAD user. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig"
@@ -128,12 +128,12 @@ type AuthorizationDecision struct {
 	TimeToLiveInMs      int                 `json:"timeToLiveInMs"`
 }
 
-func getScope(resourceId string, attr *authzv1.ResourceAttributes, useLegacyNsScopeFormat bool) string {
+func getScope(resourceId string, attr *authzv1.ResourceAttributes, useNamespaceResourceScopeFormat bool) string {
 	if attr != nil && attr.Namespace != "" {
-		if useLegacyNsScopeFormat {
-			return path.Join(resourceId, namespaces, attr.Namespace)
-		} else {
+		if useNamespaceResourceScopeFormat {
 			return path.Join(resourceId, NamespaceResourceFormat, attr.Namespace)
+		} else {
+			return path.Join(resourceId, namespaces, attr.Namespace)
 		}
 	}
 	return resourceId
@@ -250,7 +250,7 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	return cacheKey
 }
 
-func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType, resourceId string, useLegacyNsScopeFormat bool) (*CheckAccessRequest, error) {
+func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType, resourceId string, useNamespaceResourceScopeFormat bool) (*CheckAccessRequest, error) {
 	/* This is how sample SubjectAccessReview request will look like
 		{
 			"kind": "SubjectAccessReview",
@@ -319,15 +319,19 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 	action := make([]AuthorizationActionInfo, 1)
 	action[0] = getDataAction(req, clusterType)
 	checkaccessreq.Actions = action
-	checkaccessreq.Resource.Id = getScope(resourceId, req.ResourceAttributes, useLegacyNsScopeFormat)
+	checkaccessreq.Resource.Id = getScope(resourceId, req.ResourceAttributes, useNamespaceResourceScopeFormat)
 
 	return &checkaccessreq, nil
 }
 
-func getNameSpaceScope(req *authzv1.SubjectAccessReviewSpec) (bool, string) {
+func getNameSpaceScope(req *authzv1.SubjectAccessReviewSpec, useNamespaceResourceScopeFormat bool) (bool, string) {
 	var namespace string = ""
 	if req.ResourceAttributes != nil && req.ResourceAttributes.Namespace != "" {
-		namespace = path.Join(namespaces, req.ResourceAttributes.Namespace)
+		if useNamespaceResourceScopeFormat {
+			namespace = path.Join(NamespaceResourceFormat, req.ResourceAttributes.Namespace)
+		} else {
+			namespace = path.Join(namespaces, req.ResourceAttributes.Namespace)
+		}
 		return true, namespace
 	}
 	return false, namespace

@@ -26,23 +26,29 @@ import (
 
 func Test_getScope(t *testing.T) {
 	type args struct {
-		resourceId string
-		attr       *authzv1.ResourceAttributes
+		resourceId                      string
+		attr                            *authzv1.ResourceAttributes
+		useNamespaceResourceScopeFormat bool
 	}
 	tests := []struct {
 		name string
 		args args
 		want string
 	}{
-		{"nilAttr", args{"resourceId", nil}, "resourceId"},
-		{"bothnil", args{"", nil}, ""},
-		{"emptyRes", args{"", &authzv1.ResourceAttributes{Namespace: ""}}, ""},
-		{"emptyNS", args{"resourceId", &authzv1.ResourceAttributes{Namespace: ""}}, "resourceId"},
-		{"bothPresent", args{"resourceId", &authzv1.ResourceAttributes{Namespace: "test"}}, "resourceId/namespaces/test"},
+		{"nilAttr", args{"resourceId", nil, false}, "resourceId"},
+		{"bothnil", args{"", nil, false}, ""},
+		{"emptyRes", args{"", &authzv1.ResourceAttributes{Namespace: ""}, false}, ""},
+		{"emptyNS", args{"resourceId", &authzv1.ResourceAttributes{Namespace: ""}, false}, "resourceId"},
+		{"bothPresent", args{"resourceId", &authzv1.ResourceAttributes{Namespace: "test"}, false}, "resourceId/namespaces/test"},
+		{"nilAttrNewScope", args{"resourceId", nil, true}, "resourceId"},
+		{"bothnilNewScope", args{"", nil, true}, ""},
+		{"emptyResNewScope", args{"", &authzv1.ResourceAttributes{Namespace: ""}, true}, ""},
+		{"emptyNSNewScope", args{"resourceId", &authzv1.ResourceAttributes{Namespace: ""}, true}, "resourceId"},
+		{"bothPresentNewScope", args{"resourceId", &authzv1.ResourceAttributes{Namespace: "test"}, true}, "resourceId/providers/Microsoft.KubernetesConfiguration/namespaces/test"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := getScope(tt.args.resourceId, tt.args.attr); got != tt.want {
+			if got := getScope(tt.args.resourceId, tt.args.attr, tt.args.useNamespaceResourceScopeFormat); got != tt.want {
 				t.Errorf("getScope() = %v, want %v", got, tt.want)
 			}
 		})
@@ -228,7 +234,7 @@ func Test_getDataAction(t *testing.T) {
 func Test_getNameSpaceScope(t *testing.T) {
 	req := authzv1.SubjectAccessReviewSpec{ResourceAttributes: nil}
 	want := false
-	got, str := getNameSpaceScope(&req)
+	got, str := getNameSpaceScope(&req, false)
 	if got || str != "" {
 		t.Errorf("Want:%v, got:%v", want, got)
 	}
@@ -237,7 +243,7 @@ func Test_getNameSpaceScope(t *testing.T) {
 		ResourceAttributes: &authzv1.ResourceAttributes{Namespace: ""},
 	}
 	want = false
-	got, str = getNameSpaceScope(&req)
+	got, str = getNameSpaceScope(&req, false)
 	if got || str != "" {
 		t.Errorf("Want:%v, got:%v", want, got)
 	}
@@ -247,7 +253,35 @@ func Test_getNameSpaceScope(t *testing.T) {
 	}
 	outputstring := "namespaces/dev"
 	want = true
-	got, str = getNameSpaceScope(&req)
+	got, str = getNameSpaceScope(&req, false)
+	if !got || str != outputstring {
+		t.Errorf("Want:%v - %s, got: %v - %s", want, outputstring, got, str)
+	}
+}
+
+func Test_getNameSpaceScopeUsingNewNsFormat(t *testing.T) {
+	req := authzv1.SubjectAccessReviewSpec{ResourceAttributes: nil}
+	want := false
+	got, str := getNameSpaceScope(&req, true)
+	if got || str != "" {
+		t.Errorf("Want:%v, got:%v", want, got)
+	}
+
+	req = authzv1.SubjectAccessReviewSpec{
+		ResourceAttributes: &authzv1.ResourceAttributes{Namespace: ""},
+	}
+	want = false
+	got, str = getNameSpaceScope(&req, true)
+	if got || str != "" {
+		t.Errorf("Want:%v, got:%v", want, got)
+	}
+
+	req = authzv1.SubjectAccessReviewSpec{
+		ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev"},
+	}
+	outputstring := "/providers/Microsoft.KubernetesConfiguration/namespaces/dev"
+	want = true
+	got, str = getNameSpaceScope(&req, true)
 	if !got || str != outputstring {
 		t.Errorf("Want:%v - %s, got: %v - %s", want, outputstring, got, str)
 	}
@@ -260,7 +294,7 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	var want *CheckAccessRequest = nil
 	wantErr := errors.New("oid info not sent from authenticatoin module")
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resouceId)
+	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resouceId, false)
 
 	if got != want && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", want, wantErr, got, gotErr)
@@ -272,7 +306,7 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	want = nil
 	wantErr = errors.New("oid info sent from authenticatoin module is not valid")
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resouceId)
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resouceId, false)
 
 	if got != want && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", want, wantErr, got, gotErr)
