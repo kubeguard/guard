@@ -20,9 +20,12 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	authzv1 "k8s.io/api/authorization/v1"
 )
+
+const resourceId = "resourceId"
 
 func Test_getScope(t *testing.T) {
 	type args struct {
@@ -289,27 +292,56 @@ func Test_getNameSpaceScopeUsingNewNsFormat(t *testing.T) {
 
 func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	req := &authzv1.SubjectAccessReviewSpec{Extra: nil}
-	resouceId := "resourceId"
 	clusterType := "aks"
 	var want *CheckAccessRequest = nil
 	wantErr := errors.New("oid info not sent from authenticatoin module")
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resouceId, false)
+	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
 
 	if got != want && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", want, wantErr, got, gotErr)
 	}
 
 	req = &authzv1.SubjectAccessReviewSpec{Extra: map[string]authzv1.ExtraValue{"oid": {"test"}}}
-	resouceId = "resourceId"
 	clusterType = "arc"
 	want = nil
 	wantErr = errors.New("oid info sent from authenticatoin module is not valid")
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resouceId, false)
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
 
 	if got != want && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", want, wantErr, got, gotErr)
+	}
+}
+
+func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
+	dummyUuid := uuid.New()
+	req := &authzv1.SubjectAccessReviewSpec{ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev"}, Extra: map[string]authzv1.ExtraValue{"oid": {dummyUuid.String()}}}
+	clusterType := "aks"
+
+	// testing with new ns scope format
+	var want string = "resourceId/providers/Microsoft.KubernetesConfiguration/namespaces/dev"
+
+	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, true)
+
+	if got == nil {
+		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
+	}
+
+	if got != nil && got.Resource.Id != want {
+		t.Errorf("Want:%v, got:%v", want, got)
+	}
+
+	// testing with the old namespace format
+	want = "resourceId/namespaces/dev"
+
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+	if got == nil {
+		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
+	}
+
+	if got != nil && got.Resource.Id != want {
+		t.Errorf("Want:%v, got:%v", want, got)
 	}
 }
 
