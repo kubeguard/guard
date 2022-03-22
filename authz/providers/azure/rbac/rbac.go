@@ -93,6 +93,8 @@ var (
 		Name: "guard_azure_checkaccess_success_total",
 		Help: "Azure checkaccess success calls.",
 	})
+
+	CheckAccessErrorFormat = "CheckAccessFailure: Error occured during checkacces. Please retry again. Error: %s"
 )
 
 func getClusterType(clsType string) string {
