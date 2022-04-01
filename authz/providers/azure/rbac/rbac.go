@@ -94,7 +94,7 @@ var (
 		Help: "Azure checkaccess success calls.",
 	})
 
-	CheckAccessErrorFormat = "CheckAccessFailure: Error occured during checkacces. Please retry again. Error: %s"
+	CheckAccessErrorFormat = "Error occured during authorization check. Please retry again. Error: %s"
 )
 
 func getClusterType(clsType string) string {
