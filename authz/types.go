@@ -19,6 +19,8 @@ import (
 	"sort"
 	"strings"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	authzv1 "k8s.io/api/authorization/v1"
 )
 
@@ -39,7 +41,7 @@ func (o orgs) Has(name string) bool {
 func (o orgs) String() string {
 	names := make([]string, len(o))
 	for i, org := range o {
-		names[i] = strings.Title(org)
+		names[i] = cases.Title(language.English).String(org)
 	}
 	sort.Strings(names)
 	return strings.Join(names, "/")
