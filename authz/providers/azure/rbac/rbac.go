@@ -65,14 +65,15 @@ type AccessInfo struct {
 	// These allow us to mock out the URL for testing
 	apiURL *url.URL
 
-	tokenProvider                  graph.TokenProvider
-	clusterType                    string
-	azureResourceId                string
-	armCallLimit                   int
-	skipCheck                      map[string]void
-	skipAuthzForNonAADUsers        bool
-	allowNonResDiscoveryPathAccess bool
-	lock                           sync.RWMutex
+	tokenProvider                   graph.TokenProvider
+	clusterType                     string
+	azureResourceId                 string
+	armCallLimit                    int
+	skipCheck                       map[string]void
+	skipAuthzForNonAADUsers         bool
+	allowNonResDiscoveryPathAccess  bool
+	useNamespaceResourceScopeFormat bool
+	lock                            sync.RWMutex
 }
 
 var (
@@ -112,12 +113,13 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 			"Content-Type": []string{"application/json"},
 			"User-Agent":   []string{fmt.Sprintf("guard-%s-%s-%s-%s", v.Version.Platform, v.Version.GoVersion, v.Version.Version, opts.AuthzMode)},
 		},
-		apiURL:                         rbacURL,
-		tokenProvider:                  tokenProvider,
-		azureResourceId:                opts.ResourceId,
-		armCallLimit:                   opts.ARMCallLimit,
-		skipAuthzForNonAADUsers:        opts.SkipAuthzForNonAADUsers,
-		allowNonResDiscoveryPathAccess: opts.AllowNonResDiscoveryPathAccess,
+		apiURL:                          rbacURL,
+		tokenProvider:                   tokenProvider,
+		azureResourceId:                 opts.ResourceId,
+		armCallLimit:                    opts.ARMCallLimit,
+		skipAuthzForNonAADUsers:         opts.SkipAuthzForNonAADUsers,
+		allowNonResDiscoveryPathAccess:  opts.AllowNonResDiscoveryPathAccess,
+		useNamespaceResourceScopeFormat: opts.UseNamespaceResourceScopeFormat,
 	}
 
 	u.skipCheck = make(map[string]void, len(opts.SkipAuthzCheck))
@@ -234,7 +236,7 @@ func (a *AccessInfo) setReqHeaders(req *http.Request) {
 }
 
 func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
-	checkAccessBody, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId)
+	checkAccessBody, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in preparing check access request")
 	}
@@ -242,7 +244,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	checkAccessURL := *a.apiURL
 	// Append the path for azure cluster resource id
 	checkAccessURL.Path = path.Join(checkAccessURL.Path, a.azureResourceId)
-	exist, nameSpaceString := getNameSpaceScope(request)
+	exist, nameSpaceString := getNameSpaceScope(request, a.useNamespaceResourceScopeFormat)
 	if exist {
 		checkAccessURL.Path = path.Join(checkAccessURL.Path, nameSpaceString)
 	}
