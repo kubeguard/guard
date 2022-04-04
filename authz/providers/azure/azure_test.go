@@ -95,8 +95,8 @@ func serverSetup(loginResp, checkaccessResp string, loginStatus, checkaccessStat
 	return srv, nil
 }
 
-func getServerAndClient(t *testing.T, loginResp, checkaccessResp string) (*httptest.Server, *Authorizer, authz.Store) {
-	srv, err := serverSetup(loginResp, checkaccessResp, http.StatusOK, http.StatusOK)
+func getServerAndClient(t *testing.T, loginResp, checkaccessResp string, checkaccessStatus int) (*httptest.Server, *Authorizer, authz.Store) {
+	srv, err := serverSetup(loginResp, checkaccessResp, http.StatusOK, checkaccessStatus)
 	if err != nil {
 		t.Fatalf("Error when creating server, reason: %v", err)
 	}
@@ -126,7 +126,7 @@ func TestCheck(t *testing.T) {
 		"actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete",
 		"isDataAction":true,"roleAssignment":null,"denyAssignment":null,"timeToLiveInMs":300000}]`
 
-		srv, client, store := getServerAndClient(t, loginResp, validBody)
+		srv, client, store := getServerAndClient(t, loginResp, validBody, http.StatusOK)
 		defer srv.Close()
 		defer store.Close()
 
@@ -143,5 +143,25 @@ func TestCheck(t *testing.T) {
 		assert.NotNil(t, resp)
 		assert.Equal(t, resp.Allowed, true)
 		assert.Equal(t, resp.Denied, false)
+	})
+
+	t.Run("unsuccessful request", func(t *testing.T) {
+		validBody := `""`
+		srv, client, store := getServerAndClient(t, loginResp, validBody, http.StatusInternalServerError)
+		defer srv.Close()
+		defer store.Close()
+
+		request := &authzv1.SubjectAccessReviewSpec{
+			User: "beta@bing.com",
+			ResourceAttributes: &authzv1.ResourceAttributes{
+				Namespace: "dev", Group: "", Resource: "pods",
+				Subresource: "status", Version: "v1", Name: "test", Verb: "delete",
+			}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
+		}
+
+		resp, err := client.Check(request, store)
+		assert.Nilf(t, resp, "response should be nil")
+		assert.NotNilf(t, err, "should get error")
+		assert.Contains(t, err.Error(), "Error occured during authorization check")
 	})
 }

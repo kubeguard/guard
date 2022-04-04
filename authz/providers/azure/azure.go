@@ -125,7 +125,7 @@ func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec, store authz.
 		klog.V(5).Infof(response.Reason)
 		_ = s.rbacClient.SetResultInCache(request, response.Allowed, store)
 	} else {
-		_ = s.rbacClient.SetResultInCache(request, false, store)
+		err = errors.Errorf(rbac.CheckAccessErrorFormat, err)
 	}
 
 	return response, err
