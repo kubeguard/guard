@@ -43,6 +43,7 @@ import (
 
 const (
 	managedClusters           = "Microsoft.ContainerService/managedClusters"
+	fleets                    = "Microsoft.ContainerService/fleets"
 	connectedClusters         = "Microsoft.Kubernetes/connectedClusters"
 	checkAccessPath           = "/providers/Microsoft.Authorization/checkaccess"
 	checkAccessAPIVersion     = "2018-09-01-preview"
@@ -103,6 +104,8 @@ func getClusterType(clsType string) string {
 		return connectedClusters
 	case authzOpts.AKSAuthzMode:
 		return managedClusters
+	case authzOpts.FleetAuthzMode:
+		return fleets
 	default:
 		return ""
 	}
@@ -148,6 +151,7 @@ func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo) (*
 		tokenProvider = graph.NewClientCredentialTokenProvider(authopts.ClientID, authopts.ClientSecret,
 			fmt.Sprintf("%s%s/oauth2/v2.0/token", authzInfo.AADEndpoint, authopts.TenantID),
 			fmt.Sprintf("%s.default", authzInfo.ARMEndPoint))
+	case authzOpts.FleetAuthzMode:
 	case authzOpts.AKSAuthzMode:
 		tokenProvider = graph.NewAKSTokenProvider(opts.AKSAuthzTokenURL, authopts.TenantID)
 	}
