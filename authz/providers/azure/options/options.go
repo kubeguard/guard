@@ -55,8 +55,8 @@ func NewOptions() Options {
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&o.AuthzMode, "azure.authz-mode", "", "authz mode to call RBAC api, valid values are either aks/arc/fleet")
-	fs.StringVar(&o.ResourceId, "azure.resource-id", "", "azure cluster resource id (//subscription/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/managedClusters/<clustername> for AKS, //subscription/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/fleets/<clustername> for AKS Fleet or //subscription/<subName>/resourcegroups/<RGname>/providers/Microsoft.Kubernetes/connectedClusters/<clustername> for arc) to be used as scope for RBAC check")
+	fs.StringVar(&o.AuthzMode, "azure.authz-mode", "", "authz mode to call RBAC api, valid values are either aks, arc, or fleet")
+	fs.StringVar(&o.ResourceId, "azure.resource-id", "", "azure cluster resource id (//subscription/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/managedClusters/<clustername> for AKS, //subscription/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/fleets/<clustername> for Azure Kubernetes Fleet Manager, or //subscription/<subName>/resourcegroups/<RGname>/providers/Microsoft.Kubernetes/connectedClusters/<clustername> for arc) to be used as scope for RBAC check")
 	fs.StringVar(&o.AKSAuthzTokenURL, "azure.aks-authz-token-url", "", "url to call for AKS Authz flow")
 	fs.IntVar(&o.ARMCallLimit, "azure.arm-call-limit", o.ARMCallLimit, "No of calls before which webhook switch to new ARM instance to avoid throttling")
 	fs.StringSliceVar(&o.SkipAuthzCheck, "azure.skip-authz-check", o.SkipAuthzCheck, "name of usernames/email for which authz check will be skipped")
@@ -73,7 +73,7 @@ func (o *Options) Validate(azure azure.Options) []error {
 	case ARCAuthzMode:
 	case FleetAuthzMode:
 	default:
-		errs = append(errs, errors.New("invalid azure.authz-mode. valid value is either aks or arc or fleet"))
+		errs = append(errs, errors.New("invalid azure.authz-mode. valid value is either aks, arc, or fleet"))
 	}
 
 	if o.AuthzMode != "" && o.ResourceId == "" {
