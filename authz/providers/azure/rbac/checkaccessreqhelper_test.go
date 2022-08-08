@@ -116,6 +116,26 @@ func Test_getDataAction(t *testing.T) {
 		},
 
 		{
+			"fleet",
+			args{
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					NonResourceAttributes: &authzv1.NonResourceAttributes{Path: "/apis", Verb: "list"},
+				}, clusterType: "fleet",
+			},
+			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "fleet/apis/read"}, IsDataAction: true},
+		},
+
+		{
+			"fleet2",
+			args{
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					NonResourceAttributes: &authzv1.NonResourceAttributes{Path: "/logs", Verb: "get"},
+				}, clusterType: "fleet",
+			},
+			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "fleet/logs/read"}, IsDataAction: true},
+		},
+
+		{
 			"arc",
 			args{
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
@@ -156,6 +176,16 @@ func Test_getDataAction(t *testing.T) {
 		},
 
 		{
+			"fleet3",
+			args{
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "authentication.k8s.io", Resource: "userextras", Subresource: "scopes", Version: "v1", Name: "test", Verb: "impersonate"},
+				}, clusterType: "fleet",
+			},
+			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "fleet/authentication.k8s.io/userextras/impersonate/action"}, IsDataAction: true},
+		},
+
+		{
 			"arc4",
 			args{
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
@@ -173,6 +203,16 @@ func Test_getDataAction(t *testing.T) {
 				}, clusterType: "aks",
 			},
 			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "aks/rbac.authorization.k8s.io/clusterroles/escalate/action"}, IsDataAction: true},
+		},
+
+		{
+			"fleet4",
+			args{
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "rbac.authorization.k8s.io", Resource: "clusterroles", Subresource: "status", Version: "v1", Name: "test", Verb: "escalate"},
+				}, clusterType: "fleet",
+			},
+			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "fleet/rbac.authorization.k8s.io/clusterroles/escalate/action"}, IsDataAction: true},
 		},
 
 		{
@@ -196,6 +236,16 @@ func Test_getDataAction(t *testing.T) {
 		},
 
 		{
+			"fleet5",
+			args{
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "events.k8s.io", Resource: "events", Subresource: "status", Version: "v1", Name: "test", Verb: "watch"},
+				}, clusterType: "fleet",
+			},
+			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "fleet/events.k8s.io/events/read"}, IsDataAction: true},
+		},
+
+		{
 			"arc6",
 			args{
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
@@ -216,6 +266,16 @@ func Test_getDataAction(t *testing.T) {
 		},
 
 		{
+			"fleet6",
+			args{
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "certificates.k8s.io", Resource: "certificatesigningrequests", Subresource: "approvals", Version: "v1", Name: "test", Verb: "deletecollection"},
+				}, clusterType: "fleet",
+			},
+			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "fleet/certificates.k8s.io/certificatesigningrequests/delete"}, IsDataAction: true},
+		},
+
+		{
 			"aks",
 			args{
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
@@ -223,6 +283,16 @@ func Test_getDataAction(t *testing.T) {
 				}, clusterType: "aks",
 			},
 			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "aks/pods/exec/action"}, IsDataAction: true},
+		},
+
+		{
+			"fleet",
+			args{
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "pods", Subresource: "exec", Version: "v1", Name: "test", Verb: "create"},
+				}, clusterType: "fleet",
+			},
+			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "fleet/pods/exec/action"}, IsDataAction: true},
 		},
 	}
 	for _, tt := range tests {
