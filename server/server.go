@@ -46,10 +46,12 @@ type Server struct {
 	AuthzRecommendedOptions *AuthzRecommendedOptions
 	TokenAuthenticator      *token.Authenticator
 	WriteTimeout            time.Duration
+	ReadTimeout             time.Duration
 }
 
 func (s *Server) AddFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&s.WriteTimeout, "server-write-timeout", 10*time.Second, "Guard http server write timeout. Default is 10 seconds.")
+	fs.DurationVar(&s.ReadTimeout, "server-read-timeout", 5*time.Second, "Guard http server read timeout. Default is 5 seconds.")
 	s.AuthRecommendedOptions.AddFlags(fs)
 	s.AuthzRecommendedOptions.AddFlags(fs)
 }
@@ -192,7 +194,7 @@ func (s Server) ListenAndServe() {
 
 	srv := &http.Server{
 		Addr:         s.AuthRecommendedOptions.SecureServing.SecureAddr,
-		ReadTimeout:  5 * time.Second,
+		ReadTimeout:  s.ReadTimeout,
 		WriteTimeout: s.WriteTimeout,
 		Handler:      m,
 		TLSConfig:    tlsConfig,

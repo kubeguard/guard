@@ -79,7 +79,8 @@ func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
 	// Set the auth headers for the request
 	req.Header = u.headers
 	tr := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
+		Proxy:               http.ProxyFromEnvironment,
+		MaxIdleConnsPerHost: 100,
 	}
 
 	u.client.Transport = tr

@@ -66,6 +66,7 @@ guard run [flags]
       --max-clock-skew duration                    Max acceptable clock skew for server clock (default 2m0s)
       --ntp-server string                          Address of NTP serer used to check clock skew (default "0.pool.ntp.org")
       --server-write-timeout                       Guard http server write timeout. Default is 10 seconds.
+      --server-read-timeout                        Guard http server read timeout. Default is 5 seconds.
       --secure-addr string                         host:port used to serve secure apis (default ":8443")
       --tls-ca-file string                         File containing CA certificate
       --tls-cert-file string                       File container server TLS certificate

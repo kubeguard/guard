@@ -40,7 +40,8 @@ type clientCredentialTokenProvider struct {
 // https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-client-creds-grant-flow#get-a-token
 func NewClientCredentialTokenProvider(clientID, clientSecret, loginURL, scope string) TokenProvider {
 	tr := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
+		Proxy:               http.ProxyFromEnvironment,
+		MaxIdleConnsPerHost: 100,
 	}
 	return &clientCredentialTokenProvider{
 		name:         "ClientCredentialTokenProvider",
