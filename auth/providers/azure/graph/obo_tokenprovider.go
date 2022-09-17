@@ -40,7 +40,8 @@ type oboTokenProvider struct {
 // https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow
 func NewOBOTokenProvider(clientID, clientSecret, loginURL, scope string) TokenProvider {
 	tr := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
+		Proxy:               http.ProxyFromEnvironment,
+		MaxIdleConnsPerHost: 100,
 	}
 	return &oboTokenProvider{
 		name:         "OBOTokenProvider",
