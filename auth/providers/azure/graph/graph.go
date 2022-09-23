@@ -26,6 +26,8 @@ import (
 	"strings"
 	"time"
 
+	"go.kubeguard.dev/guard/util/httpclient"
+
 	jsoniter "github.com/json-iterator/go"
 	"github.com/moul/http2curl"
 	"github.com/pkg/errors"
@@ -78,12 +80,6 @@ func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
 	}
 	// Set the auth headers for the request
 	req.Header = u.headers
-	tr := &http.Transport{
-		Proxy:               http.ProxyFromEnvironment,
-		MaxIdleConnsPerHost: 100,
-	}
-
-	u.client.Transport = tr
 
 	resp, err := u.client.Do(req)
 	if err != nil {
@@ -219,7 +215,7 @@ func (u *UserInfo) Name() string {
 // newUserInfo returns a UserInfo object
 func newUserInfo(tokenProvider TokenProvider, graphURL *url.URL, useGroupUID bool) (*UserInfo, error) {
 	u := &UserInfo{
-		client: http.DefaultClient,
+		client: httpclient.DefaultHTTPClient,
 		headers: http.Header{
 			"Content-Type": []string{"application/json"},
 		},
@@ -272,7 +268,7 @@ func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string, useGroupUID b
 		return nil, err
 	}
 	u := &UserInfo{
-		client: http.DefaultClient,
+		client: httpclient.DefaultHTTPClient,
 		headers: http.Header{
 			"Content-Type": []string{"application/json"},
 		},

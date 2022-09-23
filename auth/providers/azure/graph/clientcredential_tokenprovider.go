@@ -22,6 +22,8 @@ import (
 	"net/url"
 	"strings"
 
+	"go.kubeguard.dev/guard/util/httpclient"
+
 	"github.com/moul/http2curl"
 	"github.com/pkg/errors"
 	"k8s.io/klog/v2"
@@ -39,13 +41,9 @@ type clientCredentialTokenProvider struct {
 // NewClientCredentialTokenProvider returns a TokenProvider that implements OAuth client credential flow on Azure Active Directory
 // https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-client-creds-grant-flow#get-a-token
 func NewClientCredentialTokenProvider(clientID, clientSecret, loginURL, scope string) TokenProvider {
-	tr := &http.Transport{
-		Proxy:               http.ProxyFromEnvironment,
-		MaxIdleConnsPerHost: 100,
-	}
 	return &clientCredentialTokenProvider{
 		name:         "ClientCredentialTokenProvider",
-		client:       &http.Client{Transport: tr},
+		client:       httpclient.DefaultHTTPClient,
 		clientID:     clientID,
 		clientSecret: clientSecret,
 		scope:        scope,

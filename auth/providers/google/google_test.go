@@ -31,6 +31,8 @@ import (
 	"strings"
 	"testing"
 
+	"go.kubeguard.dev/guard/util/httpclient"
+
 	"github.com/appscode/pat"
 	oidc "github.com/coreos/go-oidc"
 	"github.com/stretchr/testify/assert"
@@ -197,7 +199,7 @@ func googleClientSetup(serverUrl string) (*Authenticator, error) {
 		SkipExpiryCheck: true,
 	})
 
-	g.service, err = gdir.NewService(context.Background(), option.WithHTTPClient(http.DefaultClient))
+	g.service, err = gdir.NewService(context.Background(), option.WithHTTPClient(httpclient.DefaultHTTPClient))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create google service. Reason: %v", err)
 	}

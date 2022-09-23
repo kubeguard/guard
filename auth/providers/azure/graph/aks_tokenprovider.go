@@ -21,6 +21,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"go.kubeguard.dev/guard/util/httpclient"
+
 	"github.com/pkg/errors"
 )
 
@@ -33,13 +35,9 @@ type aksTokenProvider struct {
 
 // NewAKSTokenProvider returns a TokenProvider that implements On-Behalf-Of flow using AKS first party service
 func NewAKSTokenProvider(tokenURL, tenantID string) TokenProvider {
-	tr := &http.Transport{
-		Proxy:               http.ProxyFromEnvironment,
-		MaxIdleConnsPerHost: 100,
-	}
 	return &aksTokenProvider{
 		name:     "AKSTokenProvider",
-		client:   &http.Client{Transport: tr},
+		client:   httpclient.DefaultHTTPClient,
 		tokenURL: tokenURL,
 		tenantID: tenantID,
 	}

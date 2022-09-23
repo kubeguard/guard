@@ -32,6 +32,7 @@ import (
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 	"go.kubeguard.dev/guard/authz"
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
+	"go.kubeguard.dev/guard/util/httpclient"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -113,7 +114,7 @@ func getClusterType(clsType string) string {
 
 func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts authzOpts.Options) (*AccessInfo, error) {
 	u := &AccessInfo{
-		client: http.DefaultClient,
+		client: httpclient.DefaultHTTPClient,
 		headers: http.Header{
 			"Content-Type": []string{"application/json"},
 			"User-Agent":   []string{fmt.Sprintf("guard-%s-%s-%s-%s", v.Version.Platform, v.Version.GoVersion, v.Version.Version, opts.AuthzMode)},
@@ -278,13 +279,6 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	}
 
 	a.setReqHeaders(req)
-
-	tr := &http.Transport{
-		Proxy:               http.ProxyFromEnvironment,
-		MaxIdleConnsPerHost: 100,
-	}
-
-	a.client.Transport = tr
 
 	resp, err := a.client.Do(req)
 	if err != nil {
