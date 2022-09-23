@@ -23,6 +23,8 @@ import (
 	"net/url"
 	"testing"
 	"time"
+
+	"go.kubeguard.dev/guard/util/httpclient"
 )
 
 func getAuthServerAndUserInfo(returnCode int, body, clientID, clientSecret string) (*httptest.Server, *UserInfo) {
@@ -31,7 +33,7 @@ func getAuthServerAndUserInfo(returnCode int, body, clientID, clientSecret strin
 		_, _ = w.Write([]byte(body))
 	}))
 	u := &UserInfo{
-		client:        http.DefaultClient,
+		client:        httpclient.DefaultHTTPClient,
 		headers:       http.Header{},
 		groupsPerCall: expandedGroupsPerCall,
 	}
@@ -75,7 +77,7 @@ func TestLogin(t *testing.T) {
 	t.Run("request error", func(t *testing.T) {
 		badURL := "https://127.0.0.1:34567"
 		u := &UserInfo{
-			client:        http.DefaultClient,
+			client:        httpclient.DefaultHTTPClient,
 			headers:       http.Header{},
 			groupsPerCall: expandedGroupsPerCall,
 		}
@@ -105,7 +107,7 @@ func getAPIServerAndUserInfo(returnCode int, body string) (*httptest.Server, *Us
 	}))
 	apiURL, _ := url.Parse(ts.URL)
 	u := &UserInfo{
-		client:        http.DefaultClient,
+		client:        httpclient.DefaultHTTPClient,
 		apiURL:        apiURL,
 		headers:       http.Header{},
 		expires:       time.Now().Add(time.Hour),
@@ -147,7 +149,7 @@ func TestGetGroupIDs(t *testing.T) {
 	t.Run("request error", func(t *testing.T) {
 		badURL, _ := url.Parse("https://127.0.0.1:34567")
 		u := &UserInfo{
-			client:        http.DefaultClient,
+			client:        httpclient.DefaultHTTPClient,
 			apiURL:        badURL,
 			headers:       http.Header{},
 			expires:       time.Now().Add(time.Hour),
@@ -212,7 +214,7 @@ func TestGetExpandedGroups(t *testing.T) {
 	t.Run("request error", func(t *testing.T) {
 		badURL, _ := url.Parse("https://127.0.0.1:34567")
 		u := &UserInfo{
-			client:        http.DefaultClient,
+			client:        httpclient.DefaultHTTPClient,
 			apiURL:        badURL,
 			headers:       http.Header{},
 			expires:       time.Now().Add(time.Hour),
@@ -274,7 +276,7 @@ func TestGetGroups(t *testing.T) {
 	apiURL, _ := url.Parse(ts.URL)
 
 	u := &UserInfo{
-		client:        http.DefaultClient,
+		client:        httpclient.DefaultHTTPClient,
 		apiURL:        apiURL,
 		headers:       http.Header{},
 		expires:       time.Now().Add(time.Hour),
@@ -291,7 +293,7 @@ func TestGetGroups(t *testing.T) {
 	}
 
 	uWithGroupID := &UserInfo{
-		client:        http.DefaultClient,
+		client:        httpclient.DefaultHTTPClient,
 		apiURL:        apiURL,
 		headers:       http.Header{},
 		expires:       time.Now().Add(time.Hour),
@@ -367,7 +369,7 @@ func TestGetGroupsPaging(t *testing.T) {
 	apiURL, _ := url.Parse(ts.URL)
 
 	u := &UserInfo{
-		client:        http.DefaultClient,
+		client:        httpclient.DefaultHTTPClient,
 		apiURL:        apiURL,
 		headers:       http.Header{},
 		expires:       time.Now().Add(time.Hour),

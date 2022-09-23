@@ -22,6 +22,8 @@ import (
 	"net/url"
 	"strings"
 
+	"go.kubeguard.dev/guard/util/httpclient"
+
 	"github.com/moul/http2curl"
 	"github.com/pkg/errors"
 	"k8s.io/klog/v2"
@@ -39,13 +41,9 @@ type oboTokenProvider struct {
 // NewOBOTokenProvider returns a TokenProvider that implements OAuth On-Behalf-Of flow on Azure Active Directory
 // https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow
 func NewOBOTokenProvider(clientID, clientSecret, loginURL, scope string) TokenProvider {
-	tr := &http.Transport{
-		Proxy:               http.ProxyFromEnvironment,
-		MaxIdleConnsPerHost: 100,
-	}
 	return &oboTokenProvider{
 		name:         "OBOTokenProvider",
-		client:       &http.Client{Transport: tr},
+		client:       httpclient.DefaultHTTPClient,
 		clientID:     clientID,
 		clientSecret: clientSecret,
 		scope:        scope,

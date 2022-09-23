@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
+	"go.kubeguard.dev/guard/util/httpclient"
 
 	"github.com/stretchr/testify/assert"
 	authzv1 "k8s.io/api/authorization/v1"
@@ -37,7 +38,7 @@ func getAPIServerAndAccessInfo(returnCode int, body, clusterType, resourceId str
 	}))
 	apiURL, _ := url.Parse(ts.URL)
 	u := &AccessInfo{
-		client:          http.DefaultClient,
+		client:          httpclient.DefaultHTTPClient,
 		apiURL:          apiURL,
 		headers:         http.Header{},
 		expiresAt:       time.Now().Add(time.Hour),
@@ -122,7 +123,7 @@ func getAuthServerAndAccessInfo(returnCode int, body, clientID, clientSecret str
 		_, _ = w.Write([]byte(body))
 	}))
 	u := &AccessInfo{
-		client:  http.DefaultClient,
+		client:  httpclient.DefaultHTTPClient,
 		headers: http.Header{},
 		lock:    sync.RWMutex{},
 	}
@@ -164,7 +165,7 @@ func TestLogin(t *testing.T) {
 	t.Run("request error", func(t *testing.T) {
 		badURL := "https://127.0.0.1:34567"
 		u := &AccessInfo{
-			client:  http.DefaultClient,
+			client:  httpclient.DefaultHTTPClient,
 			headers: http.Header{},
 			lock:    sync.RWMutex{},
 		}
