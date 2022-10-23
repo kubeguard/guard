@@ -24,6 +24,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	authzv1 "k8s.io/api/authorization/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -198,34 +199,155 @@ func getActionName(verb string) string {
 	}
 }
 
-func getResourceAndAction(subRevReq *authzv1.SubjectAccessReviewSpec) string {
+func getResourceAndAction(resource string, subResource string, verb string) string {
 	var action string
-	if subRevReq.ResourceAttributes.Resource == "pods" && subRevReq.ResourceAttributes.Subresource == "exec" {
-		action = path.Join(subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Subresource, "action")
+
+	if resource == "pods" && subResource == "exec" {
+		action = path.Join(resource, subResource, "action")
 	} else {
-		action = path.Join(subRevReq.ResourceAttributes.Resource, getActionName(subRevReq.ResourceAttributes.Verb))
+		action = path.Join(resource, getActionName(verb))
 	}
 
 	return action
 }
 
-func getDataAction(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string) AuthorizationActionInfo {
-	authInfo := AuthorizationActionInfo{
-		IsDataAction: true,
+func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string, apiresourcesList []*metav1.APIResourceList) []AuthorizationActionInfo {
+
+	var authInfoList []AuthorizationActionInfo
+	filterOnApigroup := func(resourceList *metav1.APIResourceList) bool {
+		group := strings.Split(resourceList.GroupVersion, "/")[0]
+		return group == subRevReq.ResourceAttributes.Group
 	}
 
-	authInfo.AuthorizationEntity.Id = clusterType
 	if subRevReq.ResourceAttributes != nil {
-		if subRevReq.ResourceAttributes.Group != "" {
-			authInfo.AuthorizationEntity.Id = path.Join(authInfo.AuthorizationEntity.Id, subRevReq.ResourceAttributes.Group)
+
+		if subRevReq.ResourceAttributes.Resource != "*" && subRevReq.ResourceAttributes.Verb != "*" {
+			authInfoSingle := AuthorizationActionInfo{
+				IsDataAction: true,
+			}
+
+			authInfoSingle.AuthorizationEntity.Id = clusterType
+
+			if subRevReq.ResourceAttributes.Group != "" {
+				authInfoSingle.AuthorizationEntity.Id = path.Join(authInfoSingle.AuthorizationEntity.Id, subRevReq.ResourceAttributes.Group)
+			}
+
+			action := getResourceAndAction(subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Subresource, subRevReq.ResourceAttributes.Verb)
+			authInfoSingle.AuthorizationEntity.Id = path.Join(authInfoSingle.AuthorizationEntity.Id, action)
+			authInfoList[0] = authInfoSingle
+		} else if subRevReq.ResourceAttributes.Resource == "*" {
+			var filteredResources []*metav1.APIResourceList
+			if subRevReq.ResourceAttributes.Group == "*" {
+				// fetch resources under all apigroups
+				filteredResources = apiresourcesList
+			} else if subRevReq.ResourceAttributes.Group != "" {
+				// fetch resources under specified apigroup
+				filteredResources = filterResources(apiresourcesList, filterOnApigroup)
+			} else {
+				// if Group is not there that means it is the core apigroup
+				onlyCoreResources := func(resourceList *metav1.APIResourceList) bool { return resourceList.GroupVersion == "v1" }
+				filteredResources = filterResources(apiresourcesList, onlyCoreResources)
+			}
+
+			// if Namespace is empty or is populated, we need to create the list only for namespace scoped resources
+			var finalFilteredResources []*metav1.APIResourceList
+			if subRevReq.ResourceAttributes.Namespace == "" || subRevReq.ResourceAttributes.Namespace != "" {
+				for _, apiResList := range filteredResources {
+					for _, resource := range apiResList.APIResources {
+						if resource.Namespaced {
+							finalFilteredResources = append(finalFilteredResources, apiResList)
+						}
+					}
+				}
+			}
+
+			// create list of Data Actions
+			authInfoList = createAuthorizationActionInfoList(finalFilteredResources, subRevReq.ResourceAttributes.Verb, clusterType)
+		} else {
+			// this case will only come if resource is not * and verb is *
+			var finalFilteredResource []*metav1.APIResourceList
+			filterResource := subRevReq.ResourceAttributes.Resource
+			filteredApiResourceList := filterResources(apiresourcesList, filterOnApigroup)
+			for _, filteredApiResource := range filteredApiResourceList {
+				for _, resource := range filteredApiResource.APIResources {
+					if resource.Name == filterResource && len(finalFilteredResource) != 1 {
+						singleApiResourceList := &metav1.APIResourceList{
+							GroupVersion: fmt.Sprintf("%s/%s", resource.Group, resource.Version),
+							APIResources: []metav1.APIResource{
+								resource,
+							},
+						}
+						finalFilteredResource = append(finalFilteredResource, singleApiResourceList)
+					}
+				}
+			}
+
+			authInfoList = createAuthorizationActionInfoList(finalFilteredResource, subRevReq.ResourceAttributes.Verb, clusterType)
+		}
+	} else if subRevReq.NonResourceAttributes != nil {
+		authInfoSingle := AuthorizationActionInfo{
+			IsDataAction: true,
+		}
+		authInfoSingle.AuthorizationEntity.Id = path.Join(clusterType, subRevReq.NonResourceAttributes.Path, getActionName(subRevReq.NonResourceAttributes.Verb))
+		authInfoList[0] = authInfoSingle
+	}
+	return authInfoList
+}
+
+func filterResources(apiresourcesList []*metav1.APIResourceList, criteria func(*metav1.APIResourceList) bool) (filteredResources []*metav1.APIResourceList) {
+	for _, res := range apiresourcesList {
+		if criteria(res) {
+			filteredResources = append(filteredResources, res)
+		}
+	}
+	return
+}
+
+func createAuthorizationActionInfoList(apiresourceList []*metav1.APIResourceList, filterVerb string, clusterType string) []AuthorizationActionInfo {
+	var authInfos []AuthorizationActionInfo
+	for _, apiResList := range apiresourceList {
+		group := ""
+		if apiResList.GroupVersion != "" || apiResList.GroupVersion != "v1" {
+			group = strings.Split(apiResList.GroupVersion, "/")[0]
 		}
 
-		action := getResourceAndAction(subRevReq)
-		authInfo.AuthorizationEntity.Id = path.Join(authInfo.AuthorizationEntity.Id, action)
-	} else if subRevReq.NonResourceAttributes != nil {
-		authInfo.AuthorizationEntity.Id = path.Join(authInfo.AuthorizationEntity.Id, subRevReq.NonResourceAttributes.Path, getActionName(subRevReq.NonResourceAttributes.Verb))
+		for _, resource := range apiResList.APIResources {
+
+			authInfo := AuthorizationActionInfo{
+				IsDataAction: true,
+			}
+
+			authInfo.AuthorizationEntity.Id = clusterType
+
+			if group != "" {
+				authInfo.AuthorizationEntity.Id = path.Join(authInfo.AuthorizationEntity.Id, group)
+			}
+
+			resourceName := resource.Name
+			subResourceName := ""
+			if strings.Contains(resource.Name, "/") {
+				resourceName = strings.Split(resource.Name, "/")[0]
+				subResourceName = strings.Split(resource.Name, "/")[1]
+			}
+
+			authInfo.AuthorizationEntity.Id = path.Join(authInfo.AuthorizationEntity.Id, resourceName)
+			if filterVerb != "*" {
+				action := getResourceAndAction(resourceName, subResourceName, filterVerb)
+				authInfo.AuthorizationEntity.Id = path.Join(authInfo.AuthorizationEntity.Id, action)
+				authInfos = append(authInfos, authInfo)
+			} else {
+				// create data actions for all the verbs
+				for _, verb := range resource.Verbs {
+					authInfoSingle := authInfo
+					action := getResourceAndAction(resourceName, subResourceName, verb)
+					authInfoSingle.AuthorizationEntity.Id = path.Join(authInfoSingle.AuthorizationEntity.Id, action)
+					authInfos = append(authInfos, authInfoSingle)
+				}
+			}
+		}
 	}
-	return authInfo
+
+	return authInfos
 }
 
 func defaultDir(s string) string {
@@ -241,7 +363,7 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	if subRevReq.ResourceAttributes != nil {
 		cacheKey = path.Join(cacheKey, defaultDir(subRevReq.ResourceAttributes.Namespace))
 		cacheKey = path.Join(cacheKey, defaultDir(subRevReq.ResourceAttributes.Group))
-		action := getResourceAndAction(subRevReq)
+		action := getResourceAndAction(subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Subresource, subRevReq.ResourceAttributes.Verb)
 		cacheKey = path.Join(cacheKey, action)
 	} else if subRevReq.NonResourceAttributes != nil {
 		cacheKey = path.Join(cacheKey, subRevReq.NonResourceAttributes.Path, getActionName(subRevReq.NonResourceAttributes.Verb))
@@ -250,7 +372,7 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	return cacheKey
 }
 
-func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType, resourceId string, useNamespaceResourceScopeFormat bool) (*CheckAccessRequest, error) {
+func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, apiresourcesList []*metav1.APIResourceList, resourceId string, useNamespaceResourceScopeFormat bool) (*CheckAccessRequest, error) {
 	/* This is how sample SubjectAccessReview request will look like
 		{
 			"kind": "SubjectAccessReview",
@@ -316,9 +438,9 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 	checkaccessreq.Subject.Attributes.Groups = groups
 
 	username = req.User
-	action := make([]AuthorizationActionInfo, 1)
-	action[0] = getDataAction(req, clusterType)
-	checkaccessreq.Actions = action
+	var actions []AuthorizationActionInfo
+	actions = getDataActions(req, clusterType, apiresourcesList)
+	checkaccessreq.Actions = actions
 	checkaccessreq.Resource.Id = getScope(resourceId, req.ResourceAttributes, useNamespaceResourceScopeFormat)
 
 	return &checkaccessreq, nil

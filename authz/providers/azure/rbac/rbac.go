@@ -39,6 +39,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	v "gomodules.xyz/x/version"
 	authzv1 "k8s.io/api/authorization/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 )
 
@@ -76,6 +79,7 @@ type AccessInfo struct {
 	allowNonResDiscoveryPathAccess  bool
 	useNamespaceResourceScopeFormat bool
 	lock                            sync.RWMutex
+	apiresourcesList                []*metav1.APIResourceList
 }
 
 var (
@@ -135,6 +139,13 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 	}
 
 	u.clusterType = getClusterType(opts.AuthzMode)
+	apiresourcesList, err := fetchApiResources()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch all the api-resources")
+	}
+
+	u.apiresourcesList = apiresourcesList
+
 	u.lock = sync.RWMutex{}
 
 	return u, nil
@@ -244,7 +255,7 @@ func (a *AccessInfo) setReqHeaders(req *http.Request) {
 }
 
 func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
-	checkAccessBody, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat)
+	checkAccessBody, err := prepareCheckAccessRequestBody(request, a.clusterType, a.apiresourcesList, a.azureResourceId, a.useNamespaceResourceScopeFormat)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in preparing check access request")
 	}
@@ -325,4 +336,24 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 
 	// Decode response and prepare k8s response
 	return ConvertCheckAccessResponse(data)
+}
+
+func fetchApiResources() ([]*metav1.APIResourceList, error) {
+	// creates the in-cluster config
+	klog.V(5).Infof("Fetch apiresources list")
+	cfg, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, errors.Wrap(err, "Error building kubeconfig")
+	}
+
+	kubeclientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, errors.Wrap(err,"Error building kubernetes clientset")
+	}
+
+	apiresourcesList, err := kubeclientset.Discovery().ServerPreferredResources()
+	if err != nil {
+		return nil, err
+	}
+	return apiresourcesList, nil
 }
