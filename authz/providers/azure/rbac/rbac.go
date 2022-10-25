@@ -17,6 +17,7 @@ package rbac
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -39,6 +40,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	v "gomodules.xyz/x/version"
 	authzv1 "k8s.io/api/authorization/v1"
+	apiextensionClientSet "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -355,5 +357,39 @@ func fetchApiResources() ([]*metav1.APIResourceList, error) {
 	if err != nil {
 		return nil, err
 	}
-	return apiresourcesList, nil
+
+	crdClientset, err := apiextensionClientSet.NewForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	err = filterOutCRDs(crdClientset, apiresourcesList)
+	if err != nil {
+		return nil, err
+	}
+
+	return apiresourcesList, nil	
 }
+
+func filterOutCRDs(crdClientset *apiextensionClientSet.Clientset, apiresourcesList []*metav1.APIResourceList) (error) {
+	crdV1List, err := crdClientset.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	if crdV1List != nil && len(crdV1List.Items) >= 0 {
+		for _, crd := range crdV1List.Items {
+			for _, version := range crd.Spec.Versions {
+				groupVersion := path.Join(crd.Spec.Group, version.Name)
+				noCrdsCondition := func(resourceList *metav1.APIResourceList) bool {
+					return groupVersion != resourceList.GroupVersion
+				}
+
+				apiresourcesList = filterResources(apiresourcesList, noCrdsCondition)
+			}
+		}
+	}
+
+	return nil
+}
+

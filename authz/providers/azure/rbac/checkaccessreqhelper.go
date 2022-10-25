@@ -297,7 +297,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 func filterResources(apiresourcesList []*metav1.APIResourceList, criteria func(*metav1.APIResourceList) bool) (filteredResources []*metav1.APIResourceList) {
 	for _, res := range apiresourcesList {
 		if criteria(res) {
-			filteredResources = append(filteredResources, res)
+				filteredResources = append(filteredResources, res)
 		}
 	}
 	return
