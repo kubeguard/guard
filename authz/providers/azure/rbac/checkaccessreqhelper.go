@@ -18,6 +18,7 @@ package rbac
 import (
 	"encoding/json"
 	"fmt"
+	"golang.org/x/exp/slices"
 	"path"
 	"strings"
 
@@ -234,7 +235,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 
 			action := getResourceAndAction(subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Subresource, subRevReq.ResourceAttributes.Verb)
 			authInfoSingle.AuthorizationEntity.Id = path.Join(authInfoSingle.AuthorizationEntity.Id, action)
-			authInfoList[0] = authInfoSingle
+			authInfoList = append(authInfoList, authInfoSingle)
 		} else if subRevReq.ResourceAttributes.Resource == "*" {
 			var filteredResources []*metav1.APIResourceList
 			if subRevReq.ResourceAttributes.Group == "*" {
@@ -268,11 +269,13 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 			var finalFilteredResource []*metav1.APIResourceList
 			filterResource := subRevReq.ResourceAttributes.Resource
 			filteredApiResourceList := filterResources(apiresourcesList, filterOnApigroup)
+			klog.V(5).Infof("Filtered resources on group : %v, %d", filteredApiResourceList, len(finalFilteredResource))
 			for _, filteredApiResource := range filteredApiResourceList {
 				for _, resource := range filteredApiResource.APIResources {
 					if resource.Name == filterResource && len(finalFilteredResource) != 1 {
+						klog.V(5).Infof("group %s, version %s", resource.Group, resource.Version)
 						singleApiResourceList := &metav1.APIResourceList{
-							GroupVersion: fmt.Sprintf("%s/%s", resource.Group, resource.Version),
+							GroupVersion: filteredApiResource.GroupVersion,
 							APIResources: []metav1.APIResource{
 								resource,
 							},
@@ -282,6 +285,8 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 				}
 			}
 
+			klog.V(5).Infof("Final filtered resource : %v", finalFilteredResource)
+
 			authInfoList = createAuthorizationActionInfoList(finalFilteredResource, subRevReq.ResourceAttributes.Verb, clusterType)
 		}
 	} else if subRevReq.NonResourceAttributes != nil {
@@ -289,7 +294,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 			IsDataAction: true,
 		}
 		authInfoSingle.AuthorizationEntity.Id = path.Join(clusterType, subRevReq.NonResourceAttributes.Path, getActionName(subRevReq.NonResourceAttributes.Verb))
-		authInfoList[0] = authInfoSingle
+		authInfoList = append(authInfoList, authInfoSingle)
 	}
 	return authInfoList
 }
@@ -297,7 +302,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 func filterResources(apiresourcesList []*metav1.APIResourceList, criteria func(*metav1.APIResourceList) bool) (filteredResources []*metav1.APIResourceList) {
 	for _, res := range apiresourcesList {
 		if criteria(res) {
-				filteredResources = append(filteredResources, res)
+			filteredResources = append(filteredResources, res)
 		}
 	}
 	return
@@ -307,7 +312,7 @@ func createAuthorizationActionInfoList(apiresourceList []*metav1.APIResourceList
 	var authInfos []AuthorizationActionInfo
 	for _, apiResList := range apiresourceList {
 		group := ""
-		if apiResList.GroupVersion != "" || apiResList.GroupVersion != "v1" {
+		if apiResList.GroupVersion != "" && apiResList.GroupVersion != "v1" {
 			group = strings.Split(apiResList.GroupVersion, "/")[0]
 		}
 
@@ -330,10 +335,14 @@ func createAuthorizationActionInfoList(apiresourceList []*metav1.APIResourceList
 				subResourceName = strings.Split(resource.Name, "/")[1]
 			}
 
-			authInfo.AuthorizationEntity.Id = path.Join(authInfo.AuthorizationEntity.Id, resourceName)
 			if filterVerb != "*" {
 				action := getResourceAndAction(resourceName, subResourceName, filterVerb)
 				authInfo.AuthorizationEntity.Id = path.Join(authInfo.AuthorizationEntity.Id, action)
+				found := searchInAuthInfo(authInfos, authInfo.AuthorizationEntity.Id)
+
+				if found {
+					continue
+				}
 				authInfos = append(authInfos, authInfo)
 			} else {
 				// create data actions for all the verbs
@@ -341,6 +350,12 @@ func createAuthorizationActionInfoList(apiresourceList []*metav1.APIResourceList
 					authInfoSingle := authInfo
 					action := getResourceAndAction(resourceName, subResourceName, verb)
 					authInfoSingle.AuthorizationEntity.Id = path.Join(authInfoSingle.AuthorizationEntity.Id, action)
+					found := searchInAuthInfo(authInfos, authInfoSingle.AuthorizationEntity.Id)
+
+					if found {
+						continue
+					}
+
 					authInfos = append(authInfos, authInfoSingle)
 				}
 			}
@@ -348,6 +363,12 @@ func createAuthorizationActionInfoList(apiresourceList []*metav1.APIResourceList
 	}
 
 	return authInfos
+}
+
+func searchInAuthInfo(authInfos []AuthorizationActionInfo, searchAction string) bool {
+	found := slices.IndexFunc(authInfos, func(a AuthorizationActionInfo) bool { return a.AuthorizationEntity.Id == searchAction })
+
+	return found
 }
 
 func defaultDir(s string) string {

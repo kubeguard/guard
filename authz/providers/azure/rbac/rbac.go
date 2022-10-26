@@ -350,7 +350,7 @@ func fetchApiResources() ([]*metav1.APIResourceList, error) {
 
 	kubeclientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		return nil, errors.Wrap(err,"Error building kubernetes clientset")
+		return nil, errors.Wrap(err, "Error building kubernetes clientset")
 	}
 
 	apiresourcesList, err := kubeclientset.Discovery().ServerPreferredResources()
@@ -363,18 +363,20 @@ func fetchApiResources() ([]*metav1.APIResourceList, error) {
 		return nil, err
 	}
 
-	err = filterOutCRDs(crdClientset, apiresourcesList)
+	apiresourcesList, err = filterOutCRDs(crdClientset, apiresourcesList)
 	if err != nil {
 		return nil, err
 	}
 
-	return apiresourcesList, nil	
+	klog.V(5).Infof("Apiresources list : %v", apiresourcesList)
+
+	return apiresourcesList, nil
 }
 
-func filterOutCRDs(crdClientset *apiextensionClientSet.Clientset, apiresourcesList []*metav1.APIResourceList) (error) {
+func filterOutCRDs(crdClientset *apiextensionClientSet.Clientset, apiresourcesList []*metav1.APIResourceList) ([]*metav1.APIResourceList, error) {
 	crdV1List, err := crdClientset.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if crdV1List != nil && len(crdV1List.Items) >= 0 {
@@ -390,6 +392,5 @@ func filterOutCRDs(crdClientset *apiextensionClientSet.Clientset, apiresourcesLi
 		}
 	}
 
-	return nil
+	return apiresourcesList, nil
 }
-
