@@ -30,6 +30,7 @@ import (
 )
 
 const (
+	ActionBatchCount            = 200
 	AccessAllowedVerdict        = "Access allowed by Azure RBAC"
 	AccessAllowedVerboseVerdict = "Access allowed by Azure RBAC Role Assignment %s of Role %s to user %s"
 	Allowed                     = "allowed"
@@ -399,7 +400,7 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	return cacheKey
 }
 
-func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, apiresourcesList []*metav1.APIResourceList, resourceId string, useNamespaceResourceScopeFormat bool) (*CheckAccessRequest, error) {
+func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, apiresourcesList []*metav1.APIResourceList, resourceId string, useNamespaceResourceScopeFormat bool) ([]*CheckAccessRequest, error) {
 	/* This is how sample SubjectAccessReview request will look like
 		{
 			"kind": "SubjectAccessReview",
@@ -446,31 +447,37 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 			}
 		}
 	*/
-	checkaccessreq := CheckAccessRequest{}
+
 	var userOid string
 	if oid, ok := req.Extra["oid"]; ok {
 		val := oid.String()
 		userOid = val[1 : len(val)-1]
+		if !isValidUUID(userOid) {
+			return nil, errors.New("oid info sent from authentication module is not valid")
+		}
 	} else {
 		return nil, errors.New("oid info not sent from authentication module")
 	}
-
-	if isValidUUID(userOid) {
-		checkaccessreq.Subject.Attributes.ObjectId = userOid
-	} else {
-		return nil, errors.New("oid info sent from authentication module is not valid")
-	}
-
 	groups := getValidSecurityGroups(req.Groups)
-	checkaccessreq.Subject.Attributes.Groups = groups
-
 	username = req.User
 	var actions []AuthorizationActionInfo
 	actions = getDataActions(req, clusterType, apiresourcesList)
-	checkaccessreq.Actions = actions
-	checkaccessreq.Resource.Id = getScope(resourceId, req.ResourceAttributes, useNamespaceResourceScopeFormat)
+	var checkAccessReqs []*CheckAccessRequest
+	for i := 0; i < len(actions); i += 200 {
+		j := i + ActionBatchCount
+		if j > len(actions) {
+			j = len(actions)
+		}
 
-	return &checkaccessreq, nil
+		checkaccessreq := CheckAccessRequest{}
+		checkaccessreq.Subject.Attributes.Groups = groups
+		checkaccessreq.Subject.Attributes.ObjectId = userOid
+		checkaccessreq.Actions = actions[i:j]
+		checkaccessreq.Resource.Id = getScope(resourceId, req.ResourceAttributes, useNamespaceResourceScopeFormat)
+		checkAccessReqs = append(checkAccessReqs, checkaccessreq)
+	}
+
+	return &checkAccessReqs, nil
 }
 
 func getNameSpaceScope(req *authzv1.SubjectAccessReviewSpec, useNamespaceResourceScopeFormat bool) (bool, string) {
@@ -500,7 +507,9 @@ func ConvertCheckAccessResponse(body []byte) (*authzv1.SubjectAccessReviewStatus
 		return nil, errors.Wrap(err, "Error in unmarshalling check access response.")
 	}
 
-	if strings.ToLower(response[0].Decision) == Allowed {
+	deniedResultFound := slices.IndexFunc(response, func(a AuthorizationDecision) bool { return strings.ToLower(a.Decision) != Allowed })
+
+	if deniedResultFound == -1 { // no denied result found
 		allowed = true
 		verdict = fmt.Sprintf(AccessAllowedVerboseVerdict, response[0].AzureRoleAssignment.Id, response[0].AzureRoleAssignment.RoleDefinitionId, username)
 	} else {

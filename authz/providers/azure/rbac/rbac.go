@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/exp/slices"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -257,7 +258,7 @@ func (a *AccessInfo) setReqHeaders(req *http.Request) {
 }
 
 func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
-	checkAccessBody, err := prepareCheckAccessRequestBody(request, a.clusterType, a.apiresourcesList, a.azureResourceId, a.useNamespaceResourceScopeFormat)
+	checkAccessBodies, err := prepareCheckAccessRequestBody(request, a.clusterType, a.apiresourcesList, a.azureResourceId, a.useNamespaceResourceScopeFormat)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in preparing check access request")
 	}
@@ -275,6 +276,32 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	params.Add("api-version", checkAccessAPIVersion)
 	checkAccessURL.RawQuery = params.Encode()
 
+	checkAccessResults := make([]CheckAccessResult, len(checkAccessBodies))
+	var wg sync.WaitGroup // New wait group
+	wg.Add(len(checkAccessBodies))
+	ch := make(chan *authzv1.SubjectAccessReviewStatus, len(checkAccessBodies))
+	for _, checkAccessBody := range checkAccessBodies {
+		go sendCheckAccessRequest(checkAccessURL, checkAccessBody, ch)
+	}
+
+	wg.Wait()
+
+	close(ch)
+
+	var finalResult *authzv1.SubjectAccessReviewStatus
+	for _, result := range ch {
+		if result.Allowed != rbac.Allowed {
+			finalResult = result
+			break
+		}
+
+		finalResult = result
+	}
+
+	return finalResult
+}
+
+func sendCheckAccessRequest(checkAccessURL *a.apiURL, checkAccessBody *CheckAccessRequest, ch chan *authzv1.SubjectAccessReviewStatus) {
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(checkAccessBody); err != nil {
 		return nil, errors.Wrap(err, "error encoding check access request")
@@ -297,6 +324,8 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	if err != nil {
 		return nil, errors.Wrap(err, "error in check access request execution")
 	}
+
+	defer resp.Body.Close()
 
 	checkAccessTotal.Inc()
 
@@ -336,8 +365,10 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		checkAccessSucceeded.Inc()
 	}
 
+	wg.Done()
 	// Decode response and prepare k8s response
-	return ConvertCheckAccessResponse(data)
+	ch <- ConvertCheckAccessResponse(data)
+	return
 }
 
 func fetchApiResources() ([]*metav1.APIResourceList, error) {
