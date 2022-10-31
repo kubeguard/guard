@@ -254,13 +254,20 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 			var finalFilteredResources []*metav1.APIResourceList
 			if subRevReq.ResourceAttributes.Namespace == "" || subRevReq.ResourceAttributes.Namespace != "" {
 				for _, apiResList := range filteredResources {
+					var resourceList []metav1.APIResource
 					for _, resource := range apiResList.APIResources {
 						if resource.Namespaced {
-							finalFilteredResources = append(finalFilteredResources, apiResList)
+							resourceList = append(resourceList, resource)
 						}
+					}
+					apiResList.APIResources = resourceList
+					if len(apiResList.APIResources) > 0 {
+						finalFilteredResources = append(finalFilteredResources, apiResList)
 					}
 				}
 			}
+
+			klog.V(5).Infof("Final filtered resource : %v", finalFilteredResources)
 
 			// create list of Data Actions
 			authInfoList = createAuthorizationActionInfoList(finalFilteredResources, subRevReq.ResourceAttributes.Verb, clusterType)
@@ -340,10 +347,9 @@ func createAuthorizationActionInfoList(apiresourceList []*metav1.APIResourceList
 				authInfo.AuthorizationEntity.Id = path.Join(authInfo.AuthorizationEntity.Id, action)
 				found := searchInAuthInfo(authInfos, authInfo.AuthorizationEntity.Id)
 
-				if found {
-					continue
+				if found == -1 {
+					authInfos = append(authInfos, authInfo)
 				}
-				authInfos = append(authInfos, authInfo)
 			} else {
 				// create data actions for all the verbs
 				for _, verb := range resource.Verbs {
@@ -351,12 +357,12 @@ func createAuthorizationActionInfoList(apiresourceList []*metav1.APIResourceList
 					action := getResourceAndAction(resourceName, subResourceName, verb)
 					authInfoSingle.AuthorizationEntity.Id = path.Join(authInfoSingle.AuthorizationEntity.Id, action)
 					found := searchInAuthInfo(authInfos, authInfoSingle.AuthorizationEntity.Id)
+					klog.V(5).Infof("found string: %v %s", found, authInfoSingle.AuthorizationEntity.Id)
 
-					if found {
-						continue
+					if found == -1 {
+						authInfos = append(authInfos, authInfoSingle)
 					}
 
-					authInfos = append(authInfos, authInfoSingle)
 				}
 			}
 		}
@@ -365,7 +371,7 @@ func createAuthorizationActionInfoList(apiresourceList []*metav1.APIResourceList
 	return authInfos
 }
 
-func searchInAuthInfo(authInfos []AuthorizationActionInfo, searchAction string) bool {
+func searchInAuthInfo(authInfos []AuthorizationActionInfo, searchAction string) int {
 	found := slices.IndexFunc(authInfos, func(a AuthorizationActionInfo) bool { return a.AuthorizationEntity.Id == searchAction })
 
 	return found
