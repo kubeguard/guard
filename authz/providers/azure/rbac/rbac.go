@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/exp/slices"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -61,6 +60,11 @@ const (
 type AuthzInfo struct {
 	AADEndpoint string
 	ARMEndPoint string
+}
+
+type ReviewResult struct {
+	status  *authzv1.SubjectAccessReviewStatus
+	err error
 }
 
 type void struct{}
@@ -276,35 +280,45 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	params.Add("api-version", checkAccessAPIVersion)
 	checkAccessURL.RawQuery = params.Encode()
 
-	checkAccessResults := make([]CheckAccessResult, len(checkAccessBodies))
 	var wg sync.WaitGroup // New wait group
-	wg.Add(len(checkAccessBodies))
-	ch := make(chan *authzv1.SubjectAccessReviewStatus, len(checkAccessBodies))
+
+	ch := make(chan ReviewResult, len(checkAccessBodies))
 	for _, checkAccessBody := range checkAccessBodies {
-		go sendCheckAccessRequest(checkAccessURL, checkAccessBody, ch)
+		wg.Add(1)
+		go a.sendCheckAccessRequest(checkAccessURL, checkAccessBody, &wg, ch)
 	}
 
-	wg.Wait()
 
-	close(ch)
+	go func() {
+           wg.Wait()
+           close(ch)
+        }()
 
 	var finalResult *authzv1.SubjectAccessReviewStatus
-	for _, result := range ch {
-		if result.Allowed != rbac.Allowed {
-			finalResult = result
+	for result := range ch {
+		if result.err != nil {
+			return nil, err
+		}
+
+		if result.status.Denied {
+			finalResult = result.status
 			break
 		}
 
-		finalResult = result
+		finalResult = result.status
 	}
 
-	return finalResult
+	return finalResult, nil
 }
 
-func sendCheckAccessRequest(checkAccessURL *a.apiURL, checkAccessBody *CheckAccessRequest, ch chan *authzv1.SubjectAccessReviewStatus) {
+func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessBody *CheckAccessRequest, wg *sync.WaitGroup, ch chan ReviewResult) {
+	reviewResult :=  ReviewResult{}
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(checkAccessBody); err != nil {
-		return nil, errors.Wrap(err, "error encoding check access request")
+		reviewResult.status = nil
+		reviewResult.err = errors.Wrap(err, "error encoding check access request")
+		ch <- reviewResult
+		return
 	}
 
 	if klog.V(10).Enabled() {
@@ -315,14 +329,20 @@ func sendCheckAccessRequest(checkAccessURL *a.apiURL, checkAccessBody *CheckAcce
 
 	req, err := http.NewRequest(http.MethodPost, checkAccessURL.String(), buf)
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating check access request")
+		reviewResult.status = nil
+		reviewResult.err = errors.Wrap(err, "error creating check access request")
+		ch <-  reviewResult
+		return
 	}
 
 	a.setReqHeaders(req)
 
 	resp, err := a.client.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "error in check access request execution")
+		reviewResult.status = nil
+		reviewResult.err = errors.Wrap(err, "error in check access request execution")
+		ch <- reviewResult
+		return
 	}
 
 	defer resp.Body.Close()
@@ -331,7 +351,10 @@ func sendCheckAccessRequest(checkAccessURL *a.apiURL, checkAccessBody *CheckAcce
 
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "error in reading response body")
+		reviewResult.status = nil
+		reviewResult.err = errors.Wrap(err, "error in reading response body")
+		ch <- reviewResult
+		return
 	}
 
 	defer resp.Body.Close()
@@ -348,7 +371,10 @@ func sendCheckAccessRequest(checkAccessURL *a.apiURL, checkAccessBody *CheckAcce
 
 			checkAccessFailed.Inc()
 		}
-		return nil, errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data))
+		reviewResult.status = nil
+                reviewResult.err = errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data))
+		ch <-  reviewResult
+                return
 	} else {
 		remaining := resp.Header.Get(remainingSubReadARMHeader)
 		klog.Infof("Remaining request count in ARM instance:%s", remaining)
@@ -365,10 +391,11 @@ func sendCheckAccessRequest(checkAccessURL *a.apiURL, checkAccessBody *CheckAcce
 		checkAccessSucceeded.Inc()
 	}
 
-	wg.Done()
 	// Decode response and prepare k8s response
-	ch <- ConvertCheckAccessResponse(data)
-	return
+	reviewResult.status, reviewResult.err  = ConvertCheckAccessResponse(data)
+	ch <- reviewResult
+
+	wg.Done()
 }
 
 func fetchApiResources() ([]*metav1.APIResourceList, error) {

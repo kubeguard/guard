@@ -474,10 +474,10 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 		checkaccessreq.Subject.Attributes.ObjectId = userOid
 		checkaccessreq.Actions = actions[i:j]
 		checkaccessreq.Resource.Id = getScope(resourceId, req.ResourceAttributes, useNamespaceResourceScopeFormat)
-		checkAccessReqs = append(checkAccessReqs, checkaccessreq)
+		checkAccessReqs = append(checkAccessReqs, &checkaccessreq)
 	}
 
-	return &checkAccessReqs, nil
+	return checkAccessReqs, nil
 }
 
 func getNameSpaceScope(req *authzv1.SubjectAccessReviewSpec, useNamespaceResourceScopeFormat bool) (bool, string) {
