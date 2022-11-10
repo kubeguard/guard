@@ -251,9 +251,10 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 				filteredResources = filterResources(apiresourcesList, onlyCoreResources)
 			}
 
-			// if Namespace is empty or is populated, we need to create the list only for namespace scoped resources
+			// if Namespace is populated, we need to create the list only for namespace scoped resources
 			var finalFilteredResources []*metav1.APIResourceList
-			if subRevReq.ResourceAttributes.Namespace == "" || subRevReq.ResourceAttributes.Namespace != "" {
+
+			if subRevReq.ResourceAttributes.Namespace != "" {
 				for _, apiResList := range filteredResources {
 					var resourceList []metav1.APIResource
 					for _, resource := range apiResList.APIResources {
@@ -266,6 +267,9 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 						finalFilteredResources = append(finalFilteredResources, apiResList)
 					}
 				}
+			} else {
+				// both cluster scoped and namespace scoped resource list
+				finalFilteredResources = filteredResources
 			}
 
 			klog.V(5).Infof("Final filtered resource : %v", finalFilteredResources)

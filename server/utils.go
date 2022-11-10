@@ -17,15 +17,20 @@ limitations under the License.
 package server
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	auth "k8s.io/api/authentication/v1"
 	authzv1 "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apiextensionClientSet "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 )
 
@@ -173,4 +178,76 @@ func (w *withCode) Format(s fmt.State, verb rune) {
 			klog.Fatal(err)
 		}
 	}
+}
+
+func fetchApiResources() ([]*metav1.APIResourceList, error) {
+	// creates the in-cluster config
+	klog.V(5).Infof("Fetch apiresources list")
+	cfg, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, errors.Wrap(err, "Error building kubeconfig")
+	}
+
+	kubeclientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error building kubernetes clientset")
+	}
+
+	apiresourcesList, err := kubeclientset.Discovery().ServerPreferredResources()
+	if err != nil {
+		return nil, err
+	}
+
+	crdClientset, err := apiextensionClientSet.NewForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	apiresourcesList, err = filterOutCRDs(crdClientset, apiresourcesList)
+	if err != nil {
+		return nil, err
+	}
+
+	projectCalicoApiService := "projectcalico.org/v3"
+
+	noProjectCalicoCondition := func(resourceList *metav1.APIResourceList) bool {
+		return projectCalicoApiService != resourceList.GroupVersion
+	}
+
+	apiresourcesList = filterResources(apiresourcesList, noProjectCalicoCondition)
+
+	klog.V(5).Infof("Apiresources list : %v", apiresourcesList)
+
+	return apiresourcesList, nil
+}
+
+func filterOutCRDs(crdClientset *apiextensionClientSet.Clientset, apiresourcesList []*metav1.APIResourceList) ([]*metav1.APIResourceList, error) {
+	crdV1List, err := crdClientset.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	if crdV1List != nil && len(crdV1List.Items) >= 0 {
+		for _, crd := range crdV1List.Items {
+			for _, version := range crd.Spec.Versions {
+				groupVersion := path.Join(crd.Spec.Group, version.Name)
+				noCrdsCondition := func(resourceList *metav1.APIResourceList) bool {
+					return groupVersion != resourceList.GroupVersion
+				}
+
+				apiresourcesList = filterResources(apiresourcesList, noCrdsCondition)
+			}
+		}
+	}
+
+	return apiresourcesList, nil
+}
+
+func filterResources(apiresourcesList []*metav1.APIResourceList, criteria func(*metav1.APIResourceList) bool) (filteredResources []*metav1.APIResourceList) {
+	for _, res := range apiresourcesList {
+		if criteria(res) {
+			filteredResources = append(filteredResources, res)
+		}
+	}
+	return
 }

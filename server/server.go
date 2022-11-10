@@ -189,6 +189,13 @@ func (s Server) ListenAndServe() {
 			if authzhandler.Store == nil || err != nil {
 				klog.Fatalf("Error in initalizing cache. Error:%s", err.Error())
 			}
+
+			apiResourcesList, err := fetchApiResources()
+			if err != nil {
+				klog.Fatalf("Failed to fetch all the api-resources. Error:%s", err.Error())
+			}
+
+			authzhandler.apiResourcesList = apiResourcesList
 		}
 	}
 

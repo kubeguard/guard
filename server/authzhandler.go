@@ -24,6 +24,7 @@ import (
 
 	"github.com/pkg/errors"
 	authzv1 "k8s.io/api/authorization/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -31,6 +32,7 @@ type Authzhandler struct {
 	AuthRecommendedOptions  *AuthRecommendedOptions
 	AuthzRecommendedOptions *AuthzRecommendedOptions
 	Store                   authz.Store
+	apiResourcesList        []*metav1.APIResourceList
 }
 
 func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -71,7 +73,7 @@ func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 func (s *Authzhandler) getAuthzProviderClient(org string) (authz.Interface, error) {
 	switch strings.ToLower(org) {
 	case azure.OrgType:
-		return azure.New(s.AuthzRecommendedOptions.Azure, s.AuthRecommendedOptions.Azure)
+		return azure.New(s.AuthzRecommendedOptions.Azure, s.AuthRecommendedOptions.Azure, s.apiResourcesList)
 	}
 
 	return nil, errors.Errorf("Client is using unknown organization %s", org)

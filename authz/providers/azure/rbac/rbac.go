@@ -17,7 +17,6 @@ package rbac
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -40,10 +39,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	v "gomodules.xyz/x/version"
 	authzv1 "k8s.io/api/authorization/v1"
-	apiextensionClientSet "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 )
 
@@ -86,7 +82,7 @@ type AccessInfo struct {
 	allowNonResDiscoveryPathAccess  bool
 	useNamespaceResourceScopeFormat bool
 	lock                            sync.RWMutex
-	apiresourcesList                []*metav1.APIResourceList
+	apiResourcesList                []*metav1.APIResourceList
 }
 
 var (
@@ -123,7 +119,7 @@ func getClusterType(clsType string) string {
 	}
 }
 
-func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts authzOpts.Options) (*AccessInfo, error) {
+func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts authzOpts.Options, apiResourcesList []*metav1.APIResourceList) (*AccessInfo, error) {
 	u := &AccessInfo{
 		client: httpclient.DefaultHTTPClient,
 		headers: http.Header{
@@ -146,19 +142,15 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 	}
 
 	u.clusterType = getClusterType(opts.AuthzMode)
-	apiresourcesList, err := fetchApiResources()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch all the api-resources")
-	}
 
-	u.apiresourcesList = apiresourcesList
+	u.apiResourcesList = apiResourcesList
 
 	u.lock = sync.RWMutex{}
 
 	return u, nil
 }
 
-func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo) (*AccessInfo, error) {
+func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo, apiResourcesList []*metav1.APIResourceList) (*AccessInfo, error) {
 	rbacURL, err := url.Parse(authzInfo.ARMEndPoint)
 	if err != nil {
 		return nil, err
@@ -176,7 +168,7 @@ func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo) (*
 		tokenProvider = graph.NewAKSTokenProvider(opts.AKSAuthzTokenURL, authopts.TenantID)
 	}
 
-	return newAccessInfo(tokenProvider, rbacURL, opts)
+	return newAccessInfo(tokenProvider, rbacURL, opts, apiResourcesList)
 }
 
 func (a *AccessInfo) RefreshToken() error {
@@ -262,7 +254,7 @@ func (a *AccessInfo) setReqHeaders(req *http.Request) {
 }
 
 func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
-	checkAccessBodies, err := prepareCheckAccessRequestBody(request, a.clusterType, a.apiresourcesList, a.azureResourceId, a.useNamespaceResourceScopeFormat)
+	checkAccessBodies, err := prepareCheckAccessRequestBody(request, a.clusterType, a.apiResourcesList, a.azureResourceId, a.useNamespaceResourceScopeFormat)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in preparing check access request")
 	}
@@ -396,59 +388,4 @@ func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessB
 	ch <- reviewResult
 
 	wg.Done()
-}
-
-func fetchApiResources() ([]*metav1.APIResourceList, error) {
-	// creates the in-cluster config
-	klog.V(5).Infof("Fetch apiresources list")
-	cfg, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, errors.Wrap(err, "Error building kubeconfig")
-	}
-
-	kubeclientset, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error building kubernetes clientset")
-	}
-
-	apiresourcesList, err := kubeclientset.Discovery().ServerPreferredResources()
-	if err != nil {
-		return nil, err
-	}
-
-	crdClientset, err := apiextensionClientSet.NewForConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	apiresourcesList, err = filterOutCRDs(crdClientset, apiresourcesList)
-	if err != nil {
-		return nil, err
-	}
-
-	klog.V(5).Infof("Apiresources list : %v", apiresourcesList)
-
-	return apiresourcesList, nil
-}
-
-func filterOutCRDs(crdClientset *apiextensionClientSet.Clientset, apiresourcesList []*metav1.APIResourceList) ([]*metav1.APIResourceList, error) {
-	crdV1List, err := crdClientset.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	if crdV1List != nil && len(crdV1List.Items) >= 0 {
-		for _, crd := range crdV1List.Items {
-			for _, version := range crd.Spec.Versions {
-				groupVersion := path.Join(crd.Spec.Group, version.Name)
-				noCrdsCondition := func(resourceList *metav1.APIResourceList) bool {
-					return groupVersion != resourceList.GroupVersion
-				}
-
-				apiresourcesList = filterResources(apiresourcesList, noCrdsCondition)
-			}
-		}
-	}
-
-	return apiresourcesList, nil
 }
