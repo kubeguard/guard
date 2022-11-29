@@ -28,6 +28,7 @@ import (
 	"go.kubeguard.dev/guard/auth/providers/token"
 	"go.kubeguard.dev/guard/authz/providers/azure"
 	"go.kubeguard.dev/guard/authz/providers/azure/data"
+	oputil "go.kubeguard.dev/guard/util/operations"
 
 	"github.com/appscode/pat"
 	"github.com/prometheus/client_golang/prometheus"
@@ -190,12 +191,25 @@ func (s Server) ListenAndServe() {
 				klog.Fatalf("Error in initalizing cache. Error:%s", err.Error())
 			}
 
-			apiResourcesList, err := fetchApiResources()
-			if err != nil {
-				klog.Fatalf("Failed to fetch all the api-resources. Error:%s", err.Error())
+			clusterType := ""
+
+			switch s.AuthzRecommendedOptions.Azure.AuthzMode {
+			case "arc":
+				clusterType = oputil.ConnectedClusters
+			case "aks":
+				clusterType = oputil.ManagedClusters
+			case "fleet":
+				clusterType = oputil.Fleets
+			default:
+				klog.Fatalf("Error in setting authzmode for fetching list of resources")
 			}
 
-			authzhandler.apiResourcesList = apiResourcesList
+			dataActionsMap, err := fetchListOfResources(clusterType, s.AuthRecommendedOptions.Azure.Environment, s.AuthzRecommendedOptions.Azure.AKSAuthzTokenURL, s.AuthRecommendedOptions.Azure.TenantID)
+			if err != nil {
+				klog.Fatalf("Failed to create map of data actions. Error:%s", err.Error())
+			}
+
+			authzhandler.dataActionsMap = dataActionsMap
 		}
 	}
 

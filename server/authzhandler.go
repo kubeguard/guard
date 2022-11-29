@@ -21,10 +21,10 @@ import (
 
 	"go.kubeguard.dev/guard/authz"
 	"go.kubeguard.dev/guard/authz/providers/azure"
+	oputil "go.kubeguard.dev/guard/util/operations"
 
 	"github.com/pkg/errors"
 	authzv1 "k8s.io/api/authorization/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -32,7 +32,7 @@ type Authzhandler struct {
 	AuthRecommendedOptions  *AuthRecommendedOptions
 	AuthzRecommendedOptions *AuthzRecommendedOptions
 	Store                   authz.Store
-	apiResourcesList        []*metav1.APIResourceList
+	dataActionsMap          map[string][]map[string]map[string]oputil.DataAction
 }
 
 func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -73,7 +73,7 @@ func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 func (s *Authzhandler) getAuthzProviderClient(org string) (authz.Interface, error) {
 	switch strings.ToLower(org) {
 	case azure.OrgType:
-		return azure.New(s.AuthzRecommendedOptions.Azure, s.AuthRecommendedOptions.Azure, s.apiResourcesList)
+		return azure.New(s.AuthzRecommendedOptions.Azure, s.AuthRecommendedOptions.Azure, s.dataActionsMap)
 	}
 
 	return nil, errors.Errorf("Client is using unknown organization %s", org)

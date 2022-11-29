@@ -17,8 +17,11 @@ limitations under the License.
 package rbac
 
 import (
+	"path"
 	"reflect"
 	"testing"
+
+	oputil "go.kubeguard.dev/guard/util/operations"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -26,6 +29,40 @@ import (
 )
 
 const resourceId = "resourceId"
+
+func createDataActionsMap(clusterType string) map[string][]map[string]map[string]oputil.DataAction {
+	dataActionsMap := map[string][]map[string]map[string]oputil.DataAction{}
+	dataActionsMap["v1"] = []map[string]map[string]oputil.DataAction{}
+	dataActionsMap["apps"] = []map[string]map[string]oputil.DataAction{}
+	commonVerbs := []string{"read", "write", "delete"}
+	resources := []string{"deployments", "pods", "persistentvolumes"}
+
+	for _, res := range resources {
+		for _, verb := range commonVerbs {
+			da := oputil.DataAction{
+				ActionInfo: oputil.AuthorizationActionInfo{
+					IsDataAction: true,
+				},
+				IsNamespacedResource: false,
+			}
+			da.ActionInfo.AuthorizationEntity.Id = path.Join(clusterType, res, verb)
+			if res == "pods" || res == "deployments" {
+				da.IsNamespacedResource = true
+			}
+
+			resourceAndVerb := map[string]map[string]oputil.DataAction{}
+			resourceAndVerb[res] = map[string]oputil.DataAction{}
+			resourceAndVerb[res][verb] = da
+			if res == "pods" || res == "persistentvolumes" {
+				dataActionsMap["v1"] = append(dataActionsMap["v1"], resourceAndVerb)
+			} else {
+				dataActionsMap["apps"] = append(dataActionsMap["apps"], resourceAndVerb)
+			}
+		}
+	}
+
+	return dataActionsMap
+}
 
 func Test_getScope(t *testing.T) {
 	type args struct {
@@ -85,7 +122,7 @@ func Test_getValidSecurityGroups(t *testing.T) {
 	}
 }
 
-func Test_getDataAction(t *testing.T) {
+func Test_getDataActions(t *testing.T) {
 	type args struct {
 		subRevReq   *authzv1.SubjectAccessReviewSpec
 		clusterType string
@@ -93,7 +130,7 @@ func Test_getDataAction(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want AuthorizationActionInfo
+		want []oputil.AuthorizationActionInfo
 	}{
 		{
 			"aks",
@@ -102,7 +139,7 @@ func Test_getDataAction(t *testing.T) {
 					NonResourceAttributes: &authzv1.NonResourceAttributes{Path: "/apis", Verb: "list"},
 				}, clusterType: "aks",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "aks/apis/read"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/apis/read"}, IsDataAction: true}},
 		},
 
 		{
@@ -112,7 +149,7 @@ func Test_getDataAction(t *testing.T) {
 					NonResourceAttributes: &authzv1.NonResourceAttributes{Path: "/logs", Verb: "get"},
 				}, clusterType: "aks",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "aks/logs/read"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/logs/read"}, IsDataAction: true}},
 		},
 
 		{
@@ -122,7 +159,7 @@ func Test_getDataAction(t *testing.T) {
 					NonResourceAttributes: &authzv1.NonResourceAttributes{Path: "/apis", Verb: "list"},
 				}, clusterType: "fleet",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "fleet/apis/read"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "fleet/apis/read"}, IsDataAction: true}},
 		},
 
 		{
@@ -132,7 +169,7 @@ func Test_getDataAction(t *testing.T) {
 					NonResourceAttributes: &authzv1.NonResourceAttributes{Path: "/logs", Verb: "get"},
 				}, clusterType: "fleet",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "fleet/logs/read"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "fleet/logs/read"}, IsDataAction: true}},
 		},
 
 		{
@@ -142,7 +179,7 @@ func Test_getDataAction(t *testing.T) {
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "pods", Subresource: "status", Version: "v1", Name: "test", Verb: "delete"},
 				}, clusterType: "arc",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "arc/pods/delete"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "arc/pods/delete"}, IsDataAction: true}},
 		},
 
 		{
@@ -152,7 +189,7 @@ func Test_getDataAction(t *testing.T) {
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "apps", Resource: "deployments", Subresource: "status", Version: "v1", Name: "test", Verb: "create"},
 				}, clusterType: "arc",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "arc/apps/deployments/write"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "arc/apps/deployments/write"}, IsDataAction: true}},
 		},
 
 		{
@@ -162,7 +199,7 @@ func Test_getDataAction(t *testing.T) {
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "policy", Resource: "podsecuritypolicies", Subresource: "status", Version: "v1", Name: "test", Verb: "use"},
 				}, clusterType: "arc",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "arc/policy/podsecuritypolicies/use/action"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "arc/policy/podsecuritypolicies/use/action"}, IsDataAction: true}},
 		},
 
 		{
@@ -172,7 +209,7 @@ func Test_getDataAction(t *testing.T) {
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "authentication.k8s.io", Resource: "userextras", Subresource: "scopes", Version: "v1", Name: "test", Verb: "impersonate"},
 				}, clusterType: "aks",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "aks/authentication.k8s.io/userextras/impersonate/action"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/authentication.k8s.io/userextras/impersonate/action"}, IsDataAction: true}},
 		},
 
 		{
@@ -182,7 +219,7 @@ func Test_getDataAction(t *testing.T) {
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "authentication.k8s.io", Resource: "userextras", Subresource: "scopes", Version: "v1", Name: "test", Verb: "impersonate"},
 				}, clusterType: "fleet",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "fleet/authentication.k8s.io/userextras/impersonate/action"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "fleet/authentication.k8s.io/userextras/impersonate/action"}, IsDataAction: true}},
 		},
 
 		{
@@ -192,7 +229,7 @@ func Test_getDataAction(t *testing.T) {
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "rbac.authorization.k8s.io", Resource: "clusterroles", Subresource: "status", Version: "v1", Name: "test", Verb: "bind"},
 				}, clusterType: "arc",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "arc/rbac.authorization.k8s.io/clusterroles/bind/action"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "arc/rbac.authorization.k8s.io/clusterroles/bind/action"}, IsDataAction: true}},
 		},
 
 		{
@@ -202,7 +239,7 @@ func Test_getDataAction(t *testing.T) {
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "rbac.authorization.k8s.io", Resource: "clusterroles", Subresource: "status", Version: "v1", Name: "test", Verb: "escalate"},
 				}, clusterType: "aks",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "aks/rbac.authorization.k8s.io/clusterroles/escalate/action"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/rbac.authorization.k8s.io/clusterroles/escalate/action"}, IsDataAction: true}},
 		},
 
 		{
@@ -212,7 +249,7 @@ func Test_getDataAction(t *testing.T) {
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "rbac.authorization.k8s.io", Resource: "clusterroles", Subresource: "status", Version: "v1", Name: "test", Verb: "escalate"},
 				}, clusterType: "fleet",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "fleet/rbac.authorization.k8s.io/clusterroles/escalate/action"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "fleet/rbac.authorization.k8s.io/clusterroles/escalate/action"}, IsDataAction: true}},
 		},
 
 		{
@@ -222,7 +259,7 @@ func Test_getDataAction(t *testing.T) {
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "scheduling.k8s.io", Resource: "priorityclasses", Subresource: "status", Version: "v1", Name: "test", Verb: "update"},
 				}, clusterType: "arc",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "arc/scheduling.k8s.io/priorityclasses/write"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "arc/scheduling.k8s.io/priorityclasses/write"}, IsDataAction: true}},
 		},
 
 		{
@@ -232,7 +269,7 @@ func Test_getDataAction(t *testing.T) {
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "events.k8s.io", Resource: "events", Subresource: "status", Version: "v1", Name: "test", Verb: "watch"},
 				}, clusterType: "aks",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "aks/events.k8s.io/events/read"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/events.k8s.io/events/read"}, IsDataAction: true}},
 		},
 
 		{
@@ -242,7 +279,7 @@ func Test_getDataAction(t *testing.T) {
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "events.k8s.io", Resource: "events", Subresource: "status", Version: "v1", Name: "test", Verb: "watch"},
 				}, clusterType: "fleet",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "fleet/events.k8s.io/events/read"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "fleet/events.k8s.io/events/read"}, IsDataAction: true}},
 		},
 
 		{
@@ -252,7 +289,7 @@ func Test_getDataAction(t *testing.T) {
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "batch", Resource: "cronjobs", Subresource: "status", Version: "v1", Name: "test", Verb: "patch"},
 				}, clusterType: "arc",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "arc/batch/cronjobs/write"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "arc/batch/cronjobs/write"}, IsDataAction: true}},
 		},
 
 		{
@@ -262,7 +299,7 @@ func Test_getDataAction(t *testing.T) {
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "certificates.k8s.io", Resource: "certificatesigningrequests", Subresource: "approvals", Version: "v1", Name: "test", Verb: "deletecollection"},
 				}, clusterType: "aks",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "aks/certificates.k8s.io/certificatesigningrequests/delete"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/certificates.k8s.io/certificatesigningrequests/delete"}, IsDataAction: true}},
 		},
 
 		{
@@ -272,7 +309,7 @@ func Test_getDataAction(t *testing.T) {
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "certificates.k8s.io", Resource: "certificatesigningrequests", Subresource: "approvals", Version: "v1", Name: "test", Verb: "deletecollection"},
 				}, clusterType: "fleet",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "fleet/certificates.k8s.io/certificatesigningrequests/delete"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "fleet/certificates.k8s.io/certificatesigningrequests/delete"}, IsDataAction: true}},
 		},
 
 		{
@@ -282,7 +319,7 @@ func Test_getDataAction(t *testing.T) {
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "pods", Subresource: "exec", Version: "v1", Name: "test", Verb: "create"},
 				}, clusterType: "aks",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "aks/pods/exec/action"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/pods/exec/action"}, IsDataAction: true}},
 		},
 
 		{
@@ -292,13 +329,51 @@ func Test_getDataAction(t *testing.T) {
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "pods", Subresource: "exec", Version: "v1", Name: "test", Verb: "create"},
 				}, clusterType: "fleet",
 			},
-			AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "fleet/pods/exec/action"}, IsDataAction: true},
+			[]oputil.AuthorizationActionInfo{{AuthorizationEntity: oputil.AuthorizationEntity{Id: "fleet/pods/exec/action"}, IsDataAction: true}},
+		},
+
+		{
+			"allStar",
+			args{
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "*", Resource: "*", Subresource: "*", Version: "*", Name: "test", Verb: "*"},
+				}, clusterType: "aks",
+			},
+			[]oputil.AuthorizationActionInfo{
+				{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/pods/read"}, IsDataAction: true},
+				{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/pods/write"}, IsDataAction: true},
+				{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/pods/delete"}, IsDataAction: true},
+				{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/persistentvolumes/read"}, IsDataAction: true},
+				{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/persistentvolumes/write"}, IsDataAction: true},
+				{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/persistentvolumes/delete"}, IsDataAction: true},
+				{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/deployments/read"}, IsDataAction: true},
+				{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/deployments/write"}, IsDataAction: true},
+				{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/deployments/delete"}, IsDataAction: true},
+			},
+		},
+
+		{
+			"allStarNSscope",
+			args{
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "*", Resource: "*", Subresource: "*", Version: "*", Name: "test", Verb: "*", Namespace: "kube-system"},
+				}, clusterType: "aks",
+			},
+			[]oputil.AuthorizationActionInfo{
+				{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/pods/read"}, IsDataAction: true},
+				{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/pods/write"}, IsDataAction: true},
+				{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/pods/delete"}, IsDataAction: true},
+				{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/deployments/read"}, IsDataAction: true},
+				{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/deployments/write"}, IsDataAction: true},
+				{AuthorizationEntity: oputil.AuthorizationEntity{Id: "aks/deployments/delete"}, IsDataAction: true},
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := getDataAction(tt.args.subRevReq, tt.args.clusterType); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getDataAction() = %v, want %v", got, tt.want)
+			dataActionsMap := createDataActionsMap(tt.args.clusterType)
+			if got, _ := getDataActions(tt.args.subRevReq, tt.args.clusterType, dataActionsMap); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getDataActions() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -363,24 +438,23 @@ func Test_getNameSpaceScopeUsingNewNsFormat(t *testing.T) {
 func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	req := &authzv1.SubjectAccessReviewSpec{Extra: nil}
 	clusterType := "aks"
-	var want *CheckAccessRequest = nil
+	dataActionsMap := createDataActionsMap(clusterType)
 	wantErr := errors.New("oid info not sent from authenticatoin module")
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, dataActionsMap, resourceId, false)
 
-	if got != want && gotErr != wantErr {
-		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", want, wantErr, got, gotErr)
+	if got != nil && gotErr != wantErr {
+		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", nil, wantErr, got, gotErr)
 	}
 
 	req = &authzv1.SubjectAccessReviewSpec{Extra: map[string]authzv1.ExtraValue{"oid": {"test"}}}
 	clusterType = "arc"
-	want = nil
 	wantErr = errors.New("oid info sent from authenticatoin module is not valid")
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, dataActionsMap, resourceId, false)
 
-	if got != want && gotErr != wantErr {
-		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", want, wantErr, got, gotErr)
+	if got != nil && gotErr != wantErr {
+		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", nil, wantErr, got, gotErr)
 	}
 }
 
@@ -388,29 +462,30 @@ func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
 	dummyUuid := uuid.New()
 	req := &authzv1.SubjectAccessReviewSpec{ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev"}, Extra: map[string]authzv1.ExtraValue{"oid": {dummyUuid.String()}}}
 	clusterType := "aks"
+	dataActionsMap := createDataActionsMap(clusterType)
 
 	// testing with new ns scope format
 	var want string = "resourceId/providers/Microsoft.KubernetesConfiguration/namespaces/dev"
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, true)
+	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, dataActionsMap, resourceId, true)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
 	}
 
-	if got != nil && got.Resource.Id != want {
+	if got != nil && got[0].Resource.Id != want {
 		t.Errorf("Want:%v, got:%v", want, got)
 	}
 
 	// testing with the old namespace format
 	want = "resourceId/namespaces/dev"
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, dataActionsMap, resourceId, false)
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
 	}
 
-	if got != nil && got.Resource.Id != want {
+	if got != nil && got[0].Resource.Id != want {
 		t.Errorf("Want:%v, got:%v", want, got)
 	}
 }
@@ -487,6 +562,34 @@ func Test_getResultCacheKey(t *testing.T) {
 				},
 			},
 			"beta@msn.com/-/-/nodes/read",
+		},
+
+		{
+			"allStar",
+			args{
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					User: "beta@msn.com",
+					ResourceAttributes: &authzv1.ResourceAttributes{
+						Namespace: "", Group: "*", Resource: "*",
+						Subresource: "scopes", Version: "v1", Name: "", Verb: "*",
+					},
+				},
+			},
+			"beta@msn.com/-/*/*/*",
+		},
+
+		{
+			"allStarNSscope",
+			args{
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					User: "beta@msn.com",
+					ResourceAttributes: &authzv1.ResourceAttributes{
+						Namespace: "dev", Group: "*", Resource: "*",
+						Subresource: "scopes", Version: "v1", Name: "", Verb: "*",
+					},
+				},
+			},
+			"beta@msn.com/dev/*/*/*",
 		},
 	}
 	for _, tt := range tests {

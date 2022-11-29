@@ -18,14 +18,15 @@ package rbac
 import (
 	"encoding/json"
 	"fmt"
-	"golang.org/x/exp/slices"
 	"path"
 	"strings"
 
+	oputil "go.kubeguard.dev/guard/util/operations"
+
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"golang.org/x/exp/slices"
 	authzv1 "k8s.io/api/authorization/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -40,6 +41,7 @@ const (
 	NoOpinionVerdict            = "Azure does not have opinion for this user."
 	NonAADUserNoOpVerdict       = "Azure does not have opinion for this non AAD user. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig"
 	NonAADUserNotAllowedVerdict = "Access denied by Azure RBAC for non AAD users. Configure --azure.skip-authz-for-non-aad-users to enable access. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig."
+	PodsResource                = "pods"
 )
 
 var username string
@@ -53,19 +55,10 @@ type SubjectInfo struct {
 	Attributes SubjectInfoAttributes `json:"Attributes"`
 }
 
-type AuthorizationEntity struct {
-	Id string `json:"Id"`
-}
-
-type AuthorizationActionInfo struct {
-	AuthorizationEntity
-	IsDataAction bool `json:"IsDataAction"`
-}
-
 type CheckAccessRequest struct {
-	Subject  SubjectInfo               `json:"Subject"`
-	Actions  []AuthorizationActionInfo `json:"Actions"`
-	Resource AuthorizationEntity       `json:"Resource"`
+	Subject  SubjectInfo                      `json:"Subject"`
+	Actions  []oputil.AuthorizationActionInfo `json:"Actions"`
+	Resource oputil.AuthorizationEntity       `json:"Resource"`
 }
 
 type AccessDecision struct {
@@ -204,7 +197,7 @@ func getActionName(verb string) string {
 func getResourceAndAction(resource string, subResource string, verb string) string {
 	var action string
 
-	if resource == "pods" && subResource == "exec" {
+	if resource == PodsResource && subResource == "exec" {
 		action = path.Join(resource, subResource, "action")
 	} else {
 		action = path.Join(resource, getActionName(verb))
@@ -213,18 +206,21 @@ func getResourceAndAction(resource string, subResource string, verb string) stri
 	return action
 }
 
-func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string, apiresourcesList []*metav1.APIResourceList) []AuthorizationActionInfo {
-
-	var authInfoList []AuthorizationActionInfo
-	filterOnApigroup := func(resourceList *metav1.APIResourceList) bool {
-		group := strings.Split(resourceList.GroupVersion, "/")[0]
-		return group == subRevReq.ResourceAttributes.Group
-	}
+func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string, dataActionsMap map[string][]map[string]map[string]oputil.DataAction) ([]oputil.AuthorizationActionInfo, error) {
+	var authInfoList []oputil.AuthorizationActionInfo
+	var err error
 
 	if subRevReq.ResourceAttributes != nil {
+		if subRevReq.ResourceAttributes.Resource != "*" && subRevReq.ResourceAttributes.Group != "*" && subRevReq.ResourceAttributes.Verb != "*" {
+			/*
+				  This sections handles the following scenario's:
 
-		if subRevReq.ResourceAttributes.Resource != "*" && subRevReq.ResourceAttributes.Verb != "*" {
-			authInfoSingle := AuthorizationActionInfo{
+				    | Scenario                      | Namespace is empty (Cluster scope call)      | Namespace is not empty (NS scope)        |
+					 ------------------------------- ---------------------------------------------- ------------------------------------------
+					| Verb, Res and Group are not * | Normal single resource call at cluster scope | Normal single resource call  at ns scope |
+
+			*/
+			authInfoSingle := oputil.AuthorizationActionInfo{
 				IsDataAction: true,
 			}
 
@@ -237,149 +233,173 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 			action := getResourceAndAction(subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Subresource, subRevReq.ResourceAttributes.Verb)
 			authInfoSingle.AuthorizationEntity.Id = path.Join(authInfoSingle.AuthorizationEntity.Id, action)
 			authInfoList = append(authInfoList, authInfoSingle)
+
 		} else if subRevReq.ResourceAttributes.Resource == "*" {
-			var filteredResources []*metav1.APIResourceList
+			/*
+				    This sections handles the following scenario's:
+
+				    | Scenario              | Namespace is empty (Cluster scope call)                    | Namespace is not empty (NS scope)             |
+					------------------------ ------------------------------------------------------------  ----------------------------------------------
+					| Verb-*, Res-*, Group-*| All cluster and ns res with all verbs at clusterscope      | All ns resources at ns scope                  |
+
+					| Res-*, Group-*        | All cluster and ns res with specified verb at clusterscope | All ns res with specified verb at ns scope    |
+
+					| Verb-*, Res-*         | All cluster and ns res with all verbs under                | All ns res with all verbs under specified     |
+					|                       | specified apigroup at clusterscope                         | apigroup at nsscope                           |
+
+					| Resource - *          | All CS and NS Resources under specifed apigroup with       | All NS Resources under specifed apigroup with |
+					|                       | specified verb at cluster scope                            | specified verb at ns scope                    |
+			*/
+
+			filteredOperations := make(map[string][]map[string]map[string]oputil.DataAction)
 			if subRevReq.ResourceAttributes.Group == "*" {
-				// fetch resources under all apigroups
-				filteredResources = apiresourcesList
+				// all resources under all apigroups
+				filteredOperations = dataActionsMap
 			} else if subRevReq.ResourceAttributes.Group != "" {
-				// fetch resources under specified apigroup
-				filteredResources = filterResources(apiresourcesList, filterOnApigroup)
+				// all resources under specified apigroup
+				if value, found := dataActionsMap[subRevReq.ResourceAttributes.Group]; found {
+					filteredOperations[subRevReq.ResourceAttributes.Group] = value
+				} else {
+					return nil, errors.New(fmt.Sprintf("No resources found for group %s", subRevReq.ResourceAttributes.Group))
+				}
 			} else {
 				// if Group is not there that means it is the core apigroup
-				onlyCoreResources := func(resourceList *metav1.APIResourceList) bool { return resourceList.GroupVersion == "v1" }
-				filteredResources = filterResources(apiresourcesList, onlyCoreResources)
+				if value, found := dataActionsMap["v1"]; found {
+					filteredOperations["v1"] = value
+				} else {
+					return nil, errors.New("No resources found for the core group")
+				}
 			}
 
 			// if Namespace is populated, we need to create the list only for namespace scoped resources
-			var finalFilteredResources []*metav1.APIResourceList
+			finalFilteredOperations := make(map[string][]map[string]map[string]oputil.DataAction)
 
 			if subRevReq.ResourceAttributes.Namespace != "" {
-				for _, apiResList := range filteredResources {
-					var resourceList []metav1.APIResource
-					for _, resource := range apiResList.APIResources {
-						if resource.Namespaced {
-							resourceList = append(resourceList, resource)
+				for group, resMapList := range filteredOperations {
+					for _, resValues := range resMapList {
+						for _, verbValues := range resValues {
+							for _, dataAction := range verbValues {
+								if dataAction.IsNamespacedResource {
+									finalFilteredOperations[group] = append(finalFilteredOperations[group], resValues)
+									break
+								}
+							}
 						}
-					}
-					apiResList.APIResources = resourceList
-					if len(apiResList.APIResources) > 0 {
-						finalFilteredResources = append(finalFilteredResources, apiResList)
 					}
 				}
 			} else {
 				// both cluster scoped and namespace scoped resource list
-				finalFilteredResources = filteredResources
+				finalFilteredOperations = filteredOperations
 			}
 
-			klog.V(5).Infof("Final filtered resource : %v", finalFilteredResources)
+			klog.V(5).Infof("Final filtered operations : %v", finalFilteredOperations)
 
 			// create list of Data Actions
-			authInfoList = createAuthorizationActionInfoList(finalFilteredResources, subRevReq.ResourceAttributes.Verb, clusterType)
-		} else {
-			// this case will only come if resource is not * and verb is *
-			var finalFilteredResource []*metav1.APIResourceList
-			filterResource := subRevReq.ResourceAttributes.Resource
-			filteredApiResourceList := filterResources(apiresourcesList, filterOnApigroup)
-			klog.V(5).Infof("Filtered resources on group : %v, %d", filteredApiResourceList, len(finalFilteredResource))
-			for _, filteredApiResource := range filteredApiResourceList {
-				for _, resource := range filteredApiResource.APIResources {
-					if resource.Name == filterResource && len(finalFilteredResource) != 1 {
-						klog.V(5).Infof("group %s, version %s", resource.Group, resource.Version)
-						singleApiResourceList := &metav1.APIResourceList{
-							GroupVersion: filteredApiResource.GroupVersion,
-							APIResources: []metav1.APIResource{
-								resource,
-							},
-						}
-						finalFilteredResource = append(finalFilteredResource, singleApiResourceList)
-					}
-				}
+			authInfoList, err = createAuthorizationActionInfoList(finalFilteredOperations, subRevReq.ResourceAttributes.Verb)
+			if err != nil {
+				return nil, errors.Wrap(err, fmt.Sprintf("Error which creating actions for checkaccess for Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb))
 			}
 
-			klog.V(5).Infof("Final filtered resource : %v", finalFilteredResource)
+		} else {
+			/*
+				   This sections handles the following scenario's:
 
-			authInfoList = createAuthorizationActionInfoList(finalFilteredResource, subRevReq.ResourceAttributes.Verb, clusterType)
+				    | Scenario        | Namespace is empty (Cluster scope call)          | Namespace is not empty (NS scope)                    |
+					------------------ --------------------------------------------------  -----------------------------------------------------
+					| Verb-*, Group-* | Resource under all apigroups and with all verbs  | Resource under specifed apigroups and with all verbs |
+					                  | at clusterscope                                  | at ns scope                                          |
+
+					| Verb - *        | Resource under specifed apigroups and with all   | Resource under specifed apigroups and with all verbs |
+					                  | verbs at cluster scope                           | at ns scope                                          |
+
+					| Group - *       | Resource under all apigroups with specified verb | Resource under all apigroups with specified verb     |
+					|                 | at cluster scope                                 |  at ns scope                                         |
+			*/
+
+			filteredOperations := make(map[string][]map[string]map[string]oputil.DataAction)
+
+			if subRevReq.ResourceAttributes.Group == "*" {
+				// #1 and #3
+				for group, resMaps := range dataActionsMap {
+					for _, resList := range resMaps {
+						if _, found := resList[subRevReq.ResourceAttributes.Resource]; found {
+							filteredOperations[group] = append(filteredOperations[group], resList)
+						}
+					}
+				}
+			} else { // #2
+				group := "v1" // core api group key
+				if subRevReq.ResourceAttributes.Group != "" {
+					group = subRevReq.ResourceAttributes.Group
+				}
+
+				if resMaps, found := dataActionsMap[group]; found {
+					for _, resList := range resMaps {
+						if _, found := resList[subRevReq.ResourceAttributes.Resource]; found {
+							filteredOperations[group] = append(filteredOperations[group], resList)
+						}
+					}
+				} else {
+					return nil, errors.New(fmt.Sprintf("No resources found for group %s and resource %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource))
+				}
+
+			}
+
+			klog.V(5).Infof("Final filtered resources : %v", filteredOperations)
+
+			// create list of Data Actions
+			authInfoList, err = createAuthorizationActionInfoList(filteredOperations, subRevReq.ResourceAttributes.Verb)
+			if err != nil {
+				return nil, errors.Wrap(err, fmt.Sprintf("Error which creating actions for checkaccess for Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb))
+			}
 		}
 	} else if subRevReq.NonResourceAttributes != nil {
-		authInfoSingle := AuthorizationActionInfo{
+		authInfoSingle := oputil.AuthorizationActionInfo{
 			IsDataAction: true,
 		}
 		authInfoSingle.AuthorizationEntity.Id = path.Join(clusterType, subRevReq.NonResourceAttributes.Path, getActionName(subRevReq.NonResourceAttributes.Verb))
 		authInfoList = append(authInfoList, authInfoSingle)
 	}
-	return authInfoList
+	return authInfoList, nil
 }
 
-func filterResources(apiresourcesList []*metav1.APIResourceList, criteria func(*metav1.APIResourceList) bool) (filteredResources []*metav1.APIResourceList) {
-	for _, res := range apiresourcesList {
-		if criteria(res) {
-			filteredResources = append(filteredResources, res)
-		}
+func createAuthorizationActionInfoList(filteredOperations map[string][]map[string]map[string]oputil.DataAction, filterVerb string) ([]oputil.AuthorizationActionInfo, error) {
+	if len(filteredOperations) == 0 {
+		return nil, errors.New("No operations were found for the request.")
 	}
-	return
-}
 
-func createAuthorizationActionInfoList(apiresourceList []*metav1.APIResourceList, filterVerb string, clusterType string) []AuthorizationActionInfo {
-	var authInfos []AuthorizationActionInfo
-	for _, apiResList := range apiresourceList {
-		group := ""
-		if apiResList.GroupVersion != "" && apiResList.GroupVersion != "v1" {
-			group = strings.Split(apiResList.GroupVersion, "/")[0]
-		}
+	var authInfos []oputil.AuthorizationActionInfo
 
-		for _, resource := range apiResList.APIResources {
-
-			authInfo := AuthorizationActionInfo{
-				IsDataAction: true,
-			}
-
-			authInfo.AuthorizationEntity.Id = clusterType
-
-			if group != "" {
-				authInfo.AuthorizationEntity.Id = path.Join(authInfo.AuthorizationEntity.Id, group)
-			}
-
-			resourceName := resource.Name
-			subResourceName := ""
-			if strings.Contains(resource.Name, "/") {
-				resourceName = strings.Split(resource.Name, "/")[0]
-				subResourceName = strings.Split(resource.Name, "/")[1]
-			}
-
-			if filterVerb != "*" {
-				action := getResourceAndAction(resourceName, subResourceName, filterVerb)
-				authInfo.AuthorizationEntity.Id = path.Join(authInfo.AuthorizationEntity.Id, action)
-				found := searchInAuthInfo(authInfos, authInfo.AuthorizationEntity.Id)
-
-				if found == -1 {
-					authInfos = append(authInfos, authInfo)
-				}
-			} else {
-				// create data actions for all the verbs
-				for _, verb := range resource.Verbs {
-					authInfoSingle := authInfo
-					action := getResourceAndAction(resourceName, subResourceName, verb)
-					authInfoSingle.AuthorizationEntity.Id = path.Join(authInfoSingle.AuthorizationEntity.Id, action)
-					found := searchInAuthInfo(authInfos, authInfoSingle.AuthorizationEntity.Id)
-					klog.V(5).Infof("found string: %v %s", found, authInfoSingle.AuthorizationEntity.Id)
-
-					if found == -1 {
-						authInfos = append(authInfos, authInfoSingle)
+	if filterVerb != "*" {
+		foundAtleastOneAction := false
+		verb := getActionName(filterVerb)
+		for _, resMapList := range filteredOperations {
+			for _, resValues := range resMapList {
+				for resource := range resValues {
+					if dataAction, found := resValues[resource][verb]; found {
+						foundAtleastOneAction = true
+						authInfos = append(authInfos, dataAction.ActionInfo)
 					}
+				}
+			}
+		}
 
+		if !foundAtleastOneAction {
+			return nil, errors.New(fmt.Sprintf("No operations were found for the verb: %s.", filterVerb))
+		}
+	} else {
+		for _, resMapList := range filteredOperations {
+			for _, resValues := range resMapList {
+				for _, verbValues := range resValues {
+					for _, dataAction := range verbValues {
+						authInfos = append(authInfos, dataAction.ActionInfo)
+					}
 				}
 			}
 		}
 	}
 
-	return authInfos
-}
-
-func searchInAuthInfo(authInfos []AuthorizationActionInfo, searchAction string) int {
-	found := slices.IndexFunc(authInfos, func(a AuthorizationActionInfo) bool { return a.AuthorizationEntity.Id == searchAction })
-
-	return found
+	return authInfos, nil
 }
 
 func defaultDir(s string) string {
@@ -395,7 +415,12 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	if subRevReq.ResourceAttributes != nil {
 		cacheKey = path.Join(cacheKey, defaultDir(subRevReq.ResourceAttributes.Namespace))
 		cacheKey = path.Join(cacheKey, defaultDir(subRevReq.ResourceAttributes.Group))
-		action := getResourceAndAction(subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Subresource, subRevReq.ResourceAttributes.Verb)
+		action := ""
+		if subRevReq.ResourceAttributes.Verb == "*" {
+			action = path.Join(subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb)
+		} else {
+			action = getResourceAndAction(subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Subresource, subRevReq.ResourceAttributes.Verb)
+		}
 		cacheKey = path.Join(cacheKey, action)
 	} else if subRevReq.NonResourceAttributes != nil {
 		cacheKey = path.Join(cacheKey, subRevReq.NonResourceAttributes.Path, getActionName(subRevReq.NonResourceAttributes.Verb))
@@ -404,7 +429,7 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	return cacheKey
 }
 
-func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, apiresourcesList []*metav1.APIResourceList, resourceId string, useNamespaceResourceScopeFormat bool) ([]*CheckAccessRequest, error) {
+func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, dataActionsMap map[string][]map[string]map[string]oputil.DataAction, resourceId string, useNamespaceResourceScopeFormat bool) ([]*CheckAccessRequest, error) {
 	/* This is how sample SubjectAccessReview request will look like
 		{
 			"kind": "SubjectAccessReview",
@@ -464,8 +489,11 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 	}
 	groups := getValidSecurityGroups(req.Groups)
 	username = req.User
-	var actions []AuthorizationActionInfo
-	actions = getDataActions(req, clusterType, apiresourcesList)
+	var actions []oputil.AuthorizationActionInfo
+	actions, err := getDataActions(req, clusterType, dataActionsMap)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error while creating list of dataactions for check access call")
+	}
 	var checkAccessReqs []*CheckAccessRequest
 	for i := 0; i < len(actions); i += 200 {
 		j := i + ActionBatchCount
@@ -477,6 +505,7 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 		checkaccessreq.Subject.Attributes.Groups = groups
 		checkaccessreq.Subject.Attributes.ObjectId = userOid
 		checkaccessreq.Actions = actions[i:j]
+		klog.Infof("checkaccessreq.Actions : %v %d", checkaccessreq.Actions, len(checkaccessreq.Actions))
 		checkaccessreq.Resource.Id = getScope(resourceId, req.ResourceAttributes, useNamespaceResourceScopeFormat)
 		checkAccessReqs = append(checkAccessReqs, &checkaccessreq)
 	}

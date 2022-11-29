@@ -23,11 +23,11 @@ import (
 	"go.kubeguard.dev/guard/authz"
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 	"go.kubeguard.dev/guard/authz/providers/azure/rbac"
+	oputil "go.kubeguard.dev/guard/util/operations"
 
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/pkg/errors"
 	authzv1 "k8s.io/api/authorization/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -49,10 +49,10 @@ type Authorizer struct {
 	rbacClient *rbac.AccessInfo
 }
 
-func New(opts authzOpts.Options, authopts auth.Options, apiResourcesList []*metav1.APIResourceList) (authz.Interface, error) {
+func New(opts authzOpts.Options, authopts auth.Options, dataActionsMap map[string][]map[string]map[string]oputil.DataAction) (authz.Interface, error) {
 	once.Do(func() {
 		klog.Info("Creating Azure global authz client")
-		client, err = newAuthzClient(opts, authopts, apiResourcesList)
+		client, err = newAuthzClient(opts, authopts, dataActionsMap)
 		if client == nil || err != nil {
 			klog.Fatalf("Authz RBAC client creation failed. Error: %s", err)
 		}
@@ -60,7 +60,7 @@ func New(opts authzOpts.Options, authopts auth.Options, apiResourcesList []*meta
 	return client, err
 }
 
-func newAuthzClient(opts authzOpts.Options, authopts auth.Options, apiResourcesList []*metav1.APIResourceList) (authz.Interface, error) {
+func newAuthzClient(opts authzOpts.Options, authopts auth.Options, dataActionsMap map[string][]map[string]map[string]oputil.DataAction) (authz.Interface, error) {
 	c := &Authorizer{}
 
 	authzInfoVal, err := getAuthzInfo(authopts.Environment)
@@ -68,7 +68,7 @@ func newAuthzClient(opts authzOpts.Options, authopts auth.Options, apiResourcesL
 		return nil, errors.Wrap(err, "Error in getAuthzInfo %s")
 	}
 
-	c.rbacClient, err = rbac.New(opts, authopts, authzInfoVal, apiResourcesList)
+	c.rbacClient, err = rbac.New(opts, authopts, authzInfoVal, dataActionsMap)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create ms rbac client")
 	}

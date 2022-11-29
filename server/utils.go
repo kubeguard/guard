@@ -17,18 +17,24 @@ limitations under the License.
 package server
 
 import (
-	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"path"
+	"strings"
 
+	"go.kubeguard.dev/guard/auth/providers/azure/graph"
+	"go.kubeguard.dev/guard/util/httpclient"
+	oputil "go.kubeguard.dev/guard/util/operations"
+
+	"github.com/Azure/go-autorest/autorest/azure"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
+	v "gomodules.xyz/x/version"
 	auth "k8s.io/api/authentication/v1"
 	authzv1 "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	apiextensionClientSet "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
@@ -180,6 +186,89 @@ func (w *withCode) Format(s fmt.State, verb rune) {
 	}
 }
 
+func fetchListOfResources(clusterType string, environment string, loginURL string, tenantId string) (map[string][]map[string]map[string]oputil.DataAction, error) {
+	operationsMap := map[string][]map[string]map[string]oputil.DataAction{}
+
+	apiResourcesList, err := fetchApiResources()
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to fetch list of api-resources from apiserver.")
+	}
+
+	operationsList, err := fetchDataActionsList(environment, clusterType, loginURL, tenantId)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to fetch operations from Azure.")
+	}
+
+	for _, resList := range apiResourcesList {
+		group := "v1" // core api group
+		if resList.GroupVersion != "" && resList.GroupVersion != "v1" {
+			group = strings.Split(resList.GroupVersion, "/")[0]
+		}
+
+		if len(resList.APIResources) == 0 {
+			continue
+		}
+
+		for _, apiResource := range resList.APIResources {
+			if strings.Contains(apiResource.Name, "/") {
+				continue
+			}
+
+			actionId := clusterType
+			if group != "v1" {
+				actionId = path.Join(actionId, group)
+			}
+
+			resourceName := apiResource.Name
+
+			actionId = path.Join(actionId, resourceName)
+
+			for _, operation := range operationsList {
+				if strings.Contains(operation.Name, actionId) {
+					opNameArr := strings.Split(operation.Name, "/")
+
+					if group != "v1" {
+						// extra validation to make sure groups are the same
+						if !(group == opNameArr[2]) {
+							continue
+						}
+					} else {
+						// make sure resources are the same for core apigroup
+						if !(resourceName == opNameArr[2]) {
+							continue
+						}
+					}
+
+					verb := opNameArr[len(opNameArr)-1]
+					if verb == "action" {
+						verb = path.Join(opNameArr[len(opNameArr)-2], opNameArr[len(opNameArr)-1])
+					}
+
+					da := oputil.DataAction{
+						ActionInfo: oputil.AuthorizationActionInfo{
+							IsDataAction: true,
+						},
+						IsNamespacedResource: apiResource.Namespaced,
+					}
+					da.ActionInfo.AuthorizationEntity.Id = operation.Name
+
+					if operationsMap[group] == nil {
+						operationsMap[group] = []map[string]map[string]oputil.DataAction{}
+					}
+					resourceAndVerb := map[string]map[string]oputil.DataAction{}
+					resourceAndVerb[resourceName] = map[string]oputil.DataAction{}
+					resourceAndVerb[resourceName][verb] = da
+					operationsMap[group] = append(operationsMap[group], resourceAndVerb)
+				}
+			}
+		}
+	}
+
+	klog.V(5).Infof("Operations list: %v", operationsMap)
+
+	return operationsMap, nil
+}
+
 func fetchApiResources() ([]*metav1.APIResourceList, error) {
 	// creates the in-cluster config
 	klog.V(5).Infof("Fetch apiresources list")
@@ -198,56 +287,94 @@ func fetchApiResources() ([]*metav1.APIResourceList, error) {
 		return nil, err
 	}
 
-	crdClientset, err := apiextensionClientSet.NewForConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	apiresourcesList, err = filterOutCRDs(crdClientset, apiresourcesList)
-	if err != nil {
-		return nil, err
-	}
-
-	projectCalicoApiService := "projectcalico.org/v3"
-
-	noProjectCalicoCondition := func(resourceList *metav1.APIResourceList) bool {
-		return projectCalicoApiService != resourceList.GroupVersion
-	}
-
-	apiresourcesList = filterResources(apiresourcesList, noProjectCalicoCondition)
-
-	klog.V(5).Infof("Apiresources list : %v", apiresourcesList)
+	klog.V(5).Infof("List of ApiResources fetched from apiserver: %v", apiresourcesList)
 
 	return apiresourcesList, nil
 }
 
-func filterOutCRDs(crdClientset *apiextensionClientSet.Clientset, apiresourcesList []*metav1.APIResourceList) ([]*metav1.APIResourceList, error) {
-	crdV1List, err := crdClientset.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
+func fetchDataActionsList(environment string, clusterType string, loginURL string, tenantID string) ([]oputil.Operation, error) {
+	env := azure.PublicCloud
+	var err error
+	if environment != "" {
+		env, err = azure.EnvironmentFromName(environment)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to parse environment for Azure.")
+		}
+	}
+
+	endpoint := ""
+
+	switch clusterType {
+	case oputil.ConnectedClusters:
+		endpoint = fmt.Sprintf(oputil.OperationsEndpointFormatARC, env.ResourceManagerEndpoint)
+	case oputil.ManagedClusters:
+		endpoint = fmt.Sprintf(oputil.OperationsEndpointFormatAKS, env.ResourceManagerEndpoint)
+	case oputil.Fleets:
+		endpoint = fmt.Sprintf(oputil.OperationsEndpointFormatAKS, env.ResourceManagerEndpoint)
+	default:
+		return nil, errors.New("Failed to create endpoint for Get Operations call.")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Failed to create request for Get Operations call.")
 	}
 
-	if crdV1List != nil && len(crdV1List.Items) >= 0 {
-		for _, crd := range crdV1List.Items {
-			for _, version := range crd.Spec.Versions {
-				groupVersion := path.Join(crd.Spec.Group, version.Name)
-				noCrdsCondition := func(resourceList *metav1.APIResourceList) bool {
-					return groupVersion != resourceList.GroupVersion
-				}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", fmt.Sprintf("guard-%s-%s-%s", v.Version.Platform, v.Version.GoVersion, v.Version.Version))
 
-				apiresourcesList = filterResources(apiresourcesList, noCrdsCondition)
-			}
+	var token string
+	if clusterType == oputil.ConnectedClusters {
+		tokenResp, err := oputil.GetAuthHeaderUsingMSIForARC(env.ResourceManagerEndpoint)
+		if err != nil {
+			return nil, errors.Wrap(err, "Error getting authorization headers for Get Operations call.")
+		}
+
+		token = tokenResp.AccessToken
+	} else if clusterType == oputil.ManagedClusters || clusterType == oputil.Fleets {
+		tokenProvider := graph.NewAKSTokenProvider(loginURL, tenantID)
+
+		authResp, err := tokenProvider.Acquire("")
+		if err != nil {
+			return nil, errors.Wrap(err, "Error getting authorization headers for Get Operations call.")
+		}
+
+		token = authResp.Token
+	} else {
+		return nil, errors.New("Unsupported clusterType for Get Operations call.")
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	client := httpclient.DefaultHTTPClient
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to send request for Get Operations call.")
+	}
+	defer resp.Body.Close()
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error in reading response body")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("Request failed with status code: %d and response: %s", resp.StatusCode, string(data))
+	}
+
+	operationsList := oputil.OperationList{}
+	err = json.Unmarshal(data, &operationsList)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to decode response")
+	}
+
+	var finalOperations []oputil.Operation
+	for _, op := range operationsList.Value {
+		if *op.IsDataAction && strings.Contains(op.Name, clusterType) {
+			finalOperations = append(finalOperations, op)
 		}
 	}
 
-	return apiresourcesList, nil
-}
-
-func filterResources(apiresourcesList []*metav1.APIResourceList, criteria func(*metav1.APIResourceList) bool) (filteredResources []*metav1.APIResourceList) {
-	for _, res := range apiresourcesList {
-		if criteria(res) {
-			filteredResources = append(filteredResources, res)
-		}
-	}
-	return
+	return finalOperations, nil
 }
