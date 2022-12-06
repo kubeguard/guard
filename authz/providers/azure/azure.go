@@ -23,7 +23,7 @@ import (
 	"go.kubeguard.dev/guard/authz"
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 	"go.kubeguard.dev/guard/authz/providers/azure/rbac"
-	oputil "go.kubeguard.dev/guard/util/operations"
+	azureutils "go.kubeguard.dev/guard/util/azure"
 
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/pkg/errors"
@@ -49,7 +49,7 @@ type Authorizer struct {
 	rbacClient *rbac.AccessInfo
 }
 
-func New(opts authzOpts.Options, authopts auth.Options, dataActionsMap map[string][]map[string]map[string]oputil.DataAction) (authz.Interface, error) {
+func New(opts authzOpts.Options, authopts auth.Options, dataActionsMap map[string][]map[string]map[string]azureutils.DataAction) (authz.Interface, error) {
 	once.Do(func() {
 		klog.Info("Creating Azure global authz client")
 		client, err = newAuthzClient(opts, authopts, dataActionsMap)
@@ -60,7 +60,7 @@ func New(opts authzOpts.Options, authopts auth.Options, dataActionsMap map[strin
 	return client, err
 }
 
-func newAuthzClient(opts authzOpts.Options, authopts auth.Options, dataActionsMap map[string][]map[string]map[string]oputil.DataAction) (authz.Interface, error) {
+func newAuthzClient(opts authzOpts.Options, authopts auth.Options, dataActionsMap map[string][]map[string]map[string]azureutils.DataAction) (authz.Interface, error) {
 	c := &Authorizer{}
 
 	authzInfoVal, err := getAuthzInfo(authopts.Environment)

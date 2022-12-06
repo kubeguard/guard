@@ -33,7 +33,7 @@ import (
 	"go.kubeguard.dev/guard/authz"
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 	"go.kubeguard.dev/guard/util/httpclient"
-	oputil "go.kubeguard.dev/guard/util/operations"
+	azureutils "go.kubeguard.dev/guard/util/azure"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -82,7 +82,7 @@ type AccessInfo struct {
 	allowNonResDiscoveryPathAccess  bool
 	useNamespaceResourceScopeFormat bool
 	lock                            sync.RWMutex
-	dataActionsMap                  map[string][]map[string]map[string]oputil.DataAction
+	dataActionsMap                  map[string][]map[string]map[string]azureutils.DataAction
 }
 
 var (
@@ -119,7 +119,7 @@ func getClusterType(clsType string) string {
 	}
 }
 
-func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts authzOpts.Options, dataActionsMap map[string][]map[string]map[string]oputil.DataAction) (*AccessInfo, error) {
+func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts authzOpts.Options, dataActionsMap map[string][]map[string]map[string]azureutils.DataAction) (*AccessInfo, error) {
 	u := &AccessInfo{
 		client: httpclient.DefaultHTTPClient,
 		headers: http.Header{
@@ -150,7 +150,7 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 	return u, nil
 }
 
-func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo, dataActionsMap map[string][]map[string]map[string]oputil.DataAction) (*AccessInfo, error) {
+func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo, dataActionsMap map[string][]map[string]map[string]azureutils.DataAction) (*AccessInfo, error) {
 	rbacURL, err := url.Parse(authzInfo.ARMEndPoint)
 	if err != nil {
 		return nil, err
@@ -303,10 +303,10 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 }
 
 func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessBody *CheckAccessRequest, wg *sync.WaitGroup, ch chan ReviewResult) {
+	defer wg.Done()
 	reviewResult := ReviewResult{}
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(checkAccessBody); err != nil {
-		reviewResult.status = nil
 		reviewResult.err = errors.Wrap(err, "error encoding check access request")
 		ch <- reviewResult
 		return
@@ -320,7 +320,6 @@ func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessB
 
 	req, err := http.NewRequest(http.MethodPost, checkAccessURL.String(), buf)
 	if err != nil {
-		reviewResult.status = nil
 		reviewResult.err = errors.Wrap(err, "error creating check access request")
 		ch <- reviewResult
 		return
@@ -330,7 +329,6 @@ func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessB
 
 	resp, err := a.client.Do(req)
 	if err != nil {
-		reviewResult.status = nil
 		reviewResult.err = errors.Wrap(err, "error in check access request execution")
 		ch <- reviewResult
 		return
@@ -342,13 +340,11 @@ func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessB
 
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		reviewResult.status = nil
 		reviewResult.err = errors.Wrap(err, "error in reading response body")
 		ch <- reviewResult
 		return
 	}
 
-	defer resp.Body.Close()
 	klog.V(7).Infof("checkaccess response: %s, Configured ARM call limit: %d", string(data), a.armCallLimit)
 	if resp.StatusCode != http.StatusOK {
 		klog.Errorf("error in check access response. error code: %d, response: %s", resp.StatusCode, string(data))
@@ -363,7 +359,7 @@ func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessB
 			checkAccessFailed.Inc()
 		}
 
-		reviewResult.err = errors.New(fmt.Sprintf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data)))
+		reviewResult.err = errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data))
 		ch <- reviewResult
 		return
 	} else {
@@ -385,6 +381,4 @@ func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessB
 	// Decode response and prepare k8s response
 	reviewResult.status, reviewResult.err = ConvertCheckAccessResponse(data)
 	ch <- reviewResult
-
-	wg.Done()
 }

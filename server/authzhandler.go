@@ -21,7 +21,7 @@ import (
 
 	"go.kubeguard.dev/guard/authz"
 	"go.kubeguard.dev/guard/authz/providers/azure"
-	oputil "go.kubeguard.dev/guard/util/operations"
+	azureutils "go.kubeguard.dev/guard/util/azure"
 
 	"github.com/pkg/errors"
 	authzv1 "k8s.io/api/authorization/v1"
@@ -32,7 +32,7 @@ type Authzhandler struct {
 	AuthRecommendedOptions  *AuthRecommendedOptions
 	AuthzRecommendedOptions *AuthzRecommendedOptions
 	Store                   authz.Store
-	dataActionsMap          map[string][]map[string]map[string]oputil.DataAction
+	dataActionsMap          map[string][]map[string]map[string]azureutils.DataAction
 }
 
 func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
