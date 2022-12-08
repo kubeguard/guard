@@ -23,13 +23,12 @@ import (
 	"path"
 	"strings"
 
-
-	"go.kubeguard.dev/guard/auth/providers/azure/graph"
-	"go.kubeguard.dev/guard/util/httpclient"
 	"github.com/Azure/go-autorest/autorest/azure"
-	v "gomodules.xyz/x/version"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
+	"go.kubeguard.dev/guard/auth/providers/azure/graph"
+	"go.kubeguard.dev/guard/util/httpclient"
+	v "gomodules.xyz/x/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -131,7 +130,7 @@ func FetchListOfResources(clusterType string, environment string, loginURL strin
 	return operationsMap, nil
 }
 
-func createOperationsMap(apiResourcesList []*metav1.APIResourceList, operationsList []Operation, clusterType string) (OperationsMap) {
+func createOperationsMap(apiResourcesList []*metav1.APIResourceList, operationsList []Operation, clusterType string) OperationsMap {
 	operationsMap := OperationsMap{}
 	operationsMap.GroupMap = make(map[string][]ResourceAndVerbMap)
 
@@ -271,8 +270,8 @@ func fetchDataActionsList(environment string, clusterType string, loginURL strin
 	var token string
 	if clusterType == ConnectedClusters {
 		tokenProvider := graph.NewClientCredentialTokenProvider(clientID, clientSecret,
-			                fmt.Sprintf("%s%s/oauth2/v2.0/token", env.ActiveDirectoryEndpoint, tenantID), 
-	                        fmt.Sprintf("%s/.default", env.ResourceManagerEndpoint))
+			fmt.Sprintf("%s%s/oauth2/v2.0/token", env.ActiveDirectoryEndpoint, tenantID),
+			fmt.Sprintf("%s/.default", env.ResourceManagerEndpoint))
 
 		authResp, erro := tokenProvider.Acquire("")
 		if erro != nil {

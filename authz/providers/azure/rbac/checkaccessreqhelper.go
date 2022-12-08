@@ -56,7 +56,7 @@ type SubjectInfo struct {
 }
 
 type CheckAccessRequest struct {
-	Subject  SubjectInfo                      `json:"Subject"`
+	Subject  SubjectInfo                          `json:"Subject"`
 	Actions  []azureutils.AuthorizationActionInfo `json:"Actions"`
 	Resource azureutils.AuthorizationEntity       `json:"Resource"`
 }
@@ -234,125 +234,16 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 			authInfoSingle.AuthorizationEntity.Id = path.Join(authInfoSingle.AuthorizationEntity.Id, action)
 			authInfoList = append(authInfoList, authInfoSingle)
 
-		} else if subRevReq.ResourceAttributes.Resource == "*" {
-			/*
-				    This sections handles the following scenarios:
-
-				    | Scenario              | Namespace is empty (Cluster scope call)                    | Namespace is not empty (NS scope)             |
-					------------------------ ------------------------------------------------------------  ----------------------------------------------
-					| Verb-*, Res-*, Group-*| All cluster and ns res with all verbs at clusterscope      | All ns resources at ns scope                  |
-
-					| Res-*, Group-*        | All cluster and ns res with specified verb at clusterscope | All ns res with specified verb at ns scope    |
-
-					| Verb-*, Res-*         | All cluster and ns res with all verbs under                | All ns res with all verbs under specified     |
-					|                       | specified apigroup at clusterscope                         | apigroup at nsscope                           |
-
-					| Resource - *          | All CS and NS Resources under specifed apigroup with       | All NS Resources under specifed apigroup with |
-					|                       | specified verb at cluster scope                            | specified verb at ns scope                    |
-			*/
-
-			filteredOperations := azureutils.OperationsMap{}
-			filteredOperations.GroupMap = make(map[string][]azureutils.ResourceAndVerbMap)
-			if subRevReq.ResourceAttributes.Group == "*" {
-				// all resources under all apigroups
-				filteredOperations = operationsMap
-			} else if subRevReq.ResourceAttributes.Group != "" {
-				// all resources under specified apigroup
-				if value, found := operationsMap.GroupMap[subRevReq.ResourceAttributes.Group]; found {
-					filteredOperations.GroupMap[subRevReq.ResourceAttributes.Group] = value
-				} else {
-					return nil, errors.Errorf("No resources found for group %s", subRevReq.ResourceAttributes.Group)
-				}
-			} else {
-				// if Group is not there that means it is the core apigroup
-				if value, found := operationsMap.GroupMap["v1"]; found {
-					filteredOperations.GroupMap["v1"] = value
-				} else {
-					return nil, errors.New("No resources found for the core group")
-				}
-			}
-
-			// if Namespace is populated, we need to create the list only for namespace scoped resources
-			finalFilteredOperations := azureutils.OperationsMap{}
-			finalFilteredOperations.GroupMap = make(map[string][]azureutils.ResourceAndVerbMap)
-			if subRevReq.ResourceAttributes.Namespace != "" {
-				for group, resMapList := range filteredOperations.GroupMap {
-					for _, resValues := range resMapList {
-						for _, verbValues := range resValues.ResourceMap {
-							for _, dataAction := range verbValues {
-								if dataAction.IsNamespacedResource {
-									finalFilteredOperations.GroupMap[group] = append(finalFilteredOperations.GroupMap[group], resValues)
-									break
-								}
-							}
-						}
-					}
-				}
-			} else {
-				// both cluster scoped and namespace scoped resource list
-				finalFilteredOperations = filteredOperations
-			}
-
-			klog.V(5).Infof("List of filtered operations: %s", finalFilteredOperations.String())
-
-			// create list of Data Actions
-			authInfoList, err = createAuthorizationActionInfoList(finalFilteredOperations, subRevReq.ResourceAttributes.Verb)
-			if err != nil {
-				return nil, errors.Wrap(err, fmt.Sprintf("Error which creating actions for checkaccess for Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb))
-			}
-
 		} else {
-			/*
-				   This sections handles the following scenarios:
-
-				    | Scenario        | Namespace is empty (Cluster scope call)          | Namespace is not empty (NS scope)                    |
-					------------------ --------------------------------------------------  -----------------------------------------------------
-					| Verb-*, Group-* | Resource under all apigroups and with all verbs  | Resource under specifed apigroups and with all verbs |
-					                  | at clusterscope                                  | at ns scope                                          |
-
-					| Verb - *        | Resource under specifed apigroups and with all   | Resource under specifed apigroups and with all verbs |
-					                  | verbs at cluster scope                           | at ns scope                                          |
-
-					| Group - *       | Resource under all apigroups with specified verb | Resource under all apigroups with specified verb     |
-					|                 | at cluster scope                                 |  at ns scope                                         |
-			*/
-
-			filteredOperations := azureutils.OperationsMap{}
-			filteredOperations.GroupMap = make(map[string][]azureutils.ResourceAndVerbMap)
-			if subRevReq.ResourceAttributes.Group == "*" {
-				// #1 and #3
-				for group, resMaps := range operationsMap.GroupMap {
-					for _, resList := range resMaps {
-						if _, found := resList.ResourceMap[subRevReq.ResourceAttributes.Resource]; found {
-							filteredOperations.GroupMap[group] = append(filteredOperations.GroupMap[group], resList)
-						}
-					}
-				}
-			} else { // #2
-				group := "v1" // core api group key
-				if subRevReq.ResourceAttributes.Group != "" {
-					group = subRevReq.ResourceAttributes.Group
-				}
-
-				if resMaps, found := operationsMap.GroupMap[group]; found {
-					for _, resList := range resMaps {
-						if _, found := resList.ResourceMap[subRevReq.ResourceAttributes.Resource]; found {
-							filteredOperations.GroupMap[group] = append(filteredOperations.GroupMap[group], resList)
-						}
-					}
-				} else {
-					return nil, errors.New(fmt.Sprintf("No resources found for group %s and resource %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource))
-				}
-
+			if operationsMap.GroupMap == nil {
+				return nil, errors.Errorf("Wildcard support for Resource/Verb/Group is not supported for request Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb)
 			}
 
-			klog.V(5).Infof("List of filtered operations: %s", filteredOperations.String())
-
-			// create list of Data Actions
-			authInfoList, err = createAuthorizationActionInfoList(filteredOperations, subRevReq.ResourceAttributes.Verb)
+			authInfoList, err = getAuthInfoListForWildcard(subRevReq, clusterType, operationsMap)
 			if err != nil {
 				return nil, errors.Wrap(err, fmt.Sprintf("Error which creating actions for checkaccess for Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb))
 			}
+
 		}
 	} else if subRevReq.NonResourceAttributes != nil {
 		authInfoSingle := azureutils.AuthorizationActionInfo{
@@ -361,6 +252,133 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 		authInfoSingle.AuthorizationEntity.Id = path.Join(clusterType, subRevReq.NonResourceAttributes.Path, getActionName(subRevReq.NonResourceAttributes.Verb))
 		authInfoList = append(authInfoList, authInfoSingle)
 	}
+	return authInfoList, nil
+}
+
+func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string, operationsMap azureutils.OperationsMap) ([]azureutils.AuthorizationActionInfo, error) {
+	var authInfoList []azureutils.AuthorizationActionInfo
+	var err error
+	if subRevReq.ResourceAttributes.Resource == "*" {
+		/*
+			This sections handles the following scenarios:
+
+			| Scenario              | Namespace is empty (Cluster scope call)                    | Namespace is not empty (NS scope)             |
+			------------------------ ------------------------------------------------------------  ----------------------------------------------
+			| Verb-*, Res-*, Group-*| All cluster and ns res with all verbs at clusterscope      | All ns resources at ns scope                  |
+
+			| Res-*, Group-*        | All cluster and ns res with specified verb at clusterscope | All ns res with specified verb at ns scope    |
+
+			| Verb-*, Res-*         | All cluster and ns res with all verbs under                | All ns res with all verbs under specified     |
+			|                       | specified apigroup at clusterscope                         | apigroup at nsscope                           |
+
+			| Resource - *          | All CS and NS Resources under specifed apigroup with       | All NS Resources under specifed apigroup with |
+			|                       | specified verb at cluster scope                            | specified verb at ns scope                    |
+		*/
+
+		filteredOperations := azureutils.OperationsMap{}
+		filteredOperations.GroupMap = make(map[string][]azureutils.ResourceAndVerbMap)
+		if subRevReq.ResourceAttributes.Group == "*" {
+			// all resources under all apigroups
+			filteredOperations = operationsMap
+		} else if subRevReq.ResourceAttributes.Group != "" {
+			// all resources under specified apigroup
+			if value, found := operationsMap.GroupMap[subRevReq.ResourceAttributes.Group]; found {
+				filteredOperations.GroupMap[subRevReq.ResourceAttributes.Group] = value
+			} else {
+				return nil, errors.Errorf("No resources found for group %s", subRevReq.ResourceAttributes.Group)
+			}
+		} else {
+			// if Group is not there that means it is the core apigroup
+			if value, found := operationsMap.GroupMap["v1"]; found {
+				filteredOperations.GroupMap["v1"] = value
+			} else {
+				return nil, errors.New("No resources found for the core group")
+			}
+		}
+
+		// if Namespace is populated, we need to create the list only for namespace scoped resources
+		finalFilteredOperations := azureutils.OperationsMap{}
+		finalFilteredOperations.GroupMap = make(map[string][]azureutils.ResourceAndVerbMap)
+		if subRevReq.ResourceAttributes.Namespace != "" {
+			for group, resMapList := range filteredOperations.GroupMap {
+				for _, resValues := range resMapList {
+					for _, verbValues := range resValues.ResourceMap {
+						for _, dataAction := range verbValues {
+							if dataAction.IsNamespacedResource {
+								finalFilteredOperations.GroupMap[group] = append(finalFilteredOperations.GroupMap[group], resValues)
+								break
+							}
+						}
+					}
+				}
+			}
+		} else {
+			// both cluster scoped and namespace scoped resource list
+			finalFilteredOperations = filteredOperations
+		}
+
+		klog.V(7).Infof("List of filtered operations: %s", finalFilteredOperations.String())
+
+		// create list of Data Actions
+		authInfoList, err = createAuthorizationActionInfoList(finalFilteredOperations, subRevReq.ResourceAttributes.Verb)
+		if err != nil {
+			return nil, err
+		}
+
+	} else {
+		/*
+			   This sections handles the following scenarios:
+
+				| Scenario        | Namespace is empty (Cluster scope call)          | Namespace is not empty (NS scope)                    |
+				------------------ --------------------------------------------------  -----------------------------------------------------
+				| Verb-*, Group-* | Resource under all apigroups and with all verbs  | Resource under specifed apigroups and with all verbs |
+								  | at clusterscope                                  | at ns scope                                          |
+
+				| Verb - *        | Resource under specifed apigroups and with all   | Resource under specifed apigroups and with all verbs |
+								  | verbs at cluster scope                           | at ns scope                                          |
+
+				| Group - *       | Resource under all apigroups with specified verb | Resource under all apigroups with specified verb     |
+				|                 | at cluster scope                                 |  at ns scope                                         |
+		*/
+
+		filteredOperations := azureutils.OperationsMap{}
+		filteredOperations.GroupMap = make(map[string][]azureutils.ResourceAndVerbMap)
+		if subRevReq.ResourceAttributes.Group == "*" {
+			// #1 and #3
+			for group, resMaps := range operationsMap.GroupMap {
+				for _, resList := range resMaps {
+					if _, found := resList.ResourceMap[subRevReq.ResourceAttributes.Resource]; found {
+						filteredOperations.GroupMap[group] = append(filteredOperations.GroupMap[group], resList)
+					}
+				}
+			}
+		} else { // #2
+			group := "v1" // core api group key
+			if subRevReq.ResourceAttributes.Group != "" {
+				group = subRevReq.ResourceAttributes.Group
+			}
+
+			if resMaps, found := operationsMap.GroupMap[group]; found {
+				for _, resList := range resMaps {
+					if _, found := resList.ResourceMap[subRevReq.ResourceAttributes.Resource]; found {
+						filteredOperations.GroupMap[group] = append(filteredOperations.GroupMap[group], resList)
+					}
+				}
+			} else {
+				return nil, errors.Errorf("No resources found for group %s and resource %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource)
+			}
+
+		}
+
+		klog.V(7).Infof("List of filtered operations: %s", filteredOperations.String())
+
+		// create list of Data Actions
+		authInfoList, err = createAuthorizationActionInfoList(filteredOperations, subRevReq.ResourceAttributes.Verb)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return authInfoList, nil
 }
 
@@ -402,7 +420,7 @@ func createAuthorizationActionInfoList(filteredOperations azureutils.OperationsM
 
 	printAuthInfos, _ := json.Marshal(authInfos)
 
-	klog.V(5).Infof("List of authorization action info: %s", string(printAuthInfos))
+	klog.V(5).Infof("List of authorization action info for checkaccess: %s", string(printAuthInfos))
 
 	return authInfos, nil
 }

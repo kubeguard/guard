@@ -191,25 +191,27 @@ func (s Server) ListenAndServe() {
 				klog.Fatalf("Error in initalizing cache. Error:%s", err.Error())
 			}
 
-			clusterType := ""
+			if s.AuthzRecommendedOptions.Azure.FetchListOfResources {
+				clusterType := ""
 
-			switch s.AuthzRecommendedOptions.Azure.AuthzMode {
-			case "arc":
-				clusterType = azureutils.ConnectedClusters
-			case "aks":
-				clusterType = azureutils.ManagedClusters
-			case "fleet":
-				clusterType = azureutils.Fleets
-			default:
-				klog.Fatalf("Authzmode %s is not supported for fetching list of resources", s.AuthzRecommendedOptions.Azure.AuthzMode)
+				switch s.AuthzRecommendedOptions.Azure.AuthzMode {
+				case "arc":
+					clusterType = azureutils.ConnectedClusters
+				case "aks":
+					clusterType = azureutils.ManagedClusters
+				case "fleet":
+					clusterType = azureutils.Fleets
+				default:
+					klog.Fatalf("Authzmode %s is not supported for fetching list of resources", s.AuthzRecommendedOptions.Azure.AuthzMode)
+				}
+
+				operationsMap, err := azureutils.FetchListOfResources(clusterType, s.AuthRecommendedOptions.Azure.Environment, s.AuthzRecommendedOptions.Azure.AKSAuthzTokenURL, s.AuthzRecommendedOptions.Azure.KubeConfigFile, s.AuthRecommendedOptions.Azure.TenantID, s.AuthRecommendedOptions.Azure.ClientID, s.AuthRecommendedOptions.Azure.ClientSecret)
+				if err != nil {
+					klog.Fatalf("Failed to create map of data actions. Error:%s", err)
+				}
+
+				authzhandler.operationsMap = operationsMap
 			}
-
-			operationsMap, err := azureutils.FetchListOfResources(clusterType, s.AuthRecommendedOptions.Azure.Environment, s.AuthzRecommendedOptions.Azure.AKSAuthzTokenURL, s.AuthzRecommendedOptions.Azure.KubeConfigFile, s.AuthRecommendedOptions.Azure.TenantID, s.AuthRecommendedOptions.Azure.ClientID, s.AuthRecommendedOptions.Azure.ClientSecret)
-			if err != nil {
-				klog.Fatalf("Failed to create map of data actions. Error:%s", err)
-			}
-
-			authzhandler.operationsMap = operationsMap
 		}
 	}
 

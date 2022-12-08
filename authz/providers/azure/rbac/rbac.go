@@ -32,8 +32,8 @@ import (
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 	"go.kubeguard.dev/guard/authz"
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
-	"go.kubeguard.dev/guard/util/httpclient"
 	azureutils "go.kubeguard.dev/guard/util/azure"
+	"go.kubeguard.dev/guard/util/httpclient"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -275,6 +275,9 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	var wg sync.WaitGroup // New wait group
 
 	ch := make(chan ReviewResult, len(checkAccessBodies))
+	if len(checkAccessBodies) > 1 {
+		klog.V(5).Infof("Number of checkaccess requests to make: %d", len(checkAccessBodies))
+	}
 	for _, checkAccessBody := range checkAccessBodies {
 		wg.Add(1)
 		go a.sendCheckAccessRequest(checkAccessURL, checkAccessBody, &wg, ch)

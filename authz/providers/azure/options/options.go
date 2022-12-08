@@ -42,6 +42,7 @@ type Options struct {
 	SkipAuthzForNonAADUsers         bool
 	AllowNonResDiscoveryPathAccess  bool
 	UseNamespaceResourceScopeFormat bool
+	FetchListOfResources            bool
 	KubeConfigFile                  string
 }
 
@@ -52,6 +53,7 @@ func NewOptions() Options {
 		SkipAuthzForNonAADUsers:         true,
 		AllowNonResDiscoveryPathAccess:  true,
 		UseNamespaceResourceScopeFormat: false,
+		FetchListOfResources:            false,
 	}
 }
 
@@ -65,6 +67,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.AllowNonResDiscoveryPathAccess, "azure.allow-nonres-discovery-path-access", o.AllowNonResDiscoveryPathAccess, "allow access on Non Resource paths required for discovery, setting it false will require explicit non resource path role assignment for all users in Azure RBAC")
 	fs.BoolVar(&o.UseNamespaceResourceScopeFormat, "azure.use-ns-resource-scope-format", o.UseNamespaceResourceScopeFormat, "use namespace as resource scope format for making rbac checkaccess calls at namespace scope")
 	fs.StringVar(&o.KubeConfigFile, "azure.kubeconfig-file", "", "path to the kubeconfig of cluster.")
+	fs.BoolVar(&o.FetchListOfResources, "azure.fetch-list-of-resources", o.FetchListOfResources, "fetch list of resources on startup. Default: false")
 }
 
 func (o *Options) Validate(azure azure.Options) []error {
