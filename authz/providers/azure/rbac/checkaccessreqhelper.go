@@ -206,7 +206,7 @@ func getResourceAndAction(resource string, subResource string, verb string) stri
 	return action
 }
 
-func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string, dataActionsMap map[string][]map[string]map[string]azureutils.DataAction) ([]azureutils.AuthorizationActionInfo, error) {
+func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string, operationsMap azureutils.OperationsMap) ([]azureutils.AuthorizationActionInfo, error) {
 	var authInfoList []azureutils.AuthorizationActionInfo
 	var err error
 
@@ -251,36 +251,37 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 					|                       | specified verb at cluster scope                            | specified verb at ns scope                    |
 			*/
 
-			filteredOperations := make(map[string][]map[string]map[string]azureutils.DataAction)
+			filteredOperations := azureutils.OperationsMap{}
+			filteredOperations.GroupMap = make(map[string][]azureutils.ResourceAndVerbMap)
 			if subRevReq.ResourceAttributes.Group == "*" {
 				// all resources under all apigroups
-				filteredOperations = dataActionsMap
+				filteredOperations = operationsMap
 			} else if subRevReq.ResourceAttributes.Group != "" {
 				// all resources under specified apigroup
-				if value, found := dataActionsMap[subRevReq.ResourceAttributes.Group]; found {
-					filteredOperations[subRevReq.ResourceAttributes.Group] = value
+				if value, found := operationsMap.GroupMap[subRevReq.ResourceAttributes.Group]; found {
+					filteredOperations.GroupMap[subRevReq.ResourceAttributes.Group] = value
 				} else {
 					return nil, errors.Errorf("No resources found for group %s", subRevReq.ResourceAttributes.Group)
 				}
 			} else {
 				// if Group is not there that means it is the core apigroup
-				if value, found := dataActionsMap["v1"]; found {
-					filteredOperations["v1"] = value
+				if value, found := operationsMap.GroupMap["v1"]; found {
+					filteredOperations.GroupMap["v1"] = value
 				} else {
 					return nil, errors.New("No resources found for the core group")
 				}
 			}
 
 			// if Namespace is populated, we need to create the list only for namespace scoped resources
-			finalFilteredOperations := make(map[string][]map[string]map[string]azureutils.DataAction)
-
+			finalFilteredOperations := azureutils.OperationsMap{}
+			finalFilteredOperations.GroupMap = make(map[string][]azureutils.ResourceAndVerbMap)
 			if subRevReq.ResourceAttributes.Namespace != "" {
-				for group, resMapList := range filteredOperations {
+				for group, resMapList := range filteredOperations.GroupMap {
 					for _, resValues := range resMapList {
-						for _, verbValues := range resValues {
+						for _, verbValues := range resValues.ResourceMap {
 							for _, dataAction := range verbValues {
 								if dataAction.IsNamespacedResource {
-									finalFilteredOperations[group] = append(finalFilteredOperations[group], resValues)
+									finalFilteredOperations.GroupMap[group] = append(finalFilteredOperations.GroupMap[group], resValues)
 									break
 								}
 							}
@@ -292,7 +293,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 				finalFilteredOperations = filteredOperations
 			}
 
-			klog.V(5).Infof("Final filtered operations : %v", finalFilteredOperations)
+			klog.V(5).Infof("List of filtered operations: %s", finalFilteredOperations.String())
 
 			// create list of Data Actions
 			authInfoList, err = createAuthorizationActionInfoList(finalFilteredOperations, subRevReq.ResourceAttributes.Verb)
@@ -316,14 +317,14 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 					|                 | at cluster scope                                 |  at ns scope                                         |
 			*/
 
-			filteredOperations := make(map[string][]map[string]map[string]azureutils.DataAction)
-
+			filteredOperations := azureutils.OperationsMap{}
+			filteredOperations.GroupMap = make(map[string][]azureutils.ResourceAndVerbMap)
 			if subRevReq.ResourceAttributes.Group == "*" {
 				// #1 and #3
-				for group, resMaps := range dataActionsMap {
+				for group, resMaps := range operationsMap.GroupMap {
 					for _, resList := range resMaps {
-						if _, found := resList[subRevReq.ResourceAttributes.Resource]; found {
-							filteredOperations[group] = append(filteredOperations[group], resList)
+						if _, found := resList.ResourceMap[subRevReq.ResourceAttributes.Resource]; found {
+							filteredOperations.GroupMap[group] = append(filteredOperations.GroupMap[group], resList)
 						}
 					}
 				}
@@ -333,10 +334,10 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 					group = subRevReq.ResourceAttributes.Group
 				}
 
-				if resMaps, found := dataActionsMap[group]; found {
+				if resMaps, found := operationsMap.GroupMap[group]; found {
 					for _, resList := range resMaps {
-						if _, found := resList[subRevReq.ResourceAttributes.Resource]; found {
-							filteredOperations[group] = append(filteredOperations[group], resList)
+						if _, found := resList.ResourceMap[subRevReq.ResourceAttributes.Resource]; found {
+							filteredOperations.GroupMap[group] = append(filteredOperations.GroupMap[group], resList)
 						}
 					}
 				} else {
@@ -345,7 +346,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 
 			}
 
-			klog.V(5).Infof("Final filtered resources : %v", filteredOperations)
+			klog.V(5).Infof("List of filtered operations: %s", filteredOperations.String())
 
 			// create list of Data Actions
 			authInfoList, err = createAuthorizationActionInfoList(filteredOperations, subRevReq.ResourceAttributes.Verb)
@@ -363,8 +364,8 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 	return authInfoList, nil
 }
 
-func createAuthorizationActionInfoList(filteredOperations map[string][]map[string]map[string]azureutils.DataAction, filterVerb string) ([]azureutils.AuthorizationActionInfo, error) {
-	if len(filteredOperations) == 0 {
+func createAuthorizationActionInfoList(filteredOperations azureutils.OperationsMap, filterVerb string) ([]azureutils.AuthorizationActionInfo, error) {
+	if len(filteredOperations.GroupMap) == 0 {
 		return nil, errors.New("No operations were found for the request.")
 	}
 
@@ -373,10 +374,10 @@ func createAuthorizationActionInfoList(filteredOperations map[string][]map[strin
 	if filterVerb != "*" {
 		foundAtleastOneAction := false
 		verb := getActionName(filterVerb)
-		for _, resMapList := range filteredOperations {
+		for _, resMapList := range filteredOperations.GroupMap {
 			for _, resValues := range resMapList {
-				for resource := range resValues {
-					if dataAction, found := resValues[resource][verb]; found {
+				for _, resource := range resValues.ResourceMap {
+					if dataAction, found := resource[verb]; found {
 						foundAtleastOneAction = true
 						authInfos = append(authInfos, dataAction.ActionInfo)
 					}
@@ -388,9 +389,9 @@ func createAuthorizationActionInfoList(filteredOperations map[string][]map[strin
 			return nil, errors.Errorf("No operations were found for the verb: %s.", filterVerb)
 		}
 	} else {
-		for _, resMapList := range filteredOperations {
+		for _, resMapList := range filteredOperations.GroupMap {
 			for _, resValues := range resMapList {
-				for _, verbValues := range resValues {
+				for _, verbValues := range resValues.ResourceMap {
 					for _, dataAction := range verbValues {
 						authInfos = append(authInfos, dataAction.ActionInfo)
 					}
@@ -398,6 +399,10 @@ func createAuthorizationActionInfoList(filteredOperations map[string][]map[strin
 			}
 		}
 	}
+
+	printAuthInfos, _ := json.Marshal(authInfos)
+
+	klog.V(5).Infof("List of authorization action info: %s", string(printAuthInfos))
 
 	return authInfos, nil
 }
@@ -429,7 +434,7 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	return cacheKey
 }
 
-func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, dataActionsMap map[string][]map[string]map[string]azureutils.DataAction, resourceId string, useNamespaceResourceScopeFormat bool) ([]*CheckAccessRequest, error) {
+func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, operationsMap azureutils.OperationsMap, resourceId string, useNamespaceResourceScopeFormat bool) ([]*CheckAccessRequest, error) {
 	/* This is how sample SubjectAccessReview request will look like
 		{
 			"kind": "SubjectAccessReview",
@@ -489,7 +494,7 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 	}
 	groups := getValidSecurityGroups(req.Groups)
 	username = req.User
-	actions, err := getDataActions(req, clusterType, dataActionsMap)
+	actions, err := getDataActions(req, clusterType, operationsMap)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error while creating list of dataactions for check access call")
 	}

@@ -49,10 +49,10 @@ type Authorizer struct {
 	rbacClient *rbac.AccessInfo
 }
 
-func New(opts authzOpts.Options, authopts auth.Options, dataActionsMap map[string][]map[string]map[string]azureutils.DataAction) (authz.Interface, error) {
+func New(opts authzOpts.Options, authopts auth.Options, operationsMap azureutils.OperationsMap) (authz.Interface, error) {
 	once.Do(func() {
 		klog.Info("Creating Azure global authz client")
-		client, err = newAuthzClient(opts, authopts, dataActionsMap)
+		client, err = newAuthzClient(opts, authopts, operationsMap)
 		if client == nil || err != nil {
 			klog.Fatalf("Authz RBAC client creation failed. Error: %s", err)
 		}
@@ -60,7 +60,7 @@ func New(opts authzOpts.Options, authopts auth.Options, dataActionsMap map[strin
 	return client, err
 }
 
-func newAuthzClient(opts authzOpts.Options, authopts auth.Options, dataActionsMap map[string][]map[string]map[string]azureutils.DataAction) (authz.Interface, error) {
+func newAuthzClient(opts authzOpts.Options, authopts auth.Options, operationsMap azureutils.OperationsMap) (authz.Interface, error) {
 	c := &Authorizer{}
 
 	authzInfoVal, err := getAuthzInfo(authopts.Environment)
@@ -68,7 +68,7 @@ func newAuthzClient(opts authzOpts.Options, authopts auth.Options, dataActionsMa
 		return nil, errors.Wrap(err, "Error in getAuthzInfo %s")
 	}
 
-	c.rbacClient, err = rbac.New(opts, authopts, authzInfoVal, dataActionsMap)
+	c.rbacClient, err = rbac.New(opts, authopts, authzInfoVal, operationsMap)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create ms rbac client")
 	}

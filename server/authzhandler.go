@@ -32,7 +32,7 @@ type Authzhandler struct {
 	AuthRecommendedOptions  *AuthRecommendedOptions
 	AuthzRecommendedOptions *AuthzRecommendedOptions
 	Store                   authz.Store
-	dataActionsMap          map[string][]map[string]map[string]azureutils.DataAction
+	operationsMap           azureutils.OperationsMap
 }
 
 func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -73,7 +73,7 @@ func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 func (s *Authzhandler) getAuthzProviderClient(org string) (authz.Interface, error) {
 	switch strings.ToLower(org) {
 	case azure.OrgType:
-		return azure.New(s.AuthzRecommendedOptions.Azure, s.AuthRecommendedOptions.Azure, s.dataActionsMap)
+		return azure.New(s.AuthzRecommendedOptions.Azure, s.AuthRecommendedOptions.Azure, s.operationsMap)
 	}
 
 	return nil, errors.Errorf("Client is using unknown organization %s", org)

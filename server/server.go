@@ -204,12 +204,12 @@ func (s Server) ListenAndServe() {
 				klog.Fatalf("Authzmode %s is not supported for fetching list of resources", s.AuthzRecommendedOptions.Azure.AuthzMode)
 			}
 
-			dataActionsMap, err := azureutils.FetchListOfResources(clusterType, s.AuthRecommendedOptions.Azure.Environment, s.AuthzRecommendedOptions.Azure.AKSAuthzTokenURL, s.AuthRecommendedOptions.Azure.TenantID)
+			operationsMap, err := azureutils.FetchListOfResources(clusterType, s.AuthRecommendedOptions.Azure.Environment, s.AuthzRecommendedOptions.Azure.AKSAuthzTokenURL, s.AuthzRecommendedOptions.Azure.KubeConfigFile, s.AuthRecommendedOptions.Azure.TenantID, s.AuthRecommendedOptions.Azure.ClientID, s.AuthRecommendedOptions.Azure.ClientSecret)
 			if err != nil {
 				klog.Fatalf("Failed to create map of data actions. Error:%s", err)
 			}
 
-			authzhandler.dataActionsMap = dataActionsMap
+			authzhandler.operationsMap = operationsMap
 		}
 	}
 

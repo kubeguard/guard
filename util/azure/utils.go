@@ -18,10 +18,8 @@ package azure
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"path"
 	"strings"
 
@@ -35,6 +33,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
 )
 
@@ -100,55 +99,41 @@ type DataAction struct {
 	IsNamespacedResource bool
 }
 
-type 
-
-func getAuthHeaderUsingMSIForARC(resource string) (*TokenResponse, error) {
-	tokenResp := &TokenResponse{}
-	var msi_endpoint *url.URL
-	msi_endpoint, err := url.Parse(MSIEndpointForARC)
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to create request for getting token.")
-	}
-	msi_parameters := msi_endpoint.Query()
-	msi_parameters.Add("resource", resource)
-	msi_endpoint.RawQuery = msi_parameters.Encode()
-	req, err := http.NewRequest(http.MethodGet, msi_endpoint.String(), nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to create request for getting token.")
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Add("Metadata", "true")
-	client := httpclient.DefaultHTTPClient
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to send request for getting token.")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		data, _ := ioutil.ReadAll(resp.Body)
-		return nil, errors.Errorf("Request failed with status code: %d and response: %s", resp.StatusCode, string(data))
-	}
-	err = json.NewDecoder(resp.Body).Decode(&tokenResp)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to decode response")
-	}
-
-	return tokenResp, nil
+type ResourceAndVerbMap struct {
+	ResourceMap map[string]map[string]DataAction
 }
 
-func FetchListOfResources(clusterType string, environment string, loginURL string, tenantId string) (map[string][]map[string]map[string]DataAction, error) {
-	operationsMap := map[string][]map[string]map[string]DataAction{}
+type OperationsMap struct {
+	GroupMap map[string][]ResourceAndVerbMap
+}
 
-	apiResourcesList, err := fetchApiResources()
+func (o OperationsMap) String() string {
+	opMapString, _ := json.Marshal(o.GroupMap)
+	return fmt.Sprintf("%s", string(opMapString))
+}
+
+func FetchListOfResources(clusterType string, environment string, loginURL string, kubeconfigFilePath string, tenantId string, clientID string, clientSecret string) (OperationsMap, error) {
+	operationsMap := OperationsMap{}
+	apiResourcesList, err := fetchApiResources(kubeconfigFilePath)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to fetch list of api-resources from apiserver.")
+		return operationsMap, errors.Wrap(err, "Failed to fetch list of api-resources from apiserver.")
 	}
 
-	operationsList, err := fetchDataActionsList(environment, clusterType, loginURL, tenantId)
+	operationsList, err := fetchDataActionsList(environment, clusterType, loginURL, tenantId, clientID, clientSecret)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to fetch operations from Azure.")
+		return operationsMap, errors.Wrap(err, "Failed to fetch operations from Azure.")
 	}
+
+	operationsMap = createOperationsMap(apiResourcesList, operationsList, clusterType)
+
+	klog.V(5).Infof("Operations Map created for resources: %s", operationsMap.String())
+
+	return operationsMap, nil
+}
+
+func createOperationsMap(apiResourcesList []*metav1.APIResourceList, operationsList []Operation, clusterType string) (OperationsMap) {
+	operationsMap := OperationsMap{}
+	operationsMap.GroupMap = make(map[string][]ResourceAndVerbMap)
 
 	for _, resList := range apiResourcesList {
 		if len(resList.APIResources) == 0 {
@@ -203,27 +188,34 @@ func FetchListOfResources(clusterType string, environment string, loginURL strin
 					}
 					da.ActionInfo.AuthorizationEntity.Id = operation.Name
 
-					if operationsMap[group] == nil {
-						operationsMap[group] = []map[string]map[string]DataAction{}
+					if operationsMap.GroupMap[group] == nil {
+						operationsMap.GroupMap[group] = []ResourceAndVerbMap{}
 					}
-					resourceAndVerb := map[string]map[string]DataAction{}
-					resourceAndVerb[resourceName] = map[string]DataAction{}
-					resourceAndVerb[resourceName][verb] = da
-					operationsMap[group] = append(operationsMap[group], resourceAndVerb)
+					resourceAndVerb := ResourceAndVerbMap{}
+					resourceAndVerb.ResourceMap = make(map[string]map[string]DataAction)
+					resourceAndVerb.ResourceMap[resourceName] = map[string]DataAction{}
+					resourceAndVerb.ResourceMap[resourceName][verb] = da
+					operationsMap.GroupMap[group] = append(operationsMap.GroupMap[group], resourceAndVerb)
 				}
 			}
 		}
 	}
 
-	klog.V(5).Infof("Operations list: %v", operationsMap)
-
-	return operationsMap, nil
+	return operationsMap
 }
 
-func fetchApiResources() ([]*metav1.APIResourceList, error) {
+func fetchApiResources(kubeconfigFilePath string) ([]*metav1.APIResourceList, error) {
 	// creates the in-cluster config
 	klog.V(5).Infof("Fetching list of APIResources from the apiserver.")
-	cfg, err := rest.InClusterConfig()
+
+	var cfg *rest.Config
+	var err error
+	if kubeconfigFilePath != "" {
+		cfg, err = clientcmd.BuildConfigFromFlags("", kubeconfigFilePath)
+	} else {
+		cfg, err = rest.InClusterConfig()
+	}
+
 	if err != nil {
 		return nil, errors.Wrap(err, "Error building kubeconfig")
 	}
@@ -238,12 +230,14 @@ func fetchApiResources() ([]*metav1.APIResourceList, error) {
 		return nil, err
 	}
 
-	klog.V(5).Infof("List of ApiResources fetched from apiserver: %v", apiresourcesList)
+	printApiresourcesList, _ := json.Marshal(apiresourcesList)
+
+	klog.V(5).Infof("List of ApiResources fetched from apiserver: %s", string(printApiresourcesList))
 
 	return apiresourcesList, nil
 }
 
-func fetchDataActionsList(environment string, clusterType string, loginURL string, tenantID string) ([]Operation, error) {
+func fetchDataActionsList(environment string, clusterType string, loginURL string, tenantID string, clientID string, clientSecret string) ([]Operation, error) {
 	env := azure.PublicCloud
 	var err error
 	if environment != "" {
@@ -276,12 +270,16 @@ func fetchDataActionsList(environment string, clusterType string, loginURL strin
 
 	var token string
 	if clusterType == ConnectedClusters {
-		tokenResp, err := getAuthHeaderUsingMSIForARC(env.ResourceManagerEndpoint)
-		if err != nil {
-			return nil, errors.Wrap(err, "Error getting authorization headers for Get Operations call.")
+		tokenProvider := graph.NewClientCredentialTokenProvider(clientID, clientSecret,
+			                fmt.Sprintf("%s%s/oauth2/v2.0/token", env.ActiveDirectoryEndpoint, tenantID), 
+	                        fmt.Sprintf("%s/.default", env.ResourceManagerEndpoint))
+
+		authResp, erro := tokenProvider.Acquire("")
+		if erro != nil {
+			return nil, errors.Wrap(erro, "Error getting authorization headers for Get Operations call.")
 		}
 
-		token = tokenResp.AccessToken
+		token = authResp.Token
 	} else { //AKS and Fleet
 		tokenProvider := graph.NewAKSTokenProvider(loginURL, tenantID)
 
@@ -325,5 +323,8 @@ func fetchDataActionsList(environment string, clusterType string, loginURL strin
 		}
 	}
 
+	printFinalOperations, _ := json.Marshal(finalOperations)
+
+	klog.V(5).Infof("List of Operations fetched from Azure %s", string(printFinalOperations))
 	return finalOperations, nil
 }

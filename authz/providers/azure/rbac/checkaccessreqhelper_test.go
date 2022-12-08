@@ -30,10 +30,11 @@ import (
 
 const resourceId = "resourceId"
 
-func createDataActionsMap(clusterType string) map[string][]map[string]map[string]azureutils.DataAction {
-	dataActionsMap := map[string][]map[string]map[string]azureutils.DataAction{}
-	dataActionsMap["v1"] = []map[string]map[string]azureutils.DataAction{}
-	dataActionsMap["apps"] = []map[string]map[string]azureutils.DataAction{}
+func createOperationsMap(clusterType string) azureutils.OperationsMap {
+	operationsMap := azureutils.OperationsMap{}
+	operationsMap.GroupMap = make(map[string][]azureutils.ResourceAndVerbMap)
+	operationsMap["v1"] = []azureutils.ResourceAndVerbMap{}
+	operationsMap["apps"] = []azureutils.ResourceAndVerbMap{}
 	commonVerbs := []string{"read", "write", "delete"}
 	resources := []string{"deployments", "pods", "persistentvolumes"}
 
@@ -50,18 +51,18 @@ func createDataActionsMap(clusterType string) map[string][]map[string]map[string
 				da.IsNamespacedResource = true
 			}
 
-			resourceAndVerb := map[string]map[string]azureutils.DataAction{}
-			resourceAndVerb[res] = map[string]azureutils.DataAction{}
-			resourceAndVerb[res][verb] = da
+			resourceAndVerb := azureutils.ResourceAndVerbMap{}
+			resourceAndVerb.ResourceMap[res] = azureutils.ResourceAndVerbMap{}
+			resourceAndVerb.ResourceMap[res][verb] = da
 			if res == "pods" || res == "persistentvolumes" {
-				dataActionsMap["v1"] = append(dataActionsMap["v1"], resourceAndVerb)
+				operationsMap.GroupMap["v1"] = append(operationsMap.GroupMap["v1"], resourceAndVerb)
 			} else {
-				dataActionsMap["apps"] = append(dataActionsMap["apps"], resourceAndVerb)
+				operationsMap.GroupMap["apps"] = append(operationsMap.GroupMap["apps"], resourceAndVerb)
 			}
 		}
 	}
 
-	return dataActionsMap
+	return operationsMap
 }
 
 func Test_getScope(t *testing.T) {
@@ -371,8 +372,8 @@ func Test_getDataActions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dataActionsMap := createDataActionsMap(tt.args.clusterType)
-			if got, _ := getDataActions(tt.args.subRevReq, tt.args.clusterType, dataActionsMap); !reflect.DeepEqual(got, tt.want) {
+			operationsMap := createOperationsMap(tt.args.clusterType)
+			if got, _ := getDataActions(tt.args.subRevReq, tt.args.clusterType, operationsMap); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("getDataActions() = %v, want %v", got, tt.want)
 			}
 		})
@@ -438,10 +439,10 @@ func Test_getNameSpaceScopeUsingNewNsFormat(t *testing.T) {
 func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	req := &authzv1.SubjectAccessReviewSpec{Extra: nil}
 	clusterType := "aks"
-	dataActionsMap := createDataActionsMap(clusterType)
+	operationsMap := createOperationsMap(clusterType)
 	wantErr := errors.New("oid info not sent from authenticatoin module")
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, dataActionsMap, resourceId, false)
+	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, operationsMap, resourceId, false)
 
 	if got != nil && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", nil, wantErr, got, gotErr)
@@ -451,7 +452,7 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	clusterType = "arc"
 	wantErr = errors.New("oid info sent from authenticatoin module is not valid")
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, dataActionsMap, resourceId, false)
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, operationsMap, resourceId, false)
 
 	if got != nil && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", nil, wantErr, got, gotErr)
@@ -462,12 +463,12 @@ func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
 	dummyUuid := uuid.New()
 	req := &authzv1.SubjectAccessReviewSpec{ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev"}, Extra: map[string]authzv1.ExtraValue{"oid": {dummyUuid.String()}}}
 	clusterType := "aks"
-	dataActionsMap := createDataActionsMap(clusterType)
+	operationsMap := createOperationsMap(clusterType)
 
 	// testing with new ns scope format
 	var want string = "resourceId/providers/Microsoft.KubernetesConfiguration/namespaces/dev"
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, dataActionsMap, resourceId, true)
+	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, operationsMap, resourceId, true)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
@@ -480,7 +481,7 @@ func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
 	// testing with the old namespace format
 	want = "resourceId/namespaces/dev"
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, dataActionsMap, resourceId, false)
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, operationsMap, resourceId, false)
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
 	}
