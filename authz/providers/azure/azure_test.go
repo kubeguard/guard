@@ -61,7 +61,7 @@ func clientSetup(serverUrl, mode string) (*Authorizer, error) {
 		ARMEndPoint: serverUrl + "/arm/",
 	}
 
-	dataActionsMap := map[string][]map[string]map[string]azureutils.DataAction{}
+	dataActionsMap := azureutils.OperationsMap{}
 
 	c.rbacClient, err = rbac.New(opts, authOpts, &authzInfo, dataActionsMap)
 	if err != nil {

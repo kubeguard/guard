@@ -17,7 +17,7 @@ limitations under the License.
 package rbac
 
 import (
-	"path"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -31,35 +31,33 @@ import (
 const resourceId = "resourceId"
 
 func createOperationsMap(clusterType string) azureutils.OperationsMap {
-	operationsMap := azureutils.OperationsMap{}
-	operationsMap.GroupMap = make(map[string][]azureutils.ResourceAndVerbMap)
-	operationsMap["v1"] = []azureutils.ResourceAndVerbMap{}
-	operationsMap["apps"] = []azureutils.ResourceAndVerbMap{}
-	commonVerbs := []string{"read", "write", "delete"}
-	resources := []string{"deployments", "pods", "persistentvolumes"}
-
-	for _, res := range resources {
-		for _, verb := range commonVerbs {
-			da := azureutils.DataAction{
-				ActionInfo: azureutils.AuthorizationActionInfo{
-					IsDataAction: true,
+	operationsMap := azureutils.OperationsMap{
+		GroupMap: map[string]azureutils.ResourceAndVerbMap{
+			"apps": {
+				ResourceMap: map[string]map[string]azureutils.DataAction{
+					"deployments": {
+						"read":   azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/apps/deployments/read", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
+						"write":  azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/apps/deployments/write", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
+						"delete": azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/apps/deployments/delete", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
+					},
 				},
-				IsNamespacedResource: false,
-			}
-			da.ActionInfo.AuthorizationEntity.Id = path.Join(clusterType, res, verb)
-			if res == "pods" || res == "deployments" {
-				da.IsNamespacedResource = true
-			}
-
-			resourceAndVerb := azureutils.ResourceAndVerbMap{}
-			resourceAndVerb.ResourceMap[res] = azureutils.ResourceAndVerbMap{}
-			resourceAndVerb.ResourceMap[res][verb] = da
-			if res == "pods" || res == "persistentvolumes" {
-				operationsMap.GroupMap["v1"] = append(operationsMap.GroupMap["v1"], resourceAndVerb)
-			} else {
-				operationsMap.GroupMap["apps"] = append(operationsMap.GroupMap["apps"], resourceAndVerb)
-			}
-		}
+			},
+			"v1": {
+				ResourceMap: map[string]map[string]azureutils.DataAction{
+					"persistentvolumes": {
+						"read":   azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/persistentvolumes/read", clusterType)}, IsDataAction: true}, IsNamespacedResource: false},
+						"write":  azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/persistentvolumes/write", clusterType)}, IsDataAction: true}, IsNamespacedResource: false},
+						"delete": azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/persistentvolumes/delete", clusterType)}, IsDataAction: true}, IsNamespacedResource: false},
+					},
+					"pods": {
+						"read":        azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/pods/read", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
+						"write":       azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/pods/write", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
+						"delete":      azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/pods/delete", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
+						"exec/action": azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/pods/exec/action", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
+					},
+				},
+			},
+		},
 	}
 
 	return operationsMap
@@ -125,8 +123,9 @@ func Test_getValidSecurityGroups(t *testing.T) {
 
 func Test_getDataActions(t *testing.T) {
 	type args struct {
-		subRevReq   *authzv1.SubjectAccessReviewSpec
-		clusterType string
+		isWildcardTest bool
+		subRevReq      *authzv1.SubjectAccessReviewSpec
+		clusterType    string
 	}
 	tests := []struct {
 		name string
@@ -136,6 +135,7 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"aks",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					NonResourceAttributes: &authzv1.NonResourceAttributes{Path: "/apis", Verb: "list"},
 				}, clusterType: "aks",
@@ -146,6 +146,7 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"aks2",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					NonResourceAttributes: &authzv1.NonResourceAttributes{Path: "/logs", Verb: "get"},
 				}, clusterType: "aks",
@@ -156,6 +157,7 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"fleet",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					NonResourceAttributes: &authzv1.NonResourceAttributes{Path: "/apis", Verb: "list"},
 				}, clusterType: "fleet",
@@ -166,6 +168,7 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"fleet2",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					NonResourceAttributes: &authzv1.NonResourceAttributes{Path: "/logs", Verb: "get"},
 				}, clusterType: "fleet",
@@ -176,6 +179,7 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"arc",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "pods", Subresource: "status", Version: "v1", Name: "test", Verb: "delete"},
 				}, clusterType: "arc",
@@ -186,16 +190,18 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"arc2",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
-					ResourceAttributes: &authzv1.ResourceAttributes{Group: "apps", Resource: "deployments", Subresource: "status", Version: "v1", Name: "test", Verb: "create"},
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "apps", Resource: "apps/deployments", Subresource: "status", Version: "v1", Name: "test", Verb: "create"},
 				}, clusterType: "arc",
 			},
-			[]azureutils.AuthorizationActionInfo{{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "arc/apps/deployments/write"}, IsDataAction: true}},
+			[]azureutils.AuthorizationActionInfo{{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "arc/apps/apps/deployments/write"}, IsDataAction: true}},
 		},
 
 		{
 			"arc3",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "policy", Resource: "podsecuritypolicies", Subresource: "status", Version: "v1", Name: "test", Verb: "use"},
 				}, clusterType: "arc",
@@ -206,6 +212,7 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"aks3",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "authentication.k8s.io", Resource: "userextras", Subresource: "scopes", Version: "v1", Name: "test", Verb: "impersonate"},
 				}, clusterType: "aks",
@@ -216,6 +223,7 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"fleet3",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "authentication.k8s.io", Resource: "userextras", Subresource: "scopes", Version: "v1", Name: "test", Verb: "impersonate"},
 				}, clusterType: "fleet",
@@ -226,6 +234,7 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"arc4",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "rbac.authorization.k8s.io", Resource: "clusterroles", Subresource: "status", Version: "v1", Name: "test", Verb: "bind"},
 				}, clusterType: "arc",
@@ -236,6 +245,7 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"aks4",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "rbac.authorization.k8s.io", Resource: "clusterroles", Subresource: "status", Version: "v1", Name: "test", Verb: "escalate"},
 				}, clusterType: "aks",
@@ -246,6 +256,7 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"fleet4",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "rbac.authorization.k8s.io", Resource: "clusterroles", Subresource: "status", Version: "v1", Name: "test", Verb: "escalate"},
 				}, clusterType: "fleet",
@@ -256,6 +267,7 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"arc5",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "scheduling.k8s.io", Resource: "priorityclasses", Subresource: "status", Version: "v1", Name: "test", Verb: "update"},
 				}, clusterType: "arc",
@@ -266,6 +278,7 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"aks5",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "events.k8s.io", Resource: "events", Subresource: "status", Version: "v1", Name: "test", Verb: "watch"},
 				}, clusterType: "aks",
@@ -276,6 +289,7 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"fleet5",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "events.k8s.io", Resource: "events", Subresource: "status", Version: "v1", Name: "test", Verb: "watch"},
 				}, clusterType: "fleet",
@@ -286,6 +300,7 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"arc6",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "batch", Resource: "cronjobs", Subresource: "status", Version: "v1", Name: "test", Verb: "patch"},
 				}, clusterType: "arc",
@@ -296,6 +311,7 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"aks6",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "certificates.k8s.io", Resource: "certificatesigningrequests", Subresource: "approvals", Version: "v1", Name: "test", Verb: "deletecollection"},
 				}, clusterType: "aks",
@@ -306,6 +322,7 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"fleet6",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "certificates.k8s.io", Resource: "certificatesigningrequests", Subresource: "approvals", Version: "v1", Name: "test", Verb: "deletecollection"},
 				}, clusterType: "fleet",
@@ -316,6 +333,7 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"aks",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "pods", Subresource: "exec", Version: "v1", Name: "test", Verb: "create"},
 				}, clusterType: "aks",
@@ -326,6 +344,7 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"fleet",
 			args{
+				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "pods", Subresource: "exec", Version: "v1", Name: "test", Verb: "create"},
 				}, clusterType: "fleet",
@@ -336,48 +355,166 @@ func Test_getDataActions(t *testing.T) {
 		{
 			"allStar",
 			args{
+				isWildcardTest: true,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "*", Resource: "*", Subresource: "*", Version: "*", Name: "test", Verb: "*"},
 				}, clusterType: "aks",
 			},
 			[]azureutils.AuthorizationActionInfo{
-				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/read"}, IsDataAction: true},
-				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/write"}, IsDataAction: true},
-				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/delete"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/apps/deployments/delete"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/apps/deployments/read"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/apps/deployments/write"}, IsDataAction: true},
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/persistentvolumes/read"}, IsDataAction: true},
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/persistentvolumes/write"}, IsDataAction: true},
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/persistentvolumes/delete"}, IsDataAction: true},
-				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/deployments/read"}, IsDataAction: true},
-				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/deployments/write"}, IsDataAction: true},
-				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/deployments/delete"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/write"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/delete"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/exec/action"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/read"}, IsDataAction: true},
 			},
 		},
 
 		{
 			"allStarNSscope",
 			args{
+				isWildcardTest: true,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "*", Resource: "*", Subresource: "*", Version: "*", Name: "test", Verb: "*", Namespace: "kube-system"},
+				}, clusterType: "aks",
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/apps/deployments/delete"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/apps/deployments/read"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/apps/deployments/write"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/read"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/write"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/delete"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/exec/action"}, IsDataAction: true},
+			},
+		},
+
+		{
+			"resAndGroupStarNSScope",
+			args{
+				isWildcardTest: true,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "*", Resource: "*", Subresource: "*", Version: "*", Name: "test", Verb: "get", Namespace: "kube-system"},
+				}, clusterType: "aks",
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/apps/deployments/read"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/read"}, IsDataAction: true},
+			},
+		},
+
+		{
+			"verbAndGroupStar",
+			args{
+				isWildcardTest: true,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "*", Resource: "pods", Subresource: "*", Version: "*", Name: "test", Verb: "*", Namespace: "kube-system"},
 				}, clusterType: "aks",
 			},
 			[]azureutils.AuthorizationActionInfo{
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/read"}, IsDataAction: true},
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/write"}, IsDataAction: true},
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/delete"}, IsDataAction: true},
-				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/deployments/read"}, IsDataAction: true},
-				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/deployments/write"}, IsDataAction: true},
-				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/deployments/delete"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/exec/action"}, IsDataAction: true},
+			},
+		},
+
+		{
+			"verbAndResStarNsScope",
+			args{
+				isWildcardTest: true,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "*", Subresource: "*", Version: "*", Name: "test", Verb: "*", Namespace: "kube-system"},
+				}, clusterType: "aks",
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/write"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/delete"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/exec/action"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/read"}, IsDataAction: true},
+			},
+		},
+
+		{
+			"verbIsStar",
+			args{
+				isWildcardTest: true,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "persistentvolumes", Subresource: "*", Version: "*", Name: "test", Verb: "*"},
+				}, clusterType: "aks",
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/persistentvolumes/read"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/persistentvolumes/write"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/persistentvolumes/delete"}, IsDataAction: true},
+			},
+		},
+
+		{
+			"resourceIsStar",
+			args{
+				isWildcardTest: true,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "*", Subresource: "*", Version: "*", Name: "test", Verb: "delete"},
+				}, clusterType: "aks",
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/persistentvolumes/delete"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/delete"}, IsDataAction: true},
+			},
+		},
+
+		{
+			"groupIsStar",
+			args{
+				isWildcardTest: true,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "*", Resource: "deployments", Subresource: "*", Version: "*", Name: "test", Verb: "*", Namespace: "kube-system"},
+				}, clusterType: "aks",
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/apps/deployments/delete"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/apps/deployments/read"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/apps/deployments/write"}, IsDataAction: true},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			operationsMap := createOperationsMap(tt.args.clusterType)
-			if got, _ := getDataActions(tt.args.subRevReq, tt.args.clusterType, operationsMap); !reflect.DeepEqual(got, tt.want) {
+			got, _ := getDataActions(tt.args.subRevReq, tt.args.clusterType, operationsMap)
+			if !tt.args.isWildcardTest && !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("getDataActions() = %v, want %v", got, tt.want)
+			}
+
+			if tt.args.isWildcardTest {
+				gotSet := createSet(got)
+				wantSet := createSet(tt.want)
+				if len(gotSet) != len(wantSet) {
+					t.Errorf("getDataActions() Length is not equal got = %d, want %d", len(got), len(tt.want))
+				}
+
+				for authinfo := range gotSet {
+					if !wantSet[authinfo] {
+						t.Errorf("getDataActions() = %v, want %v", got, tt.want)
+						break
+					}
+				}
 			}
 		})
 	}
+}
+
+func createSet(authinfos []azureutils.AuthorizationActionInfo) map[azureutils.AuthorizationActionInfo]bool {
+	set := make(map[azureutils.AuthorizationActionInfo]bool)
+	for _, elem := range authinfos {
+		set[elem] = true
+	}
+	return set
 }
 
 func Test_getNameSpaceScope(t *testing.T) {

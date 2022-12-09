@@ -918,6 +918,7 @@ k8s.io/kube-openapi/pkg/util/proto
 # k8s.io/utils v0.0.0-20210802155522-efc7438f0176 => k8s.io/utils v0.0.0-20201110183641-67b214c5f920
 ## explicit; go 1.12
 k8s.io/utils/integer
+k8s.io/utils/pointer
 # kmodules.xyz/client-go v0.0.0-20211028132207-0cf6ea46b030
 ## explicit; go 1.17
 kmodules.xyz/client-go

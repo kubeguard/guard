@@ -23,11 +23,12 @@ import (
 	"path"
 	"strings"
 
+	"go.kubeguard.dev/guard/auth/providers/azure/graph"
+	"go.kubeguard.dev/guard/util/httpclient"
+
 	"github.com/Azure/go-autorest/autorest/azure"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
-	"go.kubeguard.dev/guard/auth/providers/azure/graph"
-	"go.kubeguard.dev/guard/util/httpclient"
 	v "gomodules.xyz/x/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -103,14 +104,21 @@ type ResourceAndVerbMap struct {
 }
 
 type OperationsMap struct {
-	GroupMap map[string][]ResourceAndVerbMap
+	GroupMap map[string]ResourceAndVerbMap
 }
 
 func (o OperationsMap) String() string {
 	opMapString, _ := json.Marshal(o.GroupMap)
-	return fmt.Sprintf("%s", string(opMapString))
+	return string(opMapString)
 }
 
+/*
+   FetchListOfResources does the following:
+   1. Fetches list of ApiResources from the apiserver
+   2. Fetches list of Data Actions via Get Operations call on Azure
+   3. creates OperationsMap which is a map of "group": { "resource": { "verb": DataAction{} } } }
+   This map is used to create list of AuthorizationActionInfos when we get a SAR request where Resource/Verb/Group is *
+*/
 func FetchListOfResources(clusterType string, environment string, loginURL string, kubeconfigFilePath string, tenantId string, clientID string, clientSecret string) (OperationsMap, error) {
 	operationsMap := OperationsMap{}
 	apiResourcesList, err := fetchApiResources(kubeconfigFilePath)
@@ -132,7 +140,7 @@ func FetchListOfResources(clusterType string, environment string, loginURL strin
 
 func createOperationsMap(apiResourcesList []*metav1.APIResourceList, operationsList []Operation, clusterType string) OperationsMap {
 	operationsMap := OperationsMap{}
-	operationsMap.GroupMap = make(map[string][]ResourceAndVerbMap)
+	operationsMap.GroupMap = make(map[string]ResourceAndVerbMap)
 
 	for _, resList := range apiResourcesList {
 		if len(resList.APIResources) == 0 {
@@ -187,14 +195,18 @@ func createOperationsMap(apiResourcesList []*metav1.APIResourceList, operationsL
 					}
 					da.ActionInfo.AuthorizationEntity.Id = operation.Name
 
-					if operationsMap.GroupMap[group] == nil {
-						operationsMap.GroupMap[group] = []ResourceAndVerbMap{}
+					// Retrieve the struct value from the map
+					groupMap := operationsMap.GroupMap[group]
+
+					if groupMap.ResourceMap == nil {
+						groupMap.ResourceMap = make(map[string]map[string]DataAction)
 					}
-					resourceAndVerb := ResourceAndVerbMap{}
-					resourceAndVerb.ResourceMap = make(map[string]map[string]DataAction)
-					resourceAndVerb.ResourceMap[resourceName] = map[string]DataAction{}
-					resourceAndVerb.ResourceMap[resourceName][verb] = da
-					operationsMap.GroupMap[group] = append(operationsMap.GroupMap[group], resourceAndVerb)
+
+					operationsMap.GroupMap[group] = groupMap
+					if operationsMap.GroupMap[group].ResourceMap[resourceName] == nil {
+						operationsMap.GroupMap[group].ResourceMap[resourceName] = map[string]DataAction{}
+					}
+					operationsMap.GroupMap[group].ResourceMap[resourceName][verb] = da
 				}
 			}
 		}
@@ -279,7 +291,7 @@ func fetchDataActionsList(environment string, clusterType string, loginURL strin
 		}
 
 		token = authResp.Token
-	} else { //AKS and Fleet
+	} else { // AKS and Fleet
 		tokenProvider := graph.NewAKSTokenProvider(loginURL, tenantID)
 
 		authResp, err := tokenProvider.Acquire("")

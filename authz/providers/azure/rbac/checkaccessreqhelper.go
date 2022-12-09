@@ -239,7 +239,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 				return nil, errors.Errorf("Wildcard support for Resource/Verb/Group is not supported for request Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb)
 			}
 
-			authInfoList, err = getAuthInfoListForWildcard(subRevReq, clusterType, operationsMap)
+			authInfoList, err = getAuthInfoListForWildcard(subRevReq, operationsMap)
 			if err != nil {
 				return nil, errors.Wrap(err, fmt.Sprintf("Error which creating actions for checkaccess for Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb))
 			}
@@ -255,7 +255,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 	return authInfoList, nil
 }
 
-func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string, operationsMap azureutils.OperationsMap) ([]azureutils.AuthorizationActionInfo, error) {
+func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, operationsMap azureutils.OperationsMap) ([]azureutils.AuthorizationActionInfo, error) {
 	var authInfoList []azureutils.AuthorizationActionInfo
 	var err error
 	if subRevReq.ResourceAttributes.Resource == "*" {
@@ -276,7 +276,7 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, clus
 		*/
 
 		filteredOperations := azureutils.OperationsMap{}
-		filteredOperations.GroupMap = make(map[string][]azureutils.ResourceAndVerbMap)
+		filteredOperations.GroupMap = make(map[string]azureutils.ResourceAndVerbMap)
 		if subRevReq.ResourceAttributes.Group == "*" {
 			// all resources under all apigroups
 			filteredOperations = operationsMap
@@ -298,16 +298,23 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, clus
 
 		// if Namespace is populated, we need to create the list only for namespace scoped resources
 		finalFilteredOperations := azureutils.OperationsMap{}
-		finalFilteredOperations.GroupMap = make(map[string][]azureutils.ResourceAndVerbMap)
+		finalFilteredOperations.GroupMap = make(map[string]azureutils.ResourceAndVerbMap)
 		if subRevReq.ResourceAttributes.Namespace != "" {
-			for group, resMapList := range filteredOperations.GroupMap {
-				for _, resValues := range resMapList {
-					for _, verbValues := range resValues.ResourceMap {
-						for _, dataAction := range verbValues {
-							if dataAction.IsNamespacedResource {
-								finalFilteredOperations.GroupMap[group] = append(finalFilteredOperations.GroupMap[group], resValues)
-								break
+			for group, resMap := range filteredOperations.GroupMap {
+				for resourceName, verbValues := range resMap.ResourceMap {
+					for _, dataAction := range verbValues {
+						if dataAction.IsNamespacedResource {
+							groupMap := finalFilteredOperations.GroupMap[group]
+							if groupMap.ResourceMap == nil {
+								groupMap.ResourceMap = make(map[string]map[string]azureutils.DataAction)
 							}
+
+							finalFilteredOperations.GroupMap[group] = groupMap
+							if finalFilteredOperations.GroupMap[group].ResourceMap[resourceName] == nil {
+								finalFilteredOperations.GroupMap[group].ResourceMap[resourceName] = map[string]azureutils.DataAction{}
+							}
+							finalFilteredOperations.GroupMap[group].ResourceMap[resourceName] = verbValues
+							break
 						}
 					}
 				}
@@ -342,14 +349,21 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, clus
 		*/
 
 		filteredOperations := azureutils.OperationsMap{}
-		filteredOperations.GroupMap = make(map[string][]azureutils.ResourceAndVerbMap)
+		filteredOperations.GroupMap = make(map[string]azureutils.ResourceAndVerbMap)
 		if subRevReq.ResourceAttributes.Group == "*" {
 			// #1 and #3
-			for group, resMaps := range operationsMap.GroupMap {
-				for _, resList := range resMaps {
-					if _, found := resList.ResourceMap[subRevReq.ResourceAttributes.Resource]; found {
-						filteredOperations.GroupMap[group] = append(filteredOperations.GroupMap[group], resList)
+			for group, resMap := range operationsMap.GroupMap {
+				if verbMap, found := resMap.ResourceMap[subRevReq.ResourceAttributes.Resource]; found {
+					groupMap := filteredOperations.GroupMap[group]
+					if groupMap.ResourceMap == nil {
+						groupMap.ResourceMap = make(map[string]map[string]azureutils.DataAction)
 					}
+
+					filteredOperations.GroupMap[group] = groupMap
+					if filteredOperations.GroupMap[group].ResourceMap[subRevReq.ResourceAttributes.Resource] == nil {
+						filteredOperations.GroupMap[group].ResourceMap[subRevReq.ResourceAttributes.Resource] = map[string]azureutils.DataAction{}
+					}
+					filteredOperations.GroupMap[group].ResourceMap[subRevReq.ResourceAttributes.Resource] = verbMap
 				}
 			}
 		} else { // #2
@@ -358,11 +372,18 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, clus
 				group = subRevReq.ResourceAttributes.Group
 			}
 
-			if resMaps, found := operationsMap.GroupMap[group]; found {
-				for _, resList := range resMaps {
-					if _, found := resList.ResourceMap[subRevReq.ResourceAttributes.Resource]; found {
-						filteredOperations.GroupMap[group] = append(filteredOperations.GroupMap[group], resList)
+			if resMap, found := operationsMap.GroupMap[group]; found {
+				if verbMap, found := resMap.ResourceMap[subRevReq.ResourceAttributes.Resource]; found {
+					groupMap := filteredOperations.GroupMap[group]
+					if groupMap.ResourceMap == nil {
+						groupMap.ResourceMap = make(map[string]map[string]azureutils.DataAction)
 					}
+
+					filteredOperations.GroupMap[group] = groupMap
+					if filteredOperations.GroupMap[group].ResourceMap[subRevReq.ResourceAttributes.Resource] == nil {
+						filteredOperations.GroupMap[group].ResourceMap[subRevReq.ResourceAttributes.Resource] = map[string]azureutils.DataAction{}
+					}
+					filteredOperations.GroupMap[group].ResourceMap[subRevReq.ResourceAttributes.Resource] = verbMap
 				}
 			} else {
 				return nil, errors.Errorf("No resources found for group %s and resource %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource)
@@ -392,13 +413,11 @@ func createAuthorizationActionInfoList(filteredOperations azureutils.OperationsM
 	if filterVerb != "*" {
 		foundAtleastOneAction := false
 		verb := getActionName(filterVerb)
-		for _, resMapList := range filteredOperations.GroupMap {
-			for _, resValues := range resMapList {
-				for _, resource := range resValues.ResourceMap {
-					if dataAction, found := resource[verb]; found {
-						foundAtleastOneAction = true
-						authInfos = append(authInfos, dataAction.ActionInfo)
-					}
+		for _, resMap := range filteredOperations.GroupMap {
+			for _, resource := range resMap.ResourceMap {
+				if dataAction, found := resource[verb]; found {
+					foundAtleastOneAction = true
+					authInfos = append(authInfos, dataAction.ActionInfo)
 				}
 			}
 		}
@@ -407,12 +426,10 @@ func createAuthorizationActionInfoList(filteredOperations azureutils.OperationsM
 			return nil, errors.Errorf("No operations were found for the verb: %s.", filterVerb)
 		}
 	} else {
-		for _, resMapList := range filteredOperations.GroupMap {
-			for _, resValues := range resMapList {
-				for _, verbValues := range resValues.ResourceMap {
-					for _, dataAction := range verbValues {
-						authInfos = append(authInfos, dataAction.ActionInfo)
-					}
+		for _, resMap := range filteredOperations.GroupMap {
+			for _, verbValues := range resMap.ResourceMap {
+				for _, dataAction := range verbValues {
+					authInfos = append(authInfos, dataAction.ActionInfo)
 				}
 			}
 		}
