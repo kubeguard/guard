@@ -110,30 +110,24 @@ func Test_createOperationsMap(t *testing.T) {
 				clusterType: "Microsoft.Kubernetes/connectedClusters",
 			},
 			OperationsMap{
-				GroupMap: map[string]ResourceAndVerbMap{
-					"apps": {
-						ResourceMap: map[string]map[string]DataAction{
-							"deployments": {
-								"read":   DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/apps/deployments/read"}, IsDataAction: true}, IsNamespacedResource: true},
-								"write":  DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/apps/deployments/write"}, IsDataAction: true}, IsNamespacedResource: true},
-								"delete": DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/apps/deployments/delete"}, IsDataAction: true}, IsNamespacedResource: true},
-							},
-						},
+				"apps": ResourceAndVerbMap{
+					"deployments": VerbAndActionsMap{
+						"read":   DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/apps/deployments/read"}, IsDataAction: true}, IsNamespacedResource: true},
+						"write":  DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/apps/deployments/write"}, IsDataAction: true}, IsNamespacedResource: true},
+						"delete": DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/apps/deployments/delete"}, IsDataAction: true}, IsNamespacedResource: true},
 					},
-					"v1": {
-						ResourceMap: map[string]map[string]DataAction{
-							"nodes": {
-								"read":   DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/nodes/read"}, IsDataAction: true}, IsNamespacedResource: false},
-								"write":  DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/nodes/write"}, IsDataAction: true}, IsNamespacedResource: false},
-								"delete": DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/nodes/delete"}, IsDataAction: true}, IsNamespacedResource: false},
-							},
-							"pods": {
-								"read":        DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/read"}, IsDataAction: true}, IsNamespacedResource: true},
-								"write":       DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/write"}, IsDataAction: true}, IsNamespacedResource: true},
-								"delete":      DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/delete"}, IsDataAction: true}, IsNamespacedResource: true},
-								"exec/action": DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/exec/action"}, IsDataAction: true}, IsNamespacedResource: true},
-							},
-						},
+				},
+				"v1": ResourceAndVerbMap{
+					"nodes": VerbAndActionsMap{
+						"read":   DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/nodes/read"}, IsDataAction: true}, IsNamespacedResource: false},
+						"write":  DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/nodes/write"}, IsDataAction: true}, IsNamespacedResource: false},
+						"delete": DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/nodes/delete"}, IsDataAction: true}, IsNamespacedResource: false},
+					},
+					"pods": VerbAndActionsMap{
+						"read":        DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/read"}, IsDataAction: true}, IsNamespacedResource: true},
+						"write":       DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/write"}, IsDataAction: true}, IsNamespacedResource: true},
+						"delete":      DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/delete"}, IsDataAction: true}, IsNamespacedResource: true},
+						"exec/action": DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/exec/action"}, IsDataAction: true}, IsNamespacedResource: true},
 					},
 				},
 			},
@@ -181,16 +175,12 @@ func Test_createOperationsMap(t *testing.T) {
 				clusterType: "Microsoft.Kubernetes/connectedClusters",
 			},
 			OperationsMap{
-				GroupMap: map[string]ResourceAndVerbMap{
-					"v1": {
-						ResourceMap: map[string]map[string]DataAction{
-							"pods": {
-								"read":        {ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/read"}, IsDataAction: true}, IsNamespacedResource: true},
-								"write":       {ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/write"}, IsDataAction: true}, IsNamespacedResource: true},
-								"delete":      {ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/delete"}, IsDataAction: true}, IsNamespacedResource: true},
-								"exec/action": {ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/exec/action"}, IsDataAction: true}, IsNamespacedResource: true},
-							},
-						},
+				"v1": ResourceAndVerbMap{
+					"pods": VerbAndActionsMap{
+						"read":        DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/read"}, IsDataAction: true}, IsNamespacedResource: true},
+						"write":       DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/write"}, IsDataAction: true}, IsNamespacedResource: true},
+						"delete":      DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/delete"}, IsDataAction: true}, IsNamespacedResource: true},
+						"exec/action": DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/exec/action"}, IsDataAction: true}, IsNamespacedResource: true},
 					},
 				},
 			},
@@ -254,25 +244,19 @@ func Test_createOperationsMap(t *testing.T) {
 				clusterType: "Microsoft.Kubernetes/connectedClusters",
 			},
 			OperationsMap{
-				GroupMap: map[string]ResourceAndVerbMap{
-					"apps": {
-						ResourceMap: map[string]map[string]DataAction{
-							"deployments": {
-								"read":   {ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/apps/deployments/read"}, IsDataAction: true}, IsNamespacedResource: true},
-								"write":  {ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/apps/deployments/write"}, IsDataAction: true}, IsNamespacedResource: true},
-								"delete": {ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/apps/deployments/delete"}, IsDataAction: true}, IsNamespacedResource: true},
-							},
-						},
+				"apps": ResourceAndVerbMap{
+					"deployments": VerbAndActionsMap{
+						"read":   DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/apps/deployments/read"}, IsDataAction: true}, IsNamespacedResource: true},
+						"write":  DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/apps/deployments/write"}, IsDataAction: true}, IsNamespacedResource: true},
+						"delete": DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/apps/deployments/delete"}, IsDataAction: true}, IsNamespacedResource: true},
 					},
-					"v1": {
-						ResourceMap: map[string]map[string]DataAction{
-							"pods": {
-								"read":        {ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/read"}, IsDataAction: true}, IsNamespacedResource: true},
-								"write":       {ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/write"}, IsDataAction: true}, IsNamespacedResource: true},
-								"delete":      {ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/delete"}, IsDataAction: true}, IsNamespacedResource: true},
-								"exec/action": {ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/exec/action"}, IsDataAction: true}, IsNamespacedResource: true},
-							},
-						},
+				},
+				"v1": ResourceAndVerbMap{
+					"pods": VerbAndActionsMap{
+						"read":        DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/read"}, IsDataAction: true}, IsNamespacedResource: true},
+						"write":       DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/write"}, IsDataAction: true}, IsNamespacedResource: true},
+						"delete":      DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/delete"}, IsDataAction: true}, IsNamespacedResource: true},
+						"exec/action": DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/exec/action"}, IsDataAction: true}, IsNamespacedResource: true},
 					},
 				},
 			},
@@ -330,24 +314,18 @@ func Test_createOperationsMap(t *testing.T) {
 				clusterType: "Microsoft.Kubernetes/connectedClusters",
 			},
 			OperationsMap{
-				GroupMap: map[string]ResourceAndVerbMap{
-					"events.k8s.io": {
-						ResourceMap: map[string]map[string]DataAction{
-							"events": {
-								"read":   {ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/events.k8s.io/events/read"}, IsDataAction: true}, IsNamespacedResource: true},
-								"write":  {ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/events.k8s.io/events/write"}, IsDataAction: true}, IsNamespacedResource: true},
-								"delete": {ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/events.k8s.io/events/delete"}, IsDataAction: true}, IsNamespacedResource: true},
-							},
-						},
+				"events.k8s.io": ResourceAndVerbMap{
+					"events": VerbAndActionsMap{
+						"read":   DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/events.k8s.io/events/read"}, IsDataAction: true}, IsNamespacedResource: true},
+						"write":  DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/events.k8s.io/events/write"}, IsDataAction: true}, IsNamespacedResource: true},
+						"delete": DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/events.k8s.io/events/delete"}, IsDataAction: true}, IsNamespacedResource: true},
 					},
-					"v1": {
-						ResourceMap: map[string]map[string]DataAction{
-							"events": {
-								"read":   {ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/events/read"}, IsDataAction: true}, IsNamespacedResource: true},
-								"write":  {ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/events/write"}, IsDataAction: true}, IsNamespacedResource: true},
-								"delete": {ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/events/delete"}, IsDataAction: true}, IsNamespacedResource: true},
-							},
-						},
+				},
+				"v1": ResourceAndVerbMap{
+					"events": VerbAndActionsMap{
+						"read":   DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/events/read"}, IsDataAction: true}, IsNamespacedResource: true},
+						"write":  DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/events/write"}, IsDataAction: true}, IsNamespacedResource: true},
+						"delete": DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/events/delete"}, IsDataAction: true}, IsNamespacedResource: true},
 					},
 				},
 			},
@@ -355,7 +333,7 @@ func Test_createOperationsMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		got := createOperationsMap(tt.args.apiResourcesList, tt.args.operationsList, tt.args.clusterType)
-		if len(got.GroupMap) != len(tt.want.GroupMap) {
+		if len(got) != len(tt.want) {
 			t.Errorf("[createOperationsMap()]Map lengths are not equal. = %v, want %v", got, tt.want)
 		}
 		if !reflect.DeepEqual(got, tt.want) {

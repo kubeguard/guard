@@ -58,7 +58,7 @@ type AuthzInfo struct {
 	ARMEndPoint string
 }
 
-type ReviewResult struct {
+type reviewResult struct {
 	status *authzv1.SubjectAccessReviewStatus
 	err    error
 }
@@ -274,7 +274,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 
 	var wg sync.WaitGroup // New wait group
 
-	ch := make(chan ReviewResult, len(checkAccessBodies))
+	ch := make(chan reviewResult, len(checkAccessBodies))
 	if len(checkAccessBodies) > 1 {
 		klog.V(5).Infof("Number of checkaccess requests to make: %d", len(checkAccessBodies))
 	}
@@ -305,9 +305,9 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	return finalResult, nil
 }
 
-func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessBody *CheckAccessRequest, wg *sync.WaitGroup, ch chan ReviewResult) {
+func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessBody *CheckAccessRequest, wg *sync.WaitGroup, ch chan reviewResult) {
 	defer wg.Done()
-	reviewResult := ReviewResult{}
+	reviewResult := reviewResult{}
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(checkAccessBody); err != nil {
 		reviewResult.err = errors.Wrap(err, "error encoding check access request")

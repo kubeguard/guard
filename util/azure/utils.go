@@ -18,7 +18,7 @@ package azure
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"path"
 	"strings"
@@ -99,16 +99,26 @@ type DataAction struct {
 	IsNamespacedResource bool
 }
 
-type ResourceAndVerbMap struct {
-	ResourceMap map[string]map[string]DataAction
+type VerbAndActionsMap map[string]DataAction
+
+func NewVerbAndActionsMap() VerbAndActionsMap {
+	return make(map[string]DataAction)
 }
 
-type OperationsMap struct {
-	GroupMap map[string]ResourceAndVerbMap
+type ResourceAndVerbMap map[string]VerbAndActionsMap
+
+func NewResourceAndVerbMap() ResourceAndVerbMap {
+	return make(map[string]VerbAndActionsMap)
+}
+
+type OperationsMap map[string]ResourceAndVerbMap
+
+func NewOperationsMap() OperationsMap {
+	return make(map[string]ResourceAndVerbMap)
 }
 
 func (o OperationsMap) String() string {
-	opMapString, _ := json.Marshal(o.GroupMap)
+	opMapString, _ := json.Marshal(o)
 	return string(opMapString)
 }
 
@@ -133,14 +143,13 @@ func FetchListOfResources(clusterType string, environment string, loginURL strin
 
 	operationsMap = createOperationsMap(apiResourcesList, operationsList, clusterType)
 
-	klog.V(5).Infof("Operations Map created for resources: %s", operationsMap.String())
+	klog.V(5).Infof("Operations Map created for resources: %s", operationsMap)
 
 	return operationsMap, nil
 }
 
 func createOperationsMap(apiResourcesList []*metav1.APIResourceList, operationsList []Operation, clusterType string) OperationsMap {
-	operationsMap := OperationsMap{}
-	operationsMap.GroupMap = make(map[string]ResourceAndVerbMap)
+	operationsMap := NewOperationsMap()
 
 	for _, resList := range apiResourcesList {
 		if len(resList.APIResources) == 0 {
@@ -195,18 +204,19 @@ func createOperationsMap(apiResourcesList []*metav1.APIResourceList, operationsL
 					}
 					da.ActionInfo.AuthorizationEntity.Id = operation.Name
 
-					// Retrieve the struct value from the map
-					groupMap := operationsMap.GroupMap[group]
-
-					if groupMap.ResourceMap == nil {
-						groupMap.ResourceMap = make(map[string]map[string]DataAction)
+					if _, found := operationsMap[group]; !found {
+						operationsMap[group] = NewResourceAndVerbMap()
 					}
 
-					operationsMap.GroupMap[group] = groupMap
-					if operationsMap.GroupMap[group].ResourceMap[resourceName] == nil {
-						operationsMap.GroupMap[group].ResourceMap[resourceName] = map[string]DataAction{}
+					if _, found := operationsMap[group][resourceName]; !found {
+						operationsMap[group][resourceName] = NewVerbAndActionsMap()
 					}
-					operationsMap.GroupMap[group].ResourceMap[resourceName][verb] = da
+
+					if _, found := operationsMap[group][resourceName][verb]; !found {
+						operationsMap[group][resourceName][verb] = DataAction{}
+					}
+
+					operationsMap[group][resourceName][verb] = da
 				}
 			}
 		}
@@ -241,9 +251,11 @@ func fetchApiResources(kubeconfigFilePath string) ([]*metav1.APIResourceList, er
 		return nil, err
 	}
 
-	printApiresourcesList, _ := json.Marshal(apiresourcesList)
+	if klog.V(5).Enabled() {
+		printApiresourcesList, _ := json.Marshal(apiresourcesList)
 
-	klog.V(5).Infof("List of ApiResources fetched from apiserver: %s", string(printApiresourcesList))
+		klog.Infof("List of ApiResources fetched from apiserver: %s", string(printApiresourcesList))
+	}
 
 	return apiresourcesList, nil
 }
@@ -312,7 +324,7 @@ func fetchDataActionsList(environment string, clusterType string, loginURL strin
 	}
 	defer resp.Body.Close()
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error in reading response body")
 	}
@@ -334,8 +346,11 @@ func fetchDataActionsList(environment string, clusterType string, loginURL strin
 		}
 	}
 
-	printFinalOperations, _ := json.Marshal(finalOperations)
+	if klog.V(5).Enabled() {
+		printFinalOperations, _ := json.Marshal(finalOperations)
 
-	klog.V(5).Infof("List of Operations fetched from Azure %s", string(printFinalOperations))
+		klog.Infof("List of Operations fetched from Azure %s", string(printFinalOperations))
+	}
+
 	return finalOperations, nil
 }

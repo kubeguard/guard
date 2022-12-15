@@ -32,30 +32,24 @@ const resourceId = "resourceId"
 
 func createOperationsMap(clusterType string) azureutils.OperationsMap {
 	operationsMap := azureutils.OperationsMap{
-		GroupMap: map[string]azureutils.ResourceAndVerbMap{
-			"apps": {
-				ResourceMap: map[string]map[string]azureutils.DataAction{
-					"deployments": {
-						"read":   azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/apps/deployments/read", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
-						"write":  azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/apps/deployments/write", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
-						"delete": azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/apps/deployments/delete", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
-					},
-				},
+		"apps": azureutils.ResourceAndVerbMap{
+			"deployments": azureutils.VerbAndActionsMap{
+				"read":   azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/apps/deployments/read", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
+				"write":  azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/apps/deployments/write", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
+				"delete": azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/apps/deployments/delete", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
 			},
-			"v1": {
-				ResourceMap: map[string]map[string]azureutils.DataAction{
-					"persistentvolumes": {
-						"read":   azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/persistentvolumes/read", clusterType)}, IsDataAction: true}, IsNamespacedResource: false},
-						"write":  azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/persistentvolumes/write", clusterType)}, IsDataAction: true}, IsNamespacedResource: false},
-						"delete": azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/persistentvolumes/delete", clusterType)}, IsDataAction: true}, IsNamespacedResource: false},
-					},
-					"pods": {
-						"read":        azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/pods/read", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
-						"write":       azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/pods/write", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
-						"delete":      azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/pods/delete", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
-						"exec/action": azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/pods/exec/action", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
-					},
-				},
+		},
+		"v1": azureutils.ResourceAndVerbMap{
+			"persistentvolumes": azureutils.VerbAndActionsMap{
+				"read":   azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/persistentvolumes/read", clusterType)}, IsDataAction: true}, IsNamespacedResource: false},
+				"write":  azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/persistentvolumes/write", clusterType)}, IsDataAction: true}, IsNamespacedResource: false},
+				"delete": azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/persistentvolumes/delete", clusterType)}, IsDataAction: true}, IsNamespacedResource: false},
+			},
+			"pods": azureutils.VerbAndActionsMap{
+				"read":        azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/pods/read", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
+				"write":       azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/pods/write", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
+				"delete":      azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/pods/delete", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
+				"exec/action": azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/pods/exec/action", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
 			},
 		},
 	}
