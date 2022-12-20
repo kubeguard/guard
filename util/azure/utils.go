@@ -212,10 +212,6 @@ func createOperationsMap(apiResourcesList []*metav1.APIResourceList, operationsL
 						operationsMap[group][resourceName] = NewVerbAndActionsMap()
 					}
 
-					if _, found := operationsMap[group][resourceName][verb]; !found {
-						operationsMap[group][resourceName][verb] = DataAction{}
-					}
-
 					operationsMap[group][resourceName][verb] = da
 				}
 			}

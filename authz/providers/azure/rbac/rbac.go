@@ -19,7 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -341,7 +341,7 @@ func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessB
 
 	checkAccessTotal.Inc()
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		reviewResult.err = errors.Wrap(err, "error in reading response body")
 		ch <- reviewResult
