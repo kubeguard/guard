@@ -168,12 +168,31 @@ func (s Server) ListenAndServe() {
 		}
 	}))
 
+	authzhandler := Authzhandler{
+		AuthRecommendedOptions:  s.AuthRecommendedOptions,
+		AuthzRecommendedOptions: s.AuthzRecommendedOptions,
+	}
+
+	m.Get("/readyz", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if len(s.AuthzRecommendedOptions.AuthzProvider.Providers) > 0 && s.AuthzRecommendedOptions.AuthzProvider.Has(azure.OrgType) && s.AuthzRecommendedOptions.Azure.DiscoverResources {
+			if authzhandler.operationsMap != nil && len(authzhandler.operationsMap) > 0 {
+				w.WriteHeader(200)
+			} else {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		} else {
+			w.WriteHeader(200)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("x-content-type-options", "nosniff")
+		err := json.NewEncoder(w).Encode(v.Version)
+		if err != nil {
+			klog.Fatal(err)
+		}
+	}))
+
 	klog.Infoln("setting up authz providers")
 	if len(s.AuthzRecommendedOptions.AuthzProvider.Providers) > 0 {
-		authzhandler := Authzhandler{
-			AuthRecommendedOptions:  s.AuthRecommendedOptions,
-			AuthzRecommendedOptions: s.AuthzRecommendedOptions,
-		}
 		authzPromHandler := promhttp.InstrumentHandlerInFlight(inFlightGaugeAuthz,
 			promhttp.InstrumentHandlerDuration(duration.MustCurryWith(prometheus.Labels{"handler": "subjectaccessreviews"}),
 				promhttp.InstrumentHandlerCounter(counterAuthz,
@@ -191,7 +210,7 @@ func (s Server) ListenAndServe() {
 				klog.Fatalf("Error in initalizing cache. Error:%s", err.Error())
 			}
 
-			if s.AuthzRecommendedOptions.Azure.FetchListOfResources {
+			if s.AuthzRecommendedOptions.Azure.DiscoverResources {
 				clusterType := ""
 
 				switch s.AuthzRecommendedOptions.Azure.AuthzMode {
@@ -205,7 +224,12 @@ func (s Server) ListenAndServe() {
 					klog.Fatalf("Authzmode %s is not supported for fetching list of resources", s.AuthzRecommendedOptions.Azure.AuthzMode)
 				}
 
-				operationsMap, err := azureutils.FetchListOfResources(clusterType, s.AuthRecommendedOptions.Azure.Environment, s.AuthzRecommendedOptions.Azure.AKSAuthzTokenURL, s.AuthzRecommendedOptions.Azure.KubeConfigFile, s.AuthRecommendedOptions.Azure.TenantID, s.AuthRecommendedOptions.Azure.ClientID, s.AuthRecommendedOptions.Azure.ClientSecret)
+				settings, err := azureutils.NewDiscoverResourcesSettings(clusterType, s.AuthRecommendedOptions.Azure.Environment, s.AuthzRecommendedOptions.Azure.AKSAuthzTokenURL, s.AuthzRecommendedOptions.Azure.KubeConfigFile, s.AuthRecommendedOptions.Azure.TenantID, s.AuthRecommendedOptions.Azure.ClientID, s.AuthRecommendedOptions.Azure.ClientSecret)
+				if err != nil {
+					klog.Fatalf("Failed to create settings for discovering resources. Error:%s", err)
+				}
+
+				operationsMap, err := azureutils.DiscoverResources(settings)
 				if err != nil {
 					klog.Fatalf("Failed to create map of data actions. Error:%s", err)
 				}

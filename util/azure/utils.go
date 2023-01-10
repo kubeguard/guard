@@ -45,7 +45,6 @@ const (
 	ConnectedClusters           = "Microsoft.Kubernetes/connectedClusters"
 	OperationsEndpointFormatARC = "%s/providers/Microsoft.Kubernetes/operations?api-version=2021-10-01"
 	OperationsEndpointFormatAKS = "%s/providers/Microsoft.ContainerService/operations?api-version=2018-10-31"
-	MSIEndpointForARC           = "http://127.0.0.1:8421/metadata/identity/oauth2/token?api-version=2018-02-01"
 )
 
 type TokenResponse struct {
@@ -57,6 +56,17 @@ type TokenResponse struct {
 	Resource     string `json:"resource"`
 	TokenType    string `json:"token_type"`
 	ErrorMessage string `json:"error_message,omitempty"`
+}
+
+type DiscoverResourcesSettings struct {
+	clusterType        string
+	environment        azure.Environment
+	operationsEndpoint string
+	aksLoginURL        string
+	kubeconfigFilePath string
+	tenantID           string
+	clientID           string
+	clientSecret       string
 }
 
 type Display struct {
@@ -122,26 +132,61 @@ func (o OperationsMap) String() string {
 	return string(opMapString)
 }
 
+func NewDiscoverResourcesSettings(clusterType string, environment string, loginURL string, kubeconfigFilePath string, tenantID string, clientID string, clientSecret string) (*DiscoverResourcesSettings, error) {
+	settings := &DiscoverResourcesSettings{
+		clusterType:        clusterType,
+		aksLoginURL:        loginURL,
+		kubeconfigFilePath: kubeconfigFilePath,
+		tenantID:           tenantID,
+		clientID:           clientID,
+		clientSecret:       clientSecret,
+	}
+
+	env := azure.PublicCloud
+	var err error
+	if environment != "" {
+		env, err = azure.EnvironmentFromName(environment)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to parse environment for Azure.")
+		}
+	}
+
+	settings.environment = env
+
+	switch clusterType {
+	case ConnectedClusters:
+		settings.operationsEndpoint = fmt.Sprintf(OperationsEndpointFormatARC, settings.environment.ResourceManagerEndpoint)
+	case ManagedClusters:
+		settings.operationsEndpoint = fmt.Sprintf(OperationsEndpointFormatAKS, settings.environment.ResourceManagerEndpoint)
+	case Fleets:
+		settings.operationsEndpoint = fmt.Sprintf(OperationsEndpointFormatAKS, settings.environment.ResourceManagerEndpoint)
+	default:
+		return nil, errors.Errorf("Failed to create endpoint for Get Operations call. Cluster type %s is not supported.", clusterType)
+	}
+
+	return settings, nil
+}
+
 /*
-   FetchListOfResources does the following:
+   DiscoverResources does the following:
    1. Fetches list of ApiResources from the apiserver
    2. Fetches list of Data Actions via Get Operations call on Azure
    3. creates OperationsMap which is a map of "group": { "resource": { "verb": DataAction{} } } }
    This map is used to create list of AuthorizationActionInfos when we get a SAR request where Resource/Verb/Group is *
 */
-func FetchListOfResources(clusterType string, environment string, loginURL string, kubeconfigFilePath string, tenantId string, clientID string, clientSecret string) (OperationsMap, error) {
+func DiscoverResources(settings *DiscoverResourcesSettings) (OperationsMap, error) {
 	operationsMap := OperationsMap{}
-	apiResourcesList, err := fetchApiResources(kubeconfigFilePath)
+	apiResourcesList, err := fetchApiResources(settings)
 	if err != nil {
 		return operationsMap, errors.Wrap(err, "Failed to fetch list of api-resources from apiserver.")
 	}
 
-	operationsList, err := fetchDataActionsList(environment, clusterType, loginURL, tenantId, clientID, clientSecret)
+	operationsList, err := fetchDataActionsList(settings)
 	if err != nil {
 		return operationsMap, errors.Wrap(err, "Failed to fetch operations from Azure.")
 	}
 
-	operationsMap = createOperationsMap(apiResourcesList, operationsList, clusterType)
+	operationsMap = createOperationsMap(apiResourcesList, operationsList, settings.clusterType)
 
 	klog.V(5).Infof("Operations Map created for resources: %s", operationsMap)
 
@@ -179,6 +224,16 @@ func createOperationsMap(apiResourcesList []*metav1.APIResourceList, operationsL
 				if strings.Contains(operation.Name, actionId) {
 					opNameArr := strings.Split(operation.Name, "/")
 
+					/* The strings.contains check will return true for groups that have same prefix. For example:
+					    Will return true for "Microsoft.ContainerService/managedCluster/events.k8s.io/events/.."
+						and Microsoft.ContainerService/managedCluster/mc/events/.."  when:
+						group = v1
+						resource = events
+						actionID = Microsoft.ContainerService/managedCluster/events/.."
+						Without the below validation , the dataactions for events in events.k8s.io will get added in v1 map as well which
+						will return the wrong data actions later in checkaccess
+						So we need extra validation to check whether the group / resource are equal.
+					*/
 					if group != "v1" {
 						// extra validation to make sure groups are the same
 						if group != opNameArr[2] {
@@ -221,14 +276,14 @@ func createOperationsMap(apiResourcesList []*metav1.APIResourceList, operationsL
 	return operationsMap
 }
 
-func fetchApiResources(kubeconfigFilePath string) ([]*metav1.APIResourceList, error) {
+func fetchApiResources(settings *DiscoverResourcesSettings) ([]*metav1.APIResourceList, error) {
 	// creates the in-cluster config
 	klog.V(5).Infof("Fetching list of APIResources from the apiserver.")
 
 	var cfg *rest.Config
 	var err error
-	if kubeconfigFilePath != "" {
-		cfg, err = clientcmd.BuildConfigFromFlags("", kubeconfigFilePath)
+	if settings.kubeconfigFilePath != "" {
+		cfg, err = clientcmd.BuildConfigFromFlags("", settings.kubeconfigFilePath)
 	} else {
 		cfg, err = rest.InClusterConfig()
 	}
@@ -256,30 +311,8 @@ func fetchApiResources(kubeconfigFilePath string) ([]*metav1.APIResourceList, er
 	return apiresourcesList, nil
 }
 
-func fetchDataActionsList(environment string, clusterType string, loginURL string, tenantID string, clientID string, clientSecret string) ([]Operation, error) {
-	env := azure.PublicCloud
-	var err error
-	if environment != "" {
-		env, err = azure.EnvironmentFromName(environment)
-		if err != nil {
-			return nil, errors.Wrap(err, "Failed to parse environment for Azure.")
-		}
-	}
-
-	endpoint := ""
-
-	switch clusterType {
-	case ConnectedClusters:
-		endpoint = fmt.Sprintf(OperationsEndpointFormatARC, env.ResourceManagerEndpoint)
-	case ManagedClusters:
-		endpoint = fmt.Sprintf(OperationsEndpointFormatAKS, env.ResourceManagerEndpoint)
-	case Fleets:
-		endpoint = fmt.Sprintf(OperationsEndpointFormatAKS, env.ResourceManagerEndpoint)
-	default:
-		return nil, errors.Errorf("Failed to create endpoint for Get Operations call. Cluster type %s is not supported.", clusterType)
-	}
-
-	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
+func fetchDataActionsList(settings *DiscoverResourcesSettings) ([]Operation, error) {
+	req, err := http.NewRequest(http.MethodGet, settings.operationsEndpoint, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to create request for Get Operations call.")
 	}
@@ -288,10 +321,10 @@ func fetchDataActionsList(environment string, clusterType string, loginURL strin
 	req.Header.Set("User-Agent", fmt.Sprintf("guard-%s-%s-%s", v.Version.Platform, v.Version.GoVersion, v.Version.Version))
 
 	var token string
-	if clusterType == ConnectedClusters {
-		tokenProvider := graph.NewClientCredentialTokenProvider(clientID, clientSecret,
-			fmt.Sprintf("%s%s/oauth2/v2.0/token", env.ActiveDirectoryEndpoint, tenantID),
-			fmt.Sprintf("%s/.default", env.ResourceManagerEndpoint))
+	if settings.clusterType == ConnectedClusters {
+		tokenProvider := graph.NewClientCredentialTokenProvider(settings.clientID, settings.clientSecret,
+			fmt.Sprintf("%s%s/oauth2/v2.0/token", settings.environment.ActiveDirectoryEndpoint, settings.tenantID),
+			fmt.Sprintf("%s/.default", settings.environment.ResourceManagerEndpoint))
 
 		authResp, erro := tokenProvider.Acquire("")
 		if erro != nil {
@@ -300,7 +333,7 @@ func fetchDataActionsList(environment string, clusterType string, loginURL strin
 
 		token = authResp.Token
 	} else { // AKS and Fleet
-		tokenProvider := graph.NewAKSTokenProvider(loginURL, tenantID)
+		tokenProvider := graph.NewAKSTokenProvider(settings.aksLoginURL, settings.tenantID)
 
 		authResp, err := tokenProvider.Acquire("")
 		if err != nil {
@@ -337,7 +370,7 @@ func fetchDataActionsList(environment string, clusterType string, loginURL strin
 
 	var finalOperations []Operation
 	for _, op := range operationsList.Value {
-		if *op.IsDataAction && strings.Contains(op.Name, clusterType) {
+		if *op.IsDataAction && strings.Contains(op.Name, settings.clusterType) {
 			finalOperations = append(finalOperations, op)
 		}
 	}
