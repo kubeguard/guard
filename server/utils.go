@@ -101,10 +101,12 @@ func writeAuthzResponse(w http.ResponseWriter, spec *authzv1.SubjectAccessReview
 	}
 
 	if err != nil {
+		w.WriteHeader(err.Code())
 		printStackTrace(err)
+	} else {
+		w.WriteHeader(http.StatusOK)
 	}
 
-	w.WriteHeader(http.StatusOK)
 	if klog.V(7).Enabled() {
 		if _, ok := spec.Extra["oid"]; ok {
 			data, _ := json.Marshal(resp)
@@ -132,45 +134,5 @@ func printStackTrace(err error) {
 	if c, ok := errors.Cause(err).(stackTracer); ok {
 		st := c.StackTrace()
 		klog.V(5).Infof("Stacktrace: %+v", st) // top two frames
-	}
-}
-
-// WithCode annotates err with a new code.
-// If err is nil, WithCode returns nil.
-func WithCode(err error, code int) error {
-	if err == nil {
-		return nil
-	}
-	return &withCode{
-		cause: err,
-		code:  code,
-	}
-}
-
-type withCode struct {
-	cause error
-	code  int
-}
-
-func (w *withCode) Error() string { return w.cause.Error() }
-func (w *withCode) Cause() error  { return w.cause }
-func (w *withCode) Code() int     { return w.code }
-
-func (w *withCode) Format(s fmt.State, verb rune) {
-	switch verb {
-	case 'v':
-		if s.Flag('+') {
-			_, err := fmt.Fprintf(s, "%+v\n", w.Cause())
-			if err != nil {
-				klog.Fatal(err)
-			}
-			return
-		}
-		fallthrough
-	case 's', 'q':
-		_, err := io.WriteString(s, w.Error())
-		if err != nil {
-			klog.Fatal(err)
-		}
 	}
 }

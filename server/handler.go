@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/pkg/errors"
 	"go.kubeguard.dev/guard/auth"
 	"go.kubeguard.dev/guard/auth/providers/azure"
 	"go.kubeguard.dev/guard/auth/providers/github"
@@ -27,20 +28,19 @@ import (
 	"go.kubeguard.dev/guard/auth/providers/google"
 	"go.kubeguard.dev/guard/auth/providers/ldap"
 	"go.kubeguard.dev/guard/auth/providers/token"
-
-	"github.com/pkg/errors"
+	errutils "go.kubeguard.dev/guard/util/error"
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/klog/v2"
 )
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.TLS == nil || len(req.TLS.PeerCertificates) == 0 {
-		write(w, nil, WithCode(errors.New("Missing client certificate"), http.StatusBadRequest))
+		write(w, nil, errutils.WithCode(errors.New("Missing client certificate"), http.StatusBadRequest))
 		return
 	}
 	crt := req.TLS.PeerCertificates[0]
 	if len(crt.Subject.Organization) == 0 {
-		write(w, nil, WithCode(errors.New("Client certificate is missing organization"), http.StatusBadRequest))
+		write(w, nil, errutils.WithCode(errors.New("Client certificate is missing organization"), http.StatusBadRequest))
 		return
 	}
 	org := crt.Subject.Organization[0]
@@ -49,12 +49,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	data := authv1.TokenReview{}
 	err := json.NewDecoder(req.Body).Decode(&data)
 	if err != nil {
-		write(w, nil, WithCode(errors.Wrap(err, "Failed to parse request"), http.StatusBadRequest))
+		write(w, nil, errutils.WithCode(errors.Wrap(err, "Failed to parse request"), http.StatusBadRequest))
 		return
 	}
 
 	if !s.AuthRecommendedOptions.AuthProvider.Has(org) {
-		write(w, nil, WithCode(errors.Errorf("guard does not provide service for %v", org), http.StatusBadRequest))
+		write(w, nil, errutils.WithCode(errors.Errorf("guard does not provide service for %v", org), http.StatusBadRequest))
 		return
 	}
 

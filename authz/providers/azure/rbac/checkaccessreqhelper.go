@@ -18,10 +18,12 @@ package rbac
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"path"
 	"strings"
 
 	azureutils "go.kubeguard.dev/guard/util/azure"
+	errutils "go.kubeguard.dev/guard/util/error"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -441,7 +443,7 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	return cacheKey
 }
 
-func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, operationsMap azureutils.OperationsMap, resourceId string, useNamespaceResourceScopeFormat bool) ([]*CheckAccessRequest, error) {
+func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, operationsMap azureutils.OperationsMap, resourceId string, useNamespaceResourceScopeFormat bool) ([]*CheckAccessRequest, *azureutils.Error) {
 	/* This is how sample SubjectAccessReview request will look like
 		{
 			"kind": "SubjectAccessReview",
@@ -494,18 +496,32 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 		val := oid.String()
 		userOid = val[1 : len(val)-1]
 		if !isValidUUID(userOid) {
-			return nil, errors.New("oid info sent from authentication module is not valid")
+			return nil, errutils.WithCode(errors.New("oid info sent from authentication module is not valid"), http.StatusBadRequest)
 		}
 	} else {
-		return nil, errors.New("oid info not sent from authentication module")
+		return nil, errutils.WithCode(errors.New("oid info not sent from authentication module"), http.StatusBadRequest)
 	}
 	groups := getValidSecurityGroups(req.Groups)
 	username = req.User
 	actions, err := getDataActions(req, clusterType, operationsMap)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error while creating list of dataactions for check access call")
+		return nil, errutils.WithCode(errors.Wrap(err, "Error while creating list of dataactions for check access call"), http.StatusInternalServerError)
 	}
 	var checkAccessReqs []*CheckAccessRequest
+	for i := 0; i < len(actions); i += ActionBatchCount {
+		j := i + ActionBatchCount
+		if j > len(actions) {
+			j = len(actions)
+		}
+
+		checkaccessreq := CheckAccessRequest{}
+		checkaccessreq.Subject.Attributes.Groups = groups
+		checkaccessreq.Subject.Attributes.ObjectId = userOid
+		checkaccessreq.Actions = actions[i:j]
+		checkaccessreq.Resource.Id = getScope(resourceId, req.ResourceAttributes, useNamespaceResourceScopeFormat)
+		checkAccessReqs = append(checkAccessReqs, &checkaccessreq)
+	}
+
 	for i := 0; i < len(actions); i += ActionBatchCount {
 		j := i + ActionBatchCount
 		if j > len(actions) {
@@ -547,7 +563,7 @@ func ConvertCheckAccessResponse(body []byte) (*authzv1.SubjectAccessReviewStatus
 	err := json.Unmarshal(body, &response)
 	if err != nil {
 		klog.V(10).Infof("Failed to parse checkacccess response. Error:%s", err.Error())
-		return nil, errors.Wrap(err, "Error in unmarshalling check access response.")
+		return nil, errutils.WithCode(errors.Wrap(err, "Error in unmarshalling check access response."), http.StatusInternalServerError)
 	}
 
 	deniedResultFound := slices.IndexFunc(response, func(a AuthorizationDecision) bool { return strings.ToLower(a.Decision) != Allowed })

@@ -33,6 +33,7 @@ import (
 	"go.kubeguard.dev/guard/authz"
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 	azureutils "go.kubeguard.dev/guard/util/azure"
+	errutils "go.kubeguard.dev/guard/util/error"
 	"go.kubeguard.dev/guard/util/httpclient"
 
 	"github.com/pkg/errors"
@@ -88,20 +89,40 @@ type AccessInfo struct {
 var (
 	checkAccessThrottled = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "guard_azure_checkaccess_throttling_failure_total",
-		Help: "Azure checkaccess call throttled.",
+		Help: "No of throttled checkaccess calls.",
 	})
-	checkAccessTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "guard_azure_check_access_requests_total",
-		Help: "Azure number of checkaccess request calls.",
-	})
-	checkAccessFailed = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "guard_azure_checkaccess_failure_total",
-		Help: "Azure checkaccess failed calls.",
-	})
+
+	checkAccessTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "guard_azure_check_access_requests_total",
+			Help: "Number of checkaccess request calls.",
+		},
+		[]string{"code"},
+	)
+
+	checkAccessFailed = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "guard_azure_checkaccess_failure_total",
+			Help: "No of checkaccess failures",
+		},
+		[]string{"code"},
+	)
+
 	checkAccessSucceeded = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "guard_azure_checkaccess_success_total",
-		Help: "Azure checkaccess success calls.",
+		Help: "Number of successful checkaccess calls.",
 	})
+
+	// checkAccessDuration is partitioned by the HTTP status code It uses custom
+	// buckets based on the expected request duration.
+	checkAccessDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "request_duration_seconds",
+			Help:    "A histogram of latencies for requests.",
+			Buckets: []float64{.25, .5, 1, 2.5, 5, 10, 15, 20},
+		},
+		[]string{"code"},
+	)
 
 	CheckAccessErrorFormat = "Error occured during authorization check. Please retry again. Error: %s"
 )
@@ -305,12 +326,12 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	return finalResult, nil
 }
 
-func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessBody *CheckAccessRequest, wg *sync.WaitGroup, ch chan reviewResult) {
-	defer wg.Done()
+func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessURL url.URL, checkAccessBody *CheckAccessRequest, ch chan reviewResult) error {
+	//defer wg.Done()
 	reviewResult := reviewResult{}
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(checkAccessBody); err != nil {
-		reviewResult.err = errors.Wrap(err, "error encoding check access request")
+		reviewResult.err = errutils.WithCode(errors.Wrap(err, "error encoding check access request"), http.StatusInternalServerError)
 		ch <- reviewResult
 		return
 	}
@@ -323,27 +344,32 @@ func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessB
 
 	req, err := http.NewRequest(http.MethodPost, checkAccessURL.String(), buf)
 	if err != nil {
-		reviewResult.err = errors.Wrap(err, "error creating check access request")
+		reviewResult.err = errutils.WithCode(errors.Wrap(err, "error creating check access request"), http.StatusInternalServerError)
 		ch <- reviewResult
 		return
 	}
 
 	a.setReqHeaders(req)
-
+	// start time to calculate checkaccess duration
+	start := time.Now()
 	resp, err := a.client.Do(req)
+	duration := time.Since(begin).Seconds()
 	if err != nil {
-		reviewResult.err = errors.Wrap(err, "error in check access request execution")
+		reviewResult.err = errutils.WithCode(errors.Wrap(err, "error in check access request execution"), http.StatusInternalServerError)
+		checkAccessTotal.WithLabelValues(http.StatusInternalServerError).Inc()
+		checkAccessDuration.WithLabelValues(http.StatusInternalServerError).Observe(duration)
 		ch <- reviewResult
 		return
 	}
 
 	defer resp.Body.Close()
 
-	checkAccessTotal.Inc()
+	checkAccessTotal.WithLabelValues(resp.StatusCode).Inc()
+	checkAccessDuration.WithLabelValues(resp.StatusCode).Observe(duration)
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		reviewResult.err = errors.Wrap(err, "error in reading response body")
+		reviewResult.err = errutils.WithCode(errors.Wrap(err, "error in reading response body"), http.StatusInternalServerError)
 		ch <- reviewResult
 		return
 	}
@@ -359,10 +385,10 @@ func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessB
 				checkAccessThrottled.Inc()
 			}
 
-			checkAccessFailed.Inc()
+			checkAccessFailed.WithLabelValues(resp.StatusCode).Inc()
 		}
 
-		reviewResult.err = errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data))
+		reviewResult.err = errutils.WithCode(errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data)), resp.StatusCode)
 		ch <- reviewResult
 		return
 	} else {
@@ -383,5 +409,11 @@ func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessB
 
 	// Decode response and prepare k8s response
 	reviewResult.status, reviewResult.err = ConvertCheckAccessResponse(data)
-	ch <- reviewResult
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case ch <- reviewResult:
+		return nil
+		// do nothing
+	}
 }
