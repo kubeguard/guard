@@ -19,7 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -32,6 +32,7 @@ import (
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 	"go.kubeguard.dev/guard/authz"
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
+	azureutils "go.kubeguard.dev/guard/util/azure"
 	"go.kubeguard.dev/guard/util/httpclient"
 
 	"github.com/pkg/errors"
@@ -57,6 +58,11 @@ type AuthzInfo struct {
 	ARMEndPoint string
 }
 
+type reviewResult struct {
+	status *authzv1.SubjectAccessReviewStatus
+	err    error
+}
+
 type void struct{}
 
 // AccessInfo allows you to check user access from MS RBAC
@@ -76,6 +82,7 @@ type AccessInfo struct {
 	allowNonResDiscoveryPathAccess  bool
 	useNamespaceResourceScopeFormat bool
 	lock                            sync.RWMutex
+	operationsMap                   azureutils.OperationsMap
 }
 
 var (
@@ -112,7 +119,7 @@ func getClusterType(clsType string) string {
 	}
 }
 
-func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts authzOpts.Options) (*AccessInfo, error) {
+func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts authzOpts.Options, operationsMap azureutils.OperationsMap) (*AccessInfo, error) {
 	u := &AccessInfo{
 		client: httpclient.DefaultHTTPClient,
 		headers: http.Header{
@@ -135,12 +142,15 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 	}
 
 	u.clusterType = getClusterType(opts.AuthzMode)
+
+	u.operationsMap = operationsMap
+
 	u.lock = sync.RWMutex{}
 
 	return u, nil
 }
 
-func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo) (*AccessInfo, error) {
+func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo, operationsMap azureutils.OperationsMap) (*AccessInfo, error) {
 	rbacURL, err := url.Parse(authzInfo.ARMEndPoint)
 	if err != nil {
 		return nil, err
@@ -158,7 +168,7 @@ func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo) (*
 		tokenProvider = graph.NewAKSTokenProvider(opts.AKSAuthzTokenURL, authopts.TenantID)
 	}
 
-	return newAccessInfo(tokenProvider, rbacURL, opts)
+	return newAccessInfo(tokenProvider, rbacURL, opts, operationsMap)
 }
 
 func (a *AccessInfo) RefreshToken() error {
@@ -244,7 +254,7 @@ func (a *AccessInfo) setReqHeaders(req *http.Request) {
 }
 
 func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
-	checkAccessBody, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat)
+	checkAccessBodies, err := prepareCheckAccessRequestBody(request, a.clusterType, a.operationsMap, a.azureResourceId, a.useNamespaceResourceScopeFormat)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in preparing check access request")
 	}
@@ -262,9 +272,47 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	params.Add("api-version", checkAccessAPIVersion)
 	checkAccessURL.RawQuery = params.Encode()
 
+	var wg sync.WaitGroup // New wait group
+
+	ch := make(chan reviewResult, len(checkAccessBodies))
+	if len(checkAccessBodies) > 1 {
+		klog.V(5).Infof("Number of checkaccess requests to make: %d", len(checkAccessBodies))
+	}
+	for _, checkAccessBody := range checkAccessBodies {
+		wg.Add(1)
+		go a.sendCheckAccessRequest(checkAccessURL, checkAccessBody, &wg, ch)
+	}
+
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+
+	var finalResult *authzv1.SubjectAccessReviewStatus
+	for result := range ch {
+		if result.err != nil {
+			return nil, result.err
+		}
+
+		if result.status.Denied {
+			finalResult = result.status
+			break
+		}
+
+		finalResult = result.status
+	}
+
+	return finalResult, nil
+}
+
+func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessBody *CheckAccessRequest, wg *sync.WaitGroup, ch chan reviewResult) {
+	defer wg.Done()
+	reviewResult := reviewResult{}
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(checkAccessBody); err != nil {
-		return nil, errors.Wrap(err, "error encoding check access request")
+		reviewResult.err = errors.Wrap(err, "error encoding check access request")
+		ch <- reviewResult
+		return
 	}
 
 	if klog.V(10).Enabled() {
@@ -275,24 +323,31 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 
 	req, err := http.NewRequest(http.MethodPost, checkAccessURL.String(), buf)
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating check access request")
+		reviewResult.err = errors.Wrap(err, "error creating check access request")
+		ch <- reviewResult
+		return
 	}
 
 	a.setReqHeaders(req)
 
 	resp, err := a.client.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "error in check access request execution")
-	}
-
-	checkAccessTotal.Inc()
-
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrap(err, "error in reading response body")
+		reviewResult.err = errors.Wrap(err, "error in check access request execution")
+		ch <- reviewResult
+		return
 	}
 
 	defer resp.Body.Close()
+
+	checkAccessTotal.Inc()
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		reviewResult.err = errors.Wrap(err, "error in reading response body")
+		ch <- reviewResult
+		return
+	}
+
 	klog.V(7).Infof("checkaccess response: %s, Configured ARM call limit: %d", string(data), a.armCallLimit)
 	if resp.StatusCode != http.StatusOK {
 		klog.Errorf("error in check access response. error code: %d, response: %s", resp.StatusCode, string(data))
@@ -306,7 +361,10 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 
 			checkAccessFailed.Inc()
 		}
-		return nil, errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data))
+
+		reviewResult.err = errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data))
+		ch <- reviewResult
+		return
 	} else {
 		remaining := resp.Header.Get(remainingSubReadARMHeader)
 		klog.Infof("Remaining request count in ARM instance:%s", remaining)
@@ -324,5 +382,6 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	}
 
 	// Decode response and prepare k8s response
-	return ConvertCheckAccessResponse(data)
+	reviewResult.status, reviewResult.err = ConvertCheckAccessResponse(data)
+	ch <- reviewResult
 }

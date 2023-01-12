@@ -21,13 +21,17 @@ import (
 	"path"
 	"strings"
 
+	azureutils "go.kubeguard.dev/guard/util/azure"
+
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"golang.org/x/exp/slices"
 	authzv1 "k8s.io/api/authorization/v1"
 	"k8s.io/klog/v2"
 )
 
 const (
+	ActionBatchCount            = 200
 	AccessAllowedVerdict        = "Access allowed by Azure RBAC"
 	AccessAllowedVerboseVerdict = "Access allowed by Azure RBAC Role Assignment %s of Role %s to user %s"
 	Allowed                     = "allowed"
@@ -37,6 +41,7 @@ const (
 	NoOpinionVerdict            = "Azure does not have opinion for this user."
 	NonAADUserNoOpVerdict       = "Azure does not have opinion for this non AAD user. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig"
 	NonAADUserNotAllowedVerdict = "Access denied by Azure RBAC for non AAD users. Configure --azure.skip-authz-for-non-aad-users to enable access. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig."
+	PodsResource                = "pods"
 )
 
 var username string
@@ -50,19 +55,10 @@ type SubjectInfo struct {
 	Attributes SubjectInfoAttributes `json:"Attributes"`
 }
 
-type AuthorizationEntity struct {
-	Id string `json:"Id"`
-}
-
-type AuthorizationActionInfo struct {
-	AuthorizationEntity
-	IsDataAction bool `json:"IsDataAction"`
-}
-
 type CheckAccessRequest struct {
-	Subject  SubjectInfo               `json:"Subject"`
-	Actions  []AuthorizationActionInfo `json:"Actions"`
-	Resource AuthorizationEntity       `json:"Resource"`
+	Subject  SubjectInfo                          `json:"Subject"`
+	Actions  []azureutils.AuthorizationActionInfo `json:"Actions"`
+	Resource azureutils.AuthorizationEntity       `json:"Resource"`
 }
 
 type AccessDecision struct {
@@ -193,39 +189,234 @@ func getActionName(verb string) string {
 		fallthrough
 	case "deletecollection": // TODO: verify scenario
 		return "delete"
+
+	case "*": // map * to * for wildcard scenario
+		return "*"
 	default:
 		return ""
 	}
 }
 
-func getResourceAndAction(subRevReq *authzv1.SubjectAccessReviewSpec) string {
+func getResourceAndAction(resource string, subResource string, verb string) string {
 	var action string
-	if subRevReq.ResourceAttributes.Resource == "pods" && subRevReq.ResourceAttributes.Subresource == "exec" {
-		action = path.Join(subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Subresource, "action")
+
+	if resource == PodsResource && subResource == "exec" {
+		action = path.Join(resource, subResource, "action")
 	} else {
-		action = path.Join(subRevReq.ResourceAttributes.Resource, getActionName(subRevReq.ResourceAttributes.Verb))
+		action = path.Join(resource, getActionName(verb))
 	}
 
 	return action
 }
 
-func getDataAction(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string) AuthorizationActionInfo {
-	authInfo := AuthorizationActionInfo{
-		IsDataAction: true,
-	}
+func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string, operationsMap azureutils.OperationsMap) ([]azureutils.AuthorizationActionInfo, error) {
+	var authInfoList []azureutils.AuthorizationActionInfo
+	var err error
 
-	authInfo.AuthorizationEntity.Id = clusterType
 	if subRevReq.ResourceAttributes != nil {
-		if subRevReq.ResourceAttributes.Group != "" {
-			authInfo.AuthorizationEntity.Id = path.Join(authInfo.AuthorizationEntity.Id, subRevReq.ResourceAttributes.Group)
+		if subRevReq.ResourceAttributes.Resource != "*" && subRevReq.ResourceAttributes.Group != "*" && subRevReq.ResourceAttributes.Verb != "*" {
+			/*
+				  This sections handles the following scenarios:
+
+				    | Scenario                      | Namespace is empty (Cluster scope call)      | Namespace is not empty (NS scope)        |
+					 ------------------------------- ---------------------------------------------- ------------------------------------------
+					| Verb, Res and Group are not * | Normal single resource call at cluster scope | Normal single resource call  at ns scope |
+
+			*/
+			authInfoSingle := azureutils.AuthorizationActionInfo{
+				IsDataAction: true,
+			}
+
+			authInfoSingle.AuthorizationEntity.Id = clusterType
+
+			if subRevReq.ResourceAttributes.Group != "" {
+				authInfoSingle.AuthorizationEntity.Id = path.Join(authInfoSingle.AuthorizationEntity.Id, subRevReq.ResourceAttributes.Group)
+			}
+
+			action := getResourceAndAction(subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Subresource, subRevReq.ResourceAttributes.Verb)
+			authInfoSingle.AuthorizationEntity.Id = path.Join(authInfoSingle.AuthorizationEntity.Id, action)
+			authInfoList = append(authInfoList, authInfoSingle)
+
+		} else {
+			if operationsMap == nil || (operationsMap != nil && len(operationsMap) == 0) {
+				return nil, errors.Errorf("Wildcard support for Resource/Verb/Group is not enabled for request Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb)
+			}
+
+			authInfoList, err = getAuthInfoListForWildcard(subRevReq, operationsMap)
+			if err != nil {
+				return nil, errors.Wrap(err, fmt.Sprintf("Error which creating actions for checkaccess for Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb))
+			}
+
+		}
+	} else if subRevReq.NonResourceAttributes != nil {
+		authInfoSingle := azureutils.AuthorizationActionInfo{
+			IsDataAction: true,
+		}
+		authInfoSingle.AuthorizationEntity.Id = path.Join(clusterType, subRevReq.NonResourceAttributes.Path, getActionName(subRevReq.NonResourceAttributes.Verb))
+		authInfoList = append(authInfoList, authInfoSingle)
+	}
+	return authInfoList, nil
+}
+
+func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, operationsMap azureutils.OperationsMap) ([]azureutils.AuthorizationActionInfo, error) {
+	var authInfoList []azureutils.AuthorizationActionInfo
+	var err error
+	finalFilteredOperations := azureutils.NewOperationsMap()
+
+	if subRevReq.ResourceAttributes.Resource == "*" {
+		/*
+			This sections handles the following scenarios:
+
+			| Scenario              | Namespace is empty (Cluster scope call)                    | Namespace is not empty (NS scope)             |
+			------------------------ ------------------------------------------------------------  ----------------------------------------------
+			| Verb-*, Res-*, Group-*| All cluster and ns res with all verbs at clusterscope      | All ns resources at ns scope                  |
+
+			| Res-*, Group-*        | All cluster and ns res with specified verb at clusterscope | All ns res with specified verb at ns scope    |
+
+			| Verb-*, Res-*         | All cluster and ns res with all verbs under                | All ns res with all verbs under specified     |
+			|                       | specified apigroup at clusterscope                         | apigroup at nsscope                           |
+
+			| Resource - *          | All CS and NS Resources under specifed apigroup with       | All NS Resources under specifed apigroup with |
+			|                       | specified verb at cluster scope                            | specified verb at ns scope                    |
+		*/
+		filteredOperations := azureutils.NewOperationsMap()
+		if subRevReq.ResourceAttributes.Group == "*" {
+			// all resources under all apigroups
+			filteredOperations = operationsMap
+		} else if subRevReq.ResourceAttributes.Group != "" {
+			// all resources under specified apigroup
+			if value, found := operationsMap[subRevReq.ResourceAttributes.Group]; found {
+				filteredOperations[subRevReq.ResourceAttributes.Group] = value
+			} else {
+				return nil, errors.Errorf("No resources found for group %s", subRevReq.ResourceAttributes.Group)
+			}
+		} else {
+			// if Group is not there that means it is the core apigroup
+			if value, found := operationsMap["v1"]; found {
+				filteredOperations["v1"] = value
+			} else {
+				return nil, errors.New("No resources found for the core group")
+			}
 		}
 
-		action := getResourceAndAction(subRevReq)
-		authInfo.AuthorizationEntity.Id = path.Join(authInfo.AuthorizationEntity.Id, action)
-	} else if subRevReq.NonResourceAttributes != nil {
-		authInfo.AuthorizationEntity.Id = path.Join(authInfo.AuthorizationEntity.Id, subRevReq.NonResourceAttributes.Path, getActionName(subRevReq.NonResourceAttributes.Verb))
+		// if Namespace is populated, we need to create the list only for namespace scoped resources
+		if subRevReq.ResourceAttributes.Namespace != "" {
+			for group, resMap := range filteredOperations {
+				for resourceName, verbValues := range resMap {
+					for _, dataAction := range verbValues {
+						if dataAction.IsNamespacedResource {
+							finalFilteredOperations = initializeMapForGroupAndResource(finalFilteredOperations, group, resourceName)
+							finalFilteredOperations[group][resourceName] = verbValues
+							break
+						}
+					}
+				}
+			}
+		} else {
+			// both cluster scoped and namespace scoped resource list
+			finalFilteredOperations = filteredOperations
+		}
+	} else {
+		/*
+			   This sections handles the following scenarios:
+
+				| Scenario        | Namespace is empty (Cluster scope call)          | Namespace is not empty (NS scope)                    |
+				------------------ --------------------------------------------------  -----------------------------------------------------
+				| Verb-*, Group-* | Resource under all apigroups and with all verbs  | Resource under specifed apigroups and with all verbs |
+								  | at clusterscope                                  | at ns scope                                          |
+
+				| Verb - *        | Resource under specifed apigroups and with all   | Resource under specifed apigroups and with all verbs |
+								  | verbs at cluster scope                           | at ns scope                                          |
+
+				| Group - *       | Resource under all apigroups with specified verb | Resource under all apigroups with specified verb     |
+				|                 | at cluster scope                                 |  at ns scope                                         |
+		*/
+		if subRevReq.ResourceAttributes.Group == "*" {
+			// #1 and #3
+			for group, resMap := range operationsMap {
+				if verbMap, found := resMap[subRevReq.ResourceAttributes.Resource]; found {
+					finalFilteredOperations = initializeMapForGroupAndResource(finalFilteredOperations, group, subRevReq.ResourceAttributes.Resource)
+					finalFilteredOperations[group][subRevReq.ResourceAttributes.Resource] = verbMap
+				}
+			}
+		} else { // #2
+			group := "v1" // core api group key
+			if subRevReq.ResourceAttributes.Group != "" {
+				group = subRevReq.ResourceAttributes.Group
+			}
+
+			if resMap, found := operationsMap[group]; found {
+				if verbMap, found := resMap[subRevReq.ResourceAttributes.Resource]; found {
+					finalFilteredOperations = initializeMapForGroupAndResource(finalFilteredOperations, group, subRevReq.ResourceAttributes.Resource)
+					finalFilteredOperations[group][subRevReq.ResourceAttributes.Resource] = verbMap
+				}
+			} else {
+				return nil, errors.Errorf("No resources found for group %s and resource %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource)
+			}
+
+		}
 	}
-	return authInfo
+
+	klog.V(7).Infof("List of filtered operations: %s", finalFilteredOperations)
+
+	// create list of Data Actions
+	authInfoList, err = createAuthorizationActionInfoList(finalFilteredOperations, subRevReq.ResourceAttributes.Verb)
+	if err != nil {
+		return nil, err
+	}
+
+	return authInfoList, nil
+}
+
+func initializeMapForGroupAndResource(filteredOperations azureutils.OperationsMap, group string, resourceName string) azureutils.OperationsMap {
+	if _, found := filteredOperations[group]; !found {
+		filteredOperations[group] = azureutils.NewResourceAndVerbMap()
+	}
+
+	if _, found := filteredOperations[group][resourceName]; !found {
+		filteredOperations[group][resourceName] = azureutils.NewVerbAndActionsMap()
+	}
+
+	return filteredOperations
+}
+
+func createAuthorizationActionInfoList(filteredOperations azureutils.OperationsMap, filterVerb string) ([]azureutils.AuthorizationActionInfo, error) {
+	if len(filteredOperations) == 0 {
+		return nil, errors.New("No operations were found for the request.")
+	}
+
+	var authInfos []azureutils.AuthorizationActionInfo
+
+	if filterVerb != "*" {
+		verb := getActionName(filterVerb)
+		for _, resMap := range filteredOperations {
+			for _, verbsMap := range resMap {
+				if dataAction, found := verbsMap[verb]; found {
+					authInfos = append(authInfos, dataAction.ActionInfo)
+				}
+			}
+		}
+
+		if len(authInfos) == 0 {
+			return nil, errors.Errorf("No operations were found for the verb: %s.", filterVerb)
+		}
+	} else {
+		for _, resMap := range filteredOperations {
+			for _, verbsMap := range resMap {
+				for _, dataAction := range verbsMap {
+					authInfos = append(authInfos, dataAction.ActionInfo)
+				}
+			}
+		}
+	}
+
+	if klog.V(5).Enabled() {
+		printAuthInfos, _ := json.Marshal(authInfos)
+
+		klog.Infof("List of authorization action info for checkaccess: %s", string(printAuthInfos))
+	}
+
+	return authInfos, nil
 }
 
 func defaultDir(s string) string {
@@ -241,7 +432,7 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	if subRevReq.ResourceAttributes != nil {
 		cacheKey = path.Join(cacheKey, defaultDir(subRevReq.ResourceAttributes.Namespace))
 		cacheKey = path.Join(cacheKey, defaultDir(subRevReq.ResourceAttributes.Group))
-		action := getResourceAndAction(subRevReq)
+		action := getResourceAndAction(subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Subresource, subRevReq.ResourceAttributes.Verb)
 		cacheKey = path.Join(cacheKey, action)
 	} else if subRevReq.NonResourceAttributes != nil {
 		cacheKey = path.Join(cacheKey, subRevReq.NonResourceAttributes.Path, getActionName(subRevReq.NonResourceAttributes.Verb))
@@ -250,7 +441,7 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	return cacheKey
 }
 
-func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType, resourceId string, useNamespaceResourceScopeFormat bool) (*CheckAccessRequest, error) {
+func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, operationsMap azureutils.OperationsMap, resourceId string, useNamespaceResourceScopeFormat bool) ([]*CheckAccessRequest, error) {
 	/* This is how sample SubjectAccessReview request will look like
 		{
 			"kind": "SubjectAccessReview",
@@ -297,31 +488,39 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 			}
 		}
 	*/
-	checkaccessreq := CheckAccessRequest{}
+
 	var userOid string
 	if oid, ok := req.Extra["oid"]; ok {
 		val := oid.String()
 		userOid = val[1 : len(val)-1]
+		if !isValidUUID(userOid) {
+			return nil, errors.New("oid info sent from authentication module is not valid")
+		}
 	} else {
 		return nil, errors.New("oid info not sent from authentication module")
 	}
+	groups := getValidSecurityGroups(req.Groups)
+	username = req.User
+	actions, err := getDataActions(req, clusterType, operationsMap)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error while creating list of dataactions for check access call")
+	}
+	var checkAccessReqs []*CheckAccessRequest
+	for i := 0; i < len(actions); i += ActionBatchCount {
+		j := i + ActionBatchCount
+		if j > len(actions) {
+			j = len(actions)
+		}
 
-	if isValidUUID(userOid) {
+		checkaccessreq := CheckAccessRequest{}
+		checkaccessreq.Subject.Attributes.Groups = groups
 		checkaccessreq.Subject.Attributes.ObjectId = userOid
-	} else {
-		return nil, errors.New("oid info sent from authentication module is not valid")
+		checkaccessreq.Actions = actions[i:j]
+		checkaccessreq.Resource.Id = getScope(resourceId, req.ResourceAttributes, useNamespaceResourceScopeFormat)
+		checkAccessReqs = append(checkAccessReqs, &checkaccessreq)
 	}
 
-	groups := getValidSecurityGroups(req.Groups)
-	checkaccessreq.Subject.Attributes.Groups = groups
-
-	username = req.User
-	action := make([]AuthorizationActionInfo, 1)
-	action[0] = getDataAction(req, clusterType)
-	checkaccessreq.Actions = action
-	checkaccessreq.Resource.Id = getScope(resourceId, req.ResourceAttributes, useNamespaceResourceScopeFormat)
-
-	return &checkaccessreq, nil
+	return checkAccessReqs, nil
 }
 
 func getNameSpaceScope(req *authzv1.SubjectAccessReviewSpec, useNamespaceResourceScopeFormat bool) (bool, string) {
@@ -351,7 +550,9 @@ func ConvertCheckAccessResponse(body []byte) (*authzv1.SubjectAccessReviewStatus
 		return nil, errors.Wrap(err, "Error in unmarshalling check access response.")
 	}
 
-	if strings.ToLower(response[0].Decision) == Allowed {
+	deniedResultFound := slices.IndexFunc(response, func(a AuthorizationDecision) bool { return strings.ToLower(a.Decision) != Allowed })
+
+	if deniedResultFound == -1 { // no denied result found
 		allowed = true
 		verdict = fmt.Sprintf(AccessAllowedVerboseVerdict, response[0].AzureRoleAssignment.Id, response[0].AzureRoleAssignment.RoleDefinitionId, username)
 	} else {
