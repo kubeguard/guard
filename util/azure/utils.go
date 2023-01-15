@@ -21,7 +21,9 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"strconv"
 	"strings"
+	"time"
 
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 	"go.kubeguard.dev/guard/util/httpclient"
@@ -29,6 +31,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	v "gomodules.xyz/x/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -45,6 +48,45 @@ const (
 	ConnectedClusters           = "Microsoft.Kubernetes/connectedClusters"
 	OperationsEndpointFormatARC = "%s/providers/Microsoft.Kubernetes/operations?api-version=2021-10-01"
 	OperationsEndpointFormatAKS = "%s/providers/Microsoft.ContainerService/operations?api-version=2018-10-31"
+)
+
+var (
+	discoverResourcesApiServerCallDuration = prometheus.NewHistogram(
+		prometheus.HistogramOpts{
+			Name:    "guard_apiresources_request_duration_seconds",
+			Help:    "A histogram of latencies for apiserver requests.",
+			Buckets: []float64{.25, .5, 1, 2.5, 5, 10, 15, 20},
+		})
+
+	discoverResourcesAzureCallDuration = prometheus.NewHistogram(
+		prometheus.HistogramOpts{
+			Name:    "guard_azure_get_operations_request_duration_seconds",
+			Help:    "A histogram of latencies for azure get operations requests.",
+			Buckets: []float64{.25, .5, 1, 2.5, 5, 10, 15, 20},
+		})
+
+	DiscoverResourcesTotalDuration = prometheus.NewHistogram(
+		prometheus.HistogramOpts{
+			Name:    "guard_discover_resources_request_duration_seconds",
+			Help:    "A histogram of latencies for azure get operations requests.",
+			Buckets: []float64{.25, .5, 1, 2.5, 5, 10, 15, 20},
+		})
+
+	CounterDiscoverResources = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "guard_discover_requests_requests_total",
+			Help: "A counter for discover resources.",
+		},
+		[]string{"code"},
+	)
+
+	counterGetOperationsResources = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "guard_azure_get_operations_requests_total",
+			Help: "A counter for get operations call in discover resources.",
+		},
+		[]string{"code"},
+	)
 )
 
 type TokenResponse struct {
@@ -132,6 +174,10 @@ func (o OperationsMap) String() string {
 	return string(opMapString)
 }
 
+func ConvertIntToString(number int) string {
+	return strconv.Itoa(number)
+}
+
 func NewDiscoverResourcesSettings(clusterType string, environment string, loginURL string, kubeconfigFilePath string, tenantID string, clientID string, clientSecret string) (*DiscoverResourcesSettings, error) {
 	settings := &DiscoverResourcesSettings{
 		clusterType:        clusterType,
@@ -176,15 +222,25 @@ func NewDiscoverResourcesSettings(clusterType string, environment string, loginU
 */
 func DiscoverResources(settings *DiscoverResourcesSettings) (OperationsMap, error) {
 	operationsMap := OperationsMap{}
+	apiResourcesListStart := time.Now()
 	apiResourcesList, err := fetchApiResources(settings)
+	apiResourcesListDuration := time.Since(apiResourcesListStart).Seconds()
+
 	if err != nil {
 		return operationsMap, errors.Wrap(err, "Failed to fetch list of api-resources from apiserver.")
 	}
 
+	discoverResourcesApiServerCallDuration.Observe(apiResourcesListDuration)
+
+	getOperationsStart := time.Now()
 	operationsList, err := fetchDataActionsList(settings)
+	getOperationsDuration := time.Since(getOperationsStart).Seconds()
+
 	if err != nil {
 		return operationsMap, errors.Wrap(err, "Failed to fetch operations from Azure.")
 	}
+
+	discoverResourcesAzureCallDuration.Observe(getOperationsDuration)
 
 	operationsMap = createOperationsMap(apiResourcesList, operationsList, settings.clusterType)
 
@@ -349,6 +405,7 @@ func fetchDataActionsList(settings *DiscoverResourcesSettings) ([]Operation, err
 
 	resp, err := client.Do(req)
 	if err != nil {
+		counterGetOperationsResources.WithLabelValues(ConvertIntToString(http.StatusInternalServerError)).Inc()
 		return nil, errors.Wrap(err, "Failed to send request for Get Operations call.")
 	}
 	defer resp.Body.Close()
@@ -359,8 +416,11 @@ func fetchDataActionsList(settings *DiscoverResourcesSettings) ([]Operation, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		counterGetOperationsResources.WithLabelValues(ConvertIntToString(resp.StatusCode)).Inc()
 		return nil, errors.Errorf("Request failed with status code: %d and response: %s", resp.StatusCode, string(data))
 	}
+
+	counterGetOperationsResources.WithLabelValues(ConvertIntToString(resp.StatusCode)).Inc()
 
 	operationsList := OperationList{}
 	err = json.Unmarshal(data, &operationsList)
@@ -382,4 +442,8 @@ func fetchDataActionsList(settings *DiscoverResourcesSettings) ([]Operation, err
 	}
 
 	return finalOperations, nil
+}
+
+func init() {
+	prometheus.MustRegister(DiscoverResourcesTotalDuration, discoverResourcesAzureCallDuration, discoverResourcesApiServerCallDuration, CounterDiscoverResources)
 }

@@ -120,7 +120,9 @@ func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec, store authz.
 	}
 
 	if s.rbacClient.IsTokenExpired() {
-		_ = s.rbacClient.RefreshToken()
+		if err := s.rbacClient.RefreshToken(); err != nil {
+			return nil, errutils.WithCode(err, http.StatusInternalServerError)
+		}
 	}
 
 	response, err := s.rbacClient.CheckAccess(request)
@@ -128,7 +130,11 @@ func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec, store authz.
 		klog.V(5).Infof(response.Reason)
 		_ = s.rbacClient.SetResultInCache(request, response.Allowed, store)
 	} else {
-		err = errors.Errorf(rbac.CheckAccessErrorFormat, err)
+		code := http.StatusInternalServerError
+		if v, ok := err.(errutils.HttpStatusCode); ok {
+			code = v.Code()
+		}
+		err = errutils.WithCode(errors.Errorf(rbac.CheckAccessErrorFormat, err), code)
 	}
 
 	return response, err

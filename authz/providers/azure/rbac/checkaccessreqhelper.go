@@ -443,7 +443,7 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	return cacheKey
 }
 
-func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, operationsMap azureutils.OperationsMap, resourceId string, useNamespaceResourceScopeFormat bool) ([]*CheckAccessRequest, *azureutils.Error) {
+func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, operationsMap azureutils.OperationsMap, resourceId string, useNamespaceResourceScopeFormat bool) ([]*CheckAccessRequest, error) {
 	/* This is how sample SubjectAccessReview request will look like
 		{
 			"kind": "SubjectAccessReview",
@@ -508,20 +508,6 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 		return nil, errutils.WithCode(errors.Wrap(err, "Error while creating list of dataactions for check access call"), http.StatusInternalServerError)
 	}
 	var checkAccessReqs []*CheckAccessRequest
-	for i := 0; i < len(actions); i += ActionBatchCount {
-		j := i + ActionBatchCount
-		if j > len(actions) {
-			j = len(actions)
-		}
-
-		checkaccessreq := CheckAccessRequest{}
-		checkaccessreq.Subject.Attributes.Groups = groups
-		checkaccessreq.Subject.Attributes.ObjectId = userOid
-		checkaccessreq.Actions = actions[i:j]
-		checkaccessreq.Resource.Id = getScope(resourceId, req.ResourceAttributes, useNamespaceResourceScopeFormat)
-		checkAccessReqs = append(checkAccessReqs, &checkaccessreq)
-	}
-
 	for i := 0; i < len(actions); i += ActionBatchCount {
 		j := i + ActionBatchCount
 		if j > len(actions) {

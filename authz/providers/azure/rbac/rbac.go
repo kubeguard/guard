@@ -17,6 +17,7 @@ package rbac
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -39,6 +40,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"golang.org/x/sync/errgroup"
 	v "gomodules.xyz/x/version"
 	authzv1 "k8s.io/api/authorization/v1"
 	"k8s.io/klog/v2"
@@ -52,16 +54,12 @@ const (
 	checkAccessAPIVersion     = "2018-09-01-preview"
 	remainingSubReadARMHeader = "x-ms-ratelimit-remaining-subscription-reads"
 	expiryDelta               = 60 * time.Second
+	checkaccessContextTimeout = 23 * time.Second
 )
 
 type AuthzInfo struct {
 	AADEndpoint string
 	ARMEndPoint string
-}
-
-type reviewResult struct {
-	status *authzv1.SubjectAccessReviewStatus
-	err    error
 }
 
 type void struct{}
@@ -113,11 +111,19 @@ var (
 		Help: "Number of successful checkaccess calls.",
 	})
 
+	checkAccessContextTimedOutCount = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "guard_azure_checkaccess_context_timeout",
+			Help: "No of checkacces context timeout calls",
+		},
+		[]string{"checkAccessBatchCount", "totalActionsCount"},
+	)
+
 	// checkAccessDuration is partitioned by the HTTP status code It uses custom
 	// buckets based on the expected request duration.
 	checkAccessDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "request_duration_seconds",
+			Name:    "guard_azure_checkaccess_request_duration_seconds",
 			Help:    "A histogram of latencies for requests.",
 			Buckets: []float64{.25, .5, 1, 2.5, 5, 10, 15, 20},
 		},
@@ -126,6 +132,10 @@ var (
 
 	CheckAccessErrorFormat = "Error occured during authorization check. Please retry again. Error: %s"
 )
+
+func init() {
+	prometheus.MustRegister(checkAccessDuration, checkAccessTotal, checkAccessFailed, checkAccessContextTimedOutCount)
+}
 
 func getClusterType(clsType string) string {
 	switch clsType {
@@ -293,47 +303,66 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	params.Add("api-version", checkAccessAPIVersion)
 	checkAccessURL.RawQuery = params.Encode()
 
-	var wg sync.WaitGroup // New wait group
+	ctx, cancel := context.WithTimeout(context.Background(), checkaccessContextTimeout)
+	defer cancel()
+	eg, egCtx := errgroup.WithContext(ctx)
 
-	ch := make(chan reviewResult, len(checkAccessBodies))
+	ch := make(chan *authzv1.SubjectAccessReviewStatus, len(checkAccessBodies))
 	if len(checkAccessBodies) > 1 {
 		klog.V(5).Infof("Number of checkaccess requests to make: %d", len(checkAccessBodies))
 	}
+	eg.SetLimit(len(checkAccessBodies))
 	for _, checkAccessBody := range checkAccessBodies {
-		wg.Add(1)
-		go a.sendCheckAccessRequest(checkAccessURL, checkAccessBody, &wg, ch)
+		body := checkAccessBody
+		eg.Go(func() error {
+			err := a.sendCheckAccessRequest(egCtx, checkAccessURL, body, ch)
+			return err
+		})
 	}
 
+	var waitErr error
+	waitEgCh := make(chan error)
 	go func() {
-		wg.Wait()
-		close(ch)
+		waitErr = eg.Wait()
+		waitEgCh <- waitErr
 	}()
 
-	var finalResult *authzv1.SubjectAccessReviewStatus
-	for result := range ch {
-		if result.err != nil {
-			return nil, result.err
+	select {
+	case <-ctx.Done():
+		klog.V(5).Infof("Checkaccess requests have timed out. Error: %v\n", ctx.Err())
+		actionsCount := 0
+		for i := 0; i < len(checkAccessBodies); i += 1 {
+			actionsCount = actionsCount + len(checkAccessBodies[i].Actions)
 		}
+		checkAccessContextTimedOutCount.WithLabelValues(azureutils.ConvertIntToString(len(checkAccessBodies)), azureutils.ConvertIntToString(actionsCount)).Inc()
+		close(ch)
+		return nil, errutils.WithCode(errors.Wrap(ctx.Err(), "Checkaccess requests have timed out."), http.StatusInternalServerError)
+	case err := <-waitEgCh:
+		if err != nil {
+			close(ch)
+			return nil, err
+		}
+	case <-ch:
+		// do nothing
+	}
 
-		if result.status.Denied {
-			finalResult = result.status
+	var finalStatus *authzv1.SubjectAccessReviewStatus
+	for status := range ch {
+		if status.Denied {
+			finalStatus = status
 			break
 		}
 
-		finalResult = result.status
+		finalStatus = status
 	}
-
-	return finalResult, nil
+	close(ch)
+	return finalStatus, nil
 }
 
-func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessURL url.URL, checkAccessBody *CheckAccessRequest, ch chan reviewResult) error {
-	//defer wg.Done()
-	reviewResult := reviewResult{}
+func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessURL url.URL, checkAccessBody *CheckAccessRequest, ch chan *authzv1.SubjectAccessReviewStatus) error {
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(checkAccessBody); err != nil {
-		reviewResult.err = errutils.WithCode(errors.Wrap(err, "error encoding check access request"), http.StatusInternalServerError)
-		ch <- reviewResult
-		return
+		return errutils.WithCode(errors.Wrap(err, "error encoding check access request"), http.StatusInternalServerError)
 	}
 
 	if klog.V(10).Enabled() {
@@ -342,36 +371,33 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessURL 
 		klog.V(10).Infof("binary data:%s", binaryData)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, checkAccessURL.String(), buf)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, checkAccessURL.String(), buf)
 	if err != nil {
-		reviewResult.err = errutils.WithCode(errors.Wrap(err, "error creating check access request"), http.StatusInternalServerError)
-		ch <- reviewResult
-		return
+		return errutils.WithCode(errors.Wrap(err, "error creating check access request"), http.StatusInternalServerError)
 	}
 
 	a.setReqHeaders(req)
+	internalServerCode := azureutils.ConvertIntToString(http.StatusInternalServerError)
 	// start time to calculate checkaccess duration
 	start := time.Now()
 	resp, err := a.client.Do(req)
-	duration := time.Since(begin).Seconds()
+	duration := time.Since(start).Seconds()
 	if err != nil {
-		reviewResult.err = errutils.WithCode(errors.Wrap(err, "error in check access request execution"), http.StatusInternalServerError)
-		checkAccessTotal.WithLabelValues(http.StatusInternalServerError).Inc()
-		checkAccessDuration.WithLabelValues(http.StatusInternalServerError).Observe(duration)
-		ch <- reviewResult
-		return
+		checkAccessTotal.WithLabelValues(internalServerCode).Inc()
+		checkAccessDuration.WithLabelValues(internalServerCode).Observe(duration)
+		return errutils.WithCode(errors.Wrap(err, "error in check access request execution"), http.StatusInternalServerError)
 	}
 
 	defer resp.Body.Close()
-
-	checkAccessTotal.WithLabelValues(resp.StatusCode).Inc()
-	checkAccessDuration.WithLabelValues(resp.StatusCode).Observe(duration)
+	respStatusCode := azureutils.ConvertIntToString(resp.StatusCode)
+	checkAccessTotal.WithLabelValues(respStatusCode).Inc()
+	checkAccessDuration.WithLabelValues(respStatusCode).Observe(duration)
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		reviewResult.err = errutils.WithCode(errors.Wrap(err, "error in reading response body"), http.StatusInternalServerError)
-		ch <- reviewResult
-		return
+		checkAccessTotal.WithLabelValues(internalServerCode).Inc()
+		checkAccessDuration.WithLabelValues(internalServerCode).Observe(duration)
+		return errutils.WithCode(errors.Wrap(err, "error in reading response body"), http.StatusInternalServerError)
 	}
 
 	klog.V(7).Infof("checkaccess response: %s, Configured ARM call limit: %d", string(data), a.armCallLimit)
@@ -385,12 +411,10 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessURL 
 				checkAccessThrottled.Inc()
 			}
 
-			checkAccessFailed.WithLabelValues(resp.StatusCode).Inc()
+			checkAccessFailed.WithLabelValues(respStatusCode).Inc()
 		}
 
-		reviewResult.err = errutils.WithCode(errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data)), resp.StatusCode)
-		ch <- reviewResult
-		return
+		return errutils.WithCode(errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data)), resp.StatusCode)
 	} else {
 		remaining := resp.Header.Get(remainingSubReadARMHeader)
 		klog.Infof("Remaining request count in ARM instance:%s", remaining)
@@ -408,12 +432,11 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessURL 
 	}
 
 	// Decode response and prepare k8s response
-	reviewResult.status, reviewResult.err = ConvertCheckAccessResponse(data)
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case ch <- reviewResult:
-		return nil
-		// do nothing
+	status, err := ConvertCheckAccessResponse(data)
+	if err != nil {
+		return err
 	}
+
+	ch <- status
+	return nil
 }

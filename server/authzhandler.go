@@ -19,11 +19,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/pkg/errors"
 	"go.kubeguard.dev/guard/authz"
 	"go.kubeguard.dev/guard/authz/providers/azure"
 	azureutils "go.kubeguard.dev/guard/util/azure"
 	errutils "go.kubeguard.dev/guard/util/error"
+
+	"github.com/pkg/errors"
 	authzv1 "k8s.io/api/authorization/v1"
 	"k8s.io/klog/v2"
 )

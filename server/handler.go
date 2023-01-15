@@ -20,7 +20,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/pkg/errors"
 	"go.kubeguard.dev/guard/auth"
 	"go.kubeguard.dev/guard/auth/providers/azure"
 	"go.kubeguard.dev/guard/auth/providers/github"
@@ -29,6 +28,8 @@ import (
 	"go.kubeguard.dev/guard/auth/providers/ldap"
 	"go.kubeguard.dev/guard/auth/providers/token"
 	errutils "go.kubeguard.dev/guard/util/error"
+
+	"github.com/pkg/errors"
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/klog/v2"
 )

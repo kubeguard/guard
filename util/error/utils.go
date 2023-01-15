@@ -19,6 +19,7 @@ package error
 import (
 	"fmt"
 	"io"
+
 	"k8s.io/klog/v2"
 )
 
@@ -42,6 +43,10 @@ type withCode struct {
 func (w *withCode) Error() string { return w.cause.Error() }
 func (w *withCode) Cause() error  { return w.cause }
 func (w *withCode) Code() int     { return w.code }
+
+type HttpStatusCode interface {
+	Code() int
+}
 
 func (w *withCode) Format(s fmt.State, verb rune) {
 	switch verb {
