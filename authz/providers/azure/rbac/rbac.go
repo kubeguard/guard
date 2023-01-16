@@ -316,35 +316,29 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		body := checkAccessBody
 		eg.Go(func() error {
 			err := a.sendCheckAccessRequest(egCtx, checkAccessURL, body, ch)
-			return err
+			if err != nil {
+				return err
+			}
+			return nil
 		})
 	}
 
-	var waitErr error
-	waitEgCh := make(chan error)
-	go func() {
-		waitErr = eg.Wait()
-		waitEgCh <- waitErr
-	}()
-
-	select {
-	case <-ctx.Done():
-		klog.V(5).Infof("Checkaccess requests have timed out. Error: %v\n", ctx.Err())
-		actionsCount := 0
-		for i := 0; i < len(checkAccessBodies); i += 1 {
-			actionsCount = actionsCount + len(checkAccessBodies[i].Actions)
-		}
-		checkAccessContextTimedOutCount.WithLabelValues(azureutils.ConvertIntToString(len(checkAccessBodies)), azureutils.ConvertIntToString(actionsCount)).Inc()
-		close(ch)
-		return nil, errutils.WithCode(errors.Wrap(ctx.Err(), "Checkaccess requests have timed out."), http.StatusInternalServerError)
-	case err := <-waitEgCh:
-		if err != nil {
+	if err := eg.Wait(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			klog.V(5).Infof("Checkaccess requests have timed out. Error: %v\n", ctx.Err())
+			actionsCount := 0
+			for i := 0; i < len(checkAccessBodies); i += 1 {
+				actionsCount = actionsCount + len(checkAccessBodies[i].Actions)
+			}
+			checkAccessContextTimedOutCount.WithLabelValues(azureutils.ConvertIntToString(len(checkAccessBodies)), azureutils.ConvertIntToString(actionsCount)).Inc()
+			close(ch)
+			return nil, errutils.WithCode(errors.Wrap(ctx.Err(), "Checkaccess requests have timed out."), http.StatusInternalServerError)
+		} else {
 			close(ch)
 			return nil, err
 		}
-	case <-ch:
-		// do nothing
 	}
+	close(ch)
 
 	var finalStatus *authzv1.SubjectAccessReviewStatus
 	for status := range ch {
@@ -355,7 +349,6 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 
 		finalStatus = status
 	}
-	close(ch)
 	return finalStatus, nil
 }
 
