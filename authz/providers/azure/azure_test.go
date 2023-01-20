@@ -29,6 +29,7 @@ import (
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 	"go.kubeguard.dev/guard/authz/providers/azure/rbac"
 	azureutils "go.kubeguard.dev/guard/util/azure"
+	errutils "go.kubeguard.dev/guard/util/error"
 
 	"github.com/appscode/pat"
 	"github.com/stretchr/testify/assert"
@@ -147,6 +148,9 @@ func TestCheck(t *testing.T) {
 		assert.NotNil(t, resp)
 		assert.Equal(t, resp.Allowed, true)
 		assert.Equal(t, resp.Denied, false)
+		if v, ok := err.(errutils.HttpStatusCode); ok {
+			assert.Equal(t, v.Code(), http.StatusOK)
+		}
 	})
 
 	t.Run("unsuccessful request", func(t *testing.T) {
@@ -167,6 +171,9 @@ func TestCheck(t *testing.T) {
 		assert.Nilf(t, resp, "response should be nil")
 		assert.NotNilf(t, err, "should get error")
 		assert.Contains(t, err.Error(), "Error occured during authorization check")
+		if v, ok := err.(errutils.HttpStatusCode); ok {
+			assert.Equal(t, v.Code(), http.StatusInternalServerError)
+		}
 	})
 
 	t.Run("context timeout request", func(t *testing.T) {
@@ -187,5 +194,8 @@ func TestCheck(t *testing.T) {
 		assert.Nilf(t, resp, "response should be nil")
 		assert.NotNilf(t, err, "should get error")
 		assert.Contains(t, err.Error(), "Checkaccess requests have timed out")
+		if v, ok := err.(errutils.HttpStatusCode); ok {
+			assert.Equal(t, v.Code(), http.StatusInternalServerError)
+		}
 	})
 }

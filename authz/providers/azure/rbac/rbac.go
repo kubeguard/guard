@@ -37,6 +37,7 @@ import (
 	errutils "go.kubeguard.dev/guard/util/error"
 	"go.kubeguard.dev/guard/util/httpclient"
 
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -47,14 +48,15 @@ import (
 )
 
 const (
-	managedClusters           = "Microsoft.ContainerService/managedClusters"
-	fleets                    = "Microsoft.ContainerService/fleets"
-	connectedClusters         = "Microsoft.Kubernetes/connectedClusters"
-	checkAccessPath           = "/providers/Microsoft.Authorization/checkaccess"
-	checkAccessAPIVersion     = "2018-09-01-preview"
-	remainingSubReadARMHeader = "x-ms-ratelimit-remaining-subscription-reads"
-	expiryDelta               = 60 * time.Second
-	checkaccessContextTimeout = 23 * time.Second
+	managedClusters            = "Microsoft.ContainerService/managedClusters"
+	fleets                     = "Microsoft.ContainerService/fleets"
+	connectedClusters          = "Microsoft.Kubernetes/connectedClusters"
+	checkAccessPath            = "/providers/Microsoft.Authorization/checkaccess"
+	checkAccessAPIVersion      = "2018-09-01-preview"
+	remainingSubReadARMHeader  = "x-ms-ratelimit-remaining-subscription-reads"
+	expiryDelta                = 60 * time.Second
+	checkaccessContextTimeout  = 23 * time.Second
+	correlationRequestIDHeader = "x-ms-correlation-request-id"
 )
 
 type AuthzInfo struct {
@@ -63,6 +65,7 @@ type AuthzInfo struct {
 }
 
 type void struct{}
+type correlationRequestIDKey string
 
 // AccessInfo allows you to check user access from MS RBAC
 type AccessInfo struct {
@@ -315,8 +318,16 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	for _, checkAccessBody := range checkAccessBodies {
 		body := checkAccessBody
 		eg.Go(func() error {
-			err := a.sendCheckAccessRequest(egCtx, checkAccessURL, body, ch)
+			//create a request id for every checkaccess request
+			requestUUID := uuid.New()
+			reqContext := context.WithValue(egCtx, correlationRequestIDKey(correlationRequestIDHeader), []string{requestUUID.String()})
+			err := a.sendCheckAccessRequest(reqContext, checkAccessURL, body, ch)
 			if err != nil {
+				code := http.StatusInternalServerError
+				if v, ok := err.(errutils.HttpStatusCode); ok {
+					code = v.Code()
+				}
+				err = errutils.WithCode(errors.Errorf("Correlation ID: %s. Error: %s", requestUUID.String(), err), code)
 				return err
 			}
 			return nil
@@ -335,6 +346,8 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 			return nil, errutils.WithCode(errors.Wrap(ctx.Err(), "Checkaccess requests have timed out."), http.StatusInternalServerError)
 		} else {
 			close(ch)
+			// print error we get from sendcheckAccessRequest
+			klog.Error(err)
 			return nil, err
 		}
 	}
@@ -370,15 +383,19 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessURL 
 	}
 
 	a.setReqHeaders(req)
+	//set x-ms-correlation-request-id for the checkaccess request
+	correlationID := ctx.Value(correlationRequestIDKey(correlationRequestIDHeader)).([]string)
+	req.Header[correlationRequestIDHeader] = correlationID
 	internalServerCode := azureutils.ConvertIntToString(http.StatusInternalServerError)
 	// start time to calculate checkaccess duration
 	start := time.Now()
+	klog.V(5).Infof("Sending checkAccess request with correlationID: %s", correlationID[0])
 	resp, err := a.client.Do(req)
 	duration := time.Since(start).Seconds()
 	if err != nil {
 		checkAccessTotal.WithLabelValues(internalServerCode).Inc()
 		checkAccessDuration.WithLabelValues(internalServerCode).Observe(duration)
-		return errutils.WithCode(errors.Wrap(err, "error in check access request execution"), http.StatusInternalServerError)
+		return errutils.WithCode(errors.Wrap(err, "error in check access request execution."), http.StatusInternalServerError)
 	}
 
 	defer resp.Body.Close()
@@ -395,7 +412,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessURL 
 
 	klog.V(7).Infof("checkaccess response: %s, Configured ARM call limit: %d", string(data), a.armCallLimit)
 	if resp.StatusCode != http.StatusOK {
-		klog.Errorf("error in check access response. error code: %d, response: %s", resp.StatusCode, string(data))
+		klog.Errorf("error in check access response. error code: %d, response: %s, correlationID: %s", resp.StatusCode, string(data), correlationID[0])
 		// metrics for calls with StatusCode >= 300
 		if resp.StatusCode >= http.StatusMultipleChoices {
 			if resp.StatusCode == http.StatusTooManyRequests {
@@ -410,7 +427,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessURL 
 		return errutils.WithCode(errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data)), resp.StatusCode)
 	} else {
 		remaining := resp.Header.Get(remainingSubReadARMHeader)
-		klog.Infof("Remaining request count in ARM instance:%s", remaining)
+		klog.Infof("Checkaccess Request has succeeded, CorrelationID is %s. Remaining request count in ARM instance:%s", correlationID[0], remaining)
 		count, _ := strconv.Atoi(remaining)
 		if count < a.armCallLimit {
 			if klog.V(10).Enabled() {
