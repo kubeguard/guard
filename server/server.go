@@ -233,12 +233,11 @@ func (s Server) ListenAndServe() {
 				operationsMap, err := azureutils.DiscoverResources(settings)
 				discoverResourcesDuration := time.Since(discoverResourcesListStart).Seconds()
 				if err != nil {
-					azureutils.CounterDiscoverResources.WithLabelValues(azureutils.ConvertIntToString(http.StatusInternalServerError)).Inc()
+					azureutils.DiscoverResourcesTotalDuration.Observe(discoverResourcesDuration)
 					klog.Fatalf("Failed to create map of data actions. Error:%s", err)
 				}
 
 				azureutils.DiscoverResourcesTotalDuration.Observe(discoverResourcesDuration)
-				azureutils.CounterDiscoverResources.WithLabelValues(azureutils.ConvertIntToString(http.StatusOK)).Inc()
 				authzhandler.operationsMap = operationsMap
 			}
 		}

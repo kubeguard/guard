@@ -71,22 +71,6 @@ var (
 			Help:    "A histogram of latencies for azure get operations requests.",
 			Buckets: []float64{.25, .5, 1, 2.5, 5, 10, 15, 20},
 		})
-
-	CounterDiscoverResources = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "guard_discover_requests_requests_total",
-			Help: "A counter for discover resources.",
-		},
-		[]string{"code"},
-	)
-
-	counterGetOperationsResources = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "guard_azure_get_operations_requests_total",
-			Help: "A counter for get operations call in discover resources.",
-		},
-		[]string{"code"},
-	)
 )
 
 type TokenResponse struct {
@@ -405,7 +389,6 @@ func fetchDataActionsList(settings *DiscoverResourcesSettings) ([]Operation, err
 
 	resp, err := client.Do(req)
 	if err != nil {
-		counterGetOperationsResources.WithLabelValues(ConvertIntToString(http.StatusInternalServerError)).Inc()
 		return nil, errors.Wrap(err, "Failed to send request for Get Operations call.")
 	}
 	defer resp.Body.Close()
@@ -416,11 +399,8 @@ func fetchDataActionsList(settings *DiscoverResourcesSettings) ([]Operation, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		counterGetOperationsResources.WithLabelValues(ConvertIntToString(resp.StatusCode)).Inc()
 		return nil, errors.Errorf("Request failed with status code: %d and response: %s", resp.StatusCode, string(data))
 	}
-
-	counterGetOperationsResources.WithLabelValues(ConvertIntToString(resp.StatusCode)).Inc()
 
 	operationsList := OperationList{}
 	err = json.Unmarshal(data, &operationsList)
@@ -445,5 +425,5 @@ func fetchDataActionsList(settings *DiscoverResourcesSettings) ([]Operation, err
 }
 
 func init() {
-	prometheus.MustRegister(DiscoverResourcesTotalDuration, discoverResourcesAzureCallDuration, discoverResourcesApiServerCallDuration, CounterDiscoverResources)
+	prometheus.MustRegister(DiscoverResourcesTotalDuration, discoverResourcesAzureCallDuration, discoverResourcesApiServerCallDuration)
 }

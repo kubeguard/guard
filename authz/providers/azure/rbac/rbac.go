@@ -64,8 +64,10 @@ type AuthzInfo struct {
 	ARMEndPoint string
 }
 
-type void struct{}
-type correlationRequestIDKey string
+type (
+	void                    struct{}
+	correlationRequestIDKey string
+)
 
 // AccessInfo allows you to check user access from MS RBAC
 type AccessInfo struct {
@@ -318,7 +320,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	for _, checkAccessBody := range checkAccessBodies {
 		body := checkAccessBody
 		eg.Go(func() error {
-			//create a request id for every checkaccess request
+			// create a request id for every checkaccess request
 			requestUUID := uuid.New()
 			reqContext := context.WithValue(egCtx, correlationRequestIDKey(correlationRequestIDHeader), []string{requestUUID.String()})
 			err := a.sendCheckAccessRequest(reqContext, checkAccessURL, body, ch)
@@ -383,7 +385,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessURL 
 	}
 
 	a.setReqHeaders(req)
-	//set x-ms-correlation-request-id for the checkaccess request
+	// set x-ms-correlation-request-id for the checkaccess request
 	correlationID := ctx.Value(correlationRequestIDKey(correlationRequestIDHeader)).([]string)
 	req.Header[correlationRequestIDHeader] = correlationID
 	internalServerCode := azureutils.ConvertIntToString(http.StatusInternalServerError)
