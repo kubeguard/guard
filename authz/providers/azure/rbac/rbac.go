@@ -329,7 +329,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 				if v, ok := err.(errutils.HttpStatusCode); ok {
 					code = v.Code()
 				}
-				err = errutils.WithCode(errors.Errorf("Correlation ID: %s. Error: %s", requestUUID.String(), err), code)
+				err = errutils.WithCode(errors.Errorf("Error: %s. Correlation ID: %s", requestUUID.String(), err), code)
 				return err
 			}
 			return nil
@@ -338,7 +338,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 
 	if err := eg.Wait(); err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			klog.V(5).Infof("Checkaccess requests have timed out. Error: %v\n", ctx.Err())
+			klog.V(5).Infof("Checkaccess requests have timed out. Error: %v", ctx.Err())
 			actionsCount := 0
 			for i := 0; i < len(checkAccessBodies); i += 1 {
 				actionsCount = actionsCount + len(checkAccessBodies[i].Actions)
