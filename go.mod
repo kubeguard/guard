@@ -28,6 +28,7 @@ require (
 	golang.org/x/exp v0.0.0-20221026004748-78e5e7837ae6
 	golang.org/x/net v0.0.0-20220722155237-a158d28d115b
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
+	golang.org/x/sync v0.1.0
 	golang.org/x/text v0.3.7
 	gomodules.xyz/blobfs v0.1.7
 	gomodules.xyz/cert v1.4.1

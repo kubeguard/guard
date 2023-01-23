@@ -16,6 +16,7 @@ limitations under the License.
 package azure
 
 import (
+	"net/http"
 	"strings"
 	"sync"
 
@@ -24,6 +25,7 @@ import (
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 	"go.kubeguard.dev/guard/authz/providers/azure/rbac"
 	azureutils "go.kubeguard.dev/guard/util/azure"
+	errutils "go.kubeguard.dev/guard/util/error"
 
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/pkg/errors"
@@ -78,7 +80,7 @@ func newAuthzClient(opts authzOpts.Options, authopts auth.Options, operationsMap
 
 func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec, store authz.Store) (*authzv1.SubjectAccessReviewStatus, error) {
 	if request == nil {
-		return nil, errors.New("subject access review is nil")
+		return nil, errutils.WithCode(errors.New("subject access review is nil"), http.StatusBadRequest)
 	}
 
 	// check if user is system accounts
@@ -118,7 +120,9 @@ func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec, store authz.
 	}
 
 	if s.rbacClient.IsTokenExpired() {
-		_ = s.rbacClient.RefreshToken()
+		if err := s.rbacClient.RefreshToken(); err != nil {
+			return nil, errutils.WithCode(err, http.StatusInternalServerError)
+		}
 	}
 
 	response, err := s.rbacClient.CheckAccess(request)
@@ -126,7 +130,11 @@ func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec, store authz.
 		klog.V(5).Infof(response.Reason)
 		_ = s.rbacClient.SetResultInCache(request, response.Allowed, store)
 	} else {
-		err = errors.Errorf(rbac.CheckAccessErrorFormat, err)
+		code := http.StatusInternalServerError
+		if v, ok := err.(errutils.HttpStatusCode); ok {
+			code = v.Code()
+		}
+		err = errutils.WithCode(errors.Errorf(rbac.CheckAccessErrorFormat, err), code)
 	}
 
 	return response, err

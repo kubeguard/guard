@@ -29,6 +29,7 @@ import (
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 	"go.kubeguard.dev/guard/authz/providers/azure/rbac"
 	azureutils "go.kubeguard.dev/guard/util/azure"
+	errutils "go.kubeguard.dev/guard/util/error"
 
 	"github.com/appscode/pat"
 	"github.com/stretchr/testify/assert"
@@ -71,7 +72,7 @@ func clientSetup(serverUrl, mode string) (*Authorizer, error) {
 	return c, nil
 }
 
-func serverSetup(loginResp, checkaccessResp string, loginStatus, checkaccessStatus int) (*httptest.Server, error) {
+func serverSetup(loginResp, checkaccessResp string, loginStatus, checkaccessStatus int, sleepFor time.Duration) (*httptest.Server, error) {
 	listener, err := net.Listen("tcp", "127.0.0.1:")
 	if err != nil {
 		return nil, err
@@ -85,6 +86,7 @@ func serverSetup(loginResp, checkaccessResp string, loginStatus, checkaccessStat
 	}))
 
 	m.Post("/arm/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(sleepFor)
 		w.WriteHeader(checkaccessStatus)
 		_, _ = w.Write([]byte(checkaccessResp))
 	}))
@@ -98,8 +100,8 @@ func serverSetup(loginResp, checkaccessResp string, loginStatus, checkaccessStat
 	return srv, nil
 }
 
-func getServerAndClient(t *testing.T, loginResp, checkaccessResp string, checkaccessStatus int) (*httptest.Server, *Authorizer, authz.Store) {
-	srv, err := serverSetup(loginResp, checkaccessResp, http.StatusOK, checkaccessStatus)
+func getServerAndClient(t *testing.T, loginResp, checkaccessResp string, checkaccessStatus int, sleepFor time.Duration) (*httptest.Server, *Authorizer, authz.Store) {
+	srv, err := serverSetup(loginResp, checkaccessResp, http.StatusOK, checkaccessStatus, sleepFor)
 	if err != nil {
 		t.Fatalf("Error when creating server, reason: %v", err)
 	}
@@ -129,7 +131,7 @@ func TestCheck(t *testing.T) {
 		"actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete",
 		"isDataAction":true,"roleAssignment":null,"denyAssignment":null,"timeToLiveInMs":300000}]`
 
-		srv, client, store := getServerAndClient(t, loginResp, validBody, http.StatusOK)
+		srv, client, store := getServerAndClient(t, loginResp, validBody, http.StatusOK, 1*time.Second)
 		defer srv.Close()
 		defer store.Close()
 
@@ -146,11 +148,14 @@ func TestCheck(t *testing.T) {
 		assert.NotNil(t, resp)
 		assert.Equal(t, resp.Allowed, true)
 		assert.Equal(t, resp.Denied, false)
+		if v, ok := err.(errutils.HttpStatusCode); ok {
+			assert.Equal(t, v.Code(), http.StatusOK)
+		}
 	})
 
 	t.Run("unsuccessful request", func(t *testing.T) {
 		validBody := `""`
-		srv, client, store := getServerAndClient(t, loginResp, validBody, http.StatusInternalServerError)
+		srv, client, store := getServerAndClient(t, loginResp, validBody, http.StatusInternalServerError, 1*time.Second)
 		defer srv.Close()
 		defer store.Close()
 
@@ -166,5 +171,31 @@ func TestCheck(t *testing.T) {
 		assert.Nilf(t, resp, "response should be nil")
 		assert.NotNilf(t, err, "should get error")
 		assert.Contains(t, err.Error(), "Error occured during authorization check")
+		if v, ok := err.(errutils.HttpStatusCode); ok {
+			assert.Equal(t, v.Code(), http.StatusInternalServerError)
+		}
+	})
+
+	t.Run("context timeout request", func(t *testing.T) {
+		validBody := `""`
+		srv, client, store := getServerAndClient(t, loginResp, validBody, http.StatusInternalServerError, 25*time.Second)
+		defer srv.Close()
+		defer store.Close()
+
+		request := &authzv1.SubjectAccessReviewSpec{
+			User: "beta@bing.com",
+			ResourceAttributes: &authzv1.ResourceAttributes{
+				Namespace: "dev", Group: "", Resource: "pods",
+				Subresource: "status", Version: "v1", Name: "test", Verb: "delete",
+			}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
+		}
+
+		resp, err := client.Check(request, store)
+		assert.Nilf(t, resp, "response should be nil")
+		assert.NotNilf(t, err, "should get error")
+		assert.Contains(t, err.Error(), "Checkaccess requests have timed out")
+		if v, ok := err.(errutils.HttpStatusCode); ok {
+			assert.Equal(t, v.Code(), http.StatusInternalServerError)
+		}
 	})
 }

@@ -17,6 +17,7 @@ package rbac
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -33,24 +34,29 @@ import (
 	"go.kubeguard.dev/guard/authz"
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 	azureutils "go.kubeguard.dev/guard/util/azure"
+	errutils "go.kubeguard.dev/guard/util/error"
 	"go.kubeguard.dev/guard/util/httpclient"
 
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"golang.org/x/sync/errgroup"
 	v "gomodules.xyz/x/version"
 	authzv1 "k8s.io/api/authorization/v1"
 	"k8s.io/klog/v2"
 )
 
 const (
-	managedClusters           = "Microsoft.ContainerService/managedClusters"
-	fleets                    = "Microsoft.ContainerService/fleets"
-	connectedClusters         = "Microsoft.Kubernetes/connectedClusters"
-	checkAccessPath           = "/providers/Microsoft.Authorization/checkaccess"
-	checkAccessAPIVersion     = "2018-09-01-preview"
-	remainingSubReadARMHeader = "x-ms-ratelimit-remaining-subscription-reads"
-	expiryDelta               = 60 * time.Second
+	managedClusters            = "Microsoft.ContainerService/managedClusters"
+	fleets                     = "Microsoft.ContainerService/fleets"
+	connectedClusters          = "Microsoft.Kubernetes/connectedClusters"
+	checkAccessPath            = "/providers/Microsoft.Authorization/checkaccess"
+	checkAccessAPIVersion      = "2018-09-01-preview"
+	remainingSubReadARMHeader  = "x-ms-ratelimit-remaining-subscription-reads"
+	expiryDelta                = 60 * time.Second
+	checkaccessContextTimeout  = 23 * time.Second
+	correlationRequestIDHeader = "x-ms-correlation-request-id"
 )
 
 type AuthzInfo struct {
@@ -58,12 +64,10 @@ type AuthzInfo struct {
 	ARMEndPoint string
 }
 
-type reviewResult struct {
-	status *authzv1.SubjectAccessReviewStatus
-	err    error
-}
-
-type void struct{}
+type (
+	void                    struct{}
+	correlationRequestIDKey string
+)
 
 // AccessInfo allows you to check user access from MS RBAC
 type AccessInfo struct {
@@ -88,23 +92,55 @@ type AccessInfo struct {
 var (
 	checkAccessThrottled = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "guard_azure_checkaccess_throttling_failure_total",
-		Help: "Azure checkaccess call throttled.",
+		Help: "No of throttled checkaccess calls.",
 	})
-	checkAccessTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "guard_azure_check_access_requests_total",
-		Help: "Azure number of checkaccess request calls.",
-	})
-	checkAccessFailed = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "guard_azure_checkaccess_failure_total",
-		Help: "Azure checkaccess failed calls.",
-	})
+
+	checkAccessTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "guard_azure_check_access_requests_total",
+			Help: "Number of checkaccess request calls.",
+		},
+		[]string{"code"},
+	)
+
+	checkAccessFailed = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "guard_azure_checkaccess_failure_total",
+			Help: "No of checkaccess failures",
+		},
+		[]string{"code"},
+	)
+
 	checkAccessSucceeded = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "guard_azure_checkaccess_success_total",
-		Help: "Azure checkaccess success calls.",
+		Help: "Number of successful checkaccess calls.",
 	})
+
+	checkAccessContextTimedOutCount = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "guard_azure_checkaccess_context_timeout",
+			Help: "No of checkacces context timeout calls",
+		},
+		[]string{"checkAccessBatchCount", "totalActionsCount"},
+	)
+
+	// checkAccessDuration is partitioned by the HTTP status code It uses custom
+	// buckets based on the expected request duration.
+	checkAccessDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "guard_azure_checkaccess_request_duration_seconds",
+			Help:    "A histogram of latencies for requests.",
+			Buckets: []float64{.25, .5, 1, 2.5, 5, 10, 15, 20},
+		},
+		[]string{"code"},
+	)
 
 	CheckAccessErrorFormat = "Error occured during authorization check. Please retry again. Error: %s"
 )
+
+func init() {
+	prometheus.MustRegister(checkAccessDuration, checkAccessTotal, checkAccessFailed, checkAccessContextTimedOutCount)
+}
 
 func getClusterType(clsType string) string {
 	switch clsType {
@@ -272,47 +308,69 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	params.Add("api-version", checkAccessAPIVersion)
 	checkAccessURL.RawQuery = params.Encode()
 
-	var wg sync.WaitGroup // New wait group
+	ctx, cancel := context.WithTimeout(context.Background(), checkaccessContextTimeout)
+	defer cancel()
+	eg, egCtx := errgroup.WithContext(ctx)
 
-	ch := make(chan reviewResult, len(checkAccessBodies))
+	ch := make(chan *authzv1.SubjectAccessReviewStatus, len(checkAccessBodies))
 	if len(checkAccessBodies) > 1 {
 		klog.V(5).Infof("Number of checkaccess requests to make: %d", len(checkAccessBodies))
 	}
+	eg.SetLimit(len(checkAccessBodies))
 	for _, checkAccessBody := range checkAccessBodies {
-		wg.Add(1)
-		go a.sendCheckAccessRequest(checkAccessURL, checkAccessBody, &wg, ch)
+		body := checkAccessBody
+		eg.Go(func() error {
+			// create a request id for every checkaccess request
+			requestUUID := uuid.New()
+			reqContext := context.WithValue(egCtx, correlationRequestIDKey(correlationRequestIDHeader), []string{requestUUID.String()})
+			err := a.sendCheckAccessRequest(reqContext, checkAccessURL, body, ch)
+			if err != nil {
+				code := http.StatusInternalServerError
+				if v, ok := err.(errutils.HttpStatusCode); ok {
+					code = v.Code()
+				}
+				err = errutils.WithCode(errors.Errorf("Error: %s. Correlation ID: %s", requestUUID.String(), err), code)
+				return err
+			}
+			return nil
+		})
 	}
 
-	go func() {
-		wg.Wait()
-		close(ch)
-	}()
-
-	var finalResult *authzv1.SubjectAccessReviewStatus
-	for result := range ch {
-		if result.err != nil {
-			return nil, result.err
+	if err := eg.Wait(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			klog.V(5).Infof("Checkaccess requests have timed out. Error: %v", ctx.Err())
+			actionsCount := 0
+			for i := 0; i < len(checkAccessBodies); i += 1 {
+				actionsCount = actionsCount + len(checkAccessBodies[i].Actions)
+			}
+			checkAccessContextTimedOutCount.WithLabelValues(azureutils.ConvertIntToString(len(checkAccessBodies)), azureutils.ConvertIntToString(actionsCount)).Inc()
+			close(ch)
+			return nil, errutils.WithCode(errors.Wrap(ctx.Err(), "Checkaccess requests have timed out."), http.StatusInternalServerError)
+		} else {
+			close(ch)
+			// print error we get from sendcheckAccessRequest
+			klog.Error(err)
+			return nil, err
 		}
+	}
+	close(ch)
 
-		if result.status.Denied {
-			finalResult = result.status
+	var finalStatus *authzv1.SubjectAccessReviewStatus
+	for status := range ch {
+		if status.Denied {
+			finalStatus = status
 			break
 		}
 
-		finalResult = result.status
+		finalStatus = status
 	}
-
-	return finalResult, nil
+	return finalStatus, nil
 }
 
-func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessBody *CheckAccessRequest, wg *sync.WaitGroup, ch chan reviewResult) {
-	defer wg.Done()
-	reviewResult := reviewResult{}
+func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessURL url.URL, checkAccessBody *CheckAccessRequest, ch chan *authzv1.SubjectAccessReviewStatus) error {
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(checkAccessBody); err != nil {
-		reviewResult.err = errors.Wrap(err, "error encoding check access request")
-		ch <- reviewResult
-		return
+		return errutils.WithCode(errors.Wrap(err, "error encoding check access request"), http.StatusInternalServerError)
 	}
 
 	if klog.V(10).Enabled() {
@@ -321,36 +379,42 @@ func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessB
 		klog.V(10).Infof("binary data:%s", binaryData)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, checkAccessURL.String(), buf)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, checkAccessURL.String(), buf)
 	if err != nil {
-		reviewResult.err = errors.Wrap(err, "error creating check access request")
-		ch <- reviewResult
-		return
+		return errutils.WithCode(errors.Wrap(err, "error creating check access request"), http.StatusInternalServerError)
 	}
 
 	a.setReqHeaders(req)
-
+	// set x-ms-correlation-request-id for the checkaccess request
+	correlationID := ctx.Value(correlationRequestIDKey(correlationRequestIDHeader)).([]string)
+	req.Header[correlationRequestIDHeader] = correlationID
+	internalServerCode := azureutils.ConvertIntToString(http.StatusInternalServerError)
+	// start time to calculate checkaccess duration
+	start := time.Now()
+	klog.V(5).Infof("Sending checkAccess request with correlationID: %s", correlationID[0])
 	resp, err := a.client.Do(req)
+	duration := time.Since(start).Seconds()
 	if err != nil {
-		reviewResult.err = errors.Wrap(err, "error in check access request execution")
-		ch <- reviewResult
-		return
+		checkAccessTotal.WithLabelValues(internalServerCode).Inc()
+		checkAccessDuration.WithLabelValues(internalServerCode).Observe(duration)
+		return errutils.WithCode(errors.Wrap(err, "error in check access request execution."), http.StatusInternalServerError)
 	}
 
 	defer resp.Body.Close()
-
-	checkAccessTotal.Inc()
+	respStatusCode := azureutils.ConvertIntToString(resp.StatusCode)
+	checkAccessTotal.WithLabelValues(respStatusCode).Inc()
+	checkAccessDuration.WithLabelValues(respStatusCode).Observe(duration)
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		reviewResult.err = errors.Wrap(err, "error in reading response body")
-		ch <- reviewResult
-		return
+		checkAccessTotal.WithLabelValues(internalServerCode).Inc()
+		checkAccessDuration.WithLabelValues(internalServerCode).Observe(duration)
+		return errutils.WithCode(errors.Wrap(err, "error in reading response body"), http.StatusInternalServerError)
 	}
 
 	klog.V(7).Infof("checkaccess response: %s, Configured ARM call limit: %d", string(data), a.armCallLimit)
 	if resp.StatusCode != http.StatusOK {
-		klog.Errorf("error in check access response. error code: %d, response: %s", resp.StatusCode, string(data))
+		klog.Errorf("error in check access response. error code: %d, response: %s, correlationID: %s", resp.StatusCode, string(data), correlationID[0])
 		// metrics for calls with StatusCode >= 300
 		if resp.StatusCode >= http.StatusMultipleChoices {
 			if resp.StatusCode == http.StatusTooManyRequests {
@@ -359,15 +423,13 @@ func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessB
 				checkAccessThrottled.Inc()
 			}
 
-			checkAccessFailed.Inc()
+			checkAccessFailed.WithLabelValues(respStatusCode).Inc()
 		}
 
-		reviewResult.err = errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data))
-		ch <- reviewResult
-		return
+		return errutils.WithCode(errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data)), resp.StatusCode)
 	} else {
 		remaining := resp.Header.Get(remainingSubReadARMHeader)
-		klog.Infof("Remaining request count in ARM instance:%s", remaining)
+		klog.Infof("Checkaccess Request has succeeded, CorrelationID is %s. Remaining request count in ARM instance:%s", correlationID[0], remaining)
 		count, _ := strconv.Atoi(remaining)
 		if count < a.armCallLimit {
 			if klog.V(10).Enabled() {
@@ -382,6 +444,11 @@ func (a *AccessInfo) sendCheckAccessRequest(checkAccessURL url.URL, checkAccessB
 	}
 
 	// Decode response and prepare k8s response
-	reviewResult.status, reviewResult.err = ConvertCheckAccessResponse(data)
-	ch <- reviewResult
+	status, err := ConvertCheckAccessResponse(data)
+	if err != nil {
+		return err
+	}
+
+	ch <- status
+	return nil
 }

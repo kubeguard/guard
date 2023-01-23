@@ -49,7 +49,7 @@ var (
 		prometheus.HistogramOpts{
 			Name:    "request_duration_seconds",
 			Help:    "A histogram of latencies for requests.",
-			Buckets: []float64{.25, .5, 1, 2.5, 5, 10},
+			Buckets: []float64{.25, .5, 1, 2.5, 5, 10, 15, 20},
 		},
 		[]string{"handler", "method"},
 	)
@@ -67,13 +67,13 @@ var (
 
 	inFlightGaugeAuthz = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "subjectaccessreviews_handler_requests_in_flight",
-		Help: "A gauge of requests currently being served by the tokenreviews handler.",
+		Help: "A gauge of requests currently being served by the subjectaccessreviews handler.",
 	})
 
 	counterAuthz = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "subjectaccessreviews_handler_requests_total",
-			Help: "A counter for requests to the tokenreviews handler.",
+			Help: "A counter for requests to the subjectaccessreviews handler.",
 		},
 		[]string{"code", "method"},
 	)

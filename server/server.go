@@ -229,11 +229,15 @@ func (s Server) ListenAndServe() {
 					klog.Fatalf("Failed to create settings for discovering resources. Error:%s", err)
 				}
 
+				discoverResourcesListStart := time.Now()
 				operationsMap, err := azureutils.DiscoverResources(settings)
+				discoverResourcesDuration := time.Since(discoverResourcesListStart).Seconds()
 				if err != nil {
+					azureutils.DiscoverResourcesTotalDuration.Observe(discoverResourcesDuration)
 					klog.Fatalf("Failed to create map of data actions. Error:%s", err)
 				}
 
+				azureutils.DiscoverResourcesTotalDuration.Observe(discoverResourcesDuration)
 				authzhandler.operationsMap = operationsMap
 			}
 		}
