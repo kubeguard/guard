@@ -23,10 +23,10 @@ import (
 	"os"
 
 	"github.com/go-ldap/ldap"
+	"github.com/jcmturner/gokrb5/v8/keytab"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"gomodules.xyz/pointer"
-	"gopkg.in/jcmturner/gokrb5.v4/keytab"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -97,7 +97,7 @@ type Options struct {
 	KeytabFile string
 
 	// keytab contains service principal and encryption key
-	keytab keytab.Keytab
+	keytab *keytab.Keytab
 
 	// The serviceAccountName needs to be defined when using Active Directory
 	// where the SPN is mapped to a user account. If this is not required it
