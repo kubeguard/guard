@@ -25,9 +25,9 @@ import (
 	"go.kubeguard.dev/guard/auth"
 
 	"github.com/go-ldap/ldap"
+	"github.com/jcmturner/gokrb5/v8/messages"
+	"github.com/jcmturner/gokrb5/v8/service"
 	"github.com/pkg/errors"
-	"gopkg.in/jcmturner/gokrb5.v4/messages"
-	"gopkg.in/jcmturner/gokrb5.v4/service"
 	authv1 "k8s.io/api/authentication/v1"
 )
 
@@ -178,8 +178,9 @@ func (s Authenticator) authenticateUser(conn *ldap.Conn, token string) (string, 
 			return "", errors.Wrap(err, "unable to unmarshall")
 		}
 
-		if ok, creds, err := service.ValidateAPREQ(*apReq, s.opts.keytab, s.opts.ServiceAccountName, "", false); ok {
-			return creds.Username, nil
+		settings := service.NewSettings(s.opts.keytab, service.SName(s.opts.ServiceAccountName))
+		if ok, creds, err := service.VerifyAPREQ(apReq, settings); ok {
+			return creds.UserName(), nil
 		} else {
 			return "", err
 		}
