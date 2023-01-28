@@ -132,7 +132,7 @@ func getMetadata(aadEndpoint, tenantID string) (*metadataJSON, error) {
 
 	response, err := client.Send(
 		request,
-		autorest.DoRetryForAttempts(3, 100*time.Millisecond),
+		autorest.DoRetryForAttempts(3, time.Second),
 	)
 	if err != nil {
 		return nil, err
