@@ -20,15 +20,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/Azure/go-autorest/autorest"
 
 	"go.kubeguard.dev/guard/auth"
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 
 	"github.com/Azure/go-autorest/autorest/azure"
-	oidc "github.com/coreos/go-oidc"
+	"github.com/coreos/go-oidc"
 	"github.com/pkg/errors"
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/klog/v2"
@@ -120,23 +122,29 @@ type metadataJSON struct {
 func getMetadata(aadEndpoint, tenantID string) (*metadataJSON, error) {
 	metadataURL := aadEndpoint + tenantID + "/.well-known/openid-configuration"
 
-	response, err := http.Get(metadataURL)
+	request, err := http.NewRequest("GET", metadataURL, nil)
 	if err != nil {
 		return nil, err
 	}
-	defer response.Body.Close()
 
-	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get metadata url failed with status code: %d", response.StatusCode)
-	}
+	client := autorest.NewClientWithOptions(autorest.ClientOptions{})
+	client.PollingDuration = 30 * time.Second
 
-	body, err := ioutil.ReadAll(response.Body)
+	response, err := client.Send(
+		request,
+		autorest.DoRetryForAttempts(3, 100*time.Millisecond),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	var metadata metadataJSON
-	err = json.Unmarshal(body, &metadata)
+	err = autorest.Respond(
+		response,
+		autorest.WithErrorUnlessOK(),
+		autorest.ByUnmarshallingJSON(&metadata),
+		autorest.ByClosing(),
+	)
 	if err != nil {
 		return nil, err
 	}
