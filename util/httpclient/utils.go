@@ -44,5 +44,6 @@ func init() {
 	}
 	DefaultHTTPClient = &http.Client{
 		Transport: defaultTransport,
+		Timeout:   30 * time.Second,
 	}
 }

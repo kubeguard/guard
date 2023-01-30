@@ -27,6 +27,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
+	"time"
 
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 
@@ -522,18 +523,26 @@ func TestGetMetadata(t *testing.T) {
 		assert.Equal(t, expectedMetadata, metadata)
 	})
 
-	t.Run("retries if first request fails", func(t *testing.T) {
+	t.Run("retries if first two requests fail", func(t *testing.T) {
 		attempt := 0
 		var testServer *httptest.Server
 		testServer = httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-			if attempt == 0 {
+			attempt++
+
+			if attempt == 1 {
+				// EOF error
 				testServer.CloseClientConnections()
+			} else if attempt == 2 {
+				// Timeout error
+				select {
+				case <-time.After(1 * time.Minute):
+				case <-request.Context().Done():
+				}
 			} else {
+				// Success
 				writer.WriteHeader(200)
 				_, _ = writer.Write([]byte(`{"issuer":"testIssuer","msgraph_host":"testHost"}`))
 			}
-
-			attempt++
 		}))
 		defer testServer.Close()
 		expectedMetadata, _ := localGetMetadata("", "")

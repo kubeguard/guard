@@ -130,7 +130,6 @@ func getMetadata(aadEndpoint, tenantID string) (*metadataJSON, error) {
 
 	client := autorest.NewClientWithOptions(autorest.ClientOptions{})
 	client.Sender = httpclient.DefaultHTTPClient
-	client.PollingDuration = 30 * time.Second
 
 	response, err := client.Send(
 		request,
