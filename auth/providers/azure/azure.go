@@ -28,6 +28,7 @@ import (
 
 	"go.kubeguard.dev/guard/auth"
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
+	"go.kubeguard.dev/guard/util/httpclient"
 
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/coreos/go-oidc"
@@ -128,6 +129,7 @@ func getMetadata(aadEndpoint, tenantID string) (*metadataJSON, error) {
 	}
 
 	client := autorest.NewClientWithOptions(autorest.ClientOptions{})
+	client.Sender = httpclient.DefaultHTTPClient
 	client.PollingDuration = 30 * time.Second
 
 	response, err := client.Send(
@@ -212,14 +214,17 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 // https://docs.microsoft.com/en-us/azure/active-directory/develop/access-tokens#payload-claims
 //
 // ...
-// "_claim_names": {
-//   "groups": "src1"
-// },
-// "_claim_sources": {
-//   "src1": {
-//     "endpoint": "[Graph Url to get this user's group membership from]"
-//   }
-// },
+//
+//	"_claim_names": {
+//	  "groups": "src1"
+//	},
+//
+//	"_claim_sources": {
+//	  "src1": {
+//	    "endpoint": "[Graph Url to get this user's group membership from]"
+//	  }
+//	},
+//
 // ...
 func getGroupsAndCheckOverage(claims claims) ([]string, bool, error) {
 	if c, ok := claims["groups"]; ok {
