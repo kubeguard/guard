@@ -24,12 +24,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/go-autorest/autorest"
-
 	"go.kubeguard.dev/guard/auth"
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 	"go.kubeguard.dev/guard/util/httpclient"
 
+	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/coreos/go-oidc"
 	"github.com/pkg/errors"
