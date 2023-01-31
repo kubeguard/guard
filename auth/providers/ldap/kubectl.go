@@ -21,12 +21,13 @@ import (
 
 	"go.kubeguard.dev/guard/util/kubeconfig"
 
+	"github.com/jcmturner/gokrb5/v8/client"
+	"github.com/jcmturner/gokrb5/v8/config"
+	"github.com/jcmturner/gokrb5/v8/crypto"
+	"github.com/jcmturner/gokrb5/v8/messages"
+	"github.com/jcmturner/gokrb5/v8/types"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
-	"gopkg.in/jcmturner/gokrb5.v4/client"
-	"gopkg.in/jcmturner/gokrb5.v4/crypto"
-	"gopkg.in/jcmturner/gokrb5.v4/messages"
-	"gopkg.in/jcmturner/gokrb5.v4/types"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
@@ -109,14 +110,12 @@ func (t *TokenOptions) getSimpleAuthToken() string {
 }
 
 func (t *TokenOptions) getKerberosToken() (string, error) {
-	cl := client.NewClientWithPassword(t.Username, t.Realm, t.UserPassword)
-
-	c, err := cl.LoadConfig(t.Krb5configFile)
+	cfg, err := config.Load(t.Krb5configFile)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to load krb5 config file")
 	}
 
-	c.GoKrb5Conf.DisablePAFXFast = t.DisablePAFXFast
+	c := client.NewWithPassword(t.Username, t.Realm, t.UserPassword, cfg, client.DisablePAFXFAST(t.DisablePAFXFast))
 
 	err = c.Login()
 	if err != nil {
@@ -128,7 +127,7 @@ func (t *TokenOptions) getKerberosToken() (string, error) {
 		return "", errors.Wrap(err, "failed to get service ticket")
 	}
 
-	auth, err := types.NewAuthenticator(c.Credentials.Realm, c.Credentials.CName)
+	auth, err := types.NewAuthenticator(c.Credentials.Realm(), c.Credentials.CName())
 	if err != nil {
 		return "", errors.Wrap(err, "failed to create authenticator")
 	}
