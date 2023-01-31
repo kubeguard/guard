@@ -127,12 +127,17 @@ func getMetadata(aadEndpoint, tenantID string) (*metadataJSON, error) {
 		return nil, err
 	}
 
+	// Copy the default HTTP client so we can set a timeout.
+	// (It uses the same transport though since the pointer gets copied)
+	httpClient := *httpclient.DefaultHTTPClient
+	httpClient.Timeout = 3 * time.Second
+
 	client := autorest.NewClientWithOptions(autorest.ClientOptions{})
-	client.Sender = httpclient.DefaultHTTPClient
+	client.Sender = &httpClient
 
 	response, err := client.Send(
 		request,
-		autorest.DoRetryForAttempts(3, time.Second),
+		autorest.DoRetryForAttempts(3, 500*time.Millisecond),
 	)
 	if err != nil {
 		return nil, err

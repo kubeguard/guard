@@ -535,7 +535,7 @@ func TestGetMetadata(t *testing.T) {
 			} else if attempt == 2 {
 				// Timeout error
 				select {
-				case <-time.After(1 * time.Minute):
+				case <-time.After(30 * time.Second):
 				case <-request.Context().Done():
 				}
 			} else {
