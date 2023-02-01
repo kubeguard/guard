@@ -20,20 +20,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
 
-	"go.kubeguard.dev/guard/auth"
-	"go.kubeguard.dev/guard/auth/providers/azure/graph"
-	"go.kubeguard.dev/guard/util/httpclient"
-
-	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/coreos/go-oidc"
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/pkg/errors"
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/klog/v2"
+
+	"go.kubeguard.dev/guard/auth"
+	"go.kubeguard.dev/guard/auth/providers/azure/graph"
+	"go.kubeguard.dev/guard/util/httpclient"
 )
 
 /*
@@ -122,34 +124,39 @@ type metadataJSON struct {
 func getMetadata(aadEndpoint, tenantID string) (*metadataJSON, error) {
 	metadataURL := aadEndpoint + tenantID + "/.well-known/openid-configuration"
 
-	request, err := http.NewRequest("GET", metadataURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
 	// Copy the default HTTP client so we can set a timeout.
-	// (It uses the same transport though since the pointer gets copied)
+	// (It uses the same transport since the pointer gets copied)
 	httpClient := *httpclient.DefaultHTTPClient
 	httpClient.Timeout = 3 * time.Second
 
-	client := autorest.NewClientWithOptions(autorest.ClientOptions{})
-	client.Sender = &httpClient
+	// Attempt the request up to 3 times
+	retryClient := retryablehttp.Client{
+		HTTPClient:   &httpClient,
+		RetryWaitMin: 500 * time.Millisecond,
+		RetryWaitMax: 2 * time.Second,
+		RetryMax:     2, // initial + 2 retries = 3 attempts
+		CheckRetry:   retryablehttp.DefaultRetryPolicy,
+		Backoff:      retryablehttp.DefaultBackoff,
+		Logger:       log.Default(),
+	}
 
-	response, err := client.Send(
-		request,
-		autorest.DoRetryForAttempts(3, 500*time.Millisecond),
-	)
+	response, err := retryClient.Get(metadataURL)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("get metadata url failed with status code: %d", response.StatusCode)
+	}
+
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}
 
 	var metadata metadataJSON
-	err = autorest.Respond(
-		response,
-		autorest.WithErrorUnlessOK(),
-		autorest.ByUnmarshallingJSON(&metadata),
-		autorest.ByClosing(),
-	)
+	err = json.Unmarshal(body, &metadata)
 	if err != nil {
 		return nil, err
 	}
