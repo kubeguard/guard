@@ -26,16 +26,16 @@ import (
 	"strings"
 	"time"
 
+	"go.kubeguard.dev/guard/auth"
+	"go.kubeguard.dev/guard/auth/providers/azure/graph"
+	"go.kubeguard.dev/guard/util/httpclient"
+
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/coreos/go-oidc"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/pkg/errors"
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/klog/v2"
-
-	"go.kubeguard.dev/guard/auth"
-	"go.kubeguard.dev/guard/auth/providers/azure/graph"
-	"go.kubeguard.dev/guard/util/httpclient"
 )
 
 /*
