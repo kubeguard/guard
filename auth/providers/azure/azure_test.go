@@ -27,14 +27,15 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
+	"time"
 
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 
 	"github.com/appscode/pat"
-	oidc "github.com/coreos/go-oidc"
+	"github.com/coreos/go-oidc"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
-	jose "gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2"
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -506,4 +507,59 @@ func localGetMetadata(string, string) (*metadataJSON, error) {
 		Issuer:      "testIssuer",
 		MsgraphHost: "testHost",
 	}, nil
+}
+
+func TestGetMetadata(t *testing.T) {
+	t.Run("sends request to AAD server and parses response", func(t *testing.T) {
+		testServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			writer.WriteHeader(200)
+			_, _ = writer.Write([]byte(`{"issuer":"testIssuer","msgraph_host":"testHost"}`))
+		}))
+		defer testServer.Close()
+		expectedMetadata, _ := localGetMetadata("", "")
+
+		metadata, err := getMetadata(testServer.URL+"/", "testTenant")
+		assert.NoError(t, err)
+		assert.Equal(t, expectedMetadata, metadata)
+	})
+
+	t.Run("retries if first two requests fail", func(t *testing.T) {
+		attempt := 0
+		var testServer *httptest.Server
+		testServer = httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			attempt++
+
+			if attempt == 1 {
+				// EOF error
+				testServer.CloseClientConnections()
+			} else if attempt == 2 {
+				// Timeout error
+				select {
+				case <-time.After(30 * time.Second):
+				case <-request.Context().Done():
+				}
+			} else {
+				// Success
+				writer.WriteHeader(200)
+				_, _ = writer.Write([]byte(`{"issuer":"testIssuer","msgraph_host":"testHost"}`))
+			}
+		}))
+		defer testServer.Close()
+		expectedMetadata, _ := localGetMetadata("", "")
+
+		metadata, err := getMetadata(testServer.URL+"/", "testTenant")
+		assert.NoError(t, err)
+		assert.Equal(t, expectedMetadata, metadata)
+	})
+
+	t.Run("returns an error if all retries fail", func(t *testing.T) {
+		var testServer *httptest.Server
+		testServer = httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			testServer.CloseClientConnections()
+		}))
+
+		metadata, err := getMetadata(testServer.URL+"/", "testTenant")
+		assert.Error(t, err)
+		assert.Nil(t, metadata)
+	})
 }

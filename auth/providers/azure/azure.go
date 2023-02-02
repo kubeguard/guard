@@ -20,15 +20,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"go.kubeguard.dev/guard/auth"
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
+	"go.kubeguard.dev/guard/util/httpclient"
 
 	"github.com/Azure/go-autorest/autorest/azure"
-	oidc "github.com/coreos/go-oidc"
+	"github.com/coreos/go-oidc"
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/pkg/errors"
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/klog/v2"
@@ -120,7 +124,23 @@ type metadataJSON struct {
 func getMetadata(aadEndpoint, tenantID string) (*metadataJSON, error) {
 	metadataURL := aadEndpoint + tenantID + "/.well-known/openid-configuration"
 
-	response, err := http.Get(metadataURL)
+	// Copy the default HTTP client so we can set a timeout.
+	// (It uses the same transport since the pointer gets copied)
+	httpClient := *httpclient.DefaultHTTPClient
+	httpClient.Timeout = 3 * time.Second
+
+	// Attempt the request up to 3 times
+	retryClient := retryablehttp.Client{
+		HTTPClient:   &httpClient,
+		RetryWaitMin: 500 * time.Millisecond,
+		RetryWaitMax: 2 * time.Second,
+		RetryMax:     2, // initial + 2 retries = 3 attempts
+		CheckRetry:   retryablehttp.DefaultRetryPolicy,
+		Backoff:      retryablehttp.DefaultBackoff,
+		Logger:       log.Default(),
+	}
+
+	response, err := retryClient.Get(metadataURL)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +150,7 @@ func getMetadata(aadEndpoint, tenantID string) (*metadataJSON, error) {
 		return nil, fmt.Errorf("get metadata url failed with status code: %d", response.StatusCode)
 	}
 
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -204,14 +224,17 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 // https://docs.microsoft.com/en-us/azure/active-directory/develop/access-tokens#payload-claims
 //
 // ...
-// "_claim_names": {
-//   "groups": "src1"
-// },
-// "_claim_sources": {
-//   "src1": {
-//     "endpoint": "[Graph Url to get this user's group membership from]"
-//   }
-// },
+//
+//	"_claim_names": {
+//	  "groups": "src1"
+//	},
+//
+//	"_claim_sources": {
+//	  "src1": {
+//	    "endpoint": "[Graph Url to get this user's group membership from]"
+//	  }
+//	},
+//
 // ...
 func getGroupsAndCheckOverage(claims claims) ([]string, bool, error) {
 	if c, ok := claims["groups"]; ok {
