@@ -48,6 +48,7 @@ const (
 	ConnectedClusters           = "Microsoft.Kubernetes/connectedClusters"
 	OperationsEndpointFormatARC = "%s/providers/Microsoft.Kubernetes/operations?api-version=2021-10-01"
 	OperationsEndpointFormatAKS = "%s/providers/Microsoft.ContainerService/operations?api-version=2018-10-31"
+	MetricsServerNotUp = "metrics.k8s.io/v1beta1: the server is currently unable to handle the request"
 )
 
 var (
@@ -338,14 +339,20 @@ func fetchApiResources(settings *DiscoverResourcesSettings) ([]*metav1.APIResour
 	}
 
 	apiresourcesList, err := kubeclientset.Discovery().ServerPreferredResources()
-	if err != nil {
-		return nil, err
-	}
 
 	if klog.V(5).Enabled() {
 		printApiresourcesList, _ := json.Marshal(apiresourcesList)
 
 		klog.Infof("List of ApiResources fetched from apiserver: %s", string(printApiresourcesList))
+	}
+
+	if err != nil {
+		if strings.Contains(err.Error(), MetricsServerNotUp) {
+			klog.Infof("Error while fetuching list of ApiResources fetched from apiserver: %s", err.Error())
+		} else {
+			return nil, err
+		}
+		
 	}
 
 	return apiresourcesList, nil
