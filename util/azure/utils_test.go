@@ -332,12 +332,14 @@ func Test_createOperationsMap(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		got := createOperationsMap(tt.args.apiResourcesList, tt.args.operationsList, tt.args.clusterType)
-		if len(got) != len(tt.want) {
-			t.Errorf("[createOperationsMap()]Map lengths are not equal. = %v, want %v", got, tt.want)
+		GlobalOperationsMap = NewOperationsMap()
+		_ = SetDiscoverResourcesSettings(tt.args.clusterType, "", "", "", "", "", "")
+		createOperationsMap(tt.args.apiResourcesList, tt.args.operationsList)
+		if len(GlobalOperationsMap) != len(tt.want) {
+			t.Errorf("[createOperationsMap()]Map lengths are not equal. = %v, want %v", GlobalOperationsMap, tt.want)
 		}
-		if !reflect.DeepEqual(got, tt.want) {
-			t.Errorf("createOperationsMap() = %v, want %v", got, tt.want)
+		if !reflect.DeepEqual(GlobalOperationsMap, tt.want) {
+			t.Errorf("createOperationsMap() = %v, want %v", GlobalOperationsMap, tt.want)
 		}
 	}
 }

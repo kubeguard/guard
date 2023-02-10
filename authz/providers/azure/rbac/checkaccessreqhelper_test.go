@@ -30,8 +30,8 @@ import (
 
 const resourceId = "resourceId"
 
-func createOperationsMap(clusterType string) azureutils.OperationsMap {
-	operationsMap := azureutils.OperationsMap{
+func createOperationsMap(clusterType string) {
+	azureutils.GlobalOperationsMap = azureutils.OperationsMap{
 		"apps": azureutils.ResourceAndVerbMap{
 			"deployments": azureutils.VerbAndActionsMap{
 				"read":   azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/apps/deployments/read", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
@@ -53,8 +53,6 @@ func createOperationsMap(clusterType string) azureutils.OperationsMap {
 			},
 		},
 	}
-
-	return operationsMap
 }
 
 func Test_getScope(t *testing.T) {
@@ -479,8 +477,8 @@ func Test_getDataActions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			operationsMap := createOperationsMap(tt.args.clusterType)
-			got, _ := getDataActions(tt.args.subRevReq, tt.args.clusterType, operationsMap)
+			createOperationsMap(tt.args.clusterType)
+			got, _ := getDataActions(tt.args.subRevReq, tt.args.clusterType)
 			if !tt.args.isWildcardTest && !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("getDataActions() = %v, want %v", got, tt.want)
 			}
@@ -570,10 +568,10 @@ func Test_getNameSpaceScopeUsingNewNsFormat(t *testing.T) {
 func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	req := &authzv1.SubjectAccessReviewSpec{Extra: nil}
 	clusterType := "aks"
-	operationsMap := createOperationsMap(clusterType)
+	createOperationsMap(clusterType)
 	wantErr := errors.New("oid info not sent from authenticatoin module")
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, operationsMap, resourceId, false)
+	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
 
 	if got != nil && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", nil, wantErr, got, gotErr)
@@ -583,7 +581,7 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	clusterType = "arc"
 	wantErr = errors.New("oid info sent from authenticatoin module is not valid")
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, operationsMap, resourceId, false)
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
 
 	if got != nil && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", nil, wantErr, got, gotErr)
@@ -594,12 +592,12 @@ func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
 	dummyUuid := uuid.New()
 	req := &authzv1.SubjectAccessReviewSpec{ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev"}, Extra: map[string]authzv1.ExtraValue{"oid": {dummyUuid.String()}}}
 	clusterType := "aks"
-	operationsMap := createOperationsMap(clusterType)
+	createOperationsMap(clusterType)
 
 	// testing with new ns scope format
 	var want string = "resourceId/providers/Microsoft.KubernetesConfiguration/namespaces/dev"
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, operationsMap, resourceId, true)
+	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, true)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
@@ -612,7 +610,7 @@ func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
 	// testing with the old namespace format
 	want = "resourceId/namespaces/dev"
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, operationsMap, resourceId, false)
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
 	}
