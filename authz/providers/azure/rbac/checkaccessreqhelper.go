@@ -47,7 +47,10 @@ const (
 	PodsResource                = "pods"
 )
 
-var username string
+var (
+	username               string
+	getStoredOperationsMap = azureutils.GetOperationsMap
+)
 
 type SubjectInfoAttributes struct {
 	ObjectId string   `json:"ObjectId"`
@@ -241,11 +244,12 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 			authInfoList = append(authInfoList, authInfoSingle)
 
 		} else {
-			if azureutils.GlobalOperationsMap == nil || (azureutils.GlobalOperationsMap != nil && len(azureutils.GlobalOperationsMap) == 0) {
+			storedOperationsMap := getStoredOperationsMap()
+			if storedOperationsMap == nil || (storedOperationsMap != nil && len(storedOperationsMap) == 0) {
 				return nil, errors.Errorf("Wildcard support for Resource/Verb/Group is not enabled for request Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb)
 			}
 
-			authInfoList, err = getAuthInfoListForWildcard(subRevReq)
+			authInfoList, err = getAuthInfoListForWildcard(subRevReq, storedOperationsMap)
 			if err != nil {
 				return nil, errors.Wrap(err, fmt.Sprintf("Error which creating actions for checkaccess for Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb))
 			}
@@ -261,19 +265,19 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 	return authInfoList, nil
 }
 
-func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec) ([]azureutils.AuthorizationActionInfo, error) {
+func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, storedOperationsMap azureutils.OperationsMap) ([]azureutils.AuthorizationActionInfo, error) {
 	var authInfoList []azureutils.AuthorizationActionInfo
 	var err error
 	finalFilteredOperations := azureutils.NewOperationsMap()
-	azureutils.OperationsMapLock.RLock()
-	defer azureutils.OperationsMapLock.RUnlock()
+	azureutils.RLockOperationsMap()
+	defer azureutils.RUnlockOperationsMap()
 	if subRevReq.ResourceAttributes.Resource == "*" {
 		/*
 			This sections handles the following scenarios:
 
 			| Scenario              | Namespace is empty (Cluster scope call)                    | Namespace is not empty (NS scope)             |
 			------------------------ ------------------------------------------------------------  ----------------------------------------------
-			| Verb-*, Res-*, Group-*| All cluster and ns res with all verbs at clusterscope      | All ns resources at ns scope                  |
+			| Verb-*, Res-*, Gro
 
 			| Res-*, Group-*        | All cluster and ns res with specified verb at clusterscope | All ns res with specified verb at ns scope    |
 
@@ -286,17 +290,17 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec) ([]a
 		filteredOperations := azureutils.NewOperationsMap()
 		if subRevReq.ResourceAttributes.Group == "*" {
 			// all resources under all apigroups
-			filteredOperations = azureutils.GlobalOperationsMap
+			filteredOperations = storedOperationsMap
 		} else if subRevReq.ResourceAttributes.Group != "" {
 			// all resources under specified apigroup
-			if value, found := azureutils.GlobalOperationsMap[subRevReq.ResourceAttributes.Group]; found {
+			if value, found := storedOperationsMap[subRevReq.ResourceAttributes.Group]; found {
 				filteredOperations[subRevReq.ResourceAttributes.Group] = value
 			} else {
 				return nil, errors.Errorf("No resources found for group %s", subRevReq.ResourceAttributes.Group)
 			}
 		} else {
 			// if Group is not there that means it is the core apigroup
-			if value, found := azureutils.GlobalOperationsMap["v1"]; found {
+			if value, found := storedOperationsMap["v1"]; found {
 				filteredOperations["v1"] = value
 			} else {
 				return nil, errors.New("No resources found for the core group")
@@ -337,7 +341,7 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec) ([]a
 		*/
 		if subRevReq.ResourceAttributes.Group == "*" {
 			// #1 and #3
-			for group, resMap := range azureutils.GlobalOperationsMap {
+			for group, resMap := range storedOperationsMap {
 				if verbMap, found := resMap[subRevReq.ResourceAttributes.Resource]; found {
 					finalFilteredOperations = initializeMapForGroupAndResource(finalFilteredOperations, group, subRevReq.ResourceAttributes.Resource)
 					finalFilteredOperations[group][subRevReq.ResourceAttributes.Resource] = verbMap
@@ -349,7 +353,7 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec) ([]a
 				group = subRevReq.ResourceAttributes.Group
 			}
 
-			if resMap, found := azureutils.GlobalOperationsMap[group]; found {
+			if resMap, found := storedOperationsMap[group]; found {
 				if verbMap, found := resMap[subRevReq.ResourceAttributes.Resource]; found {
 					finalFilteredOperations = initializeMapForGroupAndResource(finalFilteredOperations, group, subRevReq.ResourceAttributes.Resource)
 					finalFilteredOperations[group][subRevReq.ResourceAttributes.Resource] = verbMap

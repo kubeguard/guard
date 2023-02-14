@@ -56,9 +56,9 @@ const (
 )
 
 var (
-	OperationsMapLock   = sync.RWMutex{}
-	GlobalOperationsMap = NewOperationsMap()
-	settings            *DiscoverResourcesSettings
+	operationsMapLock = sync.RWMutex{}
+	operationsMap     = NewOperationsMap()
+	settings          *DiscoverResourcesSettings
 )
 
 var (
@@ -180,6 +180,26 @@ func NewOperationsMap() OperationsMap {
 	return make(map[string]ResourceAndVerbMap)
 }
 
+func GetOperationsMap() OperationsMap {
+	return operationsMap
+}
+
+func LockOperationsMap() {
+	operationsMapLock.Lock()
+}
+
+func UnlockOperationsMap() {
+	operationsMapLock.Unlock()
+}
+
+func RLockOperationsMap() {
+	operationsMapLock.RLock()
+}
+
+func RUnlockOperationsMap() {
+	operationsMapLock.RUnlock()
+}
+
 func (o OperationsMap) String() string {
 	opMapString, _ := json.Marshal(o)
 	return string(opMapString)
@@ -227,7 +247,7 @@ func SetDiscoverResourcesSettings(clusterType string, environment string, loginU
 	return nil
 }
 
-// ReconcileDiscoverResources reconciles the GlobalOperationsMap
+// ReconcileDiscoverResources reconciles the operationsMap
 func ReconcileDiscoverResources(ctx context.Context, wg *sync.WaitGroup, loopDuration time.Duration) {
 	defer wg.Done()
 	for {
@@ -284,14 +304,14 @@ func DiscoverResources() error {
 
 	createOperationsMap(apiResourcesList, operationsList)
 
-	klog.V(5).Infof("Operations Map created for resources: %s", GlobalOperationsMap)
+	klog.V(5).Infof("Operations Map created for resources: %s", operationsMap)
 
 	return nil
 }
 
 func createOperationsMap(apiResourcesList []*metav1.APIResourceList, operationsList []Operation) {
-	OperationsMapLock.Lock()
-	defer OperationsMapLock.Unlock()
+	LockOperationsMap()
+	defer UnlockOperationsMap()
 
 	for _, resList := range apiResourcesList {
 		if len(resList.APIResources) == 0 {
@@ -355,15 +375,15 @@ func createOperationsMap(apiResourcesList []*metav1.APIResourceList, operationsL
 						IsNamespacedResource: apiResource.Namespaced,
 					}
 					da.ActionInfo.AuthorizationEntity.Id = operation.Name
-					if _, found := GlobalOperationsMap[group]; !found {
-						GlobalOperationsMap[group] = NewResourceAndVerbMap()
+					if _, found := operationsMap[group]; !found {
+						operationsMap[group] = NewResourceAndVerbMap()
 					}
 
-					if _, found := GlobalOperationsMap[group][resourceName]; !found {
-						GlobalOperationsMap[group][resourceName] = NewVerbAndActionsMap()
+					if _, found := operationsMap[group][resourceName]; !found {
+						operationsMap[group][resourceName] = NewVerbAndActionsMap()
 					}
 
-					GlobalOperationsMap[group][resourceName][verb] = da
+					operationsMap[group][resourceName][verb] = da
 				}
 			}
 		}

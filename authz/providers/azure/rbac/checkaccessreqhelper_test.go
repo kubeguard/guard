@@ -30,8 +30,8 @@ import (
 
 const resourceId = "resourceId"
 
-func createOperationsMap(clusterType string) {
-	azureutils.GlobalOperationsMap = azureutils.OperationsMap{
+func createOperationsMap(clusterType string) azureutils.OperationsMap {
+	return azureutils.OperationsMap{
 		"apps": azureutils.ResourceAndVerbMap{
 			"deployments": azureutils.VerbAndActionsMap{
 				"read":   azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/apps/deployments/read", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
@@ -477,7 +477,10 @@ func Test_getDataActions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			createOperationsMap(tt.args.clusterType)
+			operationsMap := createOperationsMap(tt.args.clusterType)
+			getStoredOperationsMap = func() azureutils.OperationsMap {
+				return operationsMap
+			}
 			got, _ := getDataActions(tt.args.subRevReq, tt.args.clusterType)
 			if !tt.args.isWildcardTest && !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("getDataActions() = %v, want %v", got, tt.want)
