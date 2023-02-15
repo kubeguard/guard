@@ -59,7 +59,7 @@ func NewOptions() Options {
 		AllowNonResDiscoveryPathAccess:      true,
 		UseNamespaceResourceScopeFormat:     false,
 		DiscoverResources:                   false,
-		ReconcileDiscoverResourcesFrequency: 10 * time.Minute,
+		ReconcileDiscoverResourcesFrequency: 5 * time.Minute,
 	}
 }
 

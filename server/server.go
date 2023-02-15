@@ -181,7 +181,7 @@ func (s Server) ListenAndServe() {
 
 	m.Get("/readyz", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if len(s.AuthzRecommendedOptions.AuthzProvider.Providers) > 0 && s.AuthzRecommendedOptions.AuthzProvider.Has(azure.OrgType) && s.AuthzRecommendedOptions.Azure.DiscoverResources {
-			storedOperationsMap := azureutils.GetOperationsMap()
+			storedOperationsMap := azureutils.DeepCopyOperationsMap()
 			if len(storedOperationsMap) > 0 {
 				w.WriteHeader(200)
 			} else {

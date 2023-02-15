@@ -335,12 +335,11 @@ func Test_createOperationsMap(t *testing.T) {
 		operationsMap = NewOperationsMap()
 		_ = SetDiscoverResourcesSettings(tt.args.clusterType, "", "", "", "", "", "")
 		createOperationsMap(tt.args.apiResourcesList, tt.args.operationsList)
-		got := GetOperationsMap()
-		if len(got) != len(tt.want) {
-			t.Errorf("[createOperationsMap()]Map lengths are not equal. = %v, want %v", got, tt.want)
+		if len(operationsMap) != len(tt.want) {
+			t.Errorf("[createOperationsMap()]Map lengths are not equal. = %v, want %v", operationsMap, tt.want)
 		}
-		if !reflect.DeepEqual(got, tt.want) {
-			t.Errorf("createOperationsMap() = %v, want %v", got, tt.want)
+		if !reflect.DeepEqual(operationsMap, tt.want) {
+			t.Errorf("createOperationsMap() = %v, want %v", operationsMap, tt.want)
 		}
 	}
 }

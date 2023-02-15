@@ -180,24 +180,19 @@ func NewOperationsMap() OperationsMap {
 	return make(map[string]ResourceAndVerbMap)
 }
 
-func GetOperationsMap() OperationsMap {
-	return operationsMap
-}
-
-func LockOperationsMap() {
-	operationsMapLock.Lock()
-}
-
-func UnlockOperationsMap() {
-	operationsMapLock.Unlock()
-}
-
-func RLockOperationsMap() {
+func DeepCopyOperationsMap() OperationsMap {
 	operationsMapLock.RLock()
-}
+	defer operationsMapLock.RUnlock()
+	if len(operationsMap) == 0 {
+		return NewOperationsMap()
+	}
 
-func RUnlockOperationsMap() {
-	operationsMapLock.RUnlock()
+	copyMap := NewOperationsMap()
+	for k, v := range operationsMap {
+		copyMap[k] = v
+	}
+
+	return copyMap
 }
 
 func (o OperationsMap) String() string {
@@ -310,8 +305,8 @@ func DiscoverResources() error {
 }
 
 func createOperationsMap(apiResourcesList []*metav1.APIResourceList, operationsList []Operation) {
-	LockOperationsMap()
-	defer UnlockOperationsMap()
+	operationsMapLock.Lock()
+	defer operationsMapLock.Unlock()
 
 	for _, resList := range apiResourcesList {
 		if len(resList.APIResources) == 0 {

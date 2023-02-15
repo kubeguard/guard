@@ -49,7 +49,7 @@ const (
 
 var (
 	username               string
-	getStoredOperationsMap = azureutils.GetOperationsMap
+	getStoredOperationsMap = azureutils.DeepCopyOperationsMap
 )
 
 type SubjectInfoAttributes struct {
@@ -269,15 +269,13 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 	var authInfoList []azureutils.AuthorizationActionInfo
 	var err error
 	finalFilteredOperations := azureutils.NewOperationsMap()
-	azureutils.RLockOperationsMap()
-	defer azureutils.RUnlockOperationsMap()
 	if subRevReq.ResourceAttributes.Resource == "*" {
 		/*
 			This sections handles the following scenarios:
 
 			| Scenario              | Namespace is empty (Cluster scope call)                    | Namespace is not empty (NS scope)             |
 			------------------------ ------------------------------------------------------------  ----------------------------------------------
-			| Verb-*, Res-*, Gro
+			| Verb-*, Res-*, Group-*| All cluster and ns res with all verbs at clusterscope | All ns resources at ns scope |
 
 			| Res-*, Group-*        | All cluster and ns res with specified verb at clusterscope | All ns res with specified verb at ns scope    |
 
