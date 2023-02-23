@@ -31,7 +31,7 @@ require (
 	golang.org/x/net v0.0.0-20220725212005-46097bf591d3
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/sync v0.1.0
-	golang.org/x/text v0.3.7
+	golang.org/x/text v0.3.8
 	gomodules.xyz/blobfs v0.1.7
 	gomodules.xyz/cert v1.4.1
 	gomodules.xyz/flags v0.1.3
