@@ -26,8 +26,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/oauth2"
-
 	"go.kubeguard.dev/guard/auth"
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 	"go.kubeguard.dev/guard/util/httpclient"
@@ -36,6 +34,7 @@ import (
 	"github.com/coreos/go-oidc"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/klog/v2"
 )
