@@ -17,6 +17,7 @@ limitations under the License.
 package graph
 
 import (
+	"context"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -53,7 +54,7 @@ func NewClientCredentialTokenProvider(clientID, clientSecret, loginURL, scope st
 
 func (u *clientCredentialTokenProvider) Name() string { return u.name }
 
-func (u *clientCredentialTokenProvider) Acquire(token string) (AuthResponse, error) {
+func (u *clientCredentialTokenProvider) Acquire(ctx context.Context, token string) (AuthResponse, error) {
 	authResp := AuthResponse{}
 	form := url.Values{}
 	form.Set("client_id", u.clientID)
@@ -71,7 +72,7 @@ func (u *clientCredentialTokenProvider) Acquire(token string) (AuthResponse, err
 		klog.V(10).Infoln(cmd)
 	}
 
-	resp, err := u.client.Do(req)
+	resp, err := u.client.Do(req.WithContext(ctx))
 	if err != nil {
 		return authResp, errors.Wrap(err, "fail to send request")
 	}

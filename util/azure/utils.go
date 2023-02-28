@@ -17,6 +17,7 @@ limitations under the License.
 package azure
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -198,13 +199,13 @@ func NewDiscoverResourcesSettings(clusterType string, environment string, loginU
 }
 
 /*
-   DiscoverResources does the following:
-   1. Fetches list of ApiResources from the apiserver
-   2. Fetches list of Data Actions via Get Operations call on Azure
-   3. creates OperationsMap which is a map of "group": { "resource": { "verb": DataAction{} } } }
-   This map is used to create list of AuthorizationActionInfos when we get a SAR request where Resource/Verb/Group is *
+DiscoverResources does the following:
+1. Fetches list of ApiResources from the apiserver
+2. Fetches list of Data Actions via Get Operations call on Azure
+3. creates OperationsMap which is a map of "group": { "resource": { "verb": DataAction{} } } }
+This map is used to create list of AuthorizationActionInfos when we get a SAR request where Resource/Verb/Group is *
 */
-func DiscoverResources(settings *DiscoverResourcesSettings) (OperationsMap, error) {
+func DiscoverResources(ctx context.Context, settings *DiscoverResourcesSettings) (OperationsMap, error) {
 	operationsMap := OperationsMap{}
 	apiResourcesListStart := time.Now()
 	apiResourcesList, err := fetchApiResources(settings)
@@ -217,7 +218,7 @@ func DiscoverResources(settings *DiscoverResourcesSettings) (OperationsMap, erro
 	discoverResourcesApiServerCallDuration.Observe(apiResourcesListDuration)
 
 	getOperationsStart := time.Now()
-	operationsList, err := fetchDataActionsList(settings)
+	operationsList, err := fetchDataActionsList(ctx, settings)
 	getOperationsDuration := time.Since(getOperationsStart).Seconds()
 
 	if err != nil {
@@ -351,7 +352,7 @@ func fetchApiResources(settings *DiscoverResourcesSettings) ([]*metav1.APIResour
 	return apiresourcesList, nil
 }
 
-func fetchDataActionsList(settings *DiscoverResourcesSettings) ([]Operation, error) {
+func fetchDataActionsList(ctx context.Context, settings *DiscoverResourcesSettings) ([]Operation, error) {
 	req, err := http.NewRequest(http.MethodGet, settings.operationsEndpoint, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to create request for Get Operations call.")
@@ -366,7 +367,7 @@ func fetchDataActionsList(settings *DiscoverResourcesSettings) ([]Operation, err
 			fmt.Sprintf("%s%s/oauth2/v2.0/token", settings.environment.ActiveDirectoryEndpoint, settings.tenantID),
 			fmt.Sprintf("%s/.default", settings.environment.ResourceManagerEndpoint))
 
-		authResp, erro := tokenProvider.Acquire("")
+		authResp, erro := tokenProvider.Acquire(ctx, "")
 		if erro != nil {
 			return nil, errors.Wrap(erro, "Error getting authorization headers for Get Operations call.")
 		}
@@ -375,7 +376,7 @@ func fetchDataActionsList(settings *DiscoverResourcesSettings) ([]Operation, err
 	} else { // AKS and Fleet
 		tokenProvider := graph.NewAKSTokenProvider(settings.aksLoginURL, settings.tenantID)
 
-		authResp, err := tokenProvider.Acquire("")
+		authResp, err := tokenProvider.Acquire(ctx, "")
 		if err != nil {
 			return nil, errors.Wrap(err, "Error getting authorization headers for Get Operations call.")
 		}

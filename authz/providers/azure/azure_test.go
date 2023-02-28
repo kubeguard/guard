@@ -17,6 +17,7 @@ limitations under the License.
 package azure
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -143,7 +144,8 @@ func TestCheck(t *testing.T) {
 			}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
 		}
 
-		resp, err := client.Check(request, store)
+		ctx := context.Background()
+		resp, err := client.Check(ctx, request, store)
 		assert.Nilf(t, err, "Should not have got error")
 		assert.NotNil(t, resp)
 		assert.Equal(t, resp.Allowed, true)
@@ -167,7 +169,8 @@ func TestCheck(t *testing.T) {
 			}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
 		}
 
-		resp, err := client.Check(request, store)
+		ctx := context.Background()
+		resp, err := client.Check(ctx, request, store)
 		assert.Nilf(t, resp, "response should be nil")
 		assert.NotNilf(t, err, "should get error")
 		assert.Contains(t, err.Error(), "Error occured during authorization check")
@@ -190,7 +193,8 @@ func TestCheck(t *testing.T) {
 			}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
 		}
 
-		resp, err := client.Check(request, store)
+		ctx := context.Background()
+		resp, err := client.Check(ctx, request, store)
 		assert.Nilf(t, resp, "response should be nil")
 		assert.NotNilf(t, err, "should get error")
 		assert.Contains(t, err.Error(), "Checkaccess requests have timed out")

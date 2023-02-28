@@ -17,6 +17,7 @@ limitations under the License.
 package server
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
@@ -230,7 +231,7 @@ func (s Server) ListenAndServe() {
 				}
 
 				discoverResourcesListStart := time.Now()
-				operationsMap, err := azureutils.DiscoverResources(settings)
+				operationsMap, err := azureutils.DiscoverResources(context.Background(), settings)
 				discoverResourcesDuration := time.Since(discoverResourcesListStart).Seconds()
 				if err != nil {
 					azureutils.DiscoverResourcesTotalDuration.Observe(discoverResourcesDuration)

@@ -21,7 +21,7 @@ import (
 
 	"go.kubeguard.dev/guard/auth"
 
-	oidc "github.com/coreos/go-oidc"
+	"github.com/coreos/go-oidc"
 	"github.com/pkg/errors"
 	gdir "google.golang.org/api/admin/directory/v1"
 	gauth "google.golang.org/api/oauth2/v1"
@@ -45,7 +45,6 @@ func init() {
 type Authenticator struct {
 	Options
 	verifier   *oidc.IDTokenVerifier
-	ctx        context.Context
 	service    *gdir.Service
 	domainName string
 }
@@ -55,14 +54,13 @@ type TokenInfo struct {
 	HD string `json:"hd"`
 }
 
-func New(opts Options, domain string) (auth.Interface, error) {
+func New(ctx context.Context, opts Options, domain string) (auth.Interface, error) {
 	g := &Authenticator{
 		Options:    opts,
-		ctx:        context.Background(),
 		domainName: domain,
 	}
 
-	provider, err := oidc.NewProvider(g.ctx, googleIssuerUrl)
+	provider, err := oidc.NewProvider(ctx, googleIssuerUrl)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create oidc provider for google")
 	}
@@ -72,7 +70,6 @@ func New(opts Options, domain string) (auth.Interface, error) {
 	})
 
 	if opts.ServiceAccountJsonFile != "" {
-		ctx := context.Background()
 		g.service, err = gdir.NewService(ctx, option.WithTokenSource(opts.jwtConfig.TokenSource(ctx)))
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to create admin/directory/v1 client for domain %s", domain)
@@ -86,8 +83,8 @@ func (g Authenticator) UID() string {
 }
 
 // https://developers.google.com/identity/protocols/OpenIDConnect#validatinganidtoken
-func (g *Authenticator) Check(token string) (*authv1.UserInfo, error) {
-	idToken, err := g.verifier.Verify(g.ctx, token)
+func (g *Authenticator) Check(ctx context.Context, token string) (*authv1.UserInfo, error) {
+	idToken, err := g.verifier.Verify(ctx, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to verify token for google")
 	}
@@ -113,7 +110,7 @@ func (g *Authenticator) Check(token string) (*authv1.UserInfo, error) {
 		var pageToken string
 
 		for {
-			r2, err := g.service.Groups.List().UserKey(info.Email).Domain(g.domainName).PageToken(pageToken).Do()
+			r2, err := g.service.Groups.List().UserKey(info.Email).Domain(g.domainName).PageToken(pageToken).Context(ctx).Do()
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to load user's groups for domain %s", g.domainName)
 			}

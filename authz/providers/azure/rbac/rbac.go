@@ -207,11 +207,11 @@ func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo, op
 	return newAccessInfo(tokenProvider, rbacURL, opts, operationsMap)
 }
 
-func (a *AccessInfo) RefreshToken() error {
+func (a *AccessInfo) RefreshToken(ctx context.Context) error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 	if a.IsTokenExpired() {
-		resp, err := a.tokenProvider.Acquire("")
+		resp, err := a.tokenProvider.Acquire(ctx, "")
 		if err != nil {
 			klog.Errorf("%s failed to refresh token : %s", a.tokenProvider.Name(), err.Error())
 			return errors.Wrap(err, "failed to refresh rbac token")

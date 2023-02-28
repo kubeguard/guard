@@ -34,11 +34,11 @@ import (
 	"go.kubeguard.dev/guard/util/httpclient"
 
 	"github.com/appscode/pat"
-	oidc "github.com/coreos/go-oidc"
+	"github.com/coreos/go-oidc"
 	"github.com/stretchr/testify/assert"
 	gdir "google.golang.org/api/admin/directory/v1"
 	"google.golang.org/api/option"
-	jose "gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2"
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -183,13 +183,13 @@ func googleVerifyUrlParams(u *url.URL) error {
 
 func googleClientSetup(serverUrl string) (*Authenticator, error) {
 	g := &Authenticator{
-		ctx: context.Background(),
 		Options: Options{
 			AdminEmail:             adminEmail,
 			ServiceAccountJsonFile: "sa.json",
 		},
 	}
-	p, err := oidc.NewProvider(g.ctx, serverUrl)
+	ctx := context.Background()
+	p, err := oidc.NewProvider(ctx, serverUrl)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create provider for azure. Reason: %v", err)
 	}
@@ -294,6 +294,7 @@ func TestCheckGoogleAuthenticationSuccess(t *testing.T) {
 		{10, 5},
 		{13, 5},
 	}
+	ctx := context.Background()
 
 	for _, test := range dataset {
 		t.Run(fmt.Sprintf("authentication successful, group size: %v, group per page: %v", test.groupSize, test.groupPerPage), func(t *testing.T) {
@@ -315,7 +316,7 @@ func TestCheckGoogleAuthenticationSuccess(t *testing.T) {
 			// set client domain
 			client.domainName = domain
 
-			resp, err := client.Check(token)
+			resp, err := client.Check(ctx, token)
 			assert.Nil(t, err)
 			assertUserInfo(t, resp, test.groupSize)
 		})
@@ -387,6 +388,7 @@ func TestCheckGoogleAuthenticationFailed(t *testing.T) {
 			groupErrResp,
 		},
 	}
+	ctx := context.Background()
 
 	for _, test := range dataset {
 		t.Run(test.testName, func(t *testing.T) {
@@ -410,7 +412,7 @@ func TestCheckGoogleAuthenticationFailed(t *testing.T) {
 			// set client domain
 			client.domainName = domain
 
-			resp, err := client.Check(token)
+			resp, err := client.Check(ctx, token)
 			// t.Log(test)
 			assert.NotNil(t, err)
 			assert.Nil(t, resp)

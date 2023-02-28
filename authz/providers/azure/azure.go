@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,6 +16,7 @@ limitations under the License.
 package azure
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"sync"
@@ -78,7 +79,7 @@ func newAuthzClient(opts authzOpts.Options, authopts auth.Options, operationsMap
 	return c, nil
 }
 
-func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec, store authz.Store) (*authzv1.SubjectAccessReviewStatus, error) {
+func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, store authz.Store) (*authzv1.SubjectAccessReviewStatus, error) {
 	if request == nil {
 		return nil, errutils.WithCode(errors.New("subject access review is nil"), http.StatusBadRequest)
 	}
@@ -120,7 +121,7 @@ func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec, store authz.
 	}
 
 	if s.rbacClient.IsTokenExpired() {
-		if err := s.rbacClient.RefreshToken(); err != nil {
+		if err := s.rbacClient.RefreshToken(ctx); err != nil {
 			return nil, errutils.WithCode(err, http.StatusInternalServerError)
 		}
 	}
