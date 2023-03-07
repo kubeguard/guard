@@ -44,6 +44,8 @@ type ProtectedTag struct {
 // GitLab API docs:
 // https://docs.gitlab.com/ee/api/protected_tags.html
 type TagAccessDescription struct {
+	UserID                 int              `json:"user_id"`
+	GroupID                int              `json:"group_id"`
 	AccessLevel            AccessLevelValue `json:"access_level"`
 	AccessLevelDescription string           `json:"access_level_description"`
 }
@@ -64,7 +66,7 @@ func (s *ProtectedTagsService) ListProtectedTags(pid interface{}, opt *ListProte
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/protected_tags", pathEscape(project))
+	u := fmt.Sprintf("projects/%s/protected_tags", PathEscape(project))
 
 	req, err := s.client.NewRequest(http.MethodGet, u, opt, options)
 	if err != nil {
@@ -89,7 +91,7 @@ func (s *ProtectedTagsService) GetProtectedTag(pid interface{}, tag string, opti
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/protected_tags/%s", pathEscape(project), pathEscape(tag))
+	u := fmt.Sprintf("projects/%s/protected_tags/%s", PathEscape(project), PathEscape(tag))
 
 	req, err := s.client.NewRequest(http.MethodGet, u, nil, options)
 	if err != nil {
@@ -111,8 +113,19 @@ func (s *ProtectedTagsService) GetProtectedTag(pid interface{}, tag string, opti
 // GitLab API docs:
 // https://docs.gitlab.com/ee/api/protected_tags.html#protect-repository-tags
 type ProtectRepositoryTagsOptions struct {
-	Name              *string           `url:"name" json:"name"`
-	CreateAccessLevel *AccessLevelValue `url:"create_access_level,omitempty" json:"create_access_level,omitempty"`
+	Name              *string                   `url:"name,omitempty" json:"name,omitempty"`
+	CreateAccessLevel *AccessLevelValue         `url:"create_access_level,omitempty" json:"create_access_level,omitempty"`
+	AllowedToCreate   *[]*TagsPermissionOptions `url:"allowed_to_create,omitempty" json:"allowed_to_create,omitempty"`
+}
+
+// TagsPermissionOptions represents a protected tag permission option.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/ee/api/protected_tags.html#protect-repository-tags
+type TagsPermissionOptions struct {
+	UserID      *int              `url:"user_id,omitempty" json:"user_id,omitempty"`
+	GroupID     *int              `url:"group_id,omitempty" json:"group_id,omitempty"`
+	AccessLevel *AccessLevelValue `url:"access_level,omitempty" json:"access_level,omitempty"`
 }
 
 // ProtectRepositoryTags protects a single repository tag or several project
@@ -125,7 +138,7 @@ func (s *ProtectedTagsService) ProtectRepositoryTags(pid interface{}, opt *Prote
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/protected_tags", pathEscape(project))
+	u := fmt.Sprintf("projects/%s/protected_tags", PathEscape(project))
 
 	req, err := s.client.NewRequest(http.MethodPost, u, opt, options)
 	if err != nil {
@@ -151,7 +164,7 @@ func (s *ProtectedTagsService) UnprotectRepositoryTags(pid interface{}, tag stri
 	if err != nil {
 		return nil, err
 	}
-	u := fmt.Sprintf("projects/%s/protected_tags/%s", pathEscape(project), pathEscape(tag))
+	u := fmt.Sprintf("projects/%s/protected_tags/%s", PathEscape(project), PathEscape(tag))
 
 	req, err := s.client.NewRequest(http.MethodDelete, u, nil, options)
 	if err != nil {

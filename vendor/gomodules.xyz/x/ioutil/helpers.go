@@ -3,7 +3,9 @@ package ioutil
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -76,7 +78,6 @@ func WriteJson(path string, obj interface{}) error {
 func WriteString(path string, data string) bool {
 	EnsureDirectory(path)
 	err := ioutil.WriteFile(path, []byte(data), os.ModePerm)
-
 	if err != nil {
 		return false
 	}
@@ -88,7 +89,7 @@ func AppendToFile(path string, values string) error {
 	if _, err := os.Stat(path); err != nil {
 		ioutil.WriteFile(path, []byte(""), os.ModePerm)
 	}
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0666)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o666)
 	if err != nil {
 		return err
 	}
@@ -109,12 +110,14 @@ func EnsureDirectory(path string) error {
 	return nil
 }
 
-func IsFileExists(path string) bool {
-	EnsureDirectory(path)
-	if _, err := os.Stat(path); err != nil {
-		return false
-	}
-	return true
+func PathExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+func PathNotExists(path string) bool {
+	_, err := os.Stat(path)
+	return errors.Is(err, fs.ErrNotExist)
 }
 
 // WriteFile writes the contents from src to dst using io.Copy.

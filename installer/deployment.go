@@ -73,7 +73,7 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 								},
 							},
 							ReadinessProbe: &core.Probe{
-								Handler: core.Handler{
+								ProbeHandler: core.ProbeHandler{
 									HTTPGet: &core.HTTPGetAction{
 										Path:   "/healthz",
 										Port:   intstr.FromInt(server.ServingPort),
@@ -83,7 +83,7 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 								InitialDelaySeconds: int32(30),
 							},
 							LivenessProbe: &core.Probe{
-								Handler: core.Handler{
+								ProbeHandler: core.ProbeHandler{
 									HTTPGet: &core.HTTPGetAction{
 										Path:   "/healthz",
 										Port:   intstr.FromInt(server.ServingPort),

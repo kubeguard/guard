@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/appscode/pat"
+	"github.com/go-chi/chi/v5"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -52,7 +52,6 @@ type gitlabGroupRespFunc func(u *url.URL) (int, string)
 
 // GitLab API docs:
 // https://docs.gitlab.com/ce/api/README.html#data-validation-and-error-reporting
-//
 func gitlabGetErrorMsg(err error) []byte {
 	//{{{err.Error()}}}
 	errMsg := `{ "message": "{{{` + err.Error() + `}}}" }`
@@ -112,11 +111,13 @@ func assertUserInfo(t *testing.T, info *v1.UserInfo, useGroupId bool, groupSize 
 }
 
 // return string format
-//  [
-//      {
-//          "name":"team1"
-//      }
-//  ]
+//
+//	[
+//	    {
+//	        "name":"team1"
+//	    }
+//	]
+//
 // Group name format : team[groupNo]
 func GitlabGetGroups(size int, startgroupNo int) ([]byte, error) {
 	type group struct {
@@ -174,7 +175,7 @@ func gitlabGetGroupResp(groupSize int) gitlabGroupRespFunc {
 }
 
 func gitlabServerSetup(userResp string, userStatusCode int, gengroupResp gitlabGroupRespFunc) *httptest.Server {
-	m := pat.New()
+	m := chi.NewRouter()
 
 	m.Get("/api/v4/user", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		err := gitlabVerifyAuthorization(r)

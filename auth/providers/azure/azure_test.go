@@ -31,8 +31,8 @@ import (
 
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 
-	"github.com/appscode/pat"
 	"github.com/coreos/go-oidc"
+	"github.com/go-chi/chi/v5"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/square/go-jose.v2"
@@ -141,7 +141,7 @@ func serverSetup(loginResp string, loginStatus int, jwkResp, groupIds, groupList
 	}
 	addr := listener.Addr().String()
 
-	m := pat.New()
+	m := chi.NewRouter()
 
 	m.Post("/login", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(loginStatus)
@@ -193,21 +193,23 @@ func serverSetup(loginResp string, loginStatus int, jwkResp, groupIds, groupList
 
 /*
 goups id format:
-{
-   "value":[
-      "1"
-   ]
-}
+
+	{
+	   "value":[
+	      "1"
+	   ]
+	}
 
 groupList formate:
-{
-   "value":[
-      {
-         "displayName":"group1",
-         "id":"1"
-      }
-   ]
-}
+
+	{
+	   "value":[
+	      {
+	         "displayName":"group1",
+	         "id":"1"
+	      }
+	   ]
+	}
 */
 func getGroupsAndIds(t *testing.T, groupSz int) ([]byte, []byte) {
 	groupId := struct {

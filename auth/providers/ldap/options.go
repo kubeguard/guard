@@ -19,10 +19,9 @@ package ldap
 import (
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"os"
 
-	"github.com/go-ldap/ldap"
+	"github.com/go-ldap/ldap/v3"
 	"github.com/jcmturner/gokrb5/v8/keytab"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
@@ -118,7 +117,7 @@ func NewOptions() Options {
 func (o *Options) Configure() error {
 	// caCertPool for self signed LDAP sever certificate
 	if o.CaCertFile != "" {
-		caCert, err := ioutil.ReadFile(o.CaCertFile)
+		caCert, err := os.ReadFile(o.CaCertFile)
 		if err != nil {
 			return errors.Wrap(err, "unable to read ca cert file")
 		}
@@ -236,14 +235,14 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 		"bind-password": []byte(o.BindPassword),
 	}
 	if o.CaCertFile != "" {
-		cert, err := ioutil.ReadFile(o.CaCertFile)
+		cert, err := os.ReadFile(o.CaCertFile)
 		if err != nil {
 			return nil, err
 		}
 		ldapData["ca.crt"] = cert
 	}
 	if o.KeytabFile != "" {
-		key, err := ioutil.ReadFile(o.KeytabFile)
+		key, err := os.ReadFile(o.KeytabFile)
 		if err != nil {
 			return nil, err
 		}

@@ -46,6 +46,7 @@ func HandleSearchRequest(req *ber.Packet, controls *[]Control, messageID uint64,
 	}
 
 	i := 0
+	searchReqBaseDNLower := strings.ToLower(searchReq.BaseDN)
 	for _, entry := range searchResp.Entries {
 		if server.EnforceLDAP {
 			// filter
@@ -61,25 +62,24 @@ func HandleSearchRequest(req *ber.Packet, controls *[]Control, messageID uint64,
 			switch searchReq.Scope {
 			case ScopeWholeSubtree: // The scope is constrained to the entry named by baseObject and to all its subordinates.
 			case ScopeBaseObject: // The scope is constrained to the entry named by baseObject.
-				if entry.DN != searchReq.BaseDN {
+				if strings.ToLower(entry.DN) != searchReqBaseDNLower {
 					continue
 				}
 			case ScopeSingleLevel: // The scope is constrained to the immediate subordinates of the entry named by baseObject.
-				parts := strings.Split(entry.DN, ",")
-				if len(parts) < 2 && entry.DN != searchReq.BaseDN {
+				entryDNLower := strings.ToLower(entry.DN)
+				parts := strings.Split(entryDNLower, ",")
+				if len(parts) < 2 && entryDNLower != searchReqBaseDNLower {
 					continue
 				}
-				if dn := strings.Join(parts[1:], ","); dn != searchReq.BaseDN {
+				if dnSuffix := strings.Join(parts[1:], ","); dnSuffix != searchReqBaseDNLower {
 					continue
 				}
 			}
 
-			// attributes
-			if len(searchReq.Attributes) > 1 || (len(searchReq.Attributes) == 1 && len(searchReq.Attributes[0]) > 0) {
-				entry, err = filterAttributes(entry, searchReq.Attributes)
-				if err != nil {
-					return NewError(LDAPResultOperationsError, err)
-				}
+			// filter attributes
+			entry, err = filterAttributes(entry, searchReq.Attributes)
+			if err != nil {
+				return NewError(LDAPResultOperationsError, err)
 			}
 
 			// size limit
@@ -160,9 +160,30 @@ func filterAttributes(entry *Entry, attributes []string) (*Entry, error) {
 	// only return requested attributes
 	newAttributes := []*EntryAttribute{}
 
-	for _, attr := range entry.Attributes {
-		for _, requested := range attributes {
-			if requested == "*" || strings.ToLower(attr.Name) == strings.ToLower(requested) {
+	if len(attributes) > 1 || (len(attributes) == 1 && len(attributes[0]) > 0) {
+		for _, attr := range entry.Attributes {
+			attrNameLower := strings.ToLower(attr.Name)
+			for _, requested := range attributes {
+				requestedLower := strings.ToLower(requested)
+				// You can request the directory server to return operational attributes by adding + (the plus sign) in your ldapsearch command.
+				// "+supportedControl" is treated as an operational attribute
+				if strings.HasPrefix(attrNameLower, "+") {
+					if requestedLower == "+" || attrNameLower == "+"+requestedLower {
+						newAttributes = append(newAttributes, &EntryAttribute{attr.Name[1:], attr.Values})
+						break
+					}
+				} else {
+					if requested == "*" || attrNameLower == requestedLower {
+						newAttributes = append(newAttributes, attr)
+						break
+					}
+				}
+			}
+		}
+	} else {
+		// remove operational attributes
+		for _, attr := range entry.Attributes {
+			if !strings.HasPrefix(attr.Name, "+") {
 				newAttributes = append(newAttributes, attr)
 			}
 		}

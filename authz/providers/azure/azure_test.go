@@ -31,7 +31,7 @@ import (
 	azureutils "go.kubeguard.dev/guard/util/azure"
 	errutils "go.kubeguard.dev/guard/util/error"
 
-	"github.com/appscode/pat"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	authzv1 "k8s.io/api/authorization/v1"
 )
@@ -78,18 +78,18 @@ func serverSetup(loginResp, checkaccessResp string, loginStatus, checkaccessStat
 		return nil, err
 	}
 
-	m := pat.New()
+	m := chi.NewRouter()
 
-	m.Post("/login/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	m.Post("/login/*", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(loginStatus)
 		_, _ = w.Write([]byte(loginResp))
-	}))
+	})
 
-	m.Post("/arm/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	m.Post("/arm/*", func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(sleepFor)
 		w.WriteHeader(checkaccessStatus)
 		_, _ = w.Write([]byte(checkaccessResp))
-	}))
+	})
 
 	srv := &httptest.Server{
 		Listener: listener,

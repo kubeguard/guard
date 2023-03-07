@@ -198,11 +198,11 @@ func NewDiscoverResourcesSettings(clusterType string, environment string, loginU
 }
 
 /*
-   DiscoverResources does the following:
-   1. Fetches list of ApiResources from the apiserver
-   2. Fetches list of Data Actions via Get Operations call on Azure
-   3. creates OperationsMap which is a map of "group": { "resource": { "verb": DataAction{} } } }
-   This map is used to create list of AuthorizationActionInfos when we get a SAR request where Resource/Verb/Group is *
+DiscoverResources does the following:
+1. Fetches list of ApiResources from the apiserver
+2. Fetches list of Data Actions via Get Operations call on Azure
+3. creates OperationsMap which is a map of "group": { "resource": { "verb": DataAction{} } } }
+This map is used to create list of AuthorizationActionInfos when we get a SAR request where Resource/Verb/Group is *
 */
 func DiscoverResources(settings *DiscoverResourcesSettings) (OperationsMap, error) {
 	operationsMap := OperationsMap{}

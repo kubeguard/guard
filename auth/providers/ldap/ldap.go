@@ -24,7 +24,7 @@ import (
 
 	"go.kubeguard.dev/guard/auth"
 
-	"github.com/go-ldap/ldap"
+	"github.com/go-ldap/ldap/v3"
 	"github.com/jcmturner/gokrb5/v8/messages"
 	"github.com/jcmturner/gokrb5/v8/service"
 	"github.com/pkg/errors"
