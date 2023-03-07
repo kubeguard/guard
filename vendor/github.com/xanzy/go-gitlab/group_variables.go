@@ -41,6 +41,7 @@ type GroupVariable struct {
 	VariableType     VariableTypeValue `json:"variable_type"`
 	Protected        bool              `json:"protected"`
 	Masked           bool              `json:"masked"`
+	Raw              bool              `json:"raw"`
 	EnvironmentScope string            `json:"environment_scope"`
 }
 
@@ -64,7 +65,7 @@ func (s *GroupVariablesService) ListVariables(gid interface{}, opt *ListGroupVar
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/variables", pathEscape(group))
+	u := fmt.Sprintf("groups/%s/variables", PathEscape(group))
 
 	req, err := s.client.NewRequest(http.MethodGet, u, opt, options)
 	if err != nil {
@@ -89,7 +90,7 @@ func (s *GroupVariablesService) GetVariable(gid interface{}, key string, options
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/variables/%s", pathEscape(group), url.PathEscape(key))
+	u := fmt.Sprintf("groups/%s/variables/%s", PathEscape(group), url.PathEscape(key))
 
 	req, err := s.client.NewRequest(http.MethodGet, u, nil, options)
 	if err != nil {
@@ -116,6 +117,7 @@ type CreateGroupVariableOptions struct {
 	VariableType     *VariableTypeValue `url:"variable_type,omitempty" json:"variable_type,omitempty"`
 	Protected        *bool              `url:"protected,omitempty" json:"protected,omitempty"`
 	Masked           *bool              `url:"masked,omitempty" json:"masked,omitempty"`
+	Raw              *bool              `url:"raw,omitempty" json:"raw,omitempty"`
 	EnvironmentScope *string            `url:"environment_scope,omitempty" json:"environment_scope,omitempty"`
 }
 
@@ -128,7 +130,7 @@ func (s *GroupVariablesService) CreateVariable(gid interface{}, opt *CreateGroup
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/variables", pathEscape(group))
+	u := fmt.Sprintf("groups/%s/variables", PathEscape(group))
 
 	req, err := s.client.NewRequest(http.MethodPost, u, opt, options)
 	if err != nil {
@@ -154,6 +156,7 @@ type UpdateGroupVariableOptions struct {
 	VariableType     *VariableTypeValue `url:"variable_type,omitempty" json:"variable_type,omitempty"`
 	Protected        *bool              `url:"protected,omitempty" json:"protected,omitempty"`
 	Masked           *bool              `url:"masked,omitempty" json:"masked,omitempty"`
+	Raw              *bool              `url:"raw,omitempty" json:"raw,omitempty"`
 	EnvironmentScope *string            `url:"environment_scope,omitempty" json:"environment_scope,omitempty"`
 }
 
@@ -167,7 +170,7 @@ func (s *GroupVariablesService) UpdateVariable(gid interface{}, key string, opt 
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/variables/%s", pathEscape(group), url.PathEscape(key))
+	u := fmt.Sprintf("groups/%s/variables/%s", PathEscape(group), url.PathEscape(key))
 
 	req, err := s.client.NewRequest(http.MethodPut, u, opt, options)
 	if err != nil {
@@ -192,7 +195,7 @@ func (s *GroupVariablesService) RemoveVariable(gid interface{}, key string, opti
 	if err != nil {
 		return nil, err
 	}
-	u := fmt.Sprintf("groups/%s/variables/%s", pathEscape(group), url.PathEscape(key))
+	u := fmt.Sprintf("groups/%s/variables/%s", PathEscape(group), url.PathEscape(key))
 
 	req, err := s.client.NewRequest(http.MethodDelete, u, nil, options)
 	if err != nil {

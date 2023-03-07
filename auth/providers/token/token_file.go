@@ -80,10 +80,10 @@ func (s *Authenticator) Check(token string) (*authv1.UserInfo, error) {
 
 // https://kubernetes.io/docs/admin/authentication/#static-token-file
 // csv token file:
-//  - four field required (format : token,user,uid,"group1,group2,group3")
-//  - groups can be empty, others cannot be empty
-//  - token should be unique
-//  - one user can have multiple token
+//   - four field required (format : token,user,uid,"group1,group2,group3")
+//   - groups can be empty, others cannot be empty
+//   - token should be unique
+//   - one user can have multiple token
 func LoadTokenFile(file string) (map[string]authv1.UserInfo, error) {
 	csvFile, err := os.Open(file)
 	if err != nil {

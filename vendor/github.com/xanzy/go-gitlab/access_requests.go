@@ -25,7 +25,7 @@ import (
 // AccessRequest represents a access request for a group or project.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/access_requests.html
+// https://docs.gitlab.com/ee/api/access_requests.html
 type AccessRequest struct {
 	ID          int              `json:"id"`
 	Username    string           `json:"username"`
@@ -39,7 +39,7 @@ type AccessRequest struct {
 // AccessRequestsService handles communication with the project/group
 // access requests related methods of the GitLab API.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/access_requests.html
+// GitLab API docs: https://docs.gitlab.com/ee/api/access_requests.html
 type AccessRequestsService struct {
 	client *Client
 }
@@ -48,20 +48,20 @@ type AccessRequestsService struct {
 // ListProjectAccessRequests() or ListGroupAccessRequests() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/access_requests.html#list-access-requests-for-a-group-or-project
+// https://docs.gitlab.com/ee/api/access_requests.html#list-access-requests-for-a-group-or-project
 type ListAccessRequestsOptions ListOptions
 
 // ListProjectAccessRequests gets a list of access requests
 // viewable by the authenticated user.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/access_requests.html#list-access-requests-for-a-group-or-project
+// https://docs.gitlab.com/ee/api/access_requests.html#list-access-requests-for-a-group-or-project
 func (s *AccessRequestsService) ListProjectAccessRequests(pid interface{}, opt *ListAccessRequestsOptions, options ...RequestOptionFunc) ([]*AccessRequest, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/access_requests", pathEscape(project))
+	u := fmt.Sprintf("projects/%s/access_requests", PathEscape(project))
 
 	req, err := s.client.NewRequest(http.MethodGet, u, opt, options)
 	if err != nil {
@@ -81,13 +81,13 @@ func (s *AccessRequestsService) ListProjectAccessRequests(pid interface{}, opt *
 // viewable by the authenticated user.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/access_requests.html#list-access-requests-for-a-group-or-project
+// https://docs.gitlab.com/ee/api/access_requests.html#list-access-requests-for-a-group-or-project
 func (s *AccessRequestsService) ListGroupAccessRequests(gid interface{}, opt *ListAccessRequestsOptions, options ...RequestOptionFunc) ([]*AccessRequest, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/access_requests", pathEscape(group))
+	u := fmt.Sprintf("groups/%s/access_requests", PathEscape(group))
 
 	req, err := s.client.NewRequest(http.MethodGet, u, opt, options)
 	if err != nil {
@@ -107,13 +107,13 @@ func (s *AccessRequestsService) ListGroupAccessRequests(gid interface{}, opt *Li
 // to a group or project.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/access_requests.html#request-access-to-a-group-or-project
+// https://docs.gitlab.com/ee/api/access_requests.html#request-access-to-a-group-or-project
 func (s *AccessRequestsService) RequestProjectAccess(pid interface{}, options ...RequestOptionFunc) (*AccessRequest, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/access_requests", pathEscape(project))
+	u := fmt.Sprintf("projects/%s/access_requests", PathEscape(project))
 
 	req, err := s.client.NewRequest(http.MethodPost, u, nil, options)
 	if err != nil {
@@ -133,13 +133,13 @@ func (s *AccessRequestsService) RequestProjectAccess(pid interface{}, options ..
 // to a group or project.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/access_requests.html#request-access-to-a-group-or-project
+// https://docs.gitlab.com/ee/api/access_requests.html#request-access-to-a-group-or-project
 func (s *AccessRequestsService) RequestGroupAccess(gid interface{}, options ...RequestOptionFunc) (*AccessRequest, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/access_requests", pathEscape(group))
+	u := fmt.Sprintf("groups/%s/access_requests", PathEscape(group))
 
 	req, err := s.client.NewRequest(http.MethodPost, u, nil, options)
 	if err != nil {
@@ -159,7 +159,7 @@ func (s *AccessRequestsService) RequestGroupAccess(gid interface{}, options ...R
 // ApproveProjectAccessRequest() and ApproveGroupAccessRequest() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/access_requests.html#approve-an-access-request
+// https://docs.gitlab.com/ee/api/access_requests.html#approve-an-access-request
 type ApproveAccessRequestOptions struct {
 	AccessLevel *AccessLevelValue `url:"access_level,omitempty" json:"access_level,omitempty"`
 }
@@ -167,13 +167,13 @@ type ApproveAccessRequestOptions struct {
 // ApproveProjectAccessRequest approves an access request for the given user.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/access_requests.html#approve-an-access-request
+// https://docs.gitlab.com/ee/api/access_requests.html#approve-an-access-request
 func (s *AccessRequestsService) ApproveProjectAccessRequest(pid interface{}, user int, opt *ApproveAccessRequestOptions, options ...RequestOptionFunc) (*AccessRequest, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/access_requests/%d/approve", pathEscape(project), user)
+	u := fmt.Sprintf("projects/%s/access_requests/%d/approve", PathEscape(project), user)
 
 	req, err := s.client.NewRequest(http.MethodPut, u, opt, options)
 	if err != nil {
@@ -192,13 +192,13 @@ func (s *AccessRequestsService) ApproveProjectAccessRequest(pid interface{}, use
 // ApproveGroupAccessRequest approves an access request for the given user.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/access_requests.html#approve-an-access-request
+// https://docs.gitlab.com/ee/api/access_requests.html#approve-an-access-request
 func (s *AccessRequestsService) ApproveGroupAccessRequest(gid interface{}, user int, opt *ApproveAccessRequestOptions, options ...RequestOptionFunc) (*AccessRequest, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/access_requests/%d/approve", pathEscape(group), user)
+	u := fmt.Sprintf("groups/%s/access_requests/%d/approve", PathEscape(group), user)
 
 	req, err := s.client.NewRequest(http.MethodPut, u, opt, options)
 	if err != nil {
@@ -217,13 +217,13 @@ func (s *AccessRequestsService) ApproveGroupAccessRequest(gid interface{}, user 
 // DenyProjectAccessRequest denies an access request for the given user.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/access_requests.html#deny-an-access-request
+// https://docs.gitlab.com/ee/api/access_requests.html#deny-an-access-request
 func (s *AccessRequestsService) DenyProjectAccessRequest(pid interface{}, user int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
 	}
-	u := fmt.Sprintf("projects/%s/access_requests/%d", pathEscape(project), user)
+	u := fmt.Sprintf("projects/%s/access_requests/%d", PathEscape(project), user)
 
 	req, err := s.client.NewRequest(http.MethodDelete, u, nil, options)
 	if err != nil {
@@ -236,13 +236,13 @@ func (s *AccessRequestsService) DenyProjectAccessRequest(pid interface{}, user i
 // DenyGroupAccessRequest denies an access request for the given user.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/access_requests.html#deny-an-access-request
+// https://docs.gitlab.com/ee/api/access_requests.html#deny-an-access-request
 func (s *AccessRequestsService) DenyGroupAccessRequest(gid interface{}, user int, options ...RequestOptionFunc) (*Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, err
 	}
-	u := fmt.Sprintf("groups/%s/access_requests/%d", pathEscape(group), user)
+	u := fmt.Sprintf("groups/%s/access_requests/%d", PathEscape(group), user)
 
 	req, err := s.client.NewRequest(http.MethodDelete, u, nil, options)
 	if err != nil {

@@ -18,7 +18,7 @@ package google
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
@@ -44,7 +44,7 @@ func NewOptions() Options {
 
 func (o *Options) Configure() error {
 	if o.ServiceAccountJsonFile != "" {
-		sa, err := ioutil.ReadFile(o.ServiceAccountJsonFile)
+		sa, err := os.ReadFile(o.ServiceAccountJsonFile)
 		if err != nil {
 			return errors.Wrapf(err, "failed to load service account json file %s", o.ServiceAccountJsonFile)
 		}
@@ -83,7 +83,7 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 	container := d.Spec.Template.Spec.Containers[0]
 
 	// create auth secret
-	sa, err := ioutil.ReadFile(o.ServiceAccountJsonFile)
+	sa, err := os.ReadFile(o.ServiceAccountJsonFile)
 	if err != nil {
 		return nil, err
 	}

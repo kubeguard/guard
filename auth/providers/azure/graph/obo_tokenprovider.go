@@ -17,7 +17,7 @@ limitations under the License.
 package graph
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -80,7 +80,7 @@ func (u *oboTokenProvider) Acquire(token string) (AuthResponse, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		data, _ := ioutil.ReadAll(resp.Body)
+		data, _ := io.ReadAll(resp.Body)
 		return authResp, errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data))
 	}
 	err = json.NewDecoder(resp.Body).Decode(&authResp)

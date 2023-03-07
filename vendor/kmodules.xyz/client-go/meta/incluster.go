@@ -20,7 +20,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -31,21 +30,36 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-func Namespace() string {
-	if ns := os.Getenv("KUBE_NAMESPACE"); ns != "" {
+// xref: https://kubernetes.io/docs/concepts/workloads/pods/downward-api/
+// xref: https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/#use-pod-fields-as-values-for-environment-variables
+
+func NodeName() string {
+	return os.Getenv("NODE_NAME")
+}
+
+func PodName() string {
+	if name := os.Getenv("POD_NAME"); name != "" {
+		return name
+	}
+	s, _ := os.Hostname()
+	return s
+}
+
+func PodNamespace() string {
+	if ns := os.Getenv("POD_NAMESPACE"); ns != "" {
 		return ns
 	}
 
-	if ns := os.Getenv("MY_POD_NAMESPACE"); ns != "" {
-		return ns
-	}
-
-	if data, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace"); err == nil {
+	if data, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace"); err == nil {
 		if ns := strings.TrimSpace(string(data)); len(ns) > 0 {
 			return ns
 		}
 	}
 	return core.NamespaceDefault
+}
+
+func PodServiceAccount() string {
+	return os.Getenv("POD_SERVICE_ACCOUNT")
 }
 
 // PossiblyInCluster returns true if loading an inside-kubernetes-cluster is possible.

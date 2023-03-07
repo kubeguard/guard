@@ -23,7 +23,6 @@ import (
 
 	"gomodules.xyz/logs"
 	"k8s.io/client-go/util/homedir"
-	"k8s.io/klog/v2"
 )
 
 type E2EOptions struct {
@@ -47,10 +46,10 @@ func enableLogging() {
 		logs.InitLogs()
 		defer logs.FlushLogs()
 	}()
-	err := flag.Set("logtostderr", "true")
-	if err != nil {
-		klog.Fatal(err)
-	}
+	//err := flag.Set("logtostderr", "true")
+	//if err != nil {
+	//	klog.Fatal(err)
+	//}
 	logLevelFlag := flag.Lookup("v")
 	if logLevelFlag != nil {
 		if len(logLevelFlag.Value.String()) > 0 && logLevelFlag.Value.String() != "0" {

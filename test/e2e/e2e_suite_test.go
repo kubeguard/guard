@@ -22,8 +22,8 @@ import (
 
 	"go.kubeguard.dev/guard/test/e2e/framework"
 
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/reporters"
+	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/ginkgo/v2/types"
 	. "github.com/onsi/gomega"
 	"gomodules.xyz/logs"
 	"k8s.io/client-go/kubernetes"
@@ -40,8 +40,12 @@ func TestE2e(t *testing.T) {
 	logs.InitLogs()
 	RegisterFailHandler(Fail)
 	SetDefaultEventuallyTimeout(TIMEOUT)
-	junitReporter := reporters.NewJUnitReporter("junit.xml")
-	RunSpecsWithDefaultAndCustomReporters(t, "e2e Suite", []Reporter{junitReporter})
+
+	reporterConfig := types.NewDefaultReporterConfig()
+	reporterConfig.JUnitReport = "junit.xml"
+	reporterConfig.JSONReport = "report.json"
+	reporterConfig.Verbose = true
+	RunSpecs(t, "e2e Suite", Label("Kubeguard"), reporterConfig)
 }
 
 var _ = BeforeSuite(func() {

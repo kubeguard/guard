@@ -22,7 +22,7 @@ guard init client [flags]
 ```
   -h, --help                  help for client
   -o, --organization string   Name of Organization (Azure/Github/Gitlab/Google/Ldap/Token-Auth).
-      --pki-dir string        Path to directory where pki files are stored. (default "/home/tamal/.guard")
+      --pki-dir string        Path to directory where pki files are stored. (default "/Users/tamal/.guard")
 ```
 
 ### SEE ALSO
