@@ -259,10 +259,10 @@ func ReconcileDiscoverResources(ctx context.Context, wg *sync.WaitGroup, loopDur
 				counterDiscoverResources.WithLabelValues(ConvertIntToString(code)).Inc()
 				DiscoverResourcesTotalDuration.Observe(discoverResourcesDuration)
 				klog.Errorf("Failed to reconcile map of data actions. Error:%s", err)
+			} else {
+				counterDiscoverResources.WithLabelValues(ConvertIntToString(http.StatusOK)).Inc()
+				DiscoverResourcesTotalDuration.Observe(discoverResourcesDuration)
 			}
-
-			counterDiscoverResources.WithLabelValues(ConvertIntToString(http.StatusOK)).Inc()
-			DiscoverResourcesTotalDuration.Observe(discoverResourcesDuration)
 		case <-ctx.Done():
 			return
 		}
