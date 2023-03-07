@@ -25,7 +25,7 @@ import (
 // related methods of the GitLab API.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_boards.html
+// https://docs.gitlab.com/ee/api/group_boards.html
 type GroupIssueBoardsService struct {
 	client *Client
 }
@@ -33,7 +33,7 @@ type GroupIssueBoardsService struct {
 // GroupIssueBoard represents a GitLab group issue board.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_boards.html
+// https://docs.gitlab.com/ee/api/group_boards.html
 type GroupIssueBoard struct {
 	ID        int          `json:"id"`
 	Name      string       `json:"name"`
@@ -50,19 +50,19 @@ func (b GroupIssueBoard) String() string {
 // ListGroupIssueBoards() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_boards.html#group-board
+// https://docs.gitlab.com/ee/api/group_boards.html#list-all-group-issue-boards-in-a-group
 type ListGroupIssueBoardsOptions ListOptions
 
 // ListGroupIssueBoards gets a list of all issue boards in a group.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_boards.html#group-board
+// https://docs.gitlab.com/ee/api/group_boards.html#list-all-group-issue-boards-in-a-group
 func (s *GroupIssueBoardsService) ListGroupIssueBoards(gid interface{}, opt *ListGroupIssueBoardsOptions, options ...RequestOptionFunc) ([]*GroupIssueBoard, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/boards", pathEscape(group))
+	u := fmt.Sprintf("groups/%s/boards", PathEscape(group))
 
 	req, err := s.client.NewRequest(http.MethodGet, u, opt, options)
 	if err != nil {
@@ -82,7 +82,7 @@ func (s *GroupIssueBoardsService) ListGroupIssueBoards(gid interface{}, opt *Lis
 // CreateGroupIssueBoard() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_boards.html#create-a-group-issue-board-premium
+// https://docs.gitlab.com/ee/api/group_boards.html#create-a-group-issue-board
 type CreateGroupIssueBoardOptions struct {
 	Name *string `url:"name" json:"name"`
 }
@@ -90,13 +90,13 @@ type CreateGroupIssueBoardOptions struct {
 // CreateGroupIssueBoard creates a new issue board.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_boards.html#create-a-group-issue-board-premium
+// https://docs.gitlab.com/ee/api/group_boards.html#create-a-group-issue-board
 func (s *GroupIssueBoardsService) CreateGroupIssueBoard(gid interface{}, opt *CreateGroupIssueBoardOptions, options ...RequestOptionFunc) (*GroupIssueBoard, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/boards", pathEscape(group))
+	u := fmt.Sprintf("groups/%s/boards", PathEscape(group))
 
 	req, err := s.client.NewRequest(http.MethodPost, u, opt, options)
 	if err != nil {
@@ -115,13 +115,13 @@ func (s *GroupIssueBoardsService) CreateGroupIssueBoard(gid interface{}, opt *Cr
 // GetGroupIssueBoard gets a single issue board of a group.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_boards.html#single-board
+// https://docs.gitlab.com/ee/api/group_boards.html#single-group-issue-board
 func (s *GroupIssueBoardsService) GetGroupIssueBoard(gid interface{}, board int, options ...RequestOptionFunc) (*GroupIssueBoard, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/boards/%d", pathEscape(group), board)
+	u := fmt.Sprintf("groups/%s/boards/%d", PathEscape(group), board)
 
 	req, err := s.client.NewRequest(http.MethodGet, u, nil, options)
 	if err != nil {
@@ -140,25 +140,25 @@ func (s *GroupIssueBoardsService) GetGroupIssueBoard(gid interface{}, board int,
 // UpdateGroupIssueBoardOptions represents a group issue board.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_boards.html#update-a-group-issue-board-premium
+// https://docs.gitlab.com/ee/api/group_boards.html#update-a-group-issue-board
 type UpdateGroupIssueBoardOptions struct {
 	Name        *string `url:"name,omitempty" json:"name,omitempty"`
 	AssigneeID  *int    `url:"assignee_id,omitempty" json:"assignee_id,omitempty"`
 	MilestoneID *int    `url:"milestone_id,omitempty" json:"milestone_id,omitempty"`
-	Labels      Labels  `url:"labels,omitempty" json:"labels,omitempty"`
+	Labels      *Labels `url:"labels,omitempty" json:"labels,omitempty"`
 	Weight      *int    `url:"weight,omitempty" json:"weight,omitempty"`
 }
 
 // UpdateIssueBoard updates a single issue board of a group.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_boards.html#update-a-group-issue-board-premium
+// https://docs.gitlab.com/ee/api/group_boards.html#update-a-group-issue-board
 func (s *GroupIssueBoardsService) UpdateIssueBoard(gid interface{}, board int, opt *UpdateGroupIssueBoardOptions, options ...RequestOptionFunc) (*GroupIssueBoard, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/boards/%d", pathEscape(group), board)
+	u := fmt.Sprintf("groups/%s/boards/%d", PathEscape(group), board)
 
 	req, err := s.client.NewRequest(http.MethodPut, u, opt, options)
 	if err != nil {
@@ -177,13 +177,13 @@ func (s *GroupIssueBoardsService) UpdateIssueBoard(gid interface{}, board int, o
 // DeleteIssueBoard delete a single issue board of a group.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_boards.html#delete-a-group-issue-board-premium
+// https://docs.gitlab.com/ee/api/group_boards.html#delete-a-group-issue-board
 func (s *GroupIssueBoardsService) DeleteIssueBoard(gid interface{}, board int, options ...RequestOptionFunc) (*Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, err
 	}
-	u := fmt.Sprintf("groups/%s/boards/%d", pathEscape(group), board)
+	u := fmt.Sprintf("groups/%s/boards/%d", PathEscape(group), board)
 
 	req, err := s.client.NewRequest(http.MethodDelete, u, nil, options)
 	if err != nil {
@@ -197,19 +197,19 @@ func (s *GroupIssueBoardsService) DeleteIssueBoard(gid interface{}, board int, o
 // ListGroupIssueBoardLists() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_boards.html#list-board-lists
+// https://docs.gitlab.com/ee/api/group_boards.html#list-group-issue-board-lists
 type ListGroupIssueBoardListsOptions ListOptions
 
 // ListGroupIssueBoardLists gets a list of the issue board's lists. Does not include
 // backlog and closed lists.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/group_boards.html#list-board-lists
+// GitLab API docs: https://docs.gitlab.com/ee/api/group_boards.html#list-group-issue-board-lists
 func (s *GroupIssueBoardsService) ListGroupIssueBoardLists(gid interface{}, board int, opt *ListGroupIssueBoardListsOptions, options ...RequestOptionFunc) ([]*BoardList, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/boards/%d/lists", pathEscape(group), board)
+	u := fmt.Sprintf("groups/%s/boards/%d/lists", PathEscape(group), board)
 
 	req, err := s.client.NewRequest(http.MethodGet, u, opt, options)
 	if err != nil {
@@ -228,14 +228,14 @@ func (s *GroupIssueBoardsService) ListGroupIssueBoardLists(gid interface{}, boar
 // GetGroupIssueBoardList gets a single issue board list.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_boards.html#single-board-list
+// https://docs.gitlab.com/ee/api/group_boards.html#single-group-issue-board-list
 func (s *GroupIssueBoardsService) GetGroupIssueBoardList(gid interface{}, board, list int, options ...RequestOptionFunc) (*BoardList, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
 	}
 	u := fmt.Sprintf("groups/%s/boards/%d/lists/%d",
-		pathEscape(group),
+		PathEscape(group),
 		board,
 		list,
 	)
@@ -258,7 +258,7 @@ func (s *GroupIssueBoardsService) GetGroupIssueBoardList(gid interface{}, board,
 // CreateGroupIssueBoardList() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_boards.html#new-board-list
+// https://docs.gitlab.com/ee/api/group_boards.html#new-group-issue-board-list
 type CreateGroupIssueBoardListOptions struct {
 	LabelID *int `url:"label_id" json:"label_id"`
 }
@@ -266,13 +266,13 @@ type CreateGroupIssueBoardListOptions struct {
 // CreateGroupIssueBoardList creates a new issue board list.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_boards.html#new-board-list
+// https://docs.gitlab.com/ee/api/group_boards.html#new-group-issue-board-list
 func (s *GroupIssueBoardsService) CreateGroupIssueBoardList(gid interface{}, board int, opt *CreateGroupIssueBoardListOptions, options ...RequestOptionFunc) (*BoardList, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/boards/%d/lists", pathEscape(group), board)
+	u := fmt.Sprintf("groups/%s/boards/%d/lists", PathEscape(group), board)
 
 	req, err := s.client.NewRequest(http.MethodPost, u, opt, options)
 	if err != nil {
@@ -292,7 +292,7 @@ func (s *GroupIssueBoardsService) CreateGroupIssueBoardList(gid interface{}, boa
 // UpdateGroupIssueBoardList() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_boards.html#edit-board-list
+// https://docs.gitlab.com/ee/api/group_boards.html#edit-group-issue-board-list
 type UpdateGroupIssueBoardListOptions struct {
 	Position *int `url:"position" json:"position"`
 }
@@ -301,14 +301,14 @@ type UpdateGroupIssueBoardListOptions struct {
 // group issue board list.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_boards.html#edit-board-list
+// https://docs.gitlab.com/ee/api/group_boards.html#edit-group-issue-board-list
 func (s *GroupIssueBoardsService) UpdateIssueBoardList(gid interface{}, board, list int, opt *UpdateGroupIssueBoardListOptions, options ...RequestOptionFunc) ([]*BoardList, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
 	}
 	u := fmt.Sprintf("groups/%s/boards/%d/lists/%d",
-		pathEscape(group),
+		PathEscape(group),
 		board,
 		list,
 	)
@@ -319,7 +319,7 @@ func (s *GroupIssueBoardsService) UpdateIssueBoardList(gid interface{}, board, l
 	}
 
 	var gbl []*BoardList
-	resp, err := s.client.Do(req, gbl)
+	resp, err := s.client.Do(req, &gbl)
 	if err != nil {
 		return nil, resp, err
 	}
@@ -331,14 +331,14 @@ func (s *GroupIssueBoardsService) UpdateIssueBoardList(gid interface{}, board, l
 // Only for admins and group owners.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_boards.html#delete-a-board-list
+// https://docs.gitlab.com/ee/api/group_boards.html#delete-a-group-issue-board-list
 func (s *GroupIssueBoardsService) DeleteGroupIssueBoardList(gid interface{}, board, list int, options ...RequestOptionFunc) (*Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, err
 	}
 	u := fmt.Sprintf("groups/%s/boards/%d/lists/%d",
-		pathEscape(group),
+		PathEscape(group),
 		board,
 		list,
 	)

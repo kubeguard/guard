@@ -17,7 +17,7 @@ limitations under the License.
 package installer
 
 import (
-	"io/ioutil"
+	"os"
 
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,7 +41,7 @@ func newProxySecret(namespace string, httpsProxy string, httpProxy string, noPro
 }
 
 func newProxyCertSecret(namespace string, proxyCert string) (runtime.Object, error) {
-	cert, err := ioutil.ReadFile(proxyCert)
+	cert, err := os.ReadFile(proxyCert)
 	if err != nil {
 		return nil, err
 	}

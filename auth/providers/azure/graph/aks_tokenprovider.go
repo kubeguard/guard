@@ -18,7 +18,7 @@ package graph
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"go.kubeguard.dev/guard/util/httpclient"
@@ -72,7 +72,7 @@ func (u *aksTokenProvider) Acquire(token string) (AuthResponse, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		data, _ := ioutil.ReadAll(resp.Body)
+		data, _ := io.ReadAll(resp.Body)
 		return authResp, errors.Errorf("request failed with status code: %d and response: %s", resp.StatusCode, string(data))
 	}
 	err = json.NewDecoder(resp.Body).Decode(&authResp)

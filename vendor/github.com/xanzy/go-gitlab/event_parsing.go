@@ -27,26 +27,35 @@ type EventType string
 
 // List of available event types.
 const (
+	EventConfidentialIssue EventType = "Confidential Issue Hook"
+	EventConfidentialNote  EventType = "Confidential Note Hook"
 	EventTypeBuild         EventType = "Build Hook"
 	EventTypeDeployment    EventType = "Deployment Hook"
 	EventTypeIssue         EventType = "Issue Hook"
-	EventConfidentialIssue EventType = "Confidential Issue Hook"
 	EventTypeJob           EventType = "Job Hook"
+	EventTypeMember        EventType = "Member Hook"
 	EventTypeMergeRequest  EventType = "Merge Request Hook"
 	EventTypeNote          EventType = "Note Hook"
-	EventConfidentialNote  EventType = "Confidential Note Hook"
 	EventTypePipeline      EventType = "Pipeline Hook"
 	EventTypePush          EventType = "Push Hook"
 	EventTypeRelease       EventType = "Release Hook"
+	EventTypeServiceHook   EventType = "Service Hook"
+	EventTypeSubGroup      EventType = "Subgroup Hook"
 	EventTypeSystemHook    EventType = "System Hook"
 	EventTypeTagPush       EventType = "Tag Push Hook"
 	EventTypeWikiPage      EventType = "Wiki Page Hook"
 )
 
 const (
+	eventObjectKindPush         = "push"
+	eventObjectKindTagPush      = "tag_push"
+	eventObjectKindMergeRequest = "merge_request"
+)
+
+const (
 	noteableTypeCommit       = "Commit"
-	noteableTypeMergeRequest = "MergeRequest"
 	noteableTypeIssue        = "Issue"
+	noteableTypeMergeRequest = "MergeRequest"
 	noteableTypeSnippet      = "Snippet"
 )
 
@@ -55,6 +64,10 @@ type noteEvent struct {
 	ObjectAttributes struct {
 		NoteableType string `json:"noteable_type"`
 	} `json:"object_attributes"`
+}
+
+type serviceEvent struct {
+	ObjectKind string `json:"object_kind"`
 }
 
 const eventTypeHeader = "X-Gitlab-Event"
@@ -68,20 +81,19 @@ func HookEventType(r *http.Request) EventType {
 //
 // Example usage:
 //
-// func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-//     payload, err := ioutil.ReadAll(r.Body)
-//     if err != nil { ... }
-//     event, err := gitlab.ParseHook(gitlab.HookEventType(r), payload)
-//     if err != nil { ... }
-//     switch event := event.(type) {
-//     case *gitlab.PushEvent:
-//         processPushEvent(event)
-//     case *gitlab.MergeEvent:
-//         processMergeEvent(event)
-//     ...
-//     }
-// }
-//
+//	func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+//	    payload, err := ioutil.ReadAll(r.Body)
+//	    if err != nil { ... }
+//	    event, err := gitlab.ParseHook(gitlab.HookEventType(r), payload)
+//	    if err != nil { ... }
+//	    switch event := event.(type) {
+//	    case *gitlab.PushEvent:
+//	        processPushEvent(event)
+//	    case *gitlab.MergeEvent:
+//	        processMergeEvent(event)
+//	    ...
+//	    }
+//	}
 func ParseHook(eventType EventType, payload []byte) (event interface{}, err error) {
 	switch eventType {
 	case EventTypeSystemHook:
@@ -97,20 +109,19 @@ func ParseHook(eventType EventType, payload []byte) (event interface{}, err erro
 //
 // Example usage:
 //
-// func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-//     payload, err := ioutil.ReadAll(r.Body)
-//     if err != nil { ... }
-//     event, err := gitlab.ParseSystemhook(payload)
-//     if err != nil { ... }
-//     switch event := event.(type) {
-//     case *gitlab.PushSystemEvent:
-//         processPushSystemEvent(event)
-//     case *gitlab.MergeSystemEvent:
-//         processMergeSystemEvent(event)
-//     ...
-//     }
-// }
-//
+//	func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+//	    payload, err := ioutil.ReadAll(r.Body)
+//	    if err != nil { ... }
+//	    event, err := gitlab.ParseSystemhook(payload)
+//	    if err != nil { ... }
+//	    switch event := event.(type) {
+//	    case *gitlab.PushSystemEvent:
+//	        processPushSystemEvent(event)
+//	    case *gitlab.MergeSystemEvent:
+//	        processMergeSystemEvent(event)
+//	    ...
+//	    }
+//	}
 func ParseSystemhook(payload []byte) (event interface{}, err error) {
 	e := &systemHookEvent{}
 	err = json.Unmarshal(payload, e)
@@ -119,9 +130,9 @@ func ParseSystemhook(payload []byte) (event interface{}, err error) {
 	}
 
 	switch e.EventName {
-	case "push":
+	case eventObjectKindPush:
 		event = &PushSystemEvent{}
-	case "tag_push":
+	case eventObjectKindTagPush:
 		event = &TagPushSystemEvent{}
 	case "repository_update":
 		event = &RepositoryUpdateSystemEvent{}
@@ -137,14 +148,13 @@ func ParseSystemhook(payload []byte) (event interface{}, err error) {
 		"group_destroy",
 		"group_rename":
 		event = &GroupSystemEvent{}
-	case
-		"key_create",
-		"key_destroy":
+	case "key_create", "key_destroy":
 		event = &KeySystemEvent{}
 	case
 		"user_create",
 		"user_destroy",
-		"user_rename":
+		"user_rename",
+		"user_failed_login":
 		event = &UserSystemEvent{}
 	case
 		"user_add_to_group",
@@ -183,20 +193,19 @@ func WebhookEventType(r *http.Request) EventType {
 //
 // Example usage:
 //
-// func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-//     payload, err := ioutil.ReadAll(r.Body)
-//     if err != nil { ... }
-//     event, err := gitlab.ParseWebhook(gitlab.HookEventType(r), payload)
-//     if err != nil { ... }
-//     switch event := event.(type) {
-//     case *gitlab.PushEvent:
-//         processPushEvent(event)
-//     case *gitlab.MergeEvent:
-//         processMergeEvent(event)
-//     ...
-//     }
-// }
-//
+//	func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+//	    payload, err := ioutil.ReadAll(r.Body)
+//	    if err != nil { ... }
+//	    event, err := gitlab.ParseWebhook(gitlab.HookEventType(r), payload)
+//	    if err != nil { ... }
+//	    switch event := event.(type) {
+//	    case *gitlab.PushEvent:
+//	        processPushEvent(event)
+//	    case *gitlab.MergeEvent:
+//	        processMergeEvent(event)
+//	    ...
+//	    }
+//	}
 func ParseWebhook(eventType EventType, payload []byte) (event interface{}, err error) {
 	switch eventType {
 	case EventTypeBuild:
@@ -207,18 +216,10 @@ func ParseWebhook(eventType EventType, payload []byte) (event interface{}, err e
 		event = &IssueEvent{}
 	case EventTypeJob:
 		event = &JobEvent{}
+	case EventTypeMember:
+		event = &MemberEvent{}
 	case EventTypeMergeRequest:
 		event = &MergeEvent{}
-	case EventTypePipeline:
-		event = &PipelineEvent{}
-	case EventTypePush:
-		event = &PushEvent{}
-	case EventTypeRelease:
-		event = &ReleaseEvent{}
-	case EventTypeTagPush:
-		event = &TagEvent{}
-	case EventTypeWikiPage:
-		event = &WikiPageEvent{}
 	case EventTypeNote, EventConfidentialNote:
 		note := &noteEvent{}
 		err := json.Unmarshal(payload, note)
@@ -242,7 +243,34 @@ func ParseWebhook(eventType EventType, payload []byte) (event interface{}, err e
 		default:
 			return nil, fmt.Errorf("unexpected noteable type %s", note.ObjectAttributes.NoteableType)
 		}
-
+	case EventTypePipeline:
+		event = &PipelineEvent{}
+	case EventTypePush:
+		event = &PushEvent{}
+	case EventTypeRelease:
+		event = &ReleaseEvent{}
+	case EventTypeServiceHook:
+		service := &serviceEvent{}
+		err := json.Unmarshal(payload, service)
+		if err != nil {
+			return nil, err
+		}
+		switch service.ObjectKind {
+		case eventObjectKindPush:
+			event = &PushEvent{}
+		case eventObjectKindTagPush:
+			event = &TagEvent{}
+		case eventObjectKindMergeRequest:
+			event = &MergeEvent{}
+		default:
+			return nil, fmt.Errorf("unexpected service type %s", service.ObjectKind)
+		}
+	case EventTypeSubGroup:
+		event = &SubGroupEvent{}
+	case EventTypeTagPush:
+		event = &TagEvent{}
+	case EventTypeWikiPage:
+		event = &WikiPageEvent{}
 	default:
 		return nil, fmt.Errorf("unexpected event type: %s", eventType)
 	}

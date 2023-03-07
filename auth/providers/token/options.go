@@ -17,7 +17,7 @@ limitations under the License.
 package token
 
 import (
-	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
@@ -56,7 +56,7 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 	if err != nil {
 		return nil, err
 	}
-	tokens, err := ioutil.ReadFile(o.AuthFile)
+	tokens, err := os.ReadFile(o.AuthFile)
 	if err != nil {
 		return nil, err
 	}
