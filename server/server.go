@@ -20,9 +20,9 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -31,7 +31,8 @@ import (
 	"go.kubeguard.dev/guard/authz/providers/azure/data"
 	azureutils "go.kubeguard.dev/guard/util/azure"
 
-	"github.com/appscode/pat"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
@@ -115,7 +116,7 @@ func (s Server) ListenAndServe() {
 		 - http://www.bite-code.com/2015/06/25/tls-mutual-auth-in-golang/
 		 - http://www.hydrogen18.com/blog/your-own-pki-tls-golang.html
 	*/
-	caCert, err := ioutil.ReadFile(s.AuthRecommendedOptions.SecureServing.CACertFile)
+	caCert, err := os.ReadFile(s.AuthRecommendedOptions.SecureServing.CACertFile)
 	if err != nil {
 		klog.Fatal(err)
 	}
@@ -143,7 +144,10 @@ func (s Server) ListenAndServe() {
 		NextProtos: []string{"h2", "http/1.1"},
 	}
 
-	m := pat.New()
+	m := chi.NewRouter()
+	m.Use(middleware.RealIP)
+	m.Use(middleware.Logger)
+	m.Use(middleware.Recoverer)
 
 	// Instrument the handlers with all the metrics, injecting the "handler" label by currying.
 	// ref:
@@ -157,8 +161,8 @@ func (s Server) ListenAndServe() {
 		),
 	)
 
-	m.Post("/tokenreviews", handler)
-	m.Get("/metrics", promhttp.Handler())
+	m.Post("/tokenreviews", handler.ServeHTTP)
+	m.Get("/metrics", promhttp.Handler().ServeHTTP)
 	m.Get("/healthz", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(200)
 		w.Header().Set("Content-Type", "application/json")
@@ -202,7 +206,7 @@ func (s Server) ListenAndServe() {
 			),
 		)
 
-		m.Post("/subjectaccessreviews", authzPromHandler)
+		m.Post("/subjectaccessreviews", authzPromHandler.ServeHTTP)
 
 		if s.AuthzRecommendedOptions.AuthzProvider.Has(azure.OrgType) {
 			options := data.DefaultOptions

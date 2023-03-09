@@ -21,7 +21,7 @@ guard init ca [flags]
 
 ```
   -h, --help             help for ca
-      --pki-dir string   Path to directory where pki files are stored. (default "/home/tamal/.guard")
+      --pki-dir string   Path to directory where pki files are stored. (default "/Users/tamal/.guard")
 ```
 
 ### SEE ALSO

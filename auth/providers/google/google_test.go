@@ -33,8 +33,8 @@ import (
 
 	"go.kubeguard.dev/guard/util/httpclient"
 
-	"github.com/appscode/pat"
 	"github.com/coreos/go-oidc"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	gdir "google.golang.org/api/admin/directory/v1"
 	"google.golang.org/api/option"
@@ -216,9 +216,9 @@ func googleServerSetup(jwkResp []byte, groupResp googleGroupResp) (*httptest.Ser
 	}
 	addr := listener.Addr().String()
 
-	m := pat.New()
+	m := chi.NewRouter()
 
-	m.Get("/groups", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	m.Get("/admin/directory/v1/groups", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// have to work on error response
 		err := googleVerifyUrlParams(r.URL)
 		if err != nil {

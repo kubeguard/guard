@@ -21,18 +21,20 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"reflect"
+	"strconv"
 	"time"
 )
 
 // AccessControlValue represents an access control value within GitLab,
 // used for managing access to certain project features.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/projects.html
+// GitLab API docs: https://docs.gitlab.com/ee/api/projects.html
 type AccessControlValue string
 
 // List of available access control values.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/projects.html
+// GitLab API docs: https://docs.gitlab.com/ee/api/projects.html
 const (
 	DisabledAccessControl AccessControlValue = "disabled"
 	EnabledAccessControl  AccessControlValue = "enabled"
@@ -50,12 +52,12 @@ func AccessControl(v AccessControlValue) *AccessControlValue {
 
 // AccessLevelValue represents a permission level within GitLab.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/permissions/permissions.html
+// GitLab API docs: https://docs.gitlab.com/ee/user/permissions.html
 type AccessLevelValue int
 
 // List of available access levels
 //
-// GitLab API docs: https://docs.gitlab.com/ce/permissions/permissions.html
+// GitLab API docs: https://docs.gitlab.com/ee/user/permissions.html
 const (
 	NoPermissions            AccessLevelValue = 0
 	MinimalAccessPermissions AccessLevelValue = 5
@@ -65,15 +67,157 @@ const (
 	MaintainerPermissions    AccessLevelValue = 40
 	OwnerPermissions         AccessLevelValue = 50
 
-	// These are deprecated and should be removed in a future version
+	// Deprecated: Renamed to MaintainerPermissions in GitLab 11.0.
 	MasterPermissions AccessLevelValue = 40
-	OwnerPermission   AccessLevelValue = 50
+	// Deprecated: Renamed to OwnerPermissions.
+	OwnerPermission AccessLevelValue = 50
 )
 
 // AccessLevel is a helper routine that allocates a new AccessLevelValue
 // to store v and returns a pointer to it.
 func AccessLevel(v AccessLevelValue) *AccessLevelValue {
 	p := new(AccessLevelValue)
+	*p = v
+	return p
+}
+
+// UserIDValue represents a user ID value within GitLab.
+type UserIDValue string
+
+// List of available user ID values.
+const (
+	UserIDAny  UserIDValue = "Any"
+	UserIDNone UserIDValue = "None"
+)
+
+// ApproverIDsValue represents an approver ID value within GitLab.
+type ApproverIDsValue struct {
+	value interface{}
+}
+
+// ApproverIDs is a helper routine that creates a new ApproverIDsValue.
+func ApproverIDs(v interface{}) *ApproverIDsValue {
+	switch v.(type) {
+	case UserIDValue, []int:
+		return &ApproverIDsValue{value: v}
+	default:
+		panic("Unsupported value passed as approver ID")
+	}
+}
+
+// EncodeValues implements the query.Encoder interface
+func (a *ApproverIDsValue) EncodeValues(key string, v *url.Values) error {
+	switch value := a.value.(type) {
+	case UserIDValue:
+		v.Set(key, string(value))
+	case []int:
+		v.Del(key)
+		v.Del(key + "[]")
+		for _, id := range value {
+			v.Add(key+"[]", strconv.Itoa(id))
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaler interface
+func (a ApproverIDsValue) MarshalJSON() ([]byte, error) {
+	return json.Marshal(a.value)
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface
+func (a *ApproverIDsValue) UnmarshalJSON(bytes []byte) error {
+	return json.Unmarshal(bytes, a.value)
+}
+
+// AssigneeIDValue represents an assignee ID value within GitLab.
+type AssigneeIDValue struct {
+	value interface{}
+}
+
+// AssigneeID is a helper routine that creates a new AssigneeIDValue.
+func AssigneeID(v interface{}) *AssigneeIDValue {
+	switch v.(type) {
+	case UserIDValue, int:
+		return &AssigneeIDValue{value: v}
+	default:
+		panic("Unsupported value passed as assignee ID")
+	}
+}
+
+// EncodeValues implements the query.Encoder interface
+func (a *AssigneeIDValue) EncodeValues(key string, v *url.Values) error {
+	switch value := a.value.(type) {
+	case UserIDValue:
+		v.Set(key, string(value))
+	case int:
+		v.Set(key, strconv.Itoa(value))
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaler interface
+func (a AssigneeIDValue) MarshalJSON() ([]byte, error) {
+	return json.Marshal(a.value)
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface
+func (a *AssigneeIDValue) UnmarshalJSON(bytes []byte) error {
+	return json.Unmarshal(bytes, a.value)
+}
+
+// ReviewerIDValue represents a reviewer ID value within GitLab.
+type ReviewerIDValue struct {
+	value interface{}
+}
+
+// ReviewerID is a helper routine that creates a new ReviewerIDValue.
+func ReviewerID(v interface{}) *ReviewerIDValue {
+	switch v.(type) {
+	case UserIDValue, int:
+		return &ReviewerIDValue{value: v}
+	default:
+		panic("Unsupported value passed as reviewer ID")
+	}
+}
+
+// EncodeValues implements the query.Encoder interface
+func (a *ReviewerIDValue) EncodeValues(key string, v *url.Values) error {
+	switch value := a.value.(type) {
+	case UserIDValue:
+		v.Set(key, string(value))
+	case int:
+		v.Set(key, strconv.Itoa(value))
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaler interface
+func (a ReviewerIDValue) MarshalJSON() ([]byte, error) {
+	return json.Marshal(a.value)
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface
+func (a *ReviewerIDValue) UnmarshalJSON(bytes []byte) error {
+	return json.Unmarshal(bytes, a.value)
+}
+
+// AvailabilityValue represents an availability value within GitLab.
+type AvailabilityValue string
+
+// List of available availability values.
+//
+// Undocummented, see code at:
+// https://gitlab.com/gitlab-org/gitlab-foss/-/blob/master/app/models/user_status.rb#L22
+const (
+	NotSet AvailabilityValue = "not_set"
+	Busy   AvailabilityValue = "busy"
+)
+
+// Availability is a helper routine that allocates a new AvailabilityValue
+// to store v and returns a pointer to it.
+func Availability(v AvailabilityValue) *AvailabilityValue {
+	p := new(AvailabilityValue)
 	*p = v
 	return p
 }
@@ -126,7 +270,7 @@ type EventTypeValue string
 
 // List of available action type
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/events.html#action-types
+// GitLab API docs: https://docs.gitlab.com/ee/user/profile/contributions_calendar.html#user-contribution-events
 const (
 	CreatedEventType   EventTypeValue = "created"
 	UpdatedEventType   EventTypeValue = "updated"
@@ -146,7 +290,7 @@ type EventTargetTypeValue string
 
 // List of available action type
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/events.html#target-types
+// GitLab API docs: https://docs.gitlab.com/ee/api/events.html#target-types
 const (
 	IssueEventTargetType        EventTargetTypeValue = "issue"
 	MilestoneEventTargetType    EventTargetTypeValue = "milestone"
@@ -159,7 +303,7 @@ const (
 
 // FileActionValue represents the available actions that can be performed on a file.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/commits.html#create-a-commit-with-multiple-files-and-actions
+// GitLab API docs: https://docs.gitlab.com/ee/api/commits.html#create-a-commit-with-multiple-files-and-actions
 type FileActionValue string
 
 // The available file actions.
@@ -179,6 +323,39 @@ func FileAction(v FileActionValue) *FileActionValue {
 	return p
 }
 
+// GenericPackageSelectValue represents a generic package select value.
+type GenericPackageSelectValue string
+
+// The available generic package select values.
+const (
+	SelectPackageFile GenericPackageSelectValue = "package_file"
+)
+
+// GenericPackageSelect is a helper routine that allocates a new
+// GenericPackageSelectValue value to store v and returns a pointer to it.
+func GenericPackageSelect(v GenericPackageSelectValue) *GenericPackageSelectValue {
+	p := new(GenericPackageSelectValue)
+	*p = v
+	return p
+}
+
+// GenericPackageStatusValue represents a generic package status.
+type GenericPackageStatusValue string
+
+// The available generic package statuses.
+const (
+	PackageDefault GenericPackageStatusValue = "default"
+	PackageHidden  GenericPackageStatusValue = "hidden"
+)
+
+// GenericPackageStatus is a helper routine that allocates a new
+// GenericPackageStatusValue value to store v and returns a pointer to it.
+func GenericPackageStatus(v GenericPackageStatusValue) *GenericPackageStatusValue {
+	p := new(GenericPackageStatusValue)
+	*p = v
+	return p
+}
+
 // ISOTime represents an ISO 8601 formatted date
 type ISOTime time.Time
 
@@ -187,6 +364,10 @@ const iso8601 = "2006-01-02"
 
 // MarshalJSON implements the json.Marshaler interface
 func (t ISOTime) MarshalJSON() ([]byte, error) {
+	if reflect.ValueOf(t).IsZero() {
+		return []byte(`null`), nil
+	}
+
 	if y := time.Time(t).Year(); y < 0 || y >= 10000 {
 		// ISO 8901 uses 4 digits for the years
 		return nil, errors.New("json: ISOTime year outside of range [0,9999]")
@@ -233,7 +414,7 @@ type LinkTypeValue string
 // List of available release link types
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/releases/links.html#create-a-link
+// https://docs.gitlab.com/ee/api/releases/links.html#create-a-release-link
 const (
 	ImageLinkType   LinkTypeValue = "image"
 	OtherLinkType   LinkTypeValue = "other"
@@ -258,6 +439,8 @@ type LicenseApprovalStatusValue string
 const (
 	LicenseApproved    LicenseApprovalStatusValue = "approved"
 	LicenseBlacklisted LicenseApprovalStatusValue = "blacklisted"
+	LicenseAllowed     LicenseApprovalStatusValue = "allowed"
+	LicenseDenied      LicenseApprovalStatusValue = "denied"
 )
 
 // LicenseApprovalStatus is a helper routine that allocates a new license
@@ -270,12 +453,12 @@ func LicenseApprovalStatus(v LicenseApprovalStatusValue) *LicenseApprovalStatusV
 
 // MergeMethodValue represents a project merge type within GitLab.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/projects.html#project-merge-method
+// GitLab API docs: https://docs.gitlab.com/ee/api/projects.html#project-merge-method
 type MergeMethodValue string
 
 // List of available merge type
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/projects.html#project-merge-method
+// GitLab API docs: https://docs.gitlab.com/ee/api/projects.html#project-merge-method
 const (
 	NoFastForwardMerge MergeMethodValue = "merge"
 	FastForwardMerge   MergeMethodValue = "ff"
@@ -381,12 +564,12 @@ func NotificationLevel(v NotificationLevelValue) *NotificationLevelValue {
 
 // ProjectCreationLevelValue represents a project creation level within GitLab.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/
+// GitLab API docs: https://docs.gitlab.com/ee/api/
 type ProjectCreationLevelValue string
 
 // List of available project creation levels.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/
+// GitLab API docs: https://docs.gitlab.com/ee/api/
 const (
 	NoOneProjectCreation      ProjectCreationLevelValue = "noone"
 	MaintainerProjectCreation ProjectCreationLevelValue = "maintainer"
@@ -401,14 +584,39 @@ func ProjectCreationLevel(v ProjectCreationLevelValue) *ProjectCreationLevelValu
 	return p
 }
 
+// SharedRunnersSettingValue determines whether shared runners are enabled for a
+// group’s subgroups and projects.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/ee/api/groups.html#options-for-shared_runners_setting
+type SharedRunnersSettingValue string
+
+// List of available shared runner setting levels.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/ee/api/groups.html#options-for-shared_runners_setting
+const (
+	EnabledSharedRunnersSettingValue                  SharedRunnersSettingValue = "enabled"
+	DisabledWithOverrideSharedRunnersSettingValue     SharedRunnersSettingValue = "disabled_with_override"
+	DisabledAndUnoverridableSharedRunnersSettingValue SharedRunnersSettingValue = "disabled_and_unoverridable"
+)
+
+// SharedRunnersSetting is a helper routine that allocates a new SharedRunnersSettingValue
+// to store v and returns a pointer to it.
+func SharedRunnersSetting(v SharedRunnersSettingValue) *SharedRunnersSettingValue {
+	p := new(SharedRunnersSettingValue)
+	*p = v
+	return p
+}
+
 // SubGroupCreationLevelValue represents a sub group creation level within GitLab.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/
+// GitLab API docs: https://docs.gitlab.com/ee/api/
 type SubGroupCreationLevelValue string
 
 // List of available sub group creation levels.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/
+// GitLab API docs: https://docs.gitlab.com/ee/api/
 const (
 	OwnerSubGroupCreationLevelValue      SubGroupCreationLevelValue = "owner"
 	MaintainerSubGroupCreationLevelValue SubGroupCreationLevelValue = "maintainer"
@@ -422,6 +630,29 @@ func SubGroupCreationLevel(v SubGroupCreationLevelValue) *SubGroupCreationLevelV
 	return p
 }
 
+// SquashOptionValue represents a squash optional level within GitLab.
+//
+// GitLab API docs: https://docs.gitlab.com/ee/api/projects.html#create-project
+type SquashOptionValue string
+
+// List of available squash options.
+//
+// GitLab API docs: https://docs.gitlab.com/ee/api/projects.html#create-project
+const (
+	SquashOptionNever      SquashOptionValue = "never"
+	SquashOptionAlways     SquashOptionValue = "always"
+	SquashOptionDefaultOff SquashOptionValue = "default_off"
+	SquashOptionDefaultOn  SquashOptionValue = "default_on"
+)
+
+// SquashOption is a helper routine that allocates a new SquashOptionValue
+// to store s and returns a pointer to it.
+func SquashOption(s SquashOptionValue) *SquashOptionValue {
+	p := new(SquashOptionValue)
+	*p = s
+	return p
+}
+
 // TasksCompletionStatus represents tasks of the issue/merge request.
 type TasksCompletionStatus struct {
 	Count          int `json:"count"`
@@ -430,7 +661,7 @@ type TasksCompletionStatus struct {
 
 // TodoAction represents the available actions that can be performed on a todo.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/todos.html
+// GitLab API docs: https://docs.gitlab.com/ee/api/todos.html
 type TodoAction string
 
 // The available todo actions.
@@ -445,7 +676,7 @@ const (
 
 // TodoTargetType represents the available target that can be linked to a todo.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/todos.html
+// GitLab API docs: https://docs.gitlab.com/ee/api/todos.html
 type TodoTargetType string
 
 const (
@@ -455,14 +686,23 @@ const (
 	TodoTargetMergeRequest     TodoTargetType = "MergeRequest"
 )
 
+// UploadType represents the available upload types.
+type UploadType string
+
+// The available upload types.
+const (
+	UploadAvatar UploadType = "avatar"
+	UploadFile   UploadType = "file"
+)
+
 // VariableTypeValue represents a variable type within GitLab.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/
+// GitLab API docs: https://docs.gitlab.com/ee/api/
 type VariableTypeValue string
 
 // List of available variable types.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/
+// GitLab API docs: https://docs.gitlab.com/ee/api/
 const (
 	EnvVariableType  VariableTypeValue = "env_var"
 	FileVariableType VariableTypeValue = "file"
@@ -478,12 +718,12 @@ func VariableType(v VariableTypeValue) *VariableTypeValue {
 
 // VisibilityValue represents a visibility level within GitLab.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/
+// GitLab API docs: https://docs.gitlab.com/ee/api/
 type VisibilityValue string
 
 // List of available visibility levels.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/
+// GitLab API docs: https://docs.gitlab.com/ee/api/
 const (
 	PrivateVisibility  VisibilityValue = "private"
 	InternalVisibility VisibilityValue = "internal"
@@ -500,7 +740,7 @@ func Visibility(v VisibilityValue) *VisibilityValue {
 
 // WikiFormatValue represents the available wiki formats.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/wikis.html
+// GitLab API docs: https://docs.gitlab.com/ee/api/wikis.html
 type WikiFormatValue string
 
 // The available wiki formats.
@@ -527,9 +767,8 @@ func Bool(v bool) *bool {
 	return p
 }
 
-// Int is a helper routine that allocates a new int32 value
-// to store v and returns a pointer to it, but unlike Int32
-// its argument value is an int.
+// Int is a helper routine that allocates a new int value
+// to store v and returns a pointer to it.
 func Int(v int) *int {
 	p := new(int)
 	*p = v

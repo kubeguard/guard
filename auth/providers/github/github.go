@@ -22,7 +22,7 @@ import (
 
 	"go.kubeguard.dev/guard/auth"
 
-	"github.com/google/go-github/v25/github"
+	"github.com/google/go-github/v50/github"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 	authv1 "k8s.io/api/authentication/v1"

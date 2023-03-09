@@ -30,7 +30,7 @@ import (
 // GroupImportExportService handles communication with the group import export
 // related methods of the GitLab API.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/group_import_export.html
+// GitLab API docs: https://docs.gitlab.com/ee/api/group_import_export.html
 type GroupImportExportService struct {
 	client *Client
 }
@@ -38,13 +38,13 @@ type GroupImportExportService struct {
 // ScheduleExport starts a new group export.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_import_export.html#schedule-new-export
+// https://docs.gitlab.com/ee/api/group_import_export.html#schedule-new-export
 func (s *GroupImportExportService) ScheduleExport(gid interface{}, options ...RequestOptionFunc) (*Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, err
 	}
-	u := fmt.Sprintf("groups/%s/export", pathEscape(group))
+	u := fmt.Sprintf("groups/%s/export", PathEscape(group))
 
 	req, err := s.client.NewRequest(http.MethodPost, u, nil, options)
 	if err != nil {
@@ -57,13 +57,13 @@ func (s *GroupImportExportService) ScheduleExport(gid interface{}, options ...Re
 // ExportDownload downloads the finished export.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_import_export.html#export-download
+// https://docs.gitlab.com/ee/api/group_import_export.html#export-download
 func (s *GroupImportExportService) ExportDownload(gid interface{}, options ...RequestOptionFunc) (*bytes.Reader, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/export/download", pathEscape(group))
+	u := fmt.Sprintf("groups/%s/export/download", PathEscape(group))
 
 	req, err := s.client.NewRequest(http.MethodGet, u, nil, options)
 	if err != nil {
@@ -82,7 +82,7 @@ func (s *GroupImportExportService) ExportDownload(gid interface{}, options ...Re
 // GroupImportFileOptions represents the available ImportFile() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_import_export.html#import-a-file
+// https://docs.gitlab.com/ee/api/group_import_export.html#import-a-file
 type GroupImportFileOptions struct {
 	Name     *string `url:"name,omitempty" json:"name,omitempty"`
 	Path     *string `url:"path,omitempty" json:"path,omitempty"`
@@ -93,7 +93,7 @@ type GroupImportFileOptions struct {
 // ImportFile imports a file.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_import_export.html#import-a-file
+// https://docs.gitlab.com/ee/api/group_import_export.html#import-a-file
 func (s *GroupImportExportService) ImportFile(opt *GroupImportFileOptions, options ...RequestOptionFunc) (*Response, error) {
 	// First check if we got all required options.
 	if opt.Name == nil || *opt.Name == "" {

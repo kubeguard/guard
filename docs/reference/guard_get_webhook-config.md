@@ -24,7 +24,7 @@ guard get webhook-config [flags]
   -h, --help                  help for webhook-config
       --mode string           Mode to generate config, Supported mode: authn, authz (default "authn")
   -o, --organization string   Name of Organization (Azure/Github/Gitlab/Google/Ldap/Token-Auth).
-      --pki-dir string        Path to directory where pki files are stored. (default "/home/tamal/.guard")
+      --pki-dir string        Path to directory where pki files are stored. (default "/Users/tamal/.guard")
 ```
 
 ### SEE ALSO

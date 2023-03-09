@@ -24,7 +24,7 @@ import (
 // ProjectMembersService handles communication with the project members
 // related methods of the GitLab API.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/members.html
+// GitLab API docs: https://docs.gitlab.com/ee/api/members.html
 type ProjectMembersService struct {
 	client *Client
 }
@@ -33,10 +33,11 @@ type ProjectMembersService struct {
 // ListAllProjectMembers() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/members.html#list-all-members-of-a-group-or-project
+// https://docs.gitlab.com/ee/api/members.html#list-all-members-of-a-group-or-project
 type ListProjectMembersOptions struct {
 	ListOptions
-	Query *string `url:"query,omitempty" json:"query,omitempty"`
+	Query   *string `url:"query,omitempty" json:"query,omitempty"`
+	UserIDs *[]int  `url:"user_ids[],omitempty" json:"user_ids,omitempty"`
 }
 
 // ListProjectMembers gets a list of a project's team members viewable by the
@@ -44,13 +45,13 @@ type ListProjectMembersOptions struct {
 // through ancestors groups.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/members.html#list-all-members-of-a-group-or-project
+// https://docs.gitlab.com/ee/api/members.html#list-all-members-of-a-group-or-project
 func (s *ProjectMembersService) ListProjectMembers(pid interface{}, opt *ListProjectMembersOptions, options ...RequestOptionFunc) ([]*ProjectMember, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/members", pathEscape(project))
+	u := fmt.Sprintf("projects/%s/members", PathEscape(project))
 
 	req, err := s.client.NewRequest(http.MethodGet, u, opt, options)
 	if err != nil {
@@ -71,13 +72,13 @@ func (s *ProjectMembersService) ListProjectMembers(pid interface{}, opt *ListPro
 // ancestor groups.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/members.html#list-all-members-of-a-group-or-project-including-inherited-members
+// https://docs.gitlab.com/ee/api/members.html#list-all-members-of-a-group-or-project-including-inherited-and-invited-members
 func (s *ProjectMembersService) ListAllProjectMembers(pid interface{}, opt *ListProjectMembersOptions, options ...RequestOptionFunc) ([]*ProjectMember, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/members/all", pathEscape(project))
+	u := fmt.Sprintf("projects/%s/members/all", PathEscape(project))
 
 	req, err := s.client.NewRequest(http.MethodGet, u, opt, options)
 	if err != nil {
@@ -96,13 +97,13 @@ func (s *ProjectMembersService) ListAllProjectMembers(pid interface{}, opt *List
 // GetProjectMember gets a project team member.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/members.html#get-a-member-of-a-group-or-project
+// https://docs.gitlab.com/ee/api/members.html#get-a-member-of-a-group-or-project
 func (s *ProjectMembersService) GetProjectMember(pid interface{}, user int, options ...RequestOptionFunc) (*ProjectMember, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/members/%d", pathEscape(project), user)
+	u := fmt.Sprintf("projects/%s/members/%d", PathEscape(project), user)
 
 	req, err := s.client.NewRequest(http.MethodGet, u, nil, options)
 	if err != nil {
@@ -121,13 +122,13 @@ func (s *ProjectMembersService) GetProjectMember(pid interface{}, user int, opti
 // GetInheritedProjectMember gets a project team member, including inherited
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/members.html#get-a-member-of-a-group-or-project-including-inherited-members
+// https://docs.gitlab.com/ee/api/members.html#get-a-member-of-a-group-or-project-including-inherited-and-invited-members
 func (s *ProjectMembersService) GetInheritedProjectMember(pid interface{}, user int, options ...RequestOptionFunc) (*ProjectMember, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/members/all/%d", pathEscape(project), user)
+	u := fmt.Sprintf("projects/%s/members/all/%d", PathEscape(project), user)
 
 	req, err := s.client.NewRequest(http.MethodGet, u, nil, options)
 	if err != nil {
@@ -146,7 +147,7 @@ func (s *ProjectMembersService) GetInheritedProjectMember(pid interface{}, user 
 // AddProjectMemberOptions represents the available AddProjectMember() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/members.html#add-a-member-to-a-group-or-project
+// https://docs.gitlab.com/ee/api/members.html#add-a-member-to-a-group-or-project
 type AddProjectMemberOptions struct {
 	UserID      interface{}       `url:"user_id,omitempty" json:"user_id,omitempty"`
 	AccessLevel *AccessLevelValue `url:"access_level,omitempty" json:"access_level,omitempty"`
@@ -159,13 +160,13 @@ type AddProjectMemberOptions struct {
 // existing membership.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/members.html#add-a-member-to-a-group-or-project
+// https://docs.gitlab.com/ee/api/members.html#add-a-member-to-a-group-or-project
 func (s *ProjectMembersService) AddProjectMember(pid interface{}, opt *AddProjectMemberOptions, options ...RequestOptionFunc) (*ProjectMember, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/members", pathEscape(project))
+	u := fmt.Sprintf("projects/%s/members", PathEscape(project))
 
 	req, err := s.client.NewRequest(http.MethodPost, u, opt, options)
 	if err != nil {
@@ -184,22 +185,22 @@ func (s *ProjectMembersService) AddProjectMember(pid interface{}, opt *AddProjec
 // EditProjectMemberOptions represents the available EditProjectMember() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/members.html#edit-a-member-of-a-group-or-project
+// https://docs.gitlab.com/ee/api/members.html#edit-a-member-of-a-group-or-project
 type EditProjectMemberOptions struct {
 	AccessLevel *AccessLevelValue `url:"access_level,omitempty" json:"access_level,omitempty"`
-	ExpiresAt   *string           `url:"expires_at,omitempty" json:"expires_at"`
+	ExpiresAt   *string           `url:"expires_at,omitempty" json:"expires_at,omitempty"`
 }
 
 // EditProjectMember updates a project team member to a specified access level..
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/members.html#edit-a-member-of-a-group-or-project
+// https://docs.gitlab.com/ee/api/members.html#edit-a-member-of-a-group-or-project
 func (s *ProjectMembersService) EditProjectMember(pid interface{}, user int, opt *EditProjectMemberOptions, options ...RequestOptionFunc) (*ProjectMember, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/members/%d", pathEscape(project), user)
+	u := fmt.Sprintf("projects/%s/members/%d", PathEscape(project), user)
 
 	req, err := s.client.NewRequest(http.MethodPut, u, opt, options)
 	if err != nil {
@@ -218,13 +219,13 @@ func (s *ProjectMembersService) EditProjectMember(pid interface{}, user int, opt
 // DeleteProjectMember removes a user from a project team.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/members.html#remove-a-member-from-a-group-or-project
+// https://docs.gitlab.com/ee/api/members.html#remove-a-member-from-a-group-or-project
 func (s *ProjectMembersService) DeleteProjectMember(pid interface{}, user int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
 	}
-	u := fmt.Sprintf("projects/%s/members/%d", pathEscape(project), user)
+	u := fmt.Sprintf("projects/%s/members/%d", PathEscape(project), user)
 
 	req, err := s.client.NewRequest(http.MethodDelete, u, nil, options)
 	if err != nil {

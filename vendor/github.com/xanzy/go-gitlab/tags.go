@@ -25,24 +25,26 @@ import (
 // TagsService handles communication with the tags related methods
 // of the GitLab API.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/tags.html
+// GitLab API docs: https://docs.gitlab.com/ee/api/tags.html
 type TagsService struct {
 	client *Client
 }
 
 // Tag represents a GitLab tag.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/tags.html
+// GitLab API docs: https://docs.gitlab.com/ee/api/tags.html
 type Tag struct {
-	Commit  *Commit      `json:"commit"`
-	Release *ReleaseNote `json:"release"`
-	Name    string       `json:"name"`
-	Message string       `json:"message"`
+	Commit    *Commit      `json:"commit"`
+	Release   *ReleaseNote `json:"release"`
+	Name      string       `json:"name"`
+	Message   string       `json:"message"`
+	Protected bool         `json:"protected"`
+	Target    string       `json:"target"`
 }
 
 // ReleaseNote represents a GitLab version release.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/tags.html
+// GitLab API docs: https://docs.gitlab.com/ee/api/tags.html
 type ReleaseNote struct {
 	TagName     string `json:"tag_name"`
 	Description string `json:"description"`
@@ -55,7 +57,7 @@ func (t Tag) String() string {
 // ListTagsOptions represents the available ListTags() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/tags.html#list-project-repository-tags
+// https://docs.gitlab.com/ee/api/tags.html#list-project-repository-tags
 type ListTagsOptions struct {
 	ListOptions
 	OrderBy *string `url:"order_by,omitempty" json:"order_by,omitempty"`
@@ -67,13 +69,13 @@ type ListTagsOptions struct {
 // alphabetical order.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/tags.html#list-project-repository-tags
+// https://docs.gitlab.com/ee/api/tags.html#list-project-repository-tags
 func (s *TagsService) ListTags(pid interface{}, opt *ListTagsOptions, options ...RequestOptionFunc) ([]*Tag, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/repository/tags", pathEscape(project))
+	u := fmt.Sprintf("projects/%s/repository/tags", PathEscape(project))
 
 	req, err := s.client.NewRequest(http.MethodGet, u, opt, options)
 	if err != nil {
@@ -93,13 +95,13 @@ func (s *TagsService) ListTags(pid interface{}, opt *ListTagsOptions, options ..
 // with the tag information if the tag exists. It returns 404 if the tag does not exist.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/tags.html#get-a-single-repository-tag
+// https://docs.gitlab.com/ee/api/tags.html#get-a-single-repository-tag
 func (s *TagsService) GetTag(pid interface{}, tag string, options ...RequestOptionFunc) (*Tag, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/repository/tags/%s", pathEscape(project), url.PathEscape(tag))
+	u := fmt.Sprintf("projects/%s/repository/tags/%s", PathEscape(project), url.PathEscape(tag))
 
 	req, err := s.client.NewRequest(http.MethodGet, u, nil, options)
 	if err != nil {
@@ -118,25 +120,26 @@ func (s *TagsService) GetTag(pid interface{}, tag string, options ...RequestOpti
 // CreateTagOptions represents the available CreateTag() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/tags.html#create-a-new-tag
+// https://docs.gitlab.com/ee/api/tags.html#create-a-new-tag
 type CreateTagOptions struct {
 	TagName *string `url:"tag_name,omitempty" json:"tag_name,omitempty"`
 	Ref     *string `url:"ref,omitempty" json:"ref,omitempty"`
 	Message *string `url:"message,omitempty" json:"message,omitempty"`
-	// ReleaseDescription parameter was deprecated in GitLab 11.7
+
+	// Deprecated: Use the Releases API instead. (Deprecated in GitLab 11.7)
 	ReleaseDescription *string `url:"release_description:omitempty" json:"release_description,omitempty"`
 }
 
 // CreateTag creates a new tag in the repository that points to the supplied ref.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/tags.html#create-a-new-tag
+// https://docs.gitlab.com/ee/api/tags.html#create-a-new-tag
 func (s *TagsService) CreateTag(pid interface{}, opt *CreateTagOptions, options ...RequestOptionFunc) (*Tag, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/repository/tags", pathEscape(project))
+	u := fmt.Sprintf("projects/%s/repository/tags", PathEscape(project))
 
 	req, err := s.client.NewRequest(http.MethodPost, u, opt, options)
 	if err != nil {
@@ -155,13 +158,13 @@ func (s *TagsService) CreateTag(pid interface{}, opt *CreateTagOptions, options 
 // DeleteTag deletes a tag of a repository with given name.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/tags.html#delete-a-tag
+// https://docs.gitlab.com/ee/api/tags.html#delete-a-tag
 func (s *TagsService) DeleteTag(pid interface{}, tag string, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
 	}
-	u := fmt.Sprintf("projects/%s/repository/tags/%s", pathEscape(project), url.PathEscape(tag))
+	u := fmt.Sprintf("projects/%s/repository/tags/%s", PathEscape(project), url.PathEscape(tag))
 
 	req, err := s.client.NewRequest(http.MethodDelete, u, nil, options)
 	if err != nil {
@@ -176,7 +179,7 @@ func (s *TagsService) DeleteTag(pid interface{}, tag string, options ...RequestO
 // Deprecated: This feature was deprecated in GitLab 11.7.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/tags.html#create-a-new-release
+// https://docs.gitlab.com/ee/api/tags.html#create-a-new-release
 type CreateReleaseNoteOptions struct {
 	Description *string `url:"description:omitempty" json:"description,omitempty"`
 }
@@ -187,13 +190,13 @@ type CreateReleaseNoteOptions struct {
 // Deprecated: This feature was deprecated in GitLab 11.7.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/tags.html#create-a-new-release
+// https://docs.gitlab.com/ee/api/tags.html#create-a-new-release
 func (s *TagsService) CreateReleaseNote(pid interface{}, tag string, opt *CreateReleaseNoteOptions, options ...RequestOptionFunc) (*ReleaseNote, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/repository/tags/%s/release", pathEscape(project), url.PathEscape(tag))
+	u := fmt.Sprintf("projects/%s/repository/tags/%s/release", PathEscape(project), url.PathEscape(tag))
 
 	req, err := s.client.NewRequest(http.MethodPost, u, opt, options)
 	if err != nil {
@@ -212,7 +215,7 @@ func (s *TagsService) CreateReleaseNote(pid interface{}, tag string, opt *Create
 // UpdateReleaseNoteOptions represents the available UpdateReleaseNote() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/tags.html#update-a-release
+// https://docs.gitlab.com/ee/api/tags.html#update-a-release
 type UpdateReleaseNoteOptions struct {
 	Description *string `url:"description:omitempty" json:"description,omitempty"`
 }
@@ -222,13 +225,13 @@ type UpdateReleaseNoteOptions struct {
 // Deprecated: This feature was deprecated in GitLab 11.7.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/tags.html#update-a-release
+// https://docs.gitlab.com/ee/api/tags.html#update-a-release
 func (s *TagsService) UpdateReleaseNote(pid interface{}, tag string, opt *UpdateReleaseNoteOptions, options ...RequestOptionFunc) (*ReleaseNote, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/repository/tags/%s/release", pathEscape(project), url.PathEscape(tag))
+	u := fmt.Sprintf("projects/%s/repository/tags/%s/release", PathEscape(project), url.PathEscape(tag))
 
 	req, err := s.client.NewRequest(http.MethodPut, u, opt, options)
 	if err != nil {
