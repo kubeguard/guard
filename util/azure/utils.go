@@ -299,8 +299,6 @@ func DiscoverResources() error {
 
 	createOperationsMap(apiResourcesList, operationsList)
 
-	klog.V(5).Infof("Operations Map created for resources: %s", operationsMap)
-
 	return nil
 }
 
@@ -383,6 +381,8 @@ func createOperationsMap(apiResourcesList []*metav1.APIResourceList, operationsL
 			}
 		}
 	}
+
+	klog.V(5).Infof("Operations Map created for resources: %s", operationsMap)
 }
 
 func fetchApiResources() ([]*metav1.APIResourceList, error) {
