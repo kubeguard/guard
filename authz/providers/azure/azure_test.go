@@ -28,7 +28,6 @@ import (
 	"go.kubeguard.dev/guard/authz/providers/azure/data"
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 	"go.kubeguard.dev/guard/authz/providers/azure/rbac"
-	azureutils "go.kubeguard.dev/guard/util/azure"
 	errutils "go.kubeguard.dev/guard/util/error"
 
 	"github.com/go-chi/chi/v5"
@@ -62,9 +61,7 @@ func clientSetup(serverUrl, mode string) (*Authorizer, error) {
 		ARMEndPoint: serverUrl + "/arm/",
 	}
 
-	dataActionsMap := azureutils.OperationsMap{}
-
-	c.rbacClient, err = rbac.New(opts, authOpts, &authzInfo, dataActionsMap)
+	c.rbacClient, err = rbac.New(opts, authOpts, &authzInfo)
 	if err != nil {
 		return nil, err
 	}

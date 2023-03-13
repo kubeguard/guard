@@ -27,6 +27,7 @@ import (
 func Test_createOperationsMap(t *testing.T) {
 	type args struct {
 		apiResourcesList []*metav1.APIResourceList
+		initializeNewMap bool
 		operationsList   []Operation
 		clusterType      string
 	}
@@ -54,6 +55,99 @@ func Test_createOperationsMap(t *testing.T) {
 						},
 					},
 				},
+				initializeNewMap: true,
+				operationsList: []Operation{
+					{
+						Name:         "Microsoft.Kubernetes/connectedClusters/apps/deployments/delete",
+						Display:      Display{Provider: "Microsoft.Kubernetes", Resource: "deployments", Operation: "some desc", Description: "some desc"},
+						IsDataAction: pointer.Bool(true),
+					},
+					{
+						Name:         "Microsoft.Kubernetes/connectedClusters/apps/deployments/read",
+						Display:      Display{Provider: "Microsoft.Kubernetes", Resource: "deployments", Operation: "some desc", Description: "some desc"},
+						IsDataAction: pointer.Bool(true),
+					},
+					{
+						Name:         "Microsoft.Kubernetes/connectedClusters/apps/deployments/write",
+						Display:      Display{Provider: "Microsoft.Kubernetes", Resource: "deployments", Operation: "some desc", Description: "some desc"},
+						IsDataAction: pointer.Bool(true),
+					},
+					{
+						Name:         "Microsoft.Kubernetes/connectedClusters/nodes/delete",
+						Display:      Display{Provider: "Microsoft.Kubernetes", Resource: "nodes", Operation: "some desc", Description: "some desc"},
+						IsDataAction: pointer.Bool(true),
+					},
+					{
+						Name:         "Microsoft.Kubernetes/connectedClusters/nodes/read",
+						Display:      Display{Provider: "Microsoft.Kubernetes", Resource: "nodes", Operation: "some desc", Description: "some desc"},
+						IsDataAction: pointer.Bool(true),
+					},
+
+					{
+						Name:         "Microsoft.Kubernetes/connectedClusters/nodes/write",
+						Display:      Display{Provider: "Microsoft.Kubernetes", Resource: "nodes", Operation: "some desc", Description: "some desc"},
+						IsDataAction: pointer.Bool(true),
+					},
+					{
+						Name:         "Microsoft.Kubernetes/connectedClusters/pods/delete",
+						Display:      Display{Provider: "Microsoft.Kubernetes", Resource: "pods", Operation: "some desc", Description: "some desc"},
+						IsDataAction: pointer.Bool(true),
+					},
+					{
+						Name:         "Microsoft.Kubernetes/connectedClusters/pods/exec/action",
+						Display:      Display{Provider: "Microsoft.Kubernetes", Resource: "pods", Operation: "some desc", Description: "some desc"},
+						IsDataAction: pointer.Bool(true),
+					},
+					{
+						Name:         "Microsoft.Kubernetes/connectedClusters/pods/read",
+						Display:      Display{Provider: "Microsoft.Kubernetes", Resource: "pods", Operation: "some desc", Description: "some desc"},
+						IsDataAction: pointer.Bool(true),
+					},
+					{
+						Name:         "Microsoft.Kubernetes/connectedClusters/pods/write",
+						Display:      Display{Provider: "Microsoft.Kubernetes", Resource: "pods", Operation: "some desc", Description: "some desc"},
+						IsDataAction: pointer.Bool(true),
+					},
+				},
+				clusterType: "Microsoft.Kubernetes/connectedClusters",
+			},
+			OperationsMap{
+				"apps": ResourceAndVerbMap{
+					"deployments": VerbAndActionsMap{
+						"read":   DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/apps/deployments/read"}, IsDataAction: true}, IsNamespacedResource: true},
+						"write":  DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/apps/deployments/write"}, IsDataAction: true}, IsNamespacedResource: true},
+						"delete": DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/apps/deployments/delete"}, IsDataAction: true}, IsNamespacedResource: true},
+					},
+				},
+				"v1": ResourceAndVerbMap{
+					"nodes": VerbAndActionsMap{
+						"read":   DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/nodes/read"}, IsDataAction: true}, IsNamespacedResource: false},
+						"write":  DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/nodes/write"}, IsDataAction: true}, IsNamespacedResource: false},
+						"delete": DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/nodes/delete"}, IsDataAction: true}, IsNamespacedResource: false},
+					},
+					"pods": VerbAndActionsMap{
+						"read":        DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/read"}, IsDataAction: true}, IsNamespacedResource: true},
+						"write":       DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/write"}, IsDataAction: true}, IsNamespacedResource: true},
+						"delete":      DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/delete"}, IsDataAction: true}, IsNamespacedResource: true},
+						"exec/action": DataAction{ActionInfo: AuthorizationActionInfo{AuthorizationEntity: AuthorizationEntity{Id: "Microsoft.Kubernetes/connectedClusters/pods/exec/action"}, IsDataAction: true}, IsNamespacedResource: true},
+					},
+				},
+			},
+		},
+
+		{
+			"if existing map is present, create operations map should not remove existing elements",
+			args{
+				apiResourcesList: []*metav1.APIResourceList{
+					{
+						GroupVersion: "v1",
+						APIResources: []metav1.APIResource{
+							{Name: "pods", Namespaced: true, Kind: "Pod", Verbs: []string{"create", "delete", "deletecollection", "get", "list", "patch", "update", "watch"}},
+							{Name: "nodes", Namespaced: false, Kind: "Node", Verbs: []string{"create", "delete", "deletecollection", "get", "list", "patch", "update", "watch"}},
+						},
+					},
+				},
+				initializeNewMap: false,
 				operationsList: []Operation{
 					{
 						Name:         "Microsoft.Kubernetes/connectedClusters/apps/deployments/delete",
@@ -150,6 +244,7 @@ func Test_createOperationsMap(t *testing.T) {
 						},
 					},
 				},
+				initializeNewMap: true,
 				operationsList: []Operation{
 					{
 						Name:         "Microsoft.Kubernetes/connectedClusters/pods/delete",
@@ -204,6 +299,7 @@ func Test_createOperationsMap(t *testing.T) {
 						},
 					},
 				},
+				initializeNewMap: true,
 				operationsList: []Operation{
 					{
 						Name:         "Microsoft.Kubernetes/connectedClusters/apps/deployments/delete",
@@ -279,6 +375,7 @@ func Test_createOperationsMap(t *testing.T) {
 						},
 					},
 				},
+				initializeNewMap: true,
 				operationsList: []Operation{
 					{
 						Name:         "Microsoft.Kubernetes/connectedClusters/events/delete",
@@ -332,12 +429,16 @@ func Test_createOperationsMap(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		got := createOperationsMap(tt.args.apiResourcesList, tt.args.operationsList, tt.args.clusterType)
-		if len(got) != len(tt.want) {
-			t.Errorf("[createOperationsMap()]Map lengths are not equal. = %v, want %v", got, tt.want)
+		if tt.args.initializeNewMap {
+			operationsMap = NewOperationsMap()
 		}
-		if !reflect.DeepEqual(got, tt.want) {
-			t.Errorf("createOperationsMap() = %v, want %v", got, tt.want)
+		_ = SetDiscoverResourcesSettings(tt.args.clusterType, "", "", "", "", "", "")
+		createOperationsMap(tt.args.apiResourcesList, tt.args.operationsList)
+		if len(operationsMap) != len(tt.want) {
+			t.Errorf("[createOperationsMap()]Map lengths are not equal. = %v, want %v", operationsMap, tt.want)
+		}
+		if !reflect.DeepEqual(operationsMap, tt.want) {
+			t.Errorf("createOperationsMap() = %v, want %v", operationsMap, tt.want)
 		}
 	}
 }
