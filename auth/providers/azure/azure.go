@@ -115,7 +115,8 @@ func New(ctx context.Context, opts Options) (auth.Interface, error) {
 	return c, nil
 }
 
-// makeRetryableHttpClient creates an HTTP client which performs 3 retries and has a 3 second timeout per attempt.
+// makeRetryableHttpClient creates an HTTP client which attempts the request
+// 3 times and has a 3 second timeout per attempt.
 func makeRetryableHttpClient() retryablehttp.Client {
 	// Copy the default HTTP client so we can set a timeout.
 	// (It uses the same transport since the pointer gets copied)
