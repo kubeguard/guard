@@ -24,6 +24,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"go.kubeguard.dev/guard/auth/providers/token"
@@ -180,7 +181,8 @@ func (s Server) ListenAndServe() {
 
 	m.Get("/readyz", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if len(s.AuthzRecommendedOptions.AuthzProvider.Providers) > 0 && s.AuthzRecommendedOptions.AuthzProvider.Has(azure.OrgType) && s.AuthzRecommendedOptions.Azure.DiscoverResources {
-			if authzhandler.operationsMap != nil && len(authzhandler.operationsMap) > 0 {
+			storedOperationsMap := azureutils.DeepCopyOperationsMap()
+			if len(storedOperationsMap) > 0 {
 				w.WriteHeader(200)
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -229,21 +231,27 @@ func (s Server) ListenAndServe() {
 					klog.Fatalf("Authzmode %s is not supported for fetching list of resources", s.AuthzRecommendedOptions.Azure.AuthzMode)
 				}
 
-				settings, err := azureutils.NewDiscoverResourcesSettings(clusterType, s.AuthRecommendedOptions.Azure.Environment, s.AuthzRecommendedOptions.Azure.AKSAuthzTokenURL, s.AuthzRecommendedOptions.Azure.KubeConfigFile, s.AuthRecommendedOptions.Azure.TenantID, s.AuthRecommendedOptions.Azure.ClientID, s.AuthRecommendedOptions.Azure.ClientSecret)
+				err := azureutils.SetDiscoverResourcesSettings(clusterType, s.AuthRecommendedOptions.Azure.Environment, s.AuthzRecommendedOptions.Azure.AKSAuthzTokenURL, s.AuthzRecommendedOptions.Azure.KubeConfigFile, s.AuthRecommendedOptions.Azure.TenantID, s.AuthRecommendedOptions.Azure.ClientID, s.AuthRecommendedOptions.Azure.ClientSecret)
 				if err != nil {
 					klog.Fatalf("Failed to create settings for discovering resources. Error:%s", err)
 				}
 
 				discoverResourcesListStart := time.Now()
-				operationsMap, err := azureutils.DiscoverResources(context.Background(), settings)
+				err = azureutils.DiscoverResources(context.Background())
 				discoverResourcesDuration := time.Since(discoverResourcesListStart).Seconds()
 				if err != nil {
 					azureutils.DiscoverResourcesTotalDuration.Observe(discoverResourcesDuration)
-					klog.Fatalf("Failed to create map of data actions. Error:%s", err)
+					klog.Fatalf("Failed to create map of data actions on startup. Error:%s", err)
 				}
-
 				azureutils.DiscoverResourcesTotalDuration.Observe(discoverResourcesDuration)
-				authzhandler.operationsMap = operationsMap
+
+				// start thread for reconciling the GlobalOperationsMap
+				var wg sync.WaitGroup
+				wg.Add(1)
+				go azureutils.ReconcileDiscoverResources(context.Background(), &wg, s.AuthzRecommendedOptions.Azure.ReconcileDiscoverResourcesFrequency)
+				go func() {
+					wg.Wait()
+				}()
 			}
 		}
 	}
