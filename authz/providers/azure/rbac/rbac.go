@@ -327,7 +327,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 				if v, ok := err.(errutils.HttpStatusCode); ok {
 					code = v.Code()
 				}
-				err = errutils.WithCode(errors.Errorf("Error: %s. Correlation ID: %s", requestUUID.String(), err), code)
+				err = errutils.WithCode(errors.Errorf("Error: %s. Correlation ID: %s", err, requestUUID.String()), code)
 				return err
 			}
 			return nil
