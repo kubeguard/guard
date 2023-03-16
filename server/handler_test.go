@@ -18,6 +18,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
@@ -151,6 +152,7 @@ func TestGetAuthProviderClient(t *testing.T) {
 	s := Server{
 		AuthRecommendedOptions: NewAuthRecommendedOptions(),
 	}
+	ctx := context.Background()
 
 	// https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-v2-protocols-oidc
 	// https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-protocols-oauth-code#jwt-token-claims
@@ -158,7 +160,7 @@ func TestGetAuthProviderClient(t *testing.T) {
 
 	for _, test := range testData {
 		t.Run(test.testName, func(t *testing.T) {
-			client, err := s.getAuthProviderClient(test.authProvider, "")
+			client, err := s.getAuthProviderClient(ctx, test.authProvider, "")
 
 			if test.expectedErr == nil {
 				assert.Nil(t, err, "expected error nil")

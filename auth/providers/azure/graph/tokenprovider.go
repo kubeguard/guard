@@ -16,8 +16,10 @@ limitations under the License.
 
 package graph
 
+import "context"
+
 // TokenProvider is an interface to obtain token for MS Graph api
 type TokenProvider interface {
 	Name() string
-	Acquire(token string) (AuthResponse, error)
+	Acquire(ctx context.Context, token string) (AuthResponse, error)
 }

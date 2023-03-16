@@ -249,7 +249,7 @@ func ReconcileDiscoverResources(ctx context.Context, wg *sync.WaitGroup, loopDur
 		select {
 		case <-time.After(loopDuration):
 			discoverResourcesListStart := time.Now()
-			err := DiscoverResources()
+			err := DiscoverResources(ctx)
 			discoverResourcesDuration := time.Since(discoverResourcesListStart).Seconds()
 			if err != nil {
 				code := http.StatusInternalServerError
@@ -276,7 +276,7 @@ DiscoverResources does the following:
 3. creates OperationsMap which is a map of "group": { "resource": { "verb": DataAction{} } } }
 This map is used to create list of AuthorizationActionInfos when we get a SAR request where Resource/Verb/Group is *
 */
-func DiscoverResources() error {
+func DiscoverResources(ctx context.Context) error {
 	apiResourcesListStart := time.Now()
 	apiResourcesList, err := fetchApiResources()
 	apiResourcesListDuration := time.Since(apiResourcesListStart).Seconds()
@@ -288,7 +288,7 @@ func DiscoverResources() error {
 	discoverResourcesApiServerCallDuration.Observe(apiResourcesListDuration)
 
 	getOperationsStart := time.Now()
-	operationsList, err := fetchDataActionsList()
+	operationsList, err := fetchDataActionsList(ctx)
 	getOperationsDuration := time.Since(getOperationsStart).Seconds()
 
 	if err != nil {
@@ -426,7 +426,7 @@ func fetchApiResources() ([]*metav1.APIResourceList, error) {
 	return apiresourcesList, nil
 }
 
-func fetchDataActionsList() ([]Operation, error) {
+func fetchDataActionsList(ctx context.Context) ([]Operation, error) {
 	req, err := http.NewRequest(http.MethodGet, settings.operationsEndpoint, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to create request for Get Operations call.")
@@ -441,7 +441,7 @@ func fetchDataActionsList() ([]Operation, error) {
 			fmt.Sprintf("%s%s/oauth2/v2.0/token", settings.environment.ActiveDirectoryEndpoint, settings.tenantID),
 			fmt.Sprintf("%s/.default", settings.environment.ResourceManagerEndpoint))
 
-		authResp, erro := tokenProvider.Acquire("")
+		authResp, erro := tokenProvider.Acquire(ctx, "")
 		if erro != nil {
 			return nil, errors.Wrap(erro, "Error getting authorization headers for Get Operations call.")
 		}
@@ -450,7 +450,7 @@ func fetchDataActionsList() ([]Operation, error) {
 	} else { // AKS and Fleet
 		tokenProvider := graph.NewAKSTokenProvider(settings.aksLoginURL, settings.tenantID)
 
-		authResp, err := tokenProvider.Acquire("")
+		authResp, err := tokenProvider.Acquire(ctx, "")
 		if err != nil {
 			return nil, errors.Wrap(err, "Error getting authorization headers for Get Operations call.")
 		}

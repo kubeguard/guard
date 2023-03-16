@@ -18,6 +18,7 @@ package graph
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -66,7 +67,7 @@ type UserInfo struct {
 	tokenProvider TokenProvider
 }
 
-func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
+func (u *UserInfo) getGroupIDs(ctx context.Context, userPrincipal string) ([]string, error) {
 	// Create a new request for finding the user.
 	// Shallow copy of the base API URL
 	userSearchURL := *u.apiURL
@@ -81,7 +82,7 @@ func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
 	// Set the auth headers for the request
 	req.Header = u.headers
 
-	resp, err := u.client.Do(req)
+	resp, err := u.client.Do(req.WithContext(ctx))
 	if err != nil {
 		getMemberGroupsFailed.Inc()
 		return nil, errors.Wrap(err, "error listing users")
@@ -102,7 +103,7 @@ func (u *UserInfo) getGroupIDs(userPrincipal string) ([]string, error) {
 	return objects.Value, nil
 }
 
-func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
+func (u *UserInfo) getExpandedGroups(ctx context.Context, ids []string) (*GroupList, error) {
 	// Encode the ids into the request body
 	body := &bytes.Buffer{}
 	err := json.NewEncoder(body).Encode(ObjectQuery{
@@ -130,7 +131,7 @@ func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
 		klog.V(10).Infoln(cmd)
 	}
 
-	resp, err := u.client.Do(req)
+	resp, err := u.client.Do(req.WithContext(ctx))
 	if err != nil {
 		return nil, errors.Wrap(err, "error expanding groups")
 	}
@@ -150,8 +151,8 @@ func (u *UserInfo) getExpandedGroups(ids []string) (*GroupList, error) {
 	return groups, nil
 }
 
-func (u *UserInfo) RefreshToken(token string) error {
-	resp, err := u.tokenProvider.Acquire(token)
+func (u *UserInfo) RefreshToken(ctx context.Context, token string) error {
+	resp, err := u.tokenProvider.Acquire(ctx, token)
 	if err != nil {
 		return errors.Errorf("%s: failed to refresh token: %s", u.tokenProvider.Name(), err)
 	}
@@ -166,9 +167,9 @@ func (u *UserInfo) RefreshToken(token string) error {
 
 // GetGroups gets a list of all groups that the given user principal is part of
 // Generally in federated directories the email address is the userPrincipalName
-func (u *UserInfo) GetGroups(userPrincipal string) ([]string, error) {
+func (u *UserInfo) GetGroups(ctx context.Context, userPrincipal string) ([]string, error) {
 	// Get the group IDs for the user
-	groupIDs, err := u.getGroupIDs(userPrincipal)
+	groupIDs, err := u.getGroupIDs(ctx, userPrincipal)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +188,7 @@ func (u *UserInfo) GetGroups(userPrincipal string) ([]string, error) {
 		klog.V(10).Infof("Getting group names for IDs between startIndex: %d and endIndex: %d", startIndex, endIndex)
 
 		// Expand the group IDs
-		groups, err := u.getExpandedGroups(groupIDs[startIndex:endIndex])
+		groups, err := u.getExpandedGroups(ctx, groupIDs[startIndex:endIndex])
 		if err != nil {
 			return nil, err
 		}

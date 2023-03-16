@@ -237,7 +237,7 @@ func (s Server) ListenAndServe() {
 				}
 
 				discoverResourcesListStart := time.Now()
-				err = azureutils.DiscoverResources()
+				err = azureutils.DiscoverResources(context.Background())
 				discoverResourcesDuration := time.Since(discoverResourcesListStart).Seconds()
 				if err != nil {
 					azureutils.DiscoverResourcesTotalDuration.Observe(discoverResourcesDuration)

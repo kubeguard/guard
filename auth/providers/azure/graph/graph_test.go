@@ -17,6 +17,7 @@ limitations under the License.
 package graph
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -42,6 +43,8 @@ func getAuthServerAndUserInfo(returnCode int, body, clientID, clientSecret strin
 }
 
 func TestLogin(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("successful login", func(t *testing.T) {
 		validToken := "blackbriar"
 		validBody := `{
@@ -52,7 +55,7 @@ func TestLogin(t *testing.T) {
 		ts, u := getAuthServerAndUserInfo(http.StatusOK, fmt.Sprintf(validBody, validToken), "jason", "bourne")
 		defer ts.Close()
 
-		err := u.RefreshToken("")
+		err := u.RefreshToken(ctx, "")
 		if err != nil {
 			t.Errorf("Error when trying to log in: %s", err)
 		}
@@ -68,7 +71,7 @@ func TestLogin(t *testing.T) {
 		ts, u := getAuthServerAndUserInfo(http.StatusUnauthorized, "Unauthorized", "CIA", "treadstone")
 		defer ts.Close()
 
-		err := u.RefreshToken("")
+		err := u.RefreshToken(ctx, "")
 		if err == nil {
 			t.Error("Should have gotten error")
 		}
@@ -83,7 +86,7 @@ func TestLogin(t *testing.T) {
 		}
 		u.tokenProvider = NewClientCredentialTokenProvider("CIA", "outcome", badURL, "")
 
-		err := u.RefreshToken("")
+		err := u.RefreshToken(ctx, "")
 		if err == nil {
 			t.Error("Should have gotten error")
 		}
@@ -93,7 +96,7 @@ func TestLogin(t *testing.T) {
 		ts, u := getAuthServerAndUserInfo(http.StatusOK, "{bad_json", "CIA", "treadstone")
 		defer ts.Close()
 
-		err := u.RefreshToken("")
+		err := u.RefreshToken(ctx, "")
 		if err == nil {
 			t.Error("Should have gotten error")
 		}
@@ -117,6 +120,8 @@ func getAPIServerAndUserInfo(returnCode int, body string) (*httptest.Server, *Us
 }
 
 func TestGetGroupIDs(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("successful request", func(t *testing.T) {
 		validBody := `{
   "value": [
@@ -126,7 +131,7 @@ func TestGetGroupIDs(t *testing.T) {
 		ts, u := getAPIServerAndUserInfo(http.StatusOK, validBody)
 		defer ts.Close()
 
-		groups, err := u.getGroupIDs("john.michael.kane@yacht.io")
+		groups, err := u.getGroupIDs(ctx, "john.michael.kane@yacht.io")
 		if err != nil {
 			t.Errorf("Should not have gotten error: %s", err)
 		}
@@ -138,7 +143,7 @@ func TestGetGroupIDs(t *testing.T) {
 		ts, u := getAPIServerAndUserInfo(http.StatusInternalServerError, "shutdown")
 		defer ts.Close()
 
-		groups, err := u.getGroupIDs("alexander.conklin@cia.gov")
+		groups, err := u.getGroupIDs(ctx, "alexander.conklin@cia.gov")
 		if err == nil {
 			t.Error("Should have gotten error")
 		}
@@ -156,7 +161,7 @@ func TestGetGroupIDs(t *testing.T) {
 			groupsPerCall: expandedGroupsPerCall,
 		}
 
-		groups, err := u.getGroupIDs("richard.webb@cia.gov")
+		groups, err := u.getGroupIDs(ctx, "richard.webb@cia.gov")
 		if err == nil {
 			t.Error("Should have gotten error")
 		}
@@ -168,7 +173,7 @@ func TestGetGroupIDs(t *testing.T) {
 		ts, u := getAPIServerAndUserInfo(http.StatusOK, "{bad_json")
 		defer ts.Close()
 
-		groups, err := u.getGroupIDs("nicky.parsons@cia.gov")
+		groups, err := u.getGroupIDs(ctx, "nicky.parsons@cia.gov")
 		if err == nil {
 			t.Error("Should have gotten error")
 		}
@@ -179,6 +184,8 @@ func TestGetGroupIDs(t *testing.T) {
 }
 
 func TestGetExpandedGroups(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("successful request", func(t *testing.T) {
 		validBody := `{
   "value": [
@@ -191,7 +198,7 @@ func TestGetExpandedGroups(t *testing.T) {
 		ts, u := getAPIServerAndUserInfo(http.StatusOK, validBody)
 		defer ts.Close()
 
-		groups, err := u.getExpandedGroups([]string{"f36ec2c5-fa5t-4f05-b87f-deadbeef"})
+		groups, err := u.getExpandedGroups(ctx, []string{"f36ec2c5-fa5t-4f05-b87f-deadbeef"})
 		if err != nil {
 			t.Errorf("Should not have gotten error: %s", err)
 		}
@@ -203,7 +210,7 @@ func TestGetExpandedGroups(t *testing.T) {
 		ts, u := getAPIServerAndUserInfo(http.StatusInternalServerError, "shutdown")
 		defer ts.Close()
 
-		groups, err := u.getExpandedGroups([]string{"f36ec2c5-fa5t-4f05-b87f-deadbeef"})
+		groups, err := u.getExpandedGroups(ctx, []string{"f36ec2c5-fa5t-4f05-b87f-deadbeef"})
 		if err == nil {
 			t.Error("Should have gotten error")
 		}
@@ -221,7 +228,7 @@ func TestGetExpandedGroups(t *testing.T) {
 			groupsPerCall: expandedGroupsPerCall,
 		}
 
-		groups, err := u.getExpandedGroups([]string{"f36ec2c5-fa5t-4f05-b87f-deadbeef"})
+		groups, err := u.getExpandedGroups(ctx, []string{"f36ec2c5-fa5t-4f05-b87f-deadbeef"})
 		if err == nil {
 			t.Error("Should have gotten error")
 		}
@@ -233,7 +240,7 @@ func TestGetExpandedGroups(t *testing.T) {
 		ts, u := getAPIServerAndUserInfo(http.StatusOK, "{bad_json")
 		defer ts.Close()
 
-		groups, err := u.getExpandedGroups([]string{"f36ec2c5-fa5t-4f05-b87f-deadbeef"})
+		groups, err := u.getExpandedGroups(ctx, []string{"f36ec2c5-fa5t-4f05-b87f-deadbeef"})
 		if err == nil {
 			t.Error("Should have gotten error")
 		}
@@ -245,6 +252,7 @@ func TestGetExpandedGroups(t *testing.T) {
 
 // This is only testing the full function run, error cases are handled in the tests above
 func TestGetGroups(t *testing.T) {
+	ctx := context.Background()
 	validBody1 := `
 {
     "value": [
@@ -284,7 +292,7 @@ func TestGetGroups(t *testing.T) {
 	}
 	defer ts.Close()
 
-	groups, err := u.GetGroups("blackbriar@cia.gov")
+	groups, err := u.GetGroups(ctx, "blackbriar@cia.gov")
 	if err != nil {
 		t.Errorf("Should not have gotten error: %s", err)
 	}
@@ -302,7 +310,7 @@ func TestGetGroups(t *testing.T) {
 	}
 	defer ts.Close()
 
-	groups, err = uWithGroupID.GetGroups("blackbriar@cia.gov")
+	groups, err = uWithGroupID.GetGroups(ctx, "blackbriar@cia.gov")
 	if err != nil {
 		t.Errorf("Should not have gotten error: %s", err)
 	}
@@ -377,7 +385,8 @@ func TestGetGroupsPaging(t *testing.T) {
 	}
 	defer ts.Close()
 
-	groups, err := u.GetGroups("blackbriar@cia.gov")
+	ctx := context.Background()
+	groups, err := u.GetGroups(ctx, "blackbriar@cia.gov")
 	if err != nil {
 		t.Errorf("Should not have gotten error: %s", err)
 	}

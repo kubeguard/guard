@@ -17,6 +17,7 @@ limitations under the License.
 package server
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -67,26 +68,27 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	client, err := s.getAuthProviderClient(org, crt.Subject.CommonName)
+	ctx := req.Context()
+	client, err := s.getAuthProviderClient(ctx, org, crt.Subject.CommonName)
 	if err != nil {
 		write(w, nil, err)
 		return
 	}
 
-	resp, err := client.Check(data.Spec.Token)
+	resp, err := client.Check(ctx, data.Spec.Token)
 	write(w, resp, err)
 }
 
-func (s *Server) getAuthProviderClient(org, commonName string) (auth.Interface, error) {
+func (s *Server) getAuthProviderClient(ctx context.Context, org, commonName string) (auth.Interface, error) {
 	switch strings.ToLower(org) {
 	case github.OrgType:
 		return github.New(s.AuthRecommendedOptions.Github, commonName), nil
 	case google.OrgType:
-		return google.New(s.AuthRecommendedOptions.Google, commonName)
+		return google.New(ctx, s.AuthRecommendedOptions.Google, commonName)
 	case gitlab.OrgType:
 		return gitlab.New(s.AuthRecommendedOptions.Gitlab), nil
 	case azure.OrgType:
-		return azure.New(s.AuthRecommendedOptions.Azure)
+		return azure.New(ctx, s.AuthRecommendedOptions.Azure)
 	case ldap.OrgType:
 		return ldap.New(s.AuthRecommendedOptions.LDAP), nil
 	}

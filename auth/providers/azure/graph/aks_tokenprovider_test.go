@@ -17,6 +17,7 @@ limitations under the License.
 package graph
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -59,8 +60,9 @@ func TestAKSTokenProvider(t *testing.T) {
 
 		defer stopTestServer(t, s)
 
+		ctx := context.Background()
 		r := NewAKSTokenProvider(s.URL, tenantID)
-		resp, err := r.Acquire(inputAccessToken)
+		resp, err := r.Acquire(ctx, inputAccessToken)
 		if err != nil {
 			t.Fatalf("refresh should not return error: %s", err)
 		}
@@ -102,8 +104,9 @@ func TestAKSTokenProvider(t *testing.T) {
 
 		defer stopTestServer(t, s)
 
+		ctx := context.Background()
 		r := NewAKSTokenProvider(s.URL, tenantID)
-		resp, err := r.Acquire(inputAccessToken)
+		resp, err := r.Acquire(ctx, inputAccessToken)
 		if err == nil {
 			t.Error("refresh should return error")
 		}
