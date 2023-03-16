@@ -32,20 +32,11 @@ jobs:
       - name: Publish to GitHub Container Registry
         env:
           REGISTRY: ghcr.io/kubeguard
-          DOCKER_TOKEN: ${{ secrets.LGTM_GITHUB_TOKEN }}
+          DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           USERNAME: 1gtm
           APPSCODE_ENV: prod
         run: |
           docker login ghcr.io --username ${USERNAME} --password ${DOCKER_TOKEN}
-          make release COMPRESS=yes
-
-      - name: Publish to Docker Registry
-        env:
-          APPSCODE_ENV: prod
-          DOCKER_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-          USERNAME: 1gtm
-        run: |
-          docker login --username ${USERNAME} --password ${DOCKER_TOKEN}
           make release COMPRESS=yes
 
       - name: Release
