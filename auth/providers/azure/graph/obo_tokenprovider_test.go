@@ -17,6 +17,7 @@ limitations under the License.
 package graph
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -68,8 +69,9 @@ func TestOBOTokenProvider(t *testing.T) {
 
 		defer stopTestServer(t, s)
 
+		ctx := context.Background()
 		r := NewOBOTokenProvider(clientID, clientSecret, s.URL, scope)
-		resp, err := r.Acquire(inputAccessToken)
+		resp, err := r.Acquire(ctx, inputAccessToken)
 		if err != nil {
 			t.Fatalf("refresh should not return error: %s", err)
 		}
@@ -115,8 +117,9 @@ func TestOBOTokenProvider(t *testing.T) {
 
 		defer stopTestServer(t, s)
 
+		ctx := context.Background()
 		r := NewOBOTokenProvider(clientID, clientSecret, s.URL, scope)
-		resp, err := r.Acquire(inputAccessToken)
+		resp, err := r.Acquire(ctx, inputAccessToken)
 		if err == nil {
 			t.Error("refresh should return error")
 		}

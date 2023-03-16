@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,6 +17,7 @@ limitations under the License.
 package rbac
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -143,7 +144,8 @@ func TestLogin(t *testing.T) {
 		ts, u := getAuthServerAndAccessInfo(http.StatusOK, fmt.Sprintf(validBody, validToken), "jason", "bourne")
 		defer ts.Close()
 
-		err := u.RefreshToken()
+		ctx := context.Background()
+		err := u.RefreshToken(ctx)
 		if err != nil {
 			t.Errorf("Error when trying to log in: %s", err)
 		}
@@ -159,7 +161,8 @@ func TestLogin(t *testing.T) {
 		ts, u := getAuthServerAndAccessInfo(http.StatusUnauthorized, "Unauthorized", "CIA", "treadstone")
 		defer ts.Close()
 
-		err := u.RefreshToken()
+		ctx := context.Background()
+		err := u.RefreshToken(ctx)
 		assert.NotNilf(t, err, "Should have gotten error")
 	})
 
@@ -172,7 +175,8 @@ func TestLogin(t *testing.T) {
 		}
 		u.tokenProvider = graph.NewClientCredentialTokenProvider("CIA", "outcome", badURL, "")
 
-		err := u.RefreshToken()
+		ctx := context.Background()
+		err := u.RefreshToken(ctx)
 		assert.NotNilf(t, err, "Should have gotten error")
 	})
 
@@ -180,7 +184,8 @@ func TestLogin(t *testing.T) {
 		ts, u := getAuthServerAndAccessInfo(http.StatusOK, "{bad_json", "CIA", "treadstone")
 		defer ts.Close()
 
-		err := u.RefreshToken()
+		ctx := context.Background()
+		err := u.RefreshToken(ctx)
 		assert.NotNilf(t, err, "Should have gotten error")
 	})
 }

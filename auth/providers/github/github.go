@@ -38,14 +38,12 @@ func init() {
 
 type Authenticator struct {
 	opts    Options
-	ctx     context.Context
 	OrgName string // Github organization name
 }
 
 func New(opts Options, name string) auth.Interface {
 	g := &Authenticator{
 		opts:    opts,
-		ctx:     context.Background(),
 		OrgName: name,
 	}
 
@@ -56,26 +54,26 @@ func (g Authenticator) UID() string {
 	return OrgType
 }
 
-func (g *Authenticator) Check(token string) (*authv1.UserInfo, error) {
+func (g *Authenticator) Check(ctx context.Context, token string) (*authv1.UserInfo, error) {
 	var (
 		client *github.Client
 		err    error
 	)
 
 	if g.opts.BaseUrl != "" {
-		client, err = github.NewEnterpriseClient(g.opts.BaseUrl, "", oauth2.NewClient(g.ctx, oauth2.StaticTokenSource(
+		client, err = github.NewEnterpriseClient(g.opts.BaseUrl, "", oauth2.NewClient(ctx, oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: token},
 		)))
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create Github enterprise client")
 		}
 	} else {
-		client = github.NewClient(oauth2.NewClient(g.ctx, oauth2.StaticTokenSource(
+		client = github.NewClient(oauth2.NewClient(ctx, oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: token},
 		)))
 	}
 
-	mem, _, err := client.Organizations.GetOrgMembership(g.ctx, "", g.OrgName)
+	mem, _, err := client.Organizations.GetOrgMembership(ctx, "", g.OrgName)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to check user's membership in Org %s", g.OrgName)
 	}
@@ -89,7 +87,7 @@ func (g *Authenticator) Check(token string) (*authv1.UserInfo, error) {
 	page := 1
 	pageSize := 25
 	for {
-		teams, _, err := client.Teams.ListUserTeams(g.ctx, &github.ListOptions{Page: page, PerPage: pageSize})
+		teams, _, err := client.Teams.ListUserTeams(ctx, &github.ListOptions{Page: page, PerPage: pageSize})
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to load user's teams for Org %s", g.OrgName)
 		}

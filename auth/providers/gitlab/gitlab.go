@@ -17,12 +17,13 @@ limitations under the License.
 package gitlab
 
 import (
+	"context"
 	"strconv"
 
 	"go.kubeguard.dev/guard/auth"
 
 	"github.com/pkg/errors"
-	gitlab "github.com/xanzy/go-gitlab"
+	"github.com/xanzy/go-gitlab"
 	authv1 "k8s.io/api/authentication/v1"
 )
 
@@ -48,7 +49,7 @@ func (g Authenticator) UID() string {
 	return OrgType
 }
 
-func (g *Authenticator) Check(token string) (*authv1.UserInfo, error) {
+func (g *Authenticator) Check(ctx context.Context, token string) (*authv1.UserInfo, error) {
 	var opts []gitlab.ClientOptionFunc
 	if g.opts.BaseUrl != "" {
 		opts = append(opts, gitlab.WithBaseURL(g.opts.BaseUrl))
@@ -59,7 +60,7 @@ func (g *Authenticator) Check(token string) (*authv1.UserInfo, error) {
 		return nil, err
 	}
 
-	user, _, err := client.Users.CurrentUser()
+	user, _, err := client.Users.CurrentUser(gitlab.WithContext(ctx))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -76,7 +77,7 @@ func (g *Authenticator) Check(token string) (*authv1.UserInfo, error) {
 	for {
 		list, _, err := client.Groups.ListGroups(&gitlab.ListGroupsOptions{
 			ListOptions: gitlab.ListOptions{Page: page, PerPage: pageSize},
-		})
+		}, gitlab.WithContext(ctx))
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to load groups")
 		}

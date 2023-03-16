@@ -17,6 +17,7 @@ limitations under the License.
 package auth
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"sort"
@@ -62,5 +63,5 @@ func (o orgs) String() string {
 
 type Interface interface {
 	UID() string
-	Check(token string) (*authv1.UserInfo, error)
+	Check(ctx context.Context, token string) (*authv1.UserInfo, error)
 }

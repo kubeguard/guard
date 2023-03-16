@@ -112,10 +112,10 @@ func clientSetup(clientID, clientSecret, tenantID, serverUrl string, useGroupUID
 			AKSTokenURL:    "",
 			VerifyClientID: verifyClientID,
 		},
-		ctx: context.Background(),
 	}
 
-	p, err := oidc.NewProvider(c.ctx, serverUrl)
+	ctx := context.Background()
+	p, err := oidc.NewProvider(ctx, serverUrl)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create provider for azure. Reason: %v", err)
 	}
@@ -285,6 +285,7 @@ func getServerAndClient(t *testing.T, signKey *signingKey, loginResp string, gro
 }
 
 func TestCheckAzureAuthenticationSuccess(t *testing.T) {
+	ctx := context.Background()
 	signKey, err := newRSAKey()
 	if err != nil {
 		t.Fatalf("Error when creating signing key. reason : %v", err)
@@ -319,7 +320,7 @@ func TestCheckAzureAuthenticationSuccess(t *testing.T) {
 				t.Fatalf("Error when signing token. reason: %v", err)
 			}
 
-			resp, err := client.Check(token)
+			resp, err := client.Check(ctx, token)
 			assert.Nil(t, err)
 			assertUserInfo(t, resp, test.groupSize, client.UseGroupUID)
 		})
@@ -336,7 +337,7 @@ func TestCheckAzureAuthenticationSuccess(t *testing.T) {
 				t.Fatalf("Error when signing token. reason: %v", err)
 			}
 
-			resp, err := client.Check(token)
+			resp, err := client.Check(ctx, token)
 			assert.Nil(t, err)
 			assertUserInfo(t, resp, test.groupSize, client.UseGroupUID)
 		})
@@ -344,6 +345,7 @@ func TestCheckAzureAuthenticationSuccess(t *testing.T) {
 }
 
 func TestCheckAzureAuthenticationWithOverageCheckOption(t *testing.T) {
+	ctx := context.Background()
 	signKey, err := newRSAKey()
 	if err != nil {
 		t.Fatalf("Error when creating signing key. reason : %v", err)
@@ -373,7 +375,7 @@ func TestCheckAzureAuthenticationWithOverageCheckOption(t *testing.T) {
 					t.Fatalf("Error when signing token. reason: %v", err)
 				}
 
-				resp, err := client.Check(token)
+				resp, err := client.Check(ctx, token)
 				assert.Nil(t, err)
 				assertUserInfo(t, resp, test.groupSize, client.UseGroupUID)
 			})
@@ -382,6 +384,7 @@ func TestCheckAzureAuthenticationWithOverageCheckOption(t *testing.T) {
 }
 
 func TestCheckAzureAuthenticationFailed(t *testing.T) {
+	ctx := context.Background()
 	signKey, err := newRSAKey()
 	if err != nil {
 		t.Fatalf("Error when creating signing key. reason : %v", err)
@@ -430,7 +433,7 @@ func TestCheckAzureAuthenticationFailed(t *testing.T) {
 				token = test.token
 			}
 
-			resp, err := client.Check(token)
+			resp, err := client.Check(ctx, token)
 			assert.NotNil(t, err)
 			assert.Nil(t, resp)
 		})
@@ -495,16 +498,17 @@ func TestString(t *testing.T) {
 }
 
 func TestGetAuthInfo(t *testing.T) {
-	authInfo, err := getAuthInfo("AzurePublicCloud", "testTenant", localGetMetadata)
+	ctx := context.Background()
+	authInfo, err := getAuthInfo(ctx, "AzurePublicCloud", "testTenant", localGetMetadata)
 	assert.NoError(t, err)
 	assert.Contains(t, authInfo.AADEndpoint, "login.microsoftonline.com")
 
-	authInfo, err = getAuthInfo("AzureChinaCloud", "testTenant", localGetMetadata)
+	authInfo, err = getAuthInfo(ctx, "AzureChinaCloud", "testTenant", localGetMetadata)
 	assert.NoError(t, err)
 	assert.Contains(t, authInfo.AADEndpoint, "login.chinacloudapi.cn")
 }
 
-func localGetMetadata(string, string) (*metadataJSON, error) {
+func localGetMetadata(context.Context, string, string) (*metadataJSON, error) {
 	return &metadataJSON{
 		Issuer:      "testIssuer",
 		MsgraphHost: "testHost",
@@ -512,15 +516,17 @@ func localGetMetadata(string, string) (*metadataJSON, error) {
 }
 
 func TestGetMetadata(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("sends request to AAD server and parses response", func(t *testing.T) {
 		testServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			writer.WriteHeader(200)
 			_, _ = writer.Write([]byte(`{"issuer":"testIssuer","msgraph_host":"testHost"}`))
 		}))
 		defer testServer.Close()
-		expectedMetadata, _ := localGetMetadata("", "")
+		expectedMetadata, _ := localGetMetadata(ctx, "", "")
 
-		metadata, err := getMetadata(testServer.URL+"/", "testTenant")
+		metadata, err := getMetadata(ctx, testServer.URL+"/", "testTenant")
 		assert.NoError(t, err)
 		assert.Equal(t, expectedMetadata, metadata)
 	})
@@ -547,9 +553,9 @@ func TestGetMetadata(t *testing.T) {
 			}
 		}))
 		defer testServer.Close()
-		expectedMetadata, _ := localGetMetadata("", "")
+		expectedMetadata, _ := localGetMetadata(ctx, "", "")
 
-		metadata, err := getMetadata(testServer.URL+"/", "testTenant")
+		metadata, err := getMetadata(ctx, testServer.URL+"/", "testTenant")
 		assert.NoError(t, err)
 		assert.Equal(t, expectedMetadata, metadata)
 	})
@@ -560,7 +566,7 @@ func TestGetMetadata(t *testing.T) {
 			testServer.CloseClientConnections()
 		}))
 
-		metadata, err := getMetadata(testServer.URL+"/", "testTenant")
+		metadata, err := getMetadata(ctx, testServer.URL+"/", "testTenant")
 		assert.Error(t, err)
 		assert.Nil(t, metadata)
 	})

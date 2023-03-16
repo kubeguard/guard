@@ -127,7 +127,7 @@ func min(a, b int) int {
 //		DocumentationURL string `json:"documentation_url,omitempty"`
 //	}
 func getErrorMessage(err error) []byte {
-	//{{{err.Error()}}}
+	// {{{err.Error()}}}
 	errMsg := `{ "message": "{{{` + err.Error() + `}}}" }`
 	// fmt.Println(errMsg)
 	return []byte(errMsg)
@@ -244,7 +244,6 @@ func githubClientSetup(serverUrl, githubOrg string) *Authenticator {
 		opts: Options{
 			BaseUrl: serverUrl,
 		},
-		ctx:     context.Background(),
 		OrgName: githubOrg,
 	}
 	return g
@@ -288,6 +287,7 @@ func TestCheckGithub(t *testing.T) {
 			"{{{error when checking organization membership}}}",
 		},
 	}
+	ctx := context.Background()
 
 	for _, test := range dataset {
 		t.Run(test.testName, func(t *testing.T) {
@@ -298,7 +298,7 @@ func TestCheckGithub(t *testing.T) {
 
 			client := githubClientSetup(srv.URL, test.reqOrg)
 
-			resp, err := client.Check(test.accessToken)
+			resp, err := client.Check(ctx, test.accessToken)
 			assert.NotNil(t, err)
 			assert.Nil(t, resp)
 		})
@@ -307,6 +307,7 @@ func TestCheckGithub(t *testing.T) {
 
 func TestForDifferentTeamSizes(t *testing.T) {
 	teamSizes := []int{25, 0, 1, 100} // 25 * N
+	ctx := context.Background()
 
 	for _, size := range teamSizes {
 		// page=1, PerPage=25
@@ -318,7 +319,7 @@ func TestForDifferentTeamSizes(t *testing.T) {
 
 			client := githubClientSetup(srv.URL, githubOrganization)
 
-			resp, err := client.Check(githubGoodToken)
+			resp, err := client.Check(ctx, githubGoodToken)
 			assert.Nil(t, err)
 			assertUserInfo(t, resp, teamSize)
 		})
@@ -332,13 +333,16 @@ func TestAuthorizationHeader(t *testing.T) {
 
 	client := githubClientSetup(srv.URL, githubOrganization)
 
-	resp, err := client.Check("")
+	ctx := context.Background()
+	resp, err := client.Check(ctx, "")
 	assert.NotNil(t, err)
 	assert.Nil(t, resp)
 }
 
 func TestTeamListErrorAtDifferentPage(t *testing.T) {
 	pages := []int{1, 2, 3}
+	ctx := context.Background()
+
 	for _, pageNo := range pages {
 		// error when getting user's team list at page=[pageNo]
 		t.Run(fmt.Sprintf("error when getting user's team list at page %v", pageNo), func(t *testing.T) {
@@ -364,7 +368,7 @@ func TestTeamListErrorAtDifferentPage(t *testing.T) {
 
 			client := githubClientSetup(srv.URL, githubOrganization)
 
-			resp, err := client.Check(githubGoodToken)
+			resp, err := client.Check(ctx, githubGoodToken)
 			assert.NotNil(t, err)
 			assert.Nil(t, resp)
 		})

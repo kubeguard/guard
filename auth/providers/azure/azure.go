@@ -34,6 +34,7 @@ import (
 	"github.com/coreos/go-oidc"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/klog/v2"
 )
@@ -70,7 +71,6 @@ type Authenticator struct {
 	graphClient      *graph.UserInfo
 	verifier         *oidc.IDTokenVerifier
 	popTokenVerifier *PoPTokenVerifier
-	ctx              context.Context
 }
 
 type authInfo struct {
@@ -79,19 +79,19 @@ type authInfo struct {
 	Issuer      string
 }
 
-func New(opts Options) (auth.Interface, error) {
+func New(ctx context.Context, opts Options) (auth.Interface, error) {
 	c := &Authenticator{
 		Options: opts,
-		ctx:     context.Background(),
 	}
-	authInfoVal, err := getAuthInfo(c.Environment, c.TenantID, getMetadata)
+	authInfoVal, err := getAuthInfo(ctx, c.Environment, c.TenantID, getMetadata)
 	if err != nil {
 		return nil, err
 	}
 
 	klog.V(3).Infof("Using issuer url: %v", authInfoVal.Issuer)
 
-	provider, err := oidc.NewProvider(c.ctx, authInfoVal.Issuer)
+	ctx = withRetryableHttpClient(ctx)
+	provider, err := oidc.NewProvider(ctx, authInfoVal.Issuer)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create provider for azure")
 	}
@@ -115,22 +115,16 @@ func New(opts Options) (auth.Interface, error) {
 	return c, nil
 }
 
-type metadataJSON struct {
-	Issuer      string `json:"issuer"`
-	MsgraphHost string `json:"msgraph_host"`
-}
-
-// https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-convert-app-to-be-multi-tenant
-func getMetadata(aadEndpoint, tenantID string) (*metadataJSON, error) {
-	metadataURL := aadEndpoint + tenantID + "/.well-known/openid-configuration"
-
+// makeRetryableHttpClient creates an HTTP client which attempts the request
+// 3 times and has a 3 second timeout per attempt.
+func makeRetryableHttpClient() retryablehttp.Client {
 	// Copy the default HTTP client so we can set a timeout.
 	// (It uses the same transport since the pointer gets copied)
 	httpClient := *httpclient.DefaultHTTPClient
 	httpClient.Timeout = 3 * time.Second
 
 	// Attempt the request up to 3 times
-	retryClient := retryablehttp.Client{
+	return retryablehttp.Client{
 		HTTPClient:   &httpClient,
 		RetryWaitMin: 500 * time.Millisecond,
 		RetryWaitMax: 2 * time.Second,
@@ -139,8 +133,32 @@ func getMetadata(aadEndpoint, tenantID string) (*metadataJSON, error) {
 		Backoff:      retryablehttp.DefaultBackoff,
 		Logger:       log.Default(),
 	}
+}
 
-	response, err := retryClient.Get(metadataURL)
+// withRetryableHttpClient sets the oauth2.HTTPClient key of the context to an
+// *http.Client made from makeRetryableHttpClient.
+// Some of the libraries we use will take the client out of the context via
+// oauth2.HTTPClient and use it, so this way we can add retries to external code.
+func withRetryableHttpClient(ctx context.Context) context.Context {
+	retryClient := makeRetryableHttpClient()
+	return context.WithValue(ctx, oauth2.HTTPClient, retryClient.StandardClient())
+}
+
+type metadataJSON struct {
+	Issuer      string `json:"issuer"`
+	MsgraphHost string `json:"msgraph_host"`
+}
+
+// https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-convert-app-to-be-multi-tenant
+func getMetadata(ctx context.Context, aadEndpoint, tenantID string) (*metadataJSON, error) {
+	metadataURL := aadEndpoint + tenantID + "/.well-known/openid-configuration"
+	retryClient := makeRetryableHttpClient()
+
+	request, err := retryablehttp.NewRequest("GET", metadataURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	response, err := retryClient.Do(request.WithContext(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +186,7 @@ func (s Authenticator) UID() string {
 	return OrgType
 }
 
-func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
+func (s Authenticator) Check(ctx context.Context, token string) (*authv1.UserInfo, error) {
 	var err error
 
 	if s.EnablePOP {
@@ -178,7 +196,8 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 		}
 	}
 
-	idToken, err := s.verifier.Verify(s.ctx, token)
+	ctx = withRetryableHttpClient(ctx)
+	idToken, err := s.verifier.Verify(ctx, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to verify token for azure")
 	}
@@ -204,10 +223,10 @@ func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
 		}
 	}
 	if !s.Options.SkipGroupMembershipResolution {
-		if err := s.graphClient.RefreshToken(token); err != nil {
+		if err := s.graphClient.RefreshToken(ctx, token); err != nil {
 			return nil, err
 		}
-		resp.Groups, err = s.graphClient.GetGroups(resp.Username)
+		resp.Groups, err = s.graphClient.GetGroups(ctx, resp.Username)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get groups")
 		}
@@ -343,7 +362,9 @@ func (c claims) string(key string) (string, error) {
 	return s, nil
 }
 
-func getAuthInfo(environment, tenantID string, getMetadata func(string, string) (*metadataJSON, error)) (*authInfo, error) {
+type getMetadataFunc = func(context.Context, string, string) (*metadataJSON, error)
+
+func getAuthInfo(ctx context.Context, environment, tenantID string, getMetadata getMetadataFunc) (*authInfo, error) {
 	var err error
 	env := azure.PublicCloud
 	if environment != "" {
@@ -353,7 +374,7 @@ func getAuthInfo(environment, tenantID string, getMetadata func(string, string) 
 		}
 	}
 
-	metadata, err := getMetadata(env.ActiveDirectoryEndpoint, tenantID)
+	metadata, err := getMetadata(ctx, env.ActiveDirectoryEndpoint, tenantID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get metadata for azure")
 	}

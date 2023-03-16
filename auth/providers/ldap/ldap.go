@@ -17,6 +17,7 @@ limitations under the License.
 package ldap
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
@@ -59,7 +60,7 @@ func (g Authenticator) UID() string {
 	return OrgType
 }
 
-func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
+func (s Authenticator) Check(_ context.Context, token string) (*authv1.UserInfo, error) {
 	var (
 		err  error
 		conn *ldap.Conn
