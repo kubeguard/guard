@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package rbac
 
 import (
@@ -46,7 +47,10 @@ const (
 	PodsResource                = "pods"
 )
 
-var username string
+var (
+	username               string
+	getStoredOperationsMap = azureutils.DeepCopyOperationsMap
+)
 
 type SubjectInfoAttributes struct {
 	ObjectId string   `json:"ObjectId"`
@@ -211,7 +215,7 @@ func getResourceAndAction(resource string, subResource string, verb string) stri
 	return action
 }
 
-func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string, operationsMap azureutils.OperationsMap) ([]azureutils.AuthorizationActionInfo, error) {
+func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string) ([]azureutils.AuthorizationActionInfo, error) {
 	var authInfoList []azureutils.AuthorizationActionInfo
 	var err error
 
@@ -240,11 +244,12 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 			authInfoList = append(authInfoList, authInfoSingle)
 
 		} else {
-			if operationsMap == nil || (operationsMap != nil && len(operationsMap) == 0) {
+			storedOperationsMap := getStoredOperationsMap()
+			if storedOperationsMap == nil || (storedOperationsMap != nil && len(storedOperationsMap) == 0) {
 				return nil, errors.Errorf("Wildcard support for Resource/Verb/Group is not enabled for request Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb)
 			}
 
-			authInfoList, err = getAuthInfoListForWildcard(subRevReq, operationsMap)
+			authInfoList, err = getAuthInfoListForWildcard(subRevReq, storedOperationsMap)
 			if err != nil {
 				return nil, errors.Wrap(err, fmt.Sprintf("Error which creating actions for checkaccess for Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb))
 			}
@@ -260,18 +265,17 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 	return authInfoList, nil
 }
 
-func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, operationsMap azureutils.OperationsMap) ([]azureutils.AuthorizationActionInfo, error) {
+func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, storedOperationsMap azureutils.OperationsMap) ([]azureutils.AuthorizationActionInfo, error) {
 	var authInfoList []azureutils.AuthorizationActionInfo
 	var err error
 	finalFilteredOperations := azureutils.NewOperationsMap()
-
 	if subRevReq.ResourceAttributes.Resource == "*" {
 		/*
 			This sections handles the following scenarios:
 
 			| Scenario              | Namespace is empty (Cluster scope call)                    | Namespace is not empty (NS scope)             |
 			------------------------ ------------------------------------------------------------  ----------------------------------------------
-			| Verb-*, Res-*, Group-*| All cluster and ns res with all verbs at clusterscope      | All ns resources at ns scope                  |
+			| Verb-*, Res-*, Group-*| All cluster and ns res with all verbs at clusterscope | All ns resources at ns scope |
 
 			| Res-*, Group-*        | All cluster and ns res with specified verb at clusterscope | All ns res with specified verb at ns scope    |
 
@@ -284,17 +288,17 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, oper
 		filteredOperations := azureutils.NewOperationsMap()
 		if subRevReq.ResourceAttributes.Group == "*" {
 			// all resources under all apigroups
-			filteredOperations = operationsMap
+			filteredOperations = storedOperationsMap
 		} else if subRevReq.ResourceAttributes.Group != "" {
 			// all resources under specified apigroup
-			if value, found := operationsMap[subRevReq.ResourceAttributes.Group]; found {
+			if value, found := storedOperationsMap[subRevReq.ResourceAttributes.Group]; found {
 				filteredOperations[subRevReq.ResourceAttributes.Group] = value
 			} else {
 				return nil, errors.Errorf("No resources found for group %s", subRevReq.ResourceAttributes.Group)
 			}
 		} else {
 			// if Group is not there that means it is the core apigroup
-			if value, found := operationsMap["v1"]; found {
+			if value, found := storedOperationsMap["v1"]; found {
 				filteredOperations["v1"] = value
 			} else {
 				return nil, errors.New("No resources found for the core group")
@@ -335,7 +339,7 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, oper
 		*/
 		if subRevReq.ResourceAttributes.Group == "*" {
 			// #1 and #3
-			for group, resMap := range operationsMap {
+			for group, resMap := range storedOperationsMap {
 				if verbMap, found := resMap[subRevReq.ResourceAttributes.Resource]; found {
 					finalFilteredOperations = initializeMapForGroupAndResource(finalFilteredOperations, group, subRevReq.ResourceAttributes.Resource)
 					finalFilteredOperations[group][subRevReq.ResourceAttributes.Resource] = verbMap
@@ -347,7 +351,7 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, oper
 				group = subRevReq.ResourceAttributes.Group
 			}
 
-			if resMap, found := operationsMap[group]; found {
+			if resMap, found := storedOperationsMap[group]; found {
 				if verbMap, found := resMap[subRevReq.ResourceAttributes.Resource]; found {
 					finalFilteredOperations = initializeMapForGroupAndResource(finalFilteredOperations, group, subRevReq.ResourceAttributes.Resource)
 					finalFilteredOperations[group][subRevReq.ResourceAttributes.Resource] = verbMap
@@ -443,7 +447,7 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	return cacheKey
 }
 
-func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, operationsMap azureutils.OperationsMap, resourceId string, useNamespaceResourceScopeFormat bool) ([]*CheckAccessRequest, error) {
+func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, resourceId string, useNamespaceResourceScopeFormat bool) ([]*CheckAccessRequest, error) {
 	/* This is how sample SubjectAccessReview request will look like
 		{
 			"kind": "SubjectAccessReview",
@@ -503,7 +507,7 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 	}
 	groups := getValidSecurityGroups(req.Groups)
 	username = req.User
-	actions, err := getDataActions(req, clusterType, operationsMap)
+	actions, err := getDataActions(req, clusterType)
 	if err != nil {
 		return nil, errutils.WithCode(errors.Wrap(err, "Error while creating list of dataactions for check access call"), http.StatusInternalServerError)
 	}

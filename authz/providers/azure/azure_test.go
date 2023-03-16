@@ -17,6 +17,7 @@ limitations under the License.
 package azure
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -28,10 +29,9 @@ import (
 	"go.kubeguard.dev/guard/authz/providers/azure/data"
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 	"go.kubeguard.dev/guard/authz/providers/azure/rbac"
-	azureutils "go.kubeguard.dev/guard/util/azure"
 	errutils "go.kubeguard.dev/guard/util/error"
 
-	"github.com/appscode/pat"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	authzv1 "k8s.io/api/authorization/v1"
 )
@@ -62,9 +62,7 @@ func clientSetup(serverUrl, mode string) (*Authorizer, error) {
 		ARMEndPoint: serverUrl + "/arm/",
 	}
 
-	dataActionsMap := azureutils.OperationsMap{}
-
-	c.rbacClient, err = rbac.New(opts, authOpts, &authzInfo, dataActionsMap)
+	c.rbacClient, err = rbac.New(opts, authOpts, &authzInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -78,18 +76,18 @@ func serverSetup(loginResp, checkaccessResp string, loginStatus, checkaccessStat
 		return nil, err
 	}
 
-	m := pat.New()
+	m := chi.NewRouter()
 
-	m.Post("/login/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	m.Post("/login/*", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(loginStatus)
 		_, _ = w.Write([]byte(loginResp))
-	}))
+	})
 
-	m.Post("/arm/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	m.Post("/arm/*", func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(sleepFor)
 		w.WriteHeader(checkaccessStatus)
 		_, _ = w.Write([]byte(checkaccessResp))
-	}))
+	})
 
 	srv := &httptest.Server{
 		Listener: listener,
@@ -143,7 +141,8 @@ func TestCheck(t *testing.T) {
 			}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
 		}
 
-		resp, err := client.Check(request, store)
+		ctx := context.Background()
+		resp, err := client.Check(ctx, request, store)
 		assert.Nilf(t, err, "Should not have got error")
 		assert.NotNil(t, resp)
 		assert.Equal(t, resp.Allowed, true)
@@ -167,7 +166,8 @@ func TestCheck(t *testing.T) {
 			}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
 		}
 
-		resp, err := client.Check(request, store)
+		ctx := context.Background()
+		resp, err := client.Check(ctx, request, store)
 		assert.Nilf(t, resp, "response should be nil")
 		assert.NotNilf(t, err, "should get error")
 		assert.Contains(t, err.Error(), "Error occured during authorization check")
@@ -190,7 +190,8 @@ func TestCheck(t *testing.T) {
 			}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
 		}
 
-		resp, err := client.Check(request, store)
+		ctx := context.Background()
+		resp, err := client.Check(ctx, request, store)
 		assert.Nilf(t, resp, "response should be nil")
 		assert.NotNilf(t, err, "should get error")
 		assert.Contains(t, err.Error(), "Checkaccess requests have timed out")

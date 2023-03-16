@@ -17,12 +17,14 @@ limitations under the License.
 package server
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"go.kubeguard.dev/guard/auth/providers/token"
@@ -30,7 +32,8 @@ import (
 	"go.kubeguard.dev/guard/authz/providers/azure/data"
 	azureutils "go.kubeguard.dev/guard/util/azure"
 
-	"github.com/appscode/pat"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
@@ -114,7 +117,7 @@ func (s Server) ListenAndServe() {
 		 - http://www.bite-code.com/2015/06/25/tls-mutual-auth-in-golang/
 		 - http://www.hydrogen18.com/blog/your-own-pki-tls-golang.html
 	*/
-	caCert, err := ioutil.ReadFile(s.AuthRecommendedOptions.SecureServing.CACertFile)
+	caCert, err := os.ReadFile(s.AuthRecommendedOptions.SecureServing.CACertFile)
 	if err != nil {
 		klog.Fatal(err)
 	}
@@ -142,7 +145,10 @@ func (s Server) ListenAndServe() {
 		NextProtos: []string{"h2", "http/1.1"},
 	}
 
-	m := pat.New()
+	m := chi.NewRouter()
+	m.Use(middleware.RealIP)
+	m.Use(middleware.Logger)
+	m.Use(middleware.Recoverer)
 
 	// Instrument the handlers with all the metrics, injecting the "handler" label by currying.
 	// ref:
@@ -156,8 +162,8 @@ func (s Server) ListenAndServe() {
 		),
 	)
 
-	m.Post("/tokenreviews", handler)
-	m.Get("/metrics", promhttp.Handler())
+	m.Post("/tokenreviews", handler.ServeHTTP)
+	m.Get("/metrics", promhttp.Handler().ServeHTTP)
 	m.Get("/healthz", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(200)
 		w.Header().Set("Content-Type", "application/json")
@@ -175,7 +181,8 @@ func (s Server) ListenAndServe() {
 
 	m.Get("/readyz", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if len(s.AuthzRecommendedOptions.AuthzProvider.Providers) > 0 && s.AuthzRecommendedOptions.AuthzProvider.Has(azure.OrgType) && s.AuthzRecommendedOptions.Azure.DiscoverResources {
-			if authzhandler.operationsMap != nil && len(authzhandler.operationsMap) > 0 {
+			storedOperationsMap := azureutils.DeepCopyOperationsMap()
+			if len(storedOperationsMap) > 0 {
 				w.WriteHeader(200)
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -201,7 +208,7 @@ func (s Server) ListenAndServe() {
 			),
 		)
 
-		m.Post("/subjectaccessreviews", authzPromHandler)
+		m.Post("/subjectaccessreviews", authzPromHandler.ServeHTTP)
 
 		if s.AuthzRecommendedOptions.AuthzProvider.Has(azure.OrgType) {
 			options := data.DefaultOptions
@@ -224,21 +231,27 @@ func (s Server) ListenAndServe() {
 					klog.Fatalf("Authzmode %s is not supported for fetching list of resources", s.AuthzRecommendedOptions.Azure.AuthzMode)
 				}
 
-				settings, err := azureutils.NewDiscoverResourcesSettings(clusterType, s.AuthRecommendedOptions.Azure.Environment, s.AuthzRecommendedOptions.Azure.AKSAuthzTokenURL, s.AuthzRecommendedOptions.Azure.KubeConfigFile, s.AuthRecommendedOptions.Azure.TenantID, s.AuthRecommendedOptions.Azure.ClientID, s.AuthRecommendedOptions.Azure.ClientSecret)
+				err := azureutils.SetDiscoverResourcesSettings(clusterType, s.AuthRecommendedOptions.Azure.Environment, s.AuthzRecommendedOptions.Azure.AKSAuthzTokenURL, s.AuthzRecommendedOptions.Azure.KubeConfigFile, s.AuthRecommendedOptions.Azure.TenantID, s.AuthRecommendedOptions.Azure.ClientID, s.AuthRecommendedOptions.Azure.ClientSecret)
 				if err != nil {
 					klog.Fatalf("Failed to create settings for discovering resources. Error:%s", err)
 				}
 
 				discoverResourcesListStart := time.Now()
-				operationsMap, err := azureutils.DiscoverResources(settings)
+				err = azureutils.DiscoverResources(context.Background())
 				discoverResourcesDuration := time.Since(discoverResourcesListStart).Seconds()
 				if err != nil {
 					azureutils.DiscoverResourcesTotalDuration.Observe(discoverResourcesDuration)
-					klog.Fatalf("Failed to create map of data actions. Error:%s", err)
+					klog.Fatalf("Failed to create map of data actions on startup. Error:%s", err)
 				}
-
 				azureutils.DiscoverResourcesTotalDuration.Observe(discoverResourcesDuration)
-				authzhandler.operationsMap = operationsMap
+
+				// start thread for reconciling the GlobalOperationsMap
+				var wg sync.WaitGroup
+				wg.Add(1)
+				go azureutils.ReconcileDiscoverResources(context.Background(), &wg, s.AuthzRecommendedOptions.Azure.ReconcileDiscoverResourcesFrequency)
+				go func() {
+					wg.Wait()
+				}()
 			}
 		}
 	}

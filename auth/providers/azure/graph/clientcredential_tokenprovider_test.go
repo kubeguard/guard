@@ -17,6 +17,7 @@ limitations under the License.
 package graph
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -60,8 +61,9 @@ func TestClientCredentialTokenProvider(t *testing.T) {
 
 		defer stopTestServer(t, s)
 
+		ctx := context.Background()
 		r := NewClientCredentialTokenProvider(clientID, clientSecret, s.URL, scope)
-		resp, err := r.Acquire(inputAccessToken)
+		resp, err := r.Acquire(ctx, inputAccessToken)
 		if err != nil {
 			t.Fatalf("refresh should not return error: %s", err)
 		}
@@ -101,8 +103,9 @@ func TestClientCredentialTokenProvider(t *testing.T) {
 
 		defer stopTestServer(t, s)
 
+		ctx := context.Background()
 		r := NewClientCredentialTokenProvider(clientID, clientSecret, s.URL, scope)
-		resp, err := r.Acquire(inputAccessToken)
+		resp, err := r.Acquire(ctx, inputAccessToken)
 		if err == nil {
 			t.Error("refresh should return error")
 		}

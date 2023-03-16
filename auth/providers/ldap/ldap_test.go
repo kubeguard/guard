@@ -17,6 +17,7 @@ limitations under the License.
 package ldap
 
 import (
+	"context"
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
@@ -328,7 +329,8 @@ func runTest(t *testing.T, secureConn bool, s Authenticator, serverType string) 
 				// set up client token
 				token := base64.StdEncoding.EncodeToString([]byte(tc.token))
 
-				resp, err := serv.Check(token)
+				ctx := context.Background()
+				resp, err := serv.Check(ctx, token)
 				if tc.authenticated {
 					if assert.Nil(t, err) {
 						if resp.Username != tc.username {

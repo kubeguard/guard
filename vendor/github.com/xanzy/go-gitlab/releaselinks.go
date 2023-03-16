@@ -43,18 +43,18 @@ type ReleaseLink struct {
 
 // ListReleaseLinksOptions represents ListReleaseLinks() options.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/releases/links.html#get-links
+// GitLab API docs: https://docs.gitlab.com/ee/api/releases/links.html#list-links-of-a-release
 type ListReleaseLinksOptions ListOptions
 
 // ListReleaseLinks gets assets as links from a Release.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/releases/links.html#get-links
+// GitLab API docs: https://docs.gitlab.com/ee/api/releases/links.html#list-links-of-a-release
 func (s *ReleaseLinksService) ListReleaseLinks(pid interface{}, tagName string, opt *ListReleaseLinksOptions, options ...RequestOptionFunc) ([]*ReleaseLink, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/releases/%s/assets/links", pathEscape(project), pathEscape(tagName))
+	u := fmt.Sprintf("projects/%s/releases/%s/assets/links", PathEscape(project), PathEscape(tagName))
 
 	req, err := s.client.NewRequest(http.MethodGet, u, opt, options)
 	if err != nil {
@@ -72,15 +72,15 @@ func (s *ReleaseLinksService) ListReleaseLinks(pid interface{}, tagName string, 
 
 // GetReleaseLink returns a link from release assets.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/releases/links.html#get-a-link
+// GitLab API docs: https://docs.gitlab.com/ee/api/releases/links.html#get-a-release-link
 func (s *ReleaseLinksService) GetReleaseLink(pid interface{}, tagName string, link int, options ...RequestOptionFunc) (*ReleaseLink, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
 	u := fmt.Sprintf("projects/%s/releases/%s/assets/links/%d",
-		pathEscape(project),
-		pathEscape(tagName),
+		PathEscape(project),
+		PathEscape(tagName),
 		link)
 
 	req, err := s.client.NewRequest(http.MethodGet, u, nil, options)
@@ -99,7 +99,7 @@ func (s *ReleaseLinksService) GetReleaseLink(pid interface{}, tagName string, li
 
 // CreateReleaseLinkOptions represents CreateReleaseLink() options.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/releases/links.html#create-a-link
+// GitLab API docs: https://docs.gitlab.com/ee/api/releases/links.html#create-a-release-link
 type CreateReleaseLinkOptions struct {
 	Name     *string        `url:"name,omitempty" json:"name,omitempty"`
 	URL      *string        `url:"url,omitempty" json:"url,omitempty"`
@@ -109,13 +109,13 @@ type CreateReleaseLinkOptions struct {
 
 // CreateReleaseLink creates a link.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/releases/links.html#create-a-link
+// GitLab API docs: https://docs.gitlab.com/ee/api/releases/links.html#create-a-release-link
 func (s *ReleaseLinksService) CreateReleaseLink(pid interface{}, tagName string, opt *CreateReleaseLinkOptions, options ...RequestOptionFunc) (*ReleaseLink, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/releases/%s/assets/links", pathEscape(project), pathEscape(tagName))
+	u := fmt.Sprintf("projects/%s/releases/%s/assets/links", PathEscape(project), PathEscape(tagName))
 
 	req, err := s.client.NewRequest(http.MethodPost, u, opt, options)
 	if err != nil {
@@ -135,7 +135,7 @@ func (s *ReleaseLinksService) CreateReleaseLink(pid interface{}, tagName string,
 //
 // You have to specify at least one of Name of URL.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/releases/links.html#update-a-link
+// GitLab API docs: https://docs.gitlab.com/ee/api/releases/links.html#update-a-release-link
 type UpdateReleaseLinkOptions struct {
 	Name     *string        `url:"name,omitempty" json:"name,omitempty"`
 	URL      *string        `url:"url,omitempty" json:"url,omitempty"`
@@ -145,15 +145,15 @@ type UpdateReleaseLinkOptions struct {
 
 // UpdateReleaseLink updates an asset link.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/releases/links.html#update-a-link
+// GitLab API docs: https://docs.gitlab.com/ee/api/releases/links.html#update-a-release-link
 func (s *ReleaseLinksService) UpdateReleaseLink(pid interface{}, tagName string, link int, opt *UpdateReleaseLinkOptions, options ...RequestOptionFunc) (*ReleaseLink, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
 	u := fmt.Sprintf("projects/%s/releases/%s/assets/links/%d",
-		pathEscape(project),
-		pathEscape(tagName),
+		PathEscape(project),
+		PathEscape(tagName),
 		link)
 
 	req, err := s.client.NewRequest(http.MethodPut, u, opt, options)
@@ -172,15 +172,15 @@ func (s *ReleaseLinksService) UpdateReleaseLink(pid interface{}, tagName string,
 
 // DeleteReleaseLink deletes a link from release.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/releases/links.html#delete-a-link
+// GitLab API docs: https://docs.gitlab.com/ee/api/releases/links.html#delete-a-release-link
 func (s *ReleaseLinksService) DeleteReleaseLink(pid interface{}, tagName string, link int, options ...RequestOptionFunc) (*ReleaseLink, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
 	u := fmt.Sprintf("projects/%s/releases/%s/assets/links/%d",
-		pathEscape(project),
-		pathEscape(tagName),
+		PathEscape(project),
+		PathEscape(tagName),
 		link,
 	)
 

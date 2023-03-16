@@ -17,6 +17,7 @@ limitations under the License.
 package gitlab
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -24,7 +25,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/appscode/pat"
+	"github.com/go-chi/chi/v5"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -52,9 +53,8 @@ type gitlabGroupRespFunc func(u *url.URL) (int, string)
 
 // GitLab API docs:
 // https://docs.gitlab.com/ce/api/README.html#data-validation-and-error-reporting
-//
 func gitlabGetErrorMsg(err error) []byte {
-	//{{{err.Error()}}}
+	// {{{err.Error()}}}
 	errMsg := `{ "message": "{{{` + err.Error() + `}}}" }`
 	// fmt.Println(errMsg)
 	return []byte(errMsg)
@@ -112,11 +112,13 @@ func assertUserInfo(t *testing.T, info *v1.UserInfo, useGroupId bool, groupSize 
 }
 
 // return string format
-//  [
-//      {
-//          "name":"team1"
-//      }
-//  ]
+//
+//	[
+//	    {
+//	        "name":"team1"
+//	    }
+//	]
+//
 // Group name format : team[groupNo]
 func GitlabGetGroups(size int, startgroupNo int) ([]byte, error) {
 	type group struct {
@@ -174,7 +176,7 @@ func gitlabGetGroupResp(groupSize int) gitlabGroupRespFunc {
 }
 
 func gitlabServerSetup(userResp string, userStatusCode int, gengroupResp gitlabGroupRespFunc) *httptest.Server {
-	m := pat.New()
+	m := chi.NewRouter()
 
 	m.Get("/api/v4/user", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		err := gitlabVerifyAuthorization(r)
@@ -250,6 +252,7 @@ func TestGitlab(t *testing.T) {
 			"{{{error when getting user}}}",
 		},
 	}
+	ctx := context.Background()
 
 	for _, test := range dataset {
 		for useGroupId, suffix := range testGroupID {
@@ -260,7 +263,7 @@ func TestGitlab(t *testing.T) {
 
 				client := gitlabClientSetup(srv.URL, useGroupId)
 
-				resp, err := client.Check(test.token)
+				resp, err := client.Check(ctx, test.token)
 				if assert.NotNil(t, err) {
 					assert.Nil(t, resp)
 				}
@@ -271,6 +274,8 @@ func TestGitlab(t *testing.T) {
 
 func TestForDIfferentGroupSizes(t *testing.T) {
 	groupSizes := []int{0, 1, 20, 100}
+	ctx := context.Background()
+
 	for _, groupSize := range groupSizes {
 		// PerPage=20
 		// authenticated : true
@@ -281,7 +286,7 @@ func TestForDIfferentGroupSizes(t *testing.T) {
 
 				client := gitlabClientSetup(srv.URL, useGroupId)
 				if assert.NotNil(t, client) {
-					resp, err := client.Check(gitlabGoodToken)
+					resp, err := client.Check(ctx, gitlabGoodToken)
 					if assert.Nil(t, err) {
 						assertUserInfo(t, resp, useGroupId, groupSize)
 					}
@@ -293,6 +298,8 @@ func TestForDIfferentGroupSizes(t *testing.T) {
 
 func TestGroupListErrorInDifferentPage(t *testing.T) {
 	pages := []int{1, 2, 3}
+	ctx := context.Background()
+
 	for _, pageNo := range pages {
 		for useGroupId, suffix := range testGroupID {
 			t.Run(fmt.Sprintf("error when getting user's group at page %v %s", pageNo, suffix), func(t *testing.T) {
@@ -316,7 +323,7 @@ func TestGroupListErrorInDifferentPage(t *testing.T) {
 				defer srv.Close()
 
 				client := gitlabClientSetup(srv.URL, useGroupId)
-				resp, err := client.Check(gitlabGoodToken)
+				resp, err := client.Check(ctx, gitlabGoodToken)
 				assert.NotNil(t, err)
 				assert.Nil(t, resp)
 			})

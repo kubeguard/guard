@@ -1,9 +1,12 @@
 /*
 Copyright The Guard Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,6 +19,7 @@ package options
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"go.kubeguard.dev/guard/auth/providers/azure"
 
@@ -34,26 +38,28 @@ const (
 )
 
 type Options struct {
-	AuthzMode                       string
-	ResourceId                      string
-	AKSAuthzTokenURL                string
-	ARMCallLimit                    int
-	SkipAuthzCheck                  []string
-	SkipAuthzForNonAADUsers         bool
-	AllowNonResDiscoveryPathAccess  bool
-	UseNamespaceResourceScopeFormat bool
-	DiscoverResources               bool
-	KubeConfigFile                  string
+	AuthzMode                           string
+	ResourceId                          string
+	AKSAuthzTokenURL                    string
+	ARMCallLimit                        int
+	SkipAuthzCheck                      []string
+	SkipAuthzForNonAADUsers             bool
+	AllowNonResDiscoveryPathAccess      bool
+	UseNamespaceResourceScopeFormat     bool
+	DiscoverResources                   bool
+	ReconcileDiscoverResourcesFrequency time.Duration
+	KubeConfigFile                      string
 }
 
 func NewOptions() Options {
 	return Options{
-		ARMCallLimit:                    defaultArmCallLimit,
-		SkipAuthzCheck:                  []string{""},
-		SkipAuthzForNonAADUsers:         true,
-		AllowNonResDiscoveryPathAccess:  true,
-		UseNamespaceResourceScopeFormat: false,
-		DiscoverResources:               false,
+		ARMCallLimit:                        defaultArmCallLimit,
+		SkipAuthzCheck:                      []string{""},
+		SkipAuthzForNonAADUsers:             true,
+		AllowNonResDiscoveryPathAccess:      true,
+		UseNamespaceResourceScopeFormat:     false,
+		DiscoverResources:                   false,
+		ReconcileDiscoverResourcesFrequency: 5 * time.Minute,
 	}
 }
 
@@ -68,6 +74,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.UseNamespaceResourceScopeFormat, "azure.use-ns-resource-scope-format", o.UseNamespaceResourceScopeFormat, "use namespace as resource scope format for making rbac checkaccess calls at namespace scope")
 	fs.StringVar(&o.KubeConfigFile, "azure.kubeconfig-file", "", "path to the kubeconfig of cluster.")
 	fs.BoolVar(&o.DiscoverResources, "azure.discover-resources", o.DiscoverResources, "fetch list of resources and operations from apiserver and azure. Default: false")
+	fs.DurationVar(&o.ReconcileDiscoverResourcesFrequency, "azure.discover-resources-frequency", o.ReconcileDiscoverResourcesFrequency, "Frequency at which discover resources should be reconciled. Default: 5m")
 }
 
 func (o *Options) Validate(azure azure.Options) []error {

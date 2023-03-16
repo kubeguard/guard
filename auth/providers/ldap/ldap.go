@@ -17,6 +17,7 @@ limitations under the License.
 package ldap
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
@@ -24,7 +25,7 @@ import (
 
 	"go.kubeguard.dev/guard/auth"
 
-	"github.com/go-ldap/ldap"
+	"github.com/go-ldap/ldap/v3"
 	"github.com/jcmturner/gokrb5/v8/messages"
 	"github.com/jcmturner/gokrb5/v8/service"
 	"github.com/pkg/errors"
@@ -59,7 +60,7 @@ func (g Authenticator) UID() string {
 	return OrgType
 }
 
-func (s Authenticator) Check(token string) (*authv1.UserInfo, error) {
+func (s Authenticator) Check(_ context.Context, token string) (*authv1.UserInfo, error) {
 	var (
 		err  error
 		conn *ldap.Conn

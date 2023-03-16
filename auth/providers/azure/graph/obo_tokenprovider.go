@@ -17,7 +17,8 @@ limitations under the License.
 package graph
 
 import (
-	"io/ioutil"
+	"context"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -53,7 +54,7 @@ func NewOBOTokenProvider(clientID, clientSecret, loginURL, scope string) TokenPr
 
 func (u *oboTokenProvider) Name() string { return u.name }
 
-func (u *oboTokenProvider) Acquire(token string) (AuthResponse, error) {
+func (u *oboTokenProvider) Acquire(ctx context.Context, token string) (AuthResponse, error) {
 	authResp := AuthResponse{}
 	form := url.Values{}
 	form.Set("client_id", u.clientID)
@@ -73,14 +74,14 @@ func (u *oboTokenProvider) Acquire(token string) (AuthResponse, error) {
 		klog.V(10).Infoln(cmd)
 	}
 
-	resp, err := u.client.Do(req)
+	resp, err := u.client.Do(req.WithContext(ctx))
 	if err != nil {
 		return authResp, errors.Wrap(err, "failed to send request")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		data, _ := ioutil.ReadAll(resp.Body)
+		data, _ := io.ReadAll(resp.Body)
 		return authResp, errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data))
 	}
 	err = json.NewDecoder(resp.Body).Decode(&authResp)

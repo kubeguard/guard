@@ -24,14 +24,14 @@ import (
 // GroupLabelsService handles communication with the label related methods of the
 // GitLab API.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/group_labels.html
+// GitLab API docs: https://docs.gitlab.com/ee/api/group_labels.html
 type GroupLabelsService struct {
 	client *Client
 }
 
 // GroupLabel represents a GitLab group label.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/group_labels.html
+// GitLab API docs: https://docs.gitlab.com/ee/api/group_labels.html
 type GroupLabel Label
 
 func (l GroupLabel) String() string {
@@ -40,19 +40,26 @@ func (l GroupLabel) String() string {
 
 // ListGroupLabelsOptions represents the available ListGroupLabels() options.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/labels.html#list-labels
-type ListGroupLabelsOptions ListOptions
+// GitLab API docs: https://docs.gitlab.com/ee/api/group_labels.html#list-group-labels
+type ListGroupLabelsOptions struct {
+	ListOptions
+	WithCounts               *bool   `url:"with_counts,omitempty" json:"with_counts,omitempty"`
+	IncludeAncestorGroups    *bool   `url:"include_ancestor_groups,omitempty" json:"include_ancestor_groups,omitempty"`
+	IncludeDescendantGrouops *bool   `url:"include_descendant_groups,omitempty" json:"include_descendant_groups,omitempty"`
+	OnlyGroupLabels          *bool   `url:"only_group_labels,omitempty" json:"only_group_labels,omitempty"`
+	Search                   *string `url:"search,omitempty" json:"search,omitempty"`
+}
 
 // ListGroupLabels gets all labels for given group.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_labels.html#list-group-labels
+// https://docs.gitlab.com/ee/api/group_labels.html#list-group-labels
 func (s *GroupLabelsService) ListGroupLabels(gid interface{}, opt *ListGroupLabelsOptions, options ...RequestOptionFunc) ([]*GroupLabel, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/labels", pathEscape(group))
+	u := fmt.Sprintf("groups/%s/labels", PathEscape(group))
 
 	req, err := s.client.NewRequest(http.MethodGet, u, opt, options)
 	if err != nil {
@@ -71,7 +78,7 @@ func (s *GroupLabelsService) ListGroupLabels(gid interface{}, opt *ListGroupLabe
 // GetGroupLabel get a single label for a given group.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_labels.html#get-a-single-group-label
+// https://docs.gitlab.com/ee/api/group_labels.html#get-a-single-group-label
 func (s *GroupLabelsService) GetGroupLabel(gid interface{}, labelID interface{}, options ...RequestOptionFunc) (*GroupLabel, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
@@ -81,7 +88,7 @@ func (s *GroupLabelsService) GetGroupLabel(gid interface{}, labelID interface{},
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/labels/%s", pathEscape(group), label)
+	u := fmt.Sprintf("groups/%s/labels/%s", PathEscape(group), PathEscape(label))
 
 	req, err := s.client.NewRequest(http.MethodGet, u, nil, options)
 	if err != nil {
@@ -100,20 +107,20 @@ func (s *GroupLabelsService) GetGroupLabel(gid interface{}, labelID interface{},
 // CreateGroupLabelOptions represents the available CreateGroupLabel() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_labels.html#create-a-new-group-label
+// https://docs.gitlab.com/ee/api/group_labels.html#create-a-new-group-label
 type CreateGroupLabelOptions CreateLabelOptions
 
 // CreateGroupLabel creates a new label for given group with given name and
 // color.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_labels.html#create-a-new-group-label
+// https://docs.gitlab.com/ee/api/group_labels.html#create-a-new-group-label
 func (s *GroupLabelsService) CreateGroupLabel(gid interface{}, opt *CreateGroupLabelOptions, options ...RequestOptionFunc) (*GroupLabel, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/labels", pathEscape(group))
+	u := fmt.Sprintf("groups/%s/labels", PathEscape(group))
 
 	req, err := s.client.NewRequest(http.MethodPost, u, opt, options)
 	if err != nil {
@@ -132,18 +139,18 @@ func (s *GroupLabelsService) CreateGroupLabel(gid interface{}, opt *CreateGroupL
 // DeleteGroupLabelOptions represents the available DeleteGroupLabel() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_labels.html#delete-a-group-label
+// https://docs.gitlab.com/ee/api/group_labels.html#delete-a-group-label
 type DeleteGroupLabelOptions DeleteLabelOptions
 
 // DeleteGroupLabel deletes a group label given by its name.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/labels.html#delete-a-label
+// GitLab API docs: https://docs.gitlab.com/ee/api/group_labels.html#delete-a-group-label
 func (s *GroupLabelsService) DeleteGroupLabel(gid interface{}, opt *DeleteGroupLabelOptions, options ...RequestOptionFunc) (*Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, err
 	}
-	u := fmt.Sprintf("groups/%s/labels", pathEscape(group))
+	u := fmt.Sprintf("groups/%s/labels", PathEscape(group))
 
 	req, err := s.client.NewRequest(http.MethodDelete, u, opt, options)
 	if err != nil {
@@ -156,20 +163,20 @@ func (s *GroupLabelsService) DeleteGroupLabel(gid interface{}, opt *DeleteGroupL
 // UpdateGroupLabelOptions represents the available UpdateGroupLabel() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_labels.html#update-a-group-label
+// https://docs.gitlab.com/ee/api/group_labels.html#update-a-group-label
 type UpdateGroupLabelOptions UpdateLabelOptions
 
 // UpdateGroupLabel updates an existing label with new name or now color. At least
 // one parameter is required, to update the label.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_labels.html#update-a-group-label
+// https://docs.gitlab.com/ee/api/group_labels.html#update-a-group-label
 func (s *GroupLabelsService) UpdateGroupLabel(gid interface{}, opt *UpdateGroupLabelOptions, options ...RequestOptionFunc) (*GroupLabel, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/labels", pathEscape(group))
+	u := fmt.Sprintf("groups/%s/labels", PathEscape(group))
 
 	req, err := s.client.NewRequest(http.MethodPut, u, opt, options)
 	if err != nil {
@@ -190,7 +197,7 @@ func (s *GroupLabelsService) UpdateGroupLabel(gid interface{}, opt *UpdateGroupL
 // code 304 is returned.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_labels.html#subscribe-to-a-group-label
+// https://docs.gitlab.com/ee/api/group_labels.html#subscribe-to-a-group-label
 func (s *GroupLabelsService) SubscribeToGroupLabel(gid interface{}, labelID interface{}, options ...RequestOptionFunc) (*GroupLabel, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
@@ -200,7 +207,7 @@ func (s *GroupLabelsService) SubscribeToGroupLabel(gid interface{}, labelID inte
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("groups/%s/labels/%s/subscribe", pathEscape(group), label)
+	u := fmt.Sprintf("groups/%s/labels/%s/subscribe", PathEscape(group), PathEscape(label))
 
 	req, err := s.client.NewRequest(http.MethodPost, u, nil, options)
 	if err != nil {
@@ -221,7 +228,7 @@ func (s *GroupLabelsService) SubscribeToGroupLabel(gid interface{}, labelID inte
 // status code 304 is returned.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/group_labels.html#unsubscribe-from-a-group-label
+// https://docs.gitlab.com/ee/api/group_labels.html#unsubscribe-from-a-group-label
 func (s *GroupLabelsService) UnsubscribeFromGroupLabel(gid interface{}, labelID interface{}, options ...RequestOptionFunc) (*Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
@@ -231,7 +238,7 @@ func (s *GroupLabelsService) UnsubscribeFromGroupLabel(gid interface{}, labelID 
 	if err != nil {
 		return nil, err
 	}
-	u := fmt.Sprintf("groups/%s/labels/%s/unsubscribe", pathEscape(group), label)
+	u := fmt.Sprintf("groups/%s/labels/%s/unsubscribe", PathEscape(group), PathEscape(label))
 
 	req, err := s.client.NewRequest(http.MethodPost, u, nil, options)
 	if err != nil {

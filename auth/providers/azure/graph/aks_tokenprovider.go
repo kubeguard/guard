@@ -18,7 +18,8 @@ package graph
 
 import (
 	"bytes"
-	"io/ioutil"
+	"context"
+	"io"
 	"net/http"
 
 	"go.kubeguard.dev/guard/util/httpclient"
@@ -45,7 +46,7 @@ func NewAKSTokenProvider(tokenURL, tenantID string) TokenProvider {
 
 func (u *aksTokenProvider) Name() string { return u.name }
 
-func (u *aksTokenProvider) Acquire(token string) (AuthResponse, error) {
+func (u *aksTokenProvider) Acquire(ctx context.Context, token string) (AuthResponse, error) {
 	authResp := AuthResponse{}
 	tokenReq := struct {
 		TenantID    string `json:"tenantID,omitempty"`
@@ -65,14 +66,14 @@ func (u *aksTokenProvider) Acquire(token string) (AuthResponse, error) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := u.client.Do(req)
+	resp, err := u.client.Do(req.WithContext(ctx))
 	if err != nil {
 		return authResp, errors.Wrap(err, "failed to send request")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		data, _ := ioutil.ReadAll(resp.Body)
+		data, _ := io.ReadAll(resp.Body)
 		return authResp, errors.Errorf("request failed with status code: %d and response: %s", resp.StatusCode, string(data))
 	}
 	err = json.NewDecoder(resp.Body).Decode(&authResp)

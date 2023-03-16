@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,9 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package azure
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"sync"
@@ -24,7 +26,6 @@ import (
 	"go.kubeguard.dev/guard/authz"
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 	"go.kubeguard.dev/guard/authz/providers/azure/rbac"
-	azureutils "go.kubeguard.dev/guard/util/azure"
 	errutils "go.kubeguard.dev/guard/util/error"
 
 	"github.com/Azure/go-autorest/autorest/azure"
@@ -51,10 +52,10 @@ type Authorizer struct {
 	rbacClient *rbac.AccessInfo
 }
 
-func New(opts authzOpts.Options, authopts auth.Options, operationsMap azureutils.OperationsMap) (authz.Interface, error) {
+func New(opts authzOpts.Options, authopts auth.Options) (authz.Interface, error) {
 	once.Do(func() {
 		klog.Info("Creating Azure global authz client")
-		client, err = newAuthzClient(opts, authopts, operationsMap)
+		client, err = newAuthzClient(opts, authopts)
 		if client == nil || err != nil {
 			klog.Fatalf("Authz RBAC client creation failed. Error: %s", err)
 		}
@@ -62,7 +63,7 @@ func New(opts authzOpts.Options, authopts auth.Options, operationsMap azureutils
 	return client, err
 }
 
-func newAuthzClient(opts authzOpts.Options, authopts auth.Options, operationsMap azureutils.OperationsMap) (authz.Interface, error) {
+func newAuthzClient(opts authzOpts.Options, authopts auth.Options) (authz.Interface, error) {
 	c := &Authorizer{}
 
 	authzInfoVal, err := getAuthzInfo(authopts.Environment)
@@ -70,7 +71,7 @@ func newAuthzClient(opts authzOpts.Options, authopts auth.Options, operationsMap
 		return nil, errors.Wrap(err, "Error in getAuthzInfo %s")
 	}
 
-	c.rbacClient, err = rbac.New(opts, authopts, authzInfoVal, operationsMap)
+	c.rbacClient, err = rbac.New(opts, authopts, authzInfoVal)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create ms rbac client")
 	}
@@ -78,7 +79,7 @@ func newAuthzClient(opts authzOpts.Options, authopts auth.Options, operationsMap
 	return c, nil
 }
 
-func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec, store authz.Store) (*authzv1.SubjectAccessReviewStatus, error) {
+func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, store authz.Store) (*authzv1.SubjectAccessReviewStatus, error) {
 	if request == nil {
 		return nil, errutils.WithCode(errors.New("subject access review is nil"), http.StatusBadRequest)
 	}
@@ -120,7 +121,7 @@ func (s Authorizer) Check(request *authzv1.SubjectAccessReviewSpec, store authz.
 	}
 
 	if s.rbacClient.IsTokenExpired() {
-		if err := s.rbacClient.RefreshToken(); err != nil {
+		if err := s.rbacClient.RefreshToken(ctx); err != nil {
 			return nil, errutils.WithCode(err, http.StatusInternalServerError)
 		}
 	}

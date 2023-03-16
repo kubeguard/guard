@@ -26,7 +26,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/appscode/pat"
+	"github.com/go-chi/chi/v5"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/authentication/v1"
@@ -47,6 +47,7 @@ const (
 type teamRespFunc func(u *url.URL) (int, string)
 
 // return string format
+//
 //	[
 //		{
 //			"organization":{
@@ -55,6 +56,7 @@ type teamRespFunc func(u *url.URL) (int, string)
 //			"name":"team1"
 //		}
 //	]
+//
 // team name format : team[teamNo]
 func getTeamList(size int, startTeamNo int) ([]byte, error) {
 	type team struct {
@@ -104,28 +106,28 @@ func min(a, b int) int {
 // body, or a JSON response body that maps to ErrorResponse. Any other
 // response body will be silently ignored.
 //
-//An ErrorResponse reports one or more errors caused by an API request.
+// An ErrorResponse reports one or more errors caused by an API request.
 //
-//GitHub API docs: https://developer.github.com/v3/#client-errors
+// GitHub API docs: https://developer.github.com/v3/#client-errors
 //
-//type ErrorResponse struct {
-//	Response *http.Response // HTTP response that caused this error
-//	Message  string         `json:"message"` // error message
-//	Errors   []Error        `json:"errors"`  // more detail on individual errors
-//	// Block is only populated on certain types of errors such as code 451.
-//	// See https://developer.github.com/changes/2016-03-17-the-451-status-code-is-now-supported/
-//	// for more information.
-//	Block *struct {
-//		Reason    string     `json:"reason,omitempty"`
-//		CreatedAt *Timestamp `json:"created_at,omitempty"`
-//	} `json:"block,omitempty"`
-//	// Most errors will also include a documentation_url field pointing
-//	// to some content that might help you resolve the error, see
-//	// https://developer.github.com/v3/#client-errors
-//	DocumentationURL string `json:"documentation_url,omitempty"`
-//}
+//	type ErrorResponse struct {
+//		Response *http.Response // HTTP response that caused this error
+//		Message  string         `json:"message"` // error message
+//		Errors   []Error        `json:"errors"`  // more detail on individual errors
+//		// Block is only populated on certain types of errors such as code 451.
+//		// See https://developer.github.com/changes/2016-03-17-the-451-status-code-is-now-supported/
+//		// for more information.
+//		Block *struct {
+//			Reason    string     `json:"reason,omitempty"`
+//			CreatedAt *Timestamp `json:"created_at,omitempty"`
+//		} `json:"block,omitempty"`
+//		// Most errors will also include a documentation_url field pointing
+//		// to some content that might help you resolve the error, see
+//		// https://developer.github.com/v3/#client-errors
+//		DocumentationURL string `json:"documentation_url,omitempty"`
+//	}
 func getErrorMessage(err error) []byte {
-	//{{{err.Error()}}}
+	// {{{err.Error()}}}
 	errMsg := `{ "message": "{{{` + err.Error() + `}}}" }`
 	// fmt.Println(errMsg)
 	return []byte(errMsg)
@@ -197,40 +199,41 @@ func assertUserInfo(t *testing.T, info *v1.UserInfo, teamSize int) {
 }
 
 func githubServerSetup(githubOrg string, memberResp string, memberStatusCode int, genTeamRespn teamRespFunc) *httptest.Server {
-	m := pat.New()
+	m := chi.NewRouter()
+	m.Route("/api/v3", func(m chi.Router) {
+		m.Get(fmt.Sprintf("/user/memberships/orgs/%v", githubOrg), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			err := verifyAuthorization(r)
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write(getErrorMessage(err))
+				return
+			}
+			w.WriteHeader(memberStatusCode)
+			_, _ = w.Write([]byte(memberResp))
+		}))
 
-	m.Get(fmt.Sprintf("/user/memberships/orgs/%v", githubOrg), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		err := verifyAuthorization(r)
-		if err != nil {
+		m.Get("/user/memberships/orgs/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnauthorized)
-			_, _ = w.Write(getErrorMessage(err))
-			return
-		}
-		w.WriteHeader(memberStatusCode)
-		_, _ = w.Write([]byte(memberResp))
-	}))
+			_, _ = w.Write(getErrorMessage(errors.New("Authorization: invalid token")))
+		}))
 
-	m.Get("/user/memberships/orgs/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = w.Write(getErrorMessage(errors.New("Authorization: invalid token")))
-	}))
+		m.Get("/user/teams", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			err := verifyAuthorization(r)
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write(getErrorMessage(err))
+				return
+			}
 
-	m.Get("/user/teams", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		err := verifyAuthorization(r)
-		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			_, _ = w.Write(getErrorMessage(err))
-			return
-		}
-
-		status, resp := genTeamRespn(r.URL)
-		w.WriteHeader(status)
-		if status != http.StatusOK {
-			_, _ = w.Write(getErrorMessage(errors.New(resp)))
-			return
-		}
-		_, _ = w.Write([]byte(resp))
-	}))
+			status, resp := genTeamRespn(r.URL)
+			w.WriteHeader(status)
+			if status != http.StatusOK {
+				_, _ = w.Write(getErrorMessage(errors.New(resp)))
+				return
+			}
+			_, _ = w.Write([]byte(resp))
+		}))
+	})
 
 	srv := httptest.NewServer(m)
 	return srv
@@ -241,7 +244,6 @@ func githubClientSetup(serverUrl, githubOrg string) *Authenticator {
 		opts: Options{
 			BaseUrl: serverUrl,
 		},
-		ctx:     context.Background(),
 		OrgName: githubOrg,
 	}
 	return g
@@ -285,6 +287,7 @@ func TestCheckGithub(t *testing.T) {
 			"{{{error when checking organization membership}}}",
 		},
 	}
+	ctx := context.Background()
 
 	for _, test := range dataset {
 		t.Run(test.testName, func(t *testing.T) {
@@ -295,7 +298,7 @@ func TestCheckGithub(t *testing.T) {
 
 			client := githubClientSetup(srv.URL, test.reqOrg)
 
-			resp, err := client.Check(test.accessToken)
+			resp, err := client.Check(ctx, test.accessToken)
 			assert.NotNil(t, err)
 			assert.Nil(t, resp)
 		})
@@ -304,6 +307,7 @@ func TestCheckGithub(t *testing.T) {
 
 func TestForDifferentTeamSizes(t *testing.T) {
 	teamSizes := []int{25, 0, 1, 100} // 25 * N
+	ctx := context.Background()
 
 	for _, size := range teamSizes {
 		// page=1, PerPage=25
@@ -315,7 +319,7 @@ func TestForDifferentTeamSizes(t *testing.T) {
 
 			client := githubClientSetup(srv.URL, githubOrganization)
 
-			resp, err := client.Check(githubGoodToken)
+			resp, err := client.Check(ctx, githubGoodToken)
 			assert.Nil(t, err)
 			assertUserInfo(t, resp, teamSize)
 		})
@@ -329,13 +333,16 @@ func TestAuthorizationHeader(t *testing.T) {
 
 	client := githubClientSetup(srv.URL, githubOrganization)
 
-	resp, err := client.Check("")
+	ctx := context.Background()
+	resp, err := client.Check(ctx, "")
 	assert.NotNil(t, err)
 	assert.Nil(t, resp)
 }
 
 func TestTeamListErrorAtDifferentPage(t *testing.T) {
 	pages := []int{1, 2, 3}
+	ctx := context.Background()
+
 	for _, pageNo := range pages {
 		// error when getting user's team list at page=[pageNo]
 		t.Run(fmt.Sprintf("error when getting user's team list at page %v", pageNo), func(t *testing.T) {
@@ -361,7 +368,7 @@ func TestTeamListErrorAtDifferentPage(t *testing.T) {
 
 			client := githubClientSetup(srv.URL, githubOrganization)
 
-			resp, err := client.Check(githubGoodToken)
+			resp, err := client.Check(ctx, githubGoodToken)
 			assert.NotNil(t, err)
 			assert.Nil(t, resp)
 		})

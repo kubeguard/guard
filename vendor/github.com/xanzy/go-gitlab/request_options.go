@@ -25,7 +25,34 @@ import (
 // RequestOptionFunc can be passed to all API requests to customize the API request.
 type RequestOptionFunc func(*retryablehttp.Request) error
 
-// WithSudo takes either a username or user ID and sets the SUDO request header
+// WithContext runs the request with the provided context
+func WithContext(ctx context.Context) RequestOptionFunc {
+	return func(req *retryablehttp.Request) error {
+		*req = *req.WithContext(ctx)
+		return nil
+	}
+}
+
+// WithHeader takes a header name and value and appends it to the request headers.
+func WithHeader(name, value string) RequestOptionFunc {
+	return func(req *retryablehttp.Request) error {
+		req.Header.Set(name, value)
+		return nil
+	}
+}
+
+// WithHeaders takes a map of header name/value pairs and appends them to the
+// request headers.
+func WithHeaders(headers map[string]string) RequestOptionFunc {
+	return func(req *retryablehttp.Request) error {
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+		return nil
+	}
+}
+
+// WithSudo takes either a username or user ID and sets the SUDO request header.
 func WithSudo(uid interface{}) RequestOptionFunc {
 	return func(req *retryablehttp.Request) error {
 		user, err := parseID(uid)
@@ -37,10 +64,17 @@ func WithSudo(uid interface{}) RequestOptionFunc {
 	}
 }
 
-// WithContext runs the request with the provided context
-func WithContext(ctx context.Context) RequestOptionFunc {
+// WithToken takes a token which is then used when making this one request.
+func WithToken(authType AuthType, token string) RequestOptionFunc {
 	return func(req *retryablehttp.Request) error {
-		*req = *req.WithContext(ctx)
+		switch authType {
+		case JobToken:
+			req.Header.Set("JOB-TOKEN", token)
+		case OAuthToken:
+			req.Header.Set("Authorization", "Bearer "+token)
+		case PrivateToken:
+			req.Header.Set("PRIVATE-TOKEN", token)
+		}
 		return nil
 	}
 }
