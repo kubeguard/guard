@@ -33,11 +33,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
-      - name: Prepare Host
-        run: |
-          sudo apt-get -qq update || true
-          sudo apt-get install -y bzr
-
       - name: Run checks
         run: |
           make ci

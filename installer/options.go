@@ -67,7 +67,7 @@ func NewAuthOptions() AuthOptions {
 		PkiDir:          auth.DefaultDataDir,
 		Namespace:       metav1.NamespaceSystem,
 		Addr:            "10.96.10.96:443",
-		PrivateRegistry: "appscode",
+		PrivateRegistry: "ghcr.io/kubeguard",
 		RunOnMaster:     true,
 		Token:           token.NewOptions(),
 		Google:          google.NewOptions(),
