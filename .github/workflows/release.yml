@@ -33,7 +33,7 @@ jobs:
         env:
           REGISTRY: ghcr.io/kubeguard
           DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          USERNAME: 1gtm
+          USERNAME: ${{ github.actor }}
           APPSCODE_ENV: prod
         run: |
           docker login ghcr.io --username ${USERNAME} --password ${DOCKER_TOKEN}
