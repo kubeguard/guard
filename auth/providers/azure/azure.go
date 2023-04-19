@@ -74,9 +74,10 @@ type Authenticator struct {
 }
 
 type authInfo struct {
-	AADEndpoint string
-	MSGraphHost string
-	Issuer      string
+	AADEndpoint         string
+	ResourceMgrEndpoint string
+	MSGraphHost         string
+	Issuer              string
 }
 
 func New(ctx context.Context, opts Options) (auth.Interface, error) {
@@ -104,6 +105,8 @@ func New(ctx context.Context, opts Options) (auth.Interface, error) {
 	switch opts.AuthMode {
 	case ClientCredentialAuthMode:
 		c.graphClient, err = graph.New(c.ClientID, c.ClientSecret, c.TenantID, c.UseGroupUID, authInfoVal.AADEndpoint, authInfoVal.MSGraphHost)
+	case ARCAuthMode:
+		c.graphClient, err = graph.NewWithARC(c.MSIAudience)
 	case OBOAuthMode:
 		c.graphClient, err = graph.NewWithOBO(c.ClientID, c.ClientSecret, c.TenantID, authInfoVal.AADEndpoint, authInfoVal.MSGraphHost)
 	case AKSAuthMode:
@@ -226,10 +229,16 @@ func (s Authenticator) Check(ctx context.Context, token string) (*authv1.UserInf
 		if err := s.graphClient.RefreshToken(ctx, token); err != nil {
 			return nil, err
 		}
-		resp.Groups, err = s.graphClient.GetGroups(ctx, resp.Username)
+		if s.Options.AuthMode == ARCAuthMode {
+			resp.Groups, err = s.graphClient.GetMemberGroupsUsingARCOboService(ctx, s.Options.TenantID, s.Options.ResourceId, token)
+		} else {
+			resp.Groups, err = s.graphClient.GetGroups(ctx, resp.Username)
+		}
+
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get groups")
 		}
+
 	}
 	return resp, nil
 }
@@ -385,8 +394,9 @@ func getAuthInfo(ctx context.Context, environment, tenantID string, getMetadata 
 	}
 
 	return &authInfo{
-		AADEndpoint: env.ActiveDirectoryEndpoint,
-		MSGraphHost: msgraphHost,
-		Issuer:      metadata.Issuer,
+		AADEndpoint:         env.ActiveDirectoryEndpoint,
+		ResourceMgrEndpoint: env.ResourceManagerEndpoint,
+		MSGraphHost:         msgraphHost,
+		Issuer:              metadata.Issuer,
 	}, nil
 }

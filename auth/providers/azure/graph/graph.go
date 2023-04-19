@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"go.kubeguard.dev/guard/util/httpclient"
 
 	jsoniter "github.com/json-iterator/go"
@@ -151,6 +152,53 @@ func (u *UserInfo) getExpandedGroups(ctx context.Context, ids []string) (*GroupL
 	return groups, nil
 }
 
+func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenantID string, resourceID string, accessToken string) ([]string, error) {
+	reqBody := struct {
+		TenantID    string `json:"tenantID"`
+		AccessToken string `json:"accessToken"`
+	}{
+		TenantID:    tenantID,
+		AccessToken: accessToken,
+	}
+
+	buf := new(bytes.Buffer)
+	if err := json.NewEncoder(buf).Encode(reqBody); err != nil {
+		return nil, errors.Wrap(err, "failed to encode token request")
+	}
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://eus.obo.arc.azure.com/%s/%s", resourceID, "getMemberGroups"), buf)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create getMemberGroups request")
+	}
+	req.Header.Set("Content-Type", "application/json")
+	correlationID := uuid.New()
+	req.Header.Set("x-ms-correlation-request-id", correlationID.String())
+	resp, err := u.client.Do(req.WithContext(ctx))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to send  getMemberGroups request")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		data, _ := io.ReadAll(resp.Body)
+		return nil, errors.Errorf("request failed with status code: %d and response: %s", resp.StatusCode, string(data))
+	}
+
+	// Decode the response
+	groups := &GroupList{}
+	var groupNames []string
+	err = json.NewDecoder(resp.Body).Decode(groups)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to decode response for request %s", req.URL.Path)
+	}
+
+	// Extract out the Group objects into a list of strings
+	for i := 0; i < len(groups.Value); i++ {
+		groupNames = append(groupNames, groups.Value[i].Name)
+	}
+
+	return groupNames, nil
+}
+
 func (u *UserInfo) RefreshToken(ctx context.Context, token string) error {
 	resp, err := u.tokenProvider.Acquire(ctx, token)
 	if err != nil {
@@ -261,6 +309,14 @@ func NewWithAKS(tokenURL, tenantID, msgraphHost string) (*UserInfo, error) {
 	tokenProvider := NewAKSTokenProvider(tokenURL, tenantID)
 
 	return newUserInfo(tokenProvider, graphURL, true)
+}
+
+// NewWithARC returns a new UserInfo object used in ARC
+func NewWithARC(msiAudience string) (*UserInfo, error) {
+	graphURL, _ := url.Parse("")
+	tokenProvider := NewMSITokenProvider(msiAudience, MSIEndpointForARC)
+
+	return newUserInfo(tokenProvider, graphURL, false)
 }
 
 func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string, useGroupUID bool) (*UserInfo, error) {

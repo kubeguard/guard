@@ -33,6 +33,7 @@ import (
 
 const (
 	AKSAuthMode              = "aks"
+	ARCAuthMode              = "arc"
 	OBOAuthMode              = "obo"
 	ClientCredentialAuthMode = "client-credential"
 	PassthroughAuthMode      = "passthrough"
@@ -52,11 +53,14 @@ type Options struct {
 	ResolveGroupMembershipOnlyOnOverageClaim bool
 	SkipGroupMembershipResolution            bool
 	VerifyClientID                           bool
+	ResourceId                               string
+	MSIAudience                              string
 }
 
 func NewOptions() Options {
 	return Options{
 		ClientSecret: os.Getenv("AZURE_CLIENT_SECRET"),
+		MSIAudience:  os.Getenv("MSI_AUDIENCE"),
 		UseGroupUID:  true,
 	}
 }
@@ -67,7 +71,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.ClientSecret, "azure.client-secret", o.ClientSecret, "MS Graph application client secret to use")
 	fs.StringVar(&o.TenantID, "azure.tenant-id", o.TenantID, "MS Graph application tenant id to use")
 	fs.BoolVar(&o.UseGroupUID, "azure.use-group-uid", o.UseGroupUID, "Use group UID for authentication instead of group display name")
-	fs.StringVar(&o.AuthMode, "azure.auth-mode", "client-credential", "auth mode to call graph api, valid value is either aks, obo, client-credential or passthrough")
+	fs.StringVar(&o.AuthMode, "azure.auth-mode", "client-credential", "auth mode to call graph api, valid value is either aks, arc, obo, client-credential or passthrough")
 	fs.StringVar(&o.AKSTokenURL, "azure.aks-token-url", "", "url to call for AKS OBO flow")
 	fs.StringVar(&o.POPTokenHostname, "azure.pop-hostname", "", "hostname used to run the pop hostname verification; 'u' claim")
 	fs.BoolVar(&o.EnablePOP, "azure.enable-pop", false, "Enabling pop token verification")
@@ -75,6 +79,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.ResolveGroupMembershipOnlyOnOverageClaim, "azure.graph-call-on-overage-claim", o.ResolveGroupMembershipOnlyOnOverageClaim, "set to true to resolve group membership only when overage claim is present. setting to false will always call graph api to resolve group membership")
 	fs.BoolVar(&o.VerifyClientID, "azure.verify-clientID", o.VerifyClientID, "set to true to validate token's audience claim matches clientID")
 	fs.BoolVar(&o.SkipGroupMembershipResolution, "azure.skip-group-membership-resolution", false, "when set to true, this will bypass getting group membership from graph api")
+	fs.StringVar(&o.ResourceId, "azure.auth-resource-id", "", "azure cluster resource id (//subscription/<subName>/resourcegroups/<RGname>/providers/Microsoft.Kubernetes/connectedClusters/<clustername> for connectedk8s) used for making getMemberGroups to ARC OBO service")
 }
 
 func (o *Options) Validate() []error {
@@ -82,6 +87,7 @@ func (o *Options) Validate() []error {
 	o.AuthMode = strings.ToLower(o.AuthMode)
 	switch o.AuthMode {
 	case AKSAuthMode:
+	case ARCAuthMode:
 	case OBOAuthMode:
 	case ClientCredentialAuthMode:
 	case PassthroughAuthMode:
@@ -89,7 +95,7 @@ func (o *Options) Validate() []error {
 		errs = append(errs, errors.New("invalid azure.auth-mode. valid value is either aks, obo, client-credential or passthrough"))
 	}
 
-	if o.AuthMode != AKSAuthMode && o.AuthMode != PassthroughAuthMode {
+	if o.AuthMode != AKSAuthMode && o.AuthMode != PassthroughAuthMode && o.AuthMode != ARCAuthMode {
 		if o.ClientSecret == "" {
 			errs = append(errs, errors.New("azure.client-secret must be non-empty"))
 		}
@@ -105,6 +111,11 @@ func (o *Options) Validate() []error {
 			errs = append(errs, errors.New("azure.skip-group-membership-resolution cannot be false when passthrough azure.auth-mode is used"))
 		}
 	}
+
+	if o.AuthMode == ARCAuthMode && o.ResourceId == "" {
+		errs = append(errs, errors.New("azure.resource-id must be non-empty for authentication using arc mode"))
+	}
+
 	if o.TenantID == "" {
 		errs = append(errs, errors.New("azure.tenant-id must be non-empty"))
 	}

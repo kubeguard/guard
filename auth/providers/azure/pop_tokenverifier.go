@@ -125,7 +125,7 @@ func (p *PoPTokenVerifier) ValidatePopToken(token string) (string, error) {
 			if klog.V(6).Enabled() {
 				klog.V(6).Infof("pop token validation running with hostName: %s. Request is coming for hostName: %s", p.hostName, reqHostName)
 			}
-			if !strings.EqualFold(reqHostName, p.hostName) {
+			if !strings.HasSuffix(reqHostName, p.hostName) {
 				return "", errors.Errorf("Invalid Pop token due to host mismatch. Expected: %q, received: %q", p.hostName, reqHostName)
 			}
 		} else {
