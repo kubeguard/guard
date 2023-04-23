@@ -106,7 +106,7 @@ func New(ctx context.Context, opts Options) (auth.Interface, error) {
 	case ClientCredentialAuthMode:
 		c.graphClient, err = graph.New(c.ClientID, c.ClientSecret, c.TenantID, c.UseGroupUID, authInfoVal.AADEndpoint, authInfoVal.MSGraphHost)
 	case ARCAuthMode:
-		c.graphClient, err = graph.NewWithARC(c.MSIAudience)
+		c.graphClient, err = graph.NewWithARC(c.MSIAudience, c.ResourceId)
 	case OBOAuthMode:
 		c.graphClient, err = graph.NewWithOBO(c.ClientID, c.ClientSecret, c.TenantID, authInfoVal.AADEndpoint, authInfoVal.MSGraphHost)
 	case AKSAuthMode:

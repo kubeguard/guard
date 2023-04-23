@@ -119,7 +119,7 @@ func (o *Options) Validate() []error {
 	if o.TenantID == "" {
 		errs = append(errs, errors.New("azure.tenant-id must be non-empty"))
 	}
-	if o.VerifyClientID && o.ClientID == "" {
+	if o.AuthMode != ARCAuthMode && o.VerifyClientID && o.ClientID == "" {
 		errs = append(errs, errors.New("azure.client-id must be non-empty when azure.verify-clientID is set"))
 	}
 	if o.EnablePOP && o.POPTokenHostname == "" {

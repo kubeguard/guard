@@ -100,14 +100,14 @@ func (o *Options) Validate(azure azure.Options) []error {
 		errs = append(errs, errors.New("azure.aks-authz-token-url must be set only with AKS/Fleet authz mode"))
 	}
 
-	if o.AuthzMode == ARCAuthzMode {
-		if azure.ClientSecret == "" {
-			errs = append(errs, errors.New("azure.client-secret must be non-empty"))
-		}
-		if azure.ClientID == "" {
-			errs = append(errs, errors.New("azure.client-id must be non-empty"))
-		}
-	}
+	// if o.AuthzMode == ARCAuthzMode {
+	// 	if azure.ClientSecret == "" {
+	// 		errs = append(errs, errors.New("azure.client-secret must be non-empty"))
+	// 	}
+	// 	if azure.ClientID == "" {
+	// 		errs = append(errs, errors.New("azure.client-id must be non-empty"))
+	// 	}
+	// }
 
 	if o.ARMCallLimit > maxPermissibleArmCallLimit {
 		errs = append(errs, fmt.Errorf("azure.arm-call-limit must not be more than %d", maxPermissibleArmCallLimit))

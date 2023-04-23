@@ -165,11 +165,13 @@ func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenant
 	if err := json.NewEncoder(buf).Encode(reqBody); err != nil {
 		return nil, errors.Wrap(err, "failed to encode token request")
 	}
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://eus.obo.arc.azure.com/%s/%s", resourceID, "getMemberGroups"), buf)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://eus.obo.arc.azure.com:8084%s/%s", resourceID, "getMemberGroups"), buf)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create getMemberGroups request")
 	}
-	req.Header.Set("Content-Type", "application/json")
+	// Set the auth headers
+	req.Header = u.headers
+
 	correlationID := uuid.New()
 	req.Header.Set("x-ms-correlation-request-id", correlationID.String())
 	resp, err := u.client.Do(req.WithContext(ctx))
@@ -312,9 +314,9 @@ func NewWithAKS(tokenURL, tenantID, msgraphHost string) (*UserInfo, error) {
 }
 
 // NewWithARC returns a new UserInfo object used in ARC
-func NewWithARC(msiAudience string) (*UserInfo, error) {
+func NewWithARC(msiAudience string, armID string) (*UserInfo, error) {
 	graphURL, _ := url.Parse("")
-	tokenProvider := NewMSITokenProvider(msiAudience, MSIEndpointForARC)
+	tokenProvider := NewMSITokenProvider(msiAudience, MSIEndpointForARC, armID)
 
 	return newUserInfo(tokenProvider, graphURL, false)
 }
