@@ -48,17 +48,15 @@ type msiTokenProvider struct {
 	client      *http.Client
 	resource    string
 	msiEndpoint string
-	xmsmirid    string
 }
 
 // NewMSITokenProvider returns a TokenProvider that implements OAuth msi flow on Azure Active Directory
-func NewMSITokenProvider(msiAudience string, msiEndpoint string, xmsmirid string) TokenProvider {
+func NewMSITokenProvider(msiAudience string, msiEndpoint string) TokenProvider {
 	return &msiTokenProvider{
 		name:        "MSITokenProvider",
 		client:      httpclient.DefaultHTTPClient,
 		resource:    msiAudience,
 		msiEndpoint: msiEndpoint,
-		xmsmirid:    xmsmirid,
 	}
 }
 
@@ -81,9 +79,6 @@ func (u *msiTokenProvider) Acquire(ctx context.Context, token string) (AuthRespo
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Add("Metadata", "true")
-	if u.xmsmirid != "" {
-		req.Header.Set("xms_mirid", u.xmsmirid)
-	}
 	client := httpclient.DefaultHTTPClient
 	resp, err := client.Do(req)
 	if err != nil {

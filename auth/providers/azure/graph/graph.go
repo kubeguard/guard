@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"go.kubeguard.dev/guard/util/httpclient"
 
@@ -42,6 +43,7 @@ import (
 var (
 	json                  = jsoniter.ConfigCompatibleWithStandardLibrary
 	expandedGroupsPerCall = 500
+	idtypClaim            = "idtyp"
 
 	getMemberGroupsFailed = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "guard_azure_graph_failure_total",
@@ -161,11 +163,25 @@ func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenant
 		AccessToken: accessToken,
 	}
 
+	claims := jwt.MapClaims{}
+	// ParseUnverfied
+	parsedToken, _, err := new(jwt.Parser).ParseUnverified(accessToken, claims)
+	if err != nil {
+		if parsedToken == nil {
+			return nil, errors.Wrap(err, "Error while parsing accessToken for validation, token is nil")
+		}
+		return nil, errors.Wrap(err, "Error while parsing accessToken for validation")
+	}
+
+	if claims[idtypClaim] != nil {
+		return nil, errors.New("Obo.GetMemberGroups call is not supported for applications.")
+	}
+
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(reqBody); err != nil {
 		return nil, errors.Wrap(err, "failed to encode token request")
 	}
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://eus.obo.arc.azure.com:8084%s/%s", resourceID, "getMemberGroups"), buf)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://eus.obo.arc.azure.com:8084%s/%s", resourceID, "getMemberGroups?api-version=v1"), buf)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create getMemberGroups request")
 	}
@@ -176,26 +192,28 @@ func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenant
 	req.Header.Set("x-ms-correlation-request-id", correlationID.String())
 	resp, err := u.client.Do(req.WithContext(ctx))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to send  getMemberGroups request")
+		return nil, errors.Wrapf(err, "CorrelationID: %s, Error: Failed to send getMemberGroups request", correlationID.String())
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		data, _ := io.ReadAll(resp.Body)
-		return nil, errors.Errorf("request failed with status code: %d and response: %s", resp.StatusCode, string(data))
+		return nil, errors.Errorf("CorrelationID: %s, Error: Request failed with status code: %d and response: %s", correlationID.String(), resp.StatusCode, string(data))
 	}
 
+	groupResponse := struct {
+		Value []string `json:"value"`
+	}{}
 	// Decode the response
-	groups := &GroupList{}
 	var groupNames []string
-	err = json.NewDecoder(resp.Body).Decode(groups)
+	err = json.NewDecoder(resp.Body).Decode(groupResponse)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to decode response for request %s", req.URL.Path)
+		return nil, errors.Wrapf(err, "CorrelationID: %s, Error: Failed to decode response for request %s", correlationID.String(), req.URL.Path)
 	}
 
 	// Extract out the Group objects into a list of strings
-	for i := 0; i < len(groups.Value); i++ {
-		groupNames = append(groupNames, groups.Value[i].Name)
+	for i := 0; i < len(groupResponse.Value); i++ {
+		groupNames = append(groupNames, groupResponse.Value[i])
 	}
 
 	return groupNames, nil
@@ -314,9 +332,9 @@ func NewWithAKS(tokenURL, tenantID, msgraphHost string) (*UserInfo, error) {
 }
 
 // NewWithARC returns a new UserInfo object used in ARC
-func NewWithARC(msiAudience string, armID string) (*UserInfo, error) {
+func NewWithARC(msiAudience string) (*UserInfo, error) {
 	graphURL, _ := url.Parse("")
-	tokenProvider := NewMSITokenProvider(msiAudience, MSIEndpointForARC, armID)
+	tokenProvider := NewMSITokenProvider(msiAudience, MSIEndpointForARC)
 
 	return newUserInfo(tokenProvider, graphURL, false)
 }

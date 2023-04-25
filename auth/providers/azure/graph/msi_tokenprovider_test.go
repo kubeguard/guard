@@ -47,7 +47,7 @@ func TestMSITokenProvider(t *testing.T) {
 		defer stopMSITestServer(t, s)
 
 		ctx := context.Background()
-		r := NewMSITokenProvider("http://management.azure.com", s.URL, "")
+		r := NewMSITokenProvider("http://management.azure.com", s.URL)
 		resp, err := r.Acquire(ctx, inputAccessToken)
 		if err != nil {
 			t.Fatalf("refresh should not return error: %s", err)
@@ -77,7 +77,7 @@ func TestMSITokenProvider(t *testing.T) {
 		defer stopMSITestServer(t, s)
 
 		ctx := context.Background()
-		r := NewMSITokenProvider("http://management.azure.com", s.URL, "")
+		r := NewMSITokenProvider("http://management.azure.com", s.URL)
 		resp, err := r.Acquire(ctx, inputAccessToken)
 		if err == nil {
 			t.Error("refresh should return error")
