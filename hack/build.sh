@@ -37,6 +37,7 @@ export GOFLAGS="-mod=vendor"
 
 go install \
     -installsuffix "static" \
+    -buildvcs=false \
     -ldflags "                                          \
       -X main.Version=${VERSION}                        \
       -X main.VersionStrategy=${version_strategy:-}     \

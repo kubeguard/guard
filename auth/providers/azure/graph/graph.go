@@ -154,6 +154,7 @@ func (u *UserInfo) getExpandedGroups(ctx context.Context, ids []string) (*GroupL
 	return groups, nil
 }
 
+// GetMemberGroups gets a list of all groups that the given user principal is part of using the ARC OBO service
 func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenantID string, resourceID string, accessToken string) ([]string, error) {
 	reqBody := struct {
 		TenantID    string `json:"tenantID"`
@@ -173,6 +174,7 @@ func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenant
 		return nil, errors.Wrap(err, "Error while parsing accessToken for validation")
 	}
 
+	// the arc obo service does not support getting groups for applications
 	if claims[idtypClaim] != nil {
 		return nil, errors.New("Obo.GetMemberGroups call is not supported for applications.")
 	}
@@ -190,6 +192,7 @@ func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenant
 
 	correlationID := uuid.New()
 	req.Header.Set("x-ms-correlation-request-id", correlationID.String())
+	klog.V(7).Infof("Sending getMemberGroups request with correlationID: %s", correlationID.String())
 	resp, err := u.client.Do(req.WithContext(ctx))
 	if err != nil {
 		return nil, errors.Wrapf(err, "CorrelationID: %s, Error: Failed to send getMemberGroups request", correlationID.String())
@@ -206,7 +209,7 @@ func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenant
 	}{}
 	// Decode the response
 	var groupNames []string
-	err = json.NewDecoder(resp.Body).Decode(groupResponse)
+	err = json.NewDecoder(resp.Body).Decode(&groupResponse)
 	if err != nil {
 		return nil, errors.Wrapf(err, "CorrelationID: %s, Error: Failed to decode response for request %s", correlationID.String(), req.URL.Path)
 	}

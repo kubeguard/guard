@@ -9,6 +9,7 @@ require (
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-ldap/ldap/v3 v3.4.4
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-github/v50 v50.1.0
 	github.com/google/gofuzz v1.2.0
 	github.com/google/uuid v1.3.0
@@ -48,7 +49,6 @@ require (
 	k8s.io/klog/v2 v2.80.1
 	k8s.io/utils v0.0.0-20221107191617-1a15be271d1d
 	kmodules.xyz/client-go v0.25.18
-	github.com/golang-jwt/jwt/v5 v5.0.0
 )
 
 require (
