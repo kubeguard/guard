@@ -18,15 +18,79 @@ package graph
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
+	jsoniter "github.com/json-iterator/go"
 	"go.kubeguard.dev/guard/util/httpclient"
+	"gopkg.in/square/go-jose.v2"
 )
+
+var jsonLib = jsoniter.ConfigCompatibleWithStandardLibrary
+
+const (
+	accessTokenWithOverageClaim       = `{ "aud": "client", "iss" : "%v", "exp" : "%v",  "upn": "arc", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
+	accessTokenWithOverageClaimForApp = `{ "aud": "client", "iss" : "%v", "exp" : "%v", "idtyp" : "app", "upn": "arc", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
+)
+
+type swKey struct {
+	keyID  string
+	pKey   *rsa.PrivateKey
+	pubKey interface{}
+}
+
+func (swk *swKey) Alg() string {
+	return "RS256"
+}
+
+func (swk *swKey) KeyID() string {
+	return ""
+}
+
+func (swk *swKey) jwk() jose.JSONWebKeySet {
+	jwkKey := jose.JSONWebKey{Key: swk.pubKey, Use: "sig", Algorithm: swk.Alg(), KeyID: swk.KeyID()}
+	jwkKeySet := jose.JSONWebKeySet{}
+	jwkKeySet.Keys = append(jwkKeySet.Keys, jwkKey)
+	return jwkKeySet
+}
+
+func NewSwkKey() (*swKey, error) {
+	rsa, err := rsa.GenerateKey(rand.Reader, 1028)
+	if err != nil {
+		return nil, err
+	}
+	return &swKey{"", rsa, rsa.Public()}, nil
+}
+
+func (swk *swKey) GenerateToken(payload []byte) (string, error) {
+	pKey := &jose.JSONWebKey{Key: swk.pKey, Algorithm: swk.Alg(), KeyID: swk.KeyID()}
+
+	// create a Square.jose RSA signer, used to sign the JWT
+	var signerOpts = jose.SignerOptions{}
+	signerOpts.WithType("JWT")
+	rsaSigner, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.RS256, Key: pKey}, &signerOpts)
+	if err != nil {
+		return "", err
+	}
+	jws, err := rsaSigner.Sign(payload)
+	if err != nil {
+		return "", err
+	}
+
+	token, err := jws.CompactSerialize()
+	if err != nil {
+		return "", err
+	}
+	return token, nil
+}
 
 func getAuthServerAndUserInfo(returnCode int, body, clientID, clientSecret string) (*httptest.Server, *UserInfo) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -246,6 +310,126 @@ func TestGetExpandedGroups(t *testing.T) {
 		}
 		if groups != nil {
 			t.Error("Group list should be nil")
+		}
+	})
+}
+
+func TestGetMemberGroupsUsingARCOboService(t *testing.T) {
+	ctx := context.Background()
+	key, err := NewSwkKey()
+	if err != nil {
+		t.Fatalf("Failed to generate SF key. Error:%+v", err)
+	}
+
+	t.Run("successful request", func(t *testing.T) {
+		os.Setenv(azureRegionEnvVar, "eastus2euap")
+		validBody := `{
+			"value": [
+				"f36ec2c5-fa5t-4f05-b87f-deadbeef"
+			]
+		  }`
+
+		ts, u := getAPIServerAndUserInfo(http.StatusOK, validBody)
+		defer ts.Close()
+
+		getOBORegionalEndpoint = func(resourceID string) (string, error) {
+			return ts.URL, nil
+		}
+
+		u.headers.Set("Authorization", "Bearer msitoken")
+
+		tokenstring, err := key.GenerateToken([]byte(fmt.Sprintf(accessTokenWithOverageClaim, ts.URL, time.Now().Add(time.Minute*5).Unix())))
+		if err != nil {
+			t.Fatalf("Error when generating token. Error:%+v", err)
+		}
+
+		groups, err := u.GetMemberGroupsUsingARCOboService(ctx, "tenantId", ts.URL, tokenstring)
+		if err != nil {
+			t.Errorf("Should not have gotten error: %s", err)
+		}
+		if len(groups) != 1 {
+			t.Errorf("Should have gotten a list of groups with 1 entry. Got: %d", len(groups))
+		}
+	})
+	t.Run("bad server response", func(t *testing.T) {
+		os.Setenv(azureRegionEnvVar, "eastus2euap")
+		ts, u := getAPIServerAndUserInfo(http.StatusInternalServerError, "shutdown")
+		defer ts.Close()
+
+		getOBORegionalEndpoint = func(resourceID string) (string, error) {
+			return ts.URL, nil
+		}
+
+		u.headers.Set("Authorization", "Bearer msitoken")
+
+		tokenstring, err := key.GenerateToken([]byte(fmt.Sprintf(accessTokenWithOverageClaim, ts.URL, time.Now().Add(time.Minute*5).Unix())))
+		if err != nil {
+			t.Fatalf("Error when generating token. Error:%+v", err)
+		}
+
+		groups, err := u.GetMemberGroupsUsingARCOboService(ctx, "tenantId", ts.URL, tokenstring)
+		if err == nil {
+			t.Error("Should have gotten error")
+		}
+		if groups != nil {
+			t.Error("Group list should be nil")
+		}
+
+		if !strings.Contains(err.Error(), "Request failed with status code: 500 and response: shutdown") {
+			t.Errorf("Expected: Request failed with status code: 500 and response: shutdown, Got: %s", err.Error())
+		}
+	})
+	t.Run("applications not supported error", func(t *testing.T) {
+		ts, u := getAPIServerAndUserInfo(http.StatusBadRequest, "")
+		defer ts.Close()
+		getOBORegionalEndpoint = func(resourceID string) (string, error) {
+			return ts.URL, nil
+		}
+
+		u.headers.Set("Authorization", "Bearer msitoken")
+
+		tokenstring, err := key.GenerateToken([]byte(fmt.Sprintf(accessTokenWithOverageClaimForApp, ts.URL, time.Now().Add(time.Minute*5).Unix())))
+		if err != nil {
+			t.Fatalf("Error when generating token. Error:%+v", err)
+		}
+
+		groups, err := u.GetMemberGroupsUsingARCOboService(ctx, "tenantId", ts.URL, tokenstring)
+		if err == nil {
+			t.Error("Should have gotten error")
+		}
+		if groups != nil {
+			t.Error("Group list should be nil")
+		}
+
+		if !strings.Contains(err.Error(), "Obo.GetMemberGroups call is not supported for applications.") {
+			t.Errorf("Expected: Obo.GetMemberGroups call is not supported for applications., Got: %s", err.Error())
+		}
+	})
+	t.Run("bad response body", func(t *testing.T) {
+		ts, u := getAPIServerAndUserInfo(http.StatusOK, "{bad_json")
+		defer ts.Close()
+
+		getOBORegionalEndpoint = func(resourceID string) (string, error) {
+			return ts.URL, nil
+		}
+
+		u.headers.Set("Authorization", "Bearer msitoken")
+
+		tokenstring, err := key.GenerateToken([]byte(fmt.Sprintf(accessTokenWithOverageClaim, ts.URL, time.Now().Add(time.Minute*5).Unix())))
+		if err != nil {
+			t.Fatalf("Error when generating token. Error:%+v", err)
+		}
+
+		groups, err := u.GetMemberGroupsUsingARCOboService(ctx, "tenantId", ts.URL, tokenstring)
+		if err == nil {
+			t.Error("Should have gotten error")
+		}
+		if groups != nil {
+			t.Error("Group list should be nil")
+		}
+
+		if !strings.Contains(err.Error(), "Failed to decode response for request") {
+			t.Errorf("Expected: Failed to decode response for request, Got: %s", err.Error())
 		}
 	})
 }

@@ -23,6 +23,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
 	"strings"
 	"time"
@@ -49,11 +50,15 @@ var (
 		Name: "guard_azure_graph_failure_total",
 		Help: "Azure graph getMemberGroups call failed.",
 	})
+
+	getOBORegionalEndpoint = getOBORegionalEndpointFunc
 )
 
 const (
-	expiryDelta = 60 * time.Second
-	getterName  = "ms-graph"
+	expiryDelta          = 60 * time.Second
+	getterName           = "ms-graph"
+	azureRegionEnvVar    = "AZURE_REGION"
+	arcOboEndpointFormat = "https://%s.obo.arc.azure.%s:8084%s/getMemberGroups?api-version=v1"
 )
 
 // UserInfo allows you to get user data from MS Graph
@@ -154,7 +159,7 @@ func (u *UserInfo) getExpandedGroups(ctx context.Context, ids []string) (*GroupL
 	return groups, nil
 }
 
-// GetMemberGroups gets a list of all groups that the given user principal is part of using the ARC OBO service
+// GetMemberGroupsUsingARCOboService gets a list of all groups that the given user principal is part of using the ARC OBO service
 func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenantID string, resourceID string, accessToken string) ([]string, error) {
 	reqBody := struct {
 		TenantID    string `json:"tenantID"`
@@ -183,7 +188,11 @@ func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenant
 	if err := json.NewEncoder(buf).Encode(reqBody); err != nil {
 		return nil, errors.Wrap(err, "failed to encode token request")
 	}
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://eus.obo.arc.azure.com:8084%s/%s", resourceID, "getMemberGroups?api-version=v1"), buf)
+	endpoint, err := getOBORegionalEndpoint(resourceID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create getMemberGroups request")
+	}
+	req, err := http.NewRequest(http.MethodPost, endpoint, buf)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create getMemberGroups request")
 	}
@@ -220,6 +229,27 @@ func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenant
 	}
 
 	return groupNames, nil
+}
+
+func getOBORegionalEndpointFunc(resourceID string) (string, error) {
+	var suffix string
+	location := strings.ToLower(os.Getenv(azureRegionEnvVar))
+	if location == "" {
+		return "", errors.New("Failed to fetch region for endpoint. AZURE_REGION environment variable is not set.")
+	}
+
+	if strings.HasPrefix(location, "usgov") || strings.HasPrefix(location, "usdod") {
+		suffix = "us"
+	} else if strings.HasPrefix(location, "china") {
+		suffix = "cn"
+	} else {
+		suffix = "com"
+	}
+
+	if !strings.HasPrefix(resourceID, "/") {
+		resourceID = "/" + resourceID
+	}
+	return fmt.Sprintf(arcOboEndpointFormat, location, suffix, resourceID), nil
 }
 
 func (u *UserInfo) RefreshToken(ctx context.Context, token string) error {
