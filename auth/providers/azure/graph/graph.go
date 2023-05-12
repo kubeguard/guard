@@ -23,15 +23,14 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt"
-	"github.com/google/uuid"
 	"go.kubeguard.dev/guard/util/httpclient"
 
+	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/moul/http2curl"
 	"github.com/pkg/errors"
@@ -55,10 +54,10 @@ var (
 )
 
 const (
-	expiryDelta          = 60 * time.Second
-	getterName           = "ms-graph"
-	azureRegionEnvVar    = "AZURE_REGION"
-	arcOboEndpointFormat = "https://%s.obo.arc.azure.%s:8084%s/getMemberGroups?api-version=v1"
+	expiryDelta            = 60 * time.Second
+	getMemberGroupsTimeout = 23 * time.Second
+	getterName             = "ms-graph"
+	arcOboEndpointFormat   = "https://%s.obo.arc.azure.%s:8084%s/getMemberGroups?api-version=v1"
 )
 
 // UserInfo allows you to get user data from MS Graph
@@ -160,7 +159,7 @@ func (u *UserInfo) getExpandedGroups(ctx context.Context, ids []string) (*GroupL
 }
 
 // GetMemberGroupsUsingARCOboService gets a list of all groups that the given user principal is part of using the ARC OBO service
-func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenantID string, resourceID string, accessToken string) ([]string, error) {
+func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenantID string, resourceID string, location string, accessToken string) ([]string, error) {
 	reqBody := struct {
 		TenantID    string `json:"tenantID"`
 		AccessToken string `json:"accessToken"`
@@ -188,7 +187,7 @@ func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenant
 	if err := json.NewEncoder(buf).Encode(reqBody); err != nil {
 		return nil, errors.Wrap(err, "failed to encode token request")
 	}
-	endpoint, err := getOBORegionalEndpoint(resourceID)
+	endpoint, err := getOBORegionalEndpoint(location, resourceID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create getMemberGroups request")
 	}
@@ -201,16 +200,32 @@ func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenant
 
 	correlationID := uuid.New()
 	req.Header.Set("x-ms-correlation-request-id", correlationID.String())
-	klog.V(7).Infof("Sending getMemberGroups request with correlationID: %s", correlationID.String())
-	resp, err := u.client.Do(req.WithContext(ctx))
+	getMemberGroupsCtx, cancel := context.WithTimeout(context.Background(), getMemberGroupsTimeout)
+	defer cancel()
+	klog.V(5).Infof("Sending getMemberGroups request with correlationID: %s", correlationID.String())
+	// use default httpclient without retries first
+	client := *httpclient.DefaultHTTPClient
+	resp, err := client.Do(req.WithContext(getMemberGroupsCtx))
 	if err != nil {
-		return nil, errors.Wrapf(err, "CorrelationID: %s, Error: Failed to send getMemberGroups request", correlationID.String())
+		klog.V(5).Infof("CorrelationID: %s, Error: Failed to fetch group info using getMemberGroups: %s", correlationID.String(), err.Error())
+		return nil, errors.Errorf("CorrelationID: %s, Error: Failed to fetch group info using getMemberGroups", correlationID.String())
 	}
+
+	// use retryable client only for unavailable and gatewaytimeout errors
+	if resp.StatusCode == http.StatusServiceUnavailable || resp.StatusCode == http.StatusGatewayTimeout {
+		resp, err = u.client.Do(req.WithContext(ctx))
+		if err != nil {
+			klog.V(5).Infof("CorrelationID: %s, Error: Failed to fetch group info using getMemberGroups on retries: %s", correlationID.String(), err.Error())
+			return nil, errors.Errorf("CorrelationID: %s, Error: Failed to fetch group info using getMemberGroups on retries", correlationID.String())
+		}
+	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		data, _ := io.ReadAll(resp.Body)
-		return nil, errors.Errorf("CorrelationID: %s, Error: Request failed with status code: %d and response: %s", correlationID.String(), resp.StatusCode, string(data))
+		klog.V(5).Infof("CorrelationID: %s, Error: Failed to fetch group info with status code: %d and response: %s", correlationID.String(), resp.StatusCode, string(data))
+		return nil, errors.Errorf("CorrelationID: %s, Error: Failed to fetch group info with status code: %d", correlationID.String(), resp.StatusCode)
 	}
 
 	groupResponse := struct {
@@ -231,12 +246,8 @@ func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenant
 	return groupNames, nil
 }
 
-func getOBORegionalEndpointFunc(resourceID string) (string, error) {
+func getOBORegionalEndpointFunc(location string, resourceID string) (string, error) {
 	var suffix string
-	location := strings.ToLower(os.Getenv(azureRegionEnvVar))
-	if location == "" {
-		return "", errors.New("Failed to fetch region for endpoint. AZURE_REGION environment variable is not set.")
-	}
 
 	if strings.HasPrefix(location, "usgov") || strings.HasPrefix(location, "usdod") {
 		suffix = "us"

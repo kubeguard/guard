@@ -230,7 +230,7 @@ func (s Authenticator) Check(ctx context.Context, token string) (*authv1.UserInf
 			return nil, err
 		}
 		if s.Options.AuthMode == ARCAuthMode {
-			resp.Groups, err = s.graphClient.GetMemberGroupsUsingARCOboService(ctx, s.Options.TenantID, s.Options.ResourceId, token)
+			resp.Groups, err = s.graphClient.GetMemberGroupsUsingARCOboService(ctx, s.Options.TenantID, s.Options.ResourceId, s.Options.AzureRegion, token)
 		} else {
 			resp.Groups, err = s.graphClient.GetGroups(ctx, resp.Username)
 		}

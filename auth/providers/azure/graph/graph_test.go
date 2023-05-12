@@ -24,21 +24,19 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
 	"go.kubeguard.dev/guard/util/httpclient"
+
 	"gopkg.in/square/go-jose.v2"
 )
-
-var jsonLib = jsoniter.ConfigCompatibleWithStandardLibrary
 
 const (
 	accessTokenWithOverageClaim       = `{ "aud": "client", "iss" : "%v", "exp" : "%v",  "upn": "arc", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
 	accessTokenWithOverageClaimForApp = `{ "aud": "client", "iss" : "%v", "exp" : "%v", "idtyp" : "app", "upn": "arc", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
+	location                          = "eastus"
 )
 
 type swKey struct {
@@ -55,13 +53,6 @@ func (swk *swKey) KeyID() string {
 	return ""
 }
 
-func (swk *swKey) jwk() jose.JSONWebKeySet {
-	jwkKey := jose.JSONWebKey{Key: swk.pubKey, Use: "sig", Algorithm: swk.Alg(), KeyID: swk.KeyID()}
-	jwkKeySet := jose.JSONWebKeySet{}
-	jwkKeySet.Keys = append(jwkKeySet.Keys, jwkKey)
-	return jwkKeySet
-}
-
 func NewSwkKey() (*swKey, error) {
 	rsa, err := rsa.GenerateKey(rand.Reader, 1028)
 	if err != nil {
@@ -74,7 +65,7 @@ func (swk *swKey) GenerateToken(payload []byte) (string, error) {
 	pKey := &jose.JSONWebKey{Key: swk.pKey, Algorithm: swk.Alg(), KeyID: swk.KeyID()}
 
 	// create a Square.jose RSA signer, used to sign the JWT
-	var signerOpts = jose.SignerOptions{}
+	signerOpts := jose.SignerOptions{}
 	signerOpts.WithType("JWT")
 	rsaSigner, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.RS256, Key: pKey}, &signerOpts)
 	if err != nil {
@@ -322,7 +313,6 @@ func TestGetMemberGroupsUsingARCOboService(t *testing.T) {
 	}
 
 	t.Run("successful request", func(t *testing.T) {
-		os.Setenv(azureRegionEnvVar, "eastus2euap")
 		validBody := `{
 			"value": [
 				"f36ec2c5-fa5t-4f05-b87f-deadbeef"
@@ -332,7 +322,7 @@ func TestGetMemberGroupsUsingARCOboService(t *testing.T) {
 		ts, u := getAPIServerAndUserInfo(http.StatusOK, validBody)
 		defer ts.Close()
 
-		getOBORegionalEndpoint = func(resourceID string) (string, error) {
+		getOBORegionalEndpoint = func(location string, resourceID string) (string, error) {
 			return ts.URL, nil
 		}
 
@@ -343,7 +333,7 @@ func TestGetMemberGroupsUsingARCOboService(t *testing.T) {
 			t.Fatalf("Error when generating token. Error:%+v", err)
 		}
 
-		groups, err := u.GetMemberGroupsUsingARCOboService(ctx, "tenantId", ts.URL, tokenstring)
+		groups, err := u.GetMemberGroupsUsingARCOboService(ctx, "tenantId", ts.URL, location, tokenstring)
 		if err != nil {
 			t.Errorf("Should not have gotten error: %s", err)
 		}
@@ -352,11 +342,10 @@ func TestGetMemberGroupsUsingARCOboService(t *testing.T) {
 		}
 	})
 	t.Run("bad server response", func(t *testing.T) {
-		os.Setenv(azureRegionEnvVar, "eastus2euap")
 		ts, u := getAPIServerAndUserInfo(http.StatusInternalServerError, "shutdown")
 		defer ts.Close()
 
-		getOBORegionalEndpoint = func(resourceID string) (string, error) {
+		getOBORegionalEndpoint = func(location string, resourceID string) (string, error) {
 			return ts.URL, nil
 		}
 
@@ -367,7 +356,7 @@ func TestGetMemberGroupsUsingARCOboService(t *testing.T) {
 			t.Fatalf("Error when generating token. Error:%+v", err)
 		}
 
-		groups, err := u.GetMemberGroupsUsingARCOboService(ctx, "tenantId", ts.URL, tokenstring)
+		groups, err := u.GetMemberGroupsUsingARCOboService(ctx, "tenantId", ts.URL, location, tokenstring)
 		if err == nil {
 			t.Error("Should have gotten error")
 		}
@@ -375,14 +364,14 @@ func TestGetMemberGroupsUsingARCOboService(t *testing.T) {
 			t.Error("Group list should be nil")
 		}
 
-		if !strings.Contains(err.Error(), "Request failed with status code: 500 and response: shutdown") {
-			t.Errorf("Expected: Request failed with status code: 500 and response: shutdown, Got: %s", err.Error())
+		if !strings.Contains(err.Error(), "Failed to fetch group info with status code: 500") {
+			t.Errorf("Expected: Failed to fetch group info with status code: 500, Got: %s", err.Error())
 		}
 	})
 	t.Run("applications not supported error", func(t *testing.T) {
 		ts, u := getAPIServerAndUserInfo(http.StatusBadRequest, "")
 		defer ts.Close()
-		getOBORegionalEndpoint = func(resourceID string) (string, error) {
+		getOBORegionalEndpoint = func(location string, resourceID string) (string, error) {
 			return ts.URL, nil
 		}
 
@@ -393,7 +382,7 @@ func TestGetMemberGroupsUsingARCOboService(t *testing.T) {
 			t.Fatalf("Error when generating token. Error:%+v", err)
 		}
 
-		groups, err := u.GetMemberGroupsUsingARCOboService(ctx, "tenantId", ts.URL, tokenstring)
+		groups, err := u.GetMemberGroupsUsingARCOboService(ctx, "tenantId", ts.URL, location, tokenstring)
 		if err == nil {
 			t.Error("Should have gotten error")
 		}
@@ -409,7 +398,7 @@ func TestGetMemberGroupsUsingARCOboService(t *testing.T) {
 		ts, u := getAPIServerAndUserInfo(http.StatusOK, "{bad_json")
 		defer ts.Close()
 
-		getOBORegionalEndpoint = func(resourceID string) (string, error) {
+		getOBORegionalEndpoint = func(location string, resourceID string) (string, error) {
 			return ts.URL, nil
 		}
 
@@ -420,7 +409,7 @@ func TestGetMemberGroupsUsingARCOboService(t *testing.T) {
 			t.Fatalf("Error when generating token. Error:%+v", err)
 		}
 
-		groups, err := u.GetMemberGroupsUsingARCOboService(ctx, "tenantId", ts.URL, tokenstring)
+		groups, err := u.GetMemberGroupsUsingARCOboService(ctx, "tenantId", ts.URL, location, tokenstring)
 		if err == nil {
 			t.Error("Should have gotten error")
 		}

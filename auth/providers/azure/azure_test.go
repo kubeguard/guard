@@ -111,6 +111,7 @@ func clientSetup(clientID, clientSecret, tenantID, serverUrl string, useGroupUID
 			AuthMode:       ClientCredentialAuthMode,
 			AKSTokenURL:    "",
 			VerifyClientID: verifyClientID,
+			AzureRegion:    "eastus",
 		},
 	}
 

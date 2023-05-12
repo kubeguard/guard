@@ -55,6 +55,7 @@ type Options struct {
 	VerifyClientID                           bool
 	ResourceId                               string
 	MSIAudience                              string
+	AzureRegion                              string
 }
 
 func NewOptions() Options {
@@ -80,6 +81,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.VerifyClientID, "azure.verify-clientID", o.VerifyClientID, "set to true to validate token's audience claim matches clientID")
 	fs.BoolVar(&o.SkipGroupMembershipResolution, "azure.skip-group-membership-resolution", false, "when set to true, this will bypass getting group membership from graph api")
 	fs.StringVar(&o.ResourceId, "azure.auth-resource-id", "", "azure cluster resource id (//subscription/<subName>/resourcegroups/<RGname>/providers/Microsoft.Kubernetes/connectedClusters/<clustername> for connectedk8s) used for making getMemberGroups to ARC OBO service")
+	fs.StringVar(&o.AzureRegion, "azure.region", "", "region where cluster is deployed")
 }
 
 func (o *Options) Validate() []error {
@@ -114,6 +116,10 @@ func (o *Options) Validate() []error {
 
 	if o.AuthMode == ARCAuthMode && o.ResourceId == "" {
 		errs = append(errs, errors.New("azure.resource-id must be non-empty for authentication using arc mode"))
+	}
+
+	if o.AuthMode == ARCAuthMode && o.AzureRegion == "" {
+		errs = append(errs, errors.New("azure.region must be non-empty for authentication using arc mode"))
 	}
 
 	if o.TenantID == "" {
