@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"go.kubeguard.dev/guard/util/httpclient"
@@ -57,6 +58,7 @@ const (
 	expiryDelta            = 60 * time.Second
 	getMemberGroupsTimeout = 23 * time.Second
 	getterName             = "ms-graph"
+	arcAuthMode            = "arc"
 	arcOboEndpointFormat   = "https://%s.obo.arc.azure.%s:8084%s/getMemberGroups?api-version=v1"
 )
 
@@ -72,6 +74,11 @@ type UserInfo struct {
 	useGroupUID   bool
 
 	tokenProvider TokenProvider
+	authMode      string
+	tenantID      string
+	resourceID    string
+	region        string
+	lock          sync.RWMutex
 }
 
 func (u *UserInfo) getGroupIDs(ctx context.Context, userPrincipal string) ([]string, error) {
@@ -159,12 +166,12 @@ func (u *UserInfo) getExpandedGroups(ctx context.Context, ids []string) (*GroupL
 }
 
 // GetMemberGroupsUsingARCOboService gets a list of all groups that the given user principal is part of using the ARC OBO service
-func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenantID string, resourceID string, location string, accessToken string) ([]string, error) {
+func (u *UserInfo) getMemberGroupsUsingARCOboService(ctx context.Context, accessToken string) ([]string, error) {
 	reqBody := struct {
 		TenantID    string `json:"tenantID"`
 		AccessToken string `json:"accessToken"`
 	}{
-		TenantID:    tenantID,
+		TenantID:    u.tenantID,
 		AccessToken: accessToken,
 	}
 
@@ -187,7 +194,7 @@ func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenant
 	if err := json.NewEncoder(buf).Encode(reqBody); err != nil {
 		return nil, errors.Wrap(err, "failed to encode token request")
 	}
-	endpoint, err := getOBORegionalEndpoint(location, resourceID)
+	endpoint, err := getOBORegionalEndpoint(u.region, u.resourceID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create getMemberGroups request")
 	}
@@ -232,7 +239,7 @@ func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenant
 		Value []string `json:"value"`
 	}{}
 	// Decode the response
-	var groupNames []string
+	var groupIDs []string
 	err = json.NewDecoder(resp.Body).Decode(&groupResponse)
 	if err != nil {
 		return nil, errors.Wrapf(err, "CorrelationID: %s, Error: Failed to decode response for request %s", correlationID.String(), req.URL.Path)
@@ -240,10 +247,10 @@ func (u *UserInfo) GetMemberGroupsUsingARCOboService(ctx context.Context, tenant
 
 	// Extract out the Group objects into a list of strings
 	for i := 0; i < len(groupResponse.Value); i++ {
-		groupNames = append(groupNames, groupResponse.Value[i])
+		groupIDs = append(groupIDs, groupResponse.Value[i])
 	}
 
-	return groupNames, nil
+	return groupIDs, nil
 }
 
 func getOBORegionalEndpointFunc(location string, resourceID string) (string, error) {
@@ -264,22 +271,38 @@ func getOBORegionalEndpointFunc(location string, resourceID string) (string, err
 }
 
 func (u *UserInfo) RefreshToken(ctx context.Context, token string) error {
-	resp, err := u.tokenProvider.Acquire(ctx, token)
-	if err != nil {
-		return errors.Errorf("%s: failed to refresh token: %s", u.tokenProvider.Name(), err)
+	u.lock.Lock()
+	defer u.lock.Unlock()
+	if u.isTokenExpired() {
+		resp, err := u.tokenProvider.Acquire(ctx, token)
+		if err != nil {
+			return errors.Errorf("%s: failed to refresh token: %s", u.tokenProvider.Name(), err)
+		}
+		// Set the authorization headers for future requests
+		u.headers.Set("Authorization", fmt.Sprintf("Bearer %s", resp.Token))
+		expIn := time.Duration(resp.Expires) * time.Second
+		u.expires = time.Now().Add(expIn - expiryDelta)
+		klog.Infof("Token refreshed successfully on %s. Expire at:%s", time.Now(), u.expires)
 	}
-
-	// Set the authorization headers for future requests
-	u.headers.Set("Authorization", fmt.Sprintf("Bearer %s", resp.Token))
-	expIn := time.Duration(resp.Expires) * time.Second
-	u.expires = time.Now().Add(expIn - expiryDelta)
 
 	return nil
 }
 
+func (u *UserInfo) isTokenExpired() bool {
+	return u.expires.Before(time.Now())
+}
+
 // GetGroups gets a list of all groups that the given user principal is part of
 // Generally in federated directories the email address is the userPrincipalName
-func (u *UserInfo) GetGroups(ctx context.Context, userPrincipal string) ([]string, error) {
+func (u *UserInfo) GetGroups(ctx context.Context, userPrincipal string, token string) ([]string, error) {
+	// use arc obo service to get groups if authn mode is arc
+	if u.authMode == arcAuthMode {
+		groupIds, err := u.getMemberGroupsUsingARCOboService(ctx, token)
+		if err != nil {
+			return nil, err
+		}
+		return groupIds, nil
+	}
 	// Get the group IDs for the user
 	groupIDs, err := u.getGroupIDs(ctx, userPrincipal)
 	if err != nil {
@@ -338,6 +361,8 @@ func newUserInfo(tokenProvider TokenProvider, graphURL *url.URL, useGroupUID boo
 		tokenProvider: tokenProvider,
 	}
 
+	u.lock = sync.RWMutex{}
+
 	return u, nil
 }
 
@@ -376,11 +401,19 @@ func NewWithAKS(tokenURL, tenantID, msgraphHost string) (*UserInfo, error) {
 }
 
 // NewWithARC returns a new UserInfo object used in ARC
-func NewWithARC(msiAudience string) (*UserInfo, error) {
+func NewWithARC(msiAudience string, resourceId string, tenantId string, region string) (*UserInfo, error) {
 	graphURL, _ := url.Parse("")
 	tokenProvider := NewMSITokenProvider(msiAudience, MSIEndpointForARC)
 
-	return newUserInfo(tokenProvider, graphURL, false)
+	userInfo, err := newUserInfo(tokenProvider, graphURL, false)
+	if err != nil {
+		return nil, err
+	}
+	userInfo.tenantID = tenantId
+	userInfo.resourceID = resourceId
+	userInfo.region = region
+	userInfo.authMode = arcAuthMode
+	return userInfo, nil
 }
 
 func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string, useGroupUID bool) (*UserInfo, error) {

@@ -54,14 +54,12 @@ type Options struct {
 	SkipGroupMembershipResolution            bool
 	VerifyClientID                           bool
 	ResourceId                               string
-	MSIAudience                              string
 	AzureRegion                              string
 }
 
 func NewOptions() Options {
 	return Options{
 		ClientSecret: os.Getenv("AZURE_CLIENT_SECRET"),
-		MSIAudience:  os.Getenv("MSI_AUDIENCE"),
 		UseGroupUID:  true,
 	}
 }
@@ -114,18 +112,20 @@ func (o *Options) Validate() []error {
 		}
 	}
 
-	if o.AuthMode == ARCAuthMode && o.ResourceId == "" {
-		errs = append(errs, errors.New("azure.resource-id must be non-empty for authentication using arc mode"))
-	}
+	if o.AuthMode == ARCAuthMode {
+		if o.ResourceId == "" {
+			errs = append(errs, errors.New("azure.resource-id must be non-empty for authentication using arc mode"))
+		}
 
-	if o.AuthMode == ARCAuthMode && o.AzureRegion == "" {
-		errs = append(errs, errors.New("azure.region must be non-empty for authentication using arc mode"))
+		if o.AzureRegion == "" {
+			errs = append(errs, errors.New("azure.region must be non-empty for authentication using arc mode"))
+		}
 	}
 
 	if o.TenantID == "" {
 		errs = append(errs, errors.New("azure.tenant-id must be non-empty"))
 	}
-	if o.AuthMode != ARCAuthMode && o.VerifyClientID && o.ClientID == "" {
+	if o.VerifyClientID && o.ClientID == "" {
 		errs = append(errs, errors.New("azure.client-id must be non-empty when azure.verify-clientID is set"))
 	}
 	if o.EnablePOP && o.POPTokenHostname == "" {
