@@ -78,6 +78,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.ResolveGroupMembershipOnlyOnOverageClaim, "azure.graph-call-on-overage-claim", o.ResolveGroupMembershipOnlyOnOverageClaim, "set to true to resolve group membership only when overage claim is present. setting to false will always call graph api to resolve group membership")
 	fs.BoolVar(&o.VerifyClientID, "azure.verify-clientID", o.VerifyClientID, "set to true to validate token's audience claim matches clientID")
 	fs.BoolVar(&o.SkipGroupMembershipResolution, "azure.skip-group-membership-resolution", false, "when set to true, this will bypass getting group membership from graph api")
+	// resource id and region are needed to retrieve user's security group info via Arc obo service
 	fs.StringVar(&o.ResourceId, "azure.auth-resource-id", "", "azure cluster resource id (//subscription/<subName>/resourcegroups/<RGname>/providers/Microsoft.Kubernetes/connectedClusters/<clustername> for connectedk8s) used for making getMemberGroups to ARC OBO service")
 	fs.StringVar(&o.AzureRegion, "azure.region", "", "region where cluster is deployed")
 }
@@ -119,6 +120,14 @@ func (o *Options) Validate() []error {
 
 		if o.AzureRegion == "" {
 			errs = append(errs, errors.New("azure.region must be non-empty for authentication using arc mode"))
+		}
+
+		if o.SkipGroupMembershipResolution {
+			errs = append(errs, errors.New("azure.skip-group-membership-resolution cannot be true when arc azure.auth-mode is used"))
+		}
+
+		if !o.ResolveGroupMembershipOnlyOnOverageClaim {
+			errs = append(errs, errors.New("azure.graph-call-on-overage-claim cannot be false when arc azure.auth-mode is used"))
 		}
 	}
 

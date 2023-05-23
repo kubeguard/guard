@@ -74,10 +74,9 @@ type Authenticator struct {
 }
 
 type authInfo struct {
-	AADEndpoint         string
-	ResourceMgrEndpoint string
-	MSGraphHost         string
-	Issuer              string
+	AADEndpoint string
+	MSGraphHost string
+	Issuer      string
 }
 
 func New(ctx context.Context, opts Options) (auth.Interface, error) {
@@ -389,9 +388,8 @@ func getAuthInfo(ctx context.Context, environment, tenantID string, getMetadata 
 	}
 
 	return &authInfo{
-		AADEndpoint:         env.ActiveDirectoryEndpoint,
-		ResourceMgrEndpoint: env.ResourceManagerEndpoint,
-		MSGraphHost:         msgraphHost,
-		Issuer:              metadata.Issuer,
+		AADEndpoint: env.ActiveDirectoryEndpoint,
+		MSGraphHost: msgraphHost,
+		Issuer:      metadata.Issuer,
 	}, nil
 }

@@ -403,8 +403,8 @@ func TestGetMemberGroupsUsingARCOboService(t *testing.T) {
 			t.Error("Group list should be nil")
 		}
 
-		if !strings.Contains(err.Error(), "Obo.GetMemberGroups call is not supported for applications.") {
-			t.Errorf("Expected: Obo.GetMemberGroups call is not supported for applications., Got: %s", err.Error())
+		if !strings.Contains(err.Error(), "Overage claim (users with more than 200 group membership) for SPN is currently not supported. For troubleshooting, please refer to aka.ms/overageclaimtroubleshoot") {
+			t.Errorf("Expected: Overage claim (users with more than 200 group membership) for SPN is currently not supported. For troubleshooting, please refer to aka.ms/overageclaimtroubleshoot, Got: %s", err.Error())
 		}
 	})
 	t.Run("bad response body", func(t *testing.T) {

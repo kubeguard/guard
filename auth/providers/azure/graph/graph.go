@@ -187,7 +187,7 @@ func (u *UserInfo) getMemberGroupsUsingARCOboService(ctx context.Context, access
 
 	// the arc obo service does not support getting groups for applications
 	if claims[idtypClaim] != nil {
-		return nil, errors.New("Obo.GetMemberGroups call is not supported for applications.")
+		return nil, errors.New("Overage claim (users with more than 200 group membership) for SPN is currently not supported. For troubleshooting, please refer to aka.ms/overageclaimtroubleshoot")
 	}
 
 	buf := new(bytes.Buffer)
@@ -249,6 +249,9 @@ func (u *UserInfo) getMemberGroupsUsingARCOboService(ctx context.Context, access
 	for i := 0; i < len(groupResponse.Value); i++ {
 		groupIDs = append(groupIDs, groupResponse.Value[i])
 	}
+
+	totalGroups := len(groupIDs)
+	klog.V(10).Infof("No of groups returned by OBO service: %d", totalGroups)
 
 	return groupIDs, nil
 }
@@ -401,7 +404,7 @@ func NewWithAKS(tokenURL, tenantID, msgraphHost string) (*UserInfo, error) {
 }
 
 // NewWithARC returns a new UserInfo object used in ARC
-func NewWithARC(msiAudience string, resourceId string, tenantId string, region string) (*UserInfo, error) {
+func NewWithARC(msiAudience, resourceId, tenantId, region string) (*UserInfo, error) {
 	graphURL, _ := url.Parse("")
 	tokenProvider := NewMSITokenProvider(msiAudience, MSIEndpointForARC)
 
