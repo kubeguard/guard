@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -50,6 +51,22 @@ var (
 		Name: "guard_azure_graph_failure_total",
 		Help: "Azure graph getMemberGroups call failed.",
 	})
+
+	getMemberGroupsUsingARCOboServiceCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "guard_azure_arc_obo_request_total",
+		Help: "Total no of arc obo getMemberGroups calls by code.",
+	}, []string{"code"})
+
+	// getMemberGroupsUsingARCOboServiceHistogram is partitioned by the HTTP status code It uses custom
+	// buckets based on the expected request duration.
+	getMemberGroupsUsingARCOboServiceHistogram = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "guard_azure_arc_obo_request_duration_seconds",
+			Help:    "A histogram of latencies for getMemberGroups via arc obo requests.",
+			Buckets: []float64{.25, .5, 1, 2.5, 5, 10, 15, 20},
+		},
+		[]string{"code"},
+	)
 
 	getOBORegionalEndpoint = getOBORegionalEndpointFunc
 )
@@ -209,28 +226,43 @@ func (u *UserInfo) getMemberGroupsUsingARCOboService(ctx context.Context, access
 	req.Header.Set("x-ms-correlation-request-id", correlationID.String())
 	getMemberGroupsCtx, cancel := context.WithTimeout(context.Background(), getMemberGroupsTimeout)
 	defer cancel()
+	start := time.Now()
 	klog.V(5).Infof("Sending getMemberGroups request with correlationID: %s", correlationID.String())
 	// use default httpclient without retries first
 	client := *httpclient.DefaultHTTPClient
 	resp, err := client.Do(req.WithContext(getMemberGroupsCtx))
+	duration := time.Since(start).Seconds()
+	internalServerCode := strconv.Itoa(http.StatusInternalServerError)
 	if err != nil {
+		getMemberGroupsUsingARCOboServiceCounter.WithLabelValues(internalServerCode).Inc()
+		getMemberGroupsUsingARCOboServiceHistogram.WithLabelValues(internalServerCode).Observe(duration)
 		klog.V(5).Infof("CorrelationID: %s, Error: Failed to fetch group info using getMemberGroups: %s", correlationID.String(), err.Error())
 		return nil, errors.Errorf("CorrelationID: %s, Error: Failed to fetch group info using getMemberGroups", correlationID.String())
 	}
 
 	// use retryable client only for unavailable and gatewaytimeout errors
 	if resp.StatusCode == http.StatusServiceUnavailable || resp.StatusCode == http.StatusGatewayTimeout {
+		start = time.Now()
 		resp, err = u.client.Do(req.WithContext(ctx))
+		duration = time.Since(start).Seconds()
 		if err != nil {
+			getMemberGroupsUsingARCOboServiceCounter.WithLabelValues(internalServerCode).Inc()
+			getMemberGroupsUsingARCOboServiceHistogram.WithLabelValues(internalServerCode).Observe(duration)
 			klog.V(5).Infof("CorrelationID: %s, Error: Failed to fetch group info using getMemberGroups on retries: %s", correlationID.String(), err.Error())
 			return nil, errors.Errorf("CorrelationID: %s, Error: Failed to fetch group info using getMemberGroups on retries", correlationID.String())
 		}
 	}
 
 	defer resp.Body.Close()
+	respStatusCode := strconv.Itoa(resp.StatusCode)
+	getMemberGroupsUsingARCOboServiceCounter.WithLabelValues(respStatusCode).Inc()
+	getMemberGroupsUsingARCOboServiceHistogram.WithLabelValues(respStatusCode).Observe(duration)
 
 	if resp.StatusCode != http.StatusOK {
-		data, _ := io.ReadAll(resp.Body)
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, errors.Errorf("CorrelationID: %s, Error: Failed while reading response body: %s", correlationID.String(), err.Error())
+		}
 		klog.V(5).Infof("CorrelationID: %s, Error: Failed to fetch group info with status code: %d and response: %s", correlationID.String(), resp.StatusCode, string(data))
 		return nil, errors.Errorf("CorrelationID: %s, Error: Failed to fetch group info with status code: %d", correlationID.String(), resp.StatusCode)
 	}
@@ -439,4 +471,8 @@ func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string, useGroupUID b
 	}
 
 	return u, nil
+}
+
+func init() {
+	prometheus.MustRegister(getMemberGroupsUsingARCOboServiceHistogram, getMemberGroupsUsingARCOboServiceCounter)
 }

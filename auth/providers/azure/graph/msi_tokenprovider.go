@@ -51,7 +51,7 @@ type msiTokenProvider struct {
 }
 
 // NewMSITokenProvider returns a TokenProvider that implements OAuth msi flow on Azure Active Directory
-func NewMSITokenProvider(msiAudience string, msiEndpoint string) TokenProvider {
+func NewMSITokenProvider(msiAudience, msiEndpoint string) TokenProvider {
 	return &msiTokenProvider{
 		name:        "MSITokenProvider",
 		client:      httpclient.DefaultHTTPClient,
