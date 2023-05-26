@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/rsa"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
@@ -142,8 +143,10 @@ func (p *PoPTokenVerifier) ValidatePopToken(token string) (string, error) {
 	var cnf map[string]interface{}
 	if cnfclaim, ok := claims["cnf"]; ok {
 		if cnf, ok = cnfclaim.(map[string]interface{}); !ok {
-			return "", errors.Errorf("Invalid token. 'Cnf' claim is missing")
+			return "", errors.Errorf("Invalid token. 'cnf' claim is not in expected format")
 		}
+	} else {
+		return "", errors.Errorf("Invalid token. 'cnf' claim is missing")
 	}
 
 	// When the key held by the presenter is an asymmetric private key, the
@@ -152,6 +155,23 @@ func (p *PoPTokenVerifier) ValidatePopToken(token string) (string, error) {
 	var jwk jwk
 	if err := marshalGenericTo(cnf["jwk"], &jwk); err != nil {
 		return "", errors.Errorf("failed while parsing 'jwk' claim in PoP token : %v", err)
+	}
+
+	if jwk.N == "" || jwk.E == "" {
+		return "", errors.Errorf("Invalid token. 'jwk' claim is empty")
+	}
+
+	// Verify claims from access token
+	var at string
+	if atClaim, ok := claims["at"]; ok {
+		if at, ok = atClaim.(string); !ok {
+			return "", errors.Errorf("Invalid token. at claim should be string")
+		}
+	} else {
+		return "", errors.Errorf("Invlaid token. access token missing")
+	}
+	if err = p.verifyAccessTokenClaims(jwk, at); err != nil {
+		return "", err
 	}
 
 	// Verify signing of PoP token
@@ -191,6 +211,43 @@ func (p *PoPTokenVerifier) ValidatePopToken(token string) (string, error) {
 	}
 
 	return claims["at"].(string), nil
+}
+
+// verifyAccessTokenClaims verifies the inner access token has a cnf claim for
+// the PoP token public key.
+func (p *PoPTokenVerifier) verifyAccessTokenClaims(publicKey jwk, accessToken string) error {
+	// Parse JWT
+	accessTokenJwt, err := jwt.ParseSigned(accessToken)
+	if err != nil {
+		return fmt.Errorf("could not parse access token in PoP token: %w", err)
+	}
+
+	// Get claims
+	var claims Claims
+	err = accessTokenJwt.UnsafeClaimsWithoutVerification(&claims)
+	if err != nil {
+		return fmt.Errorf("could not parse claims in access token: %w", err)
+	}
+
+	// Get CNF (confirmation) claim
+	cnf, ok := claims["cnf"]
+	if !ok {
+		return errors.New("could not retrieve cnf claim from access token")
+	}
+	cnfMap := map[string]string{}
+	if err := marshalGenericTo(cnf, &cnfMap); err != nil {
+		return fmt.Errorf("failed while parsing cnf in access token: %w", err)
+	}
+
+	// Build the expected public key data
+	jwk := fmt.Sprintf(`{"e":"%s","kty":"RSA","n":"%s"}`, publicKey.E, publicKey.N)
+	jwkS256 := sha256.Sum256([]byte(jwk))
+	encodedJwt := base64.RawURLEncoding.EncodeToString(jwkS256[:])
+
+	if encodedJwt != cnfMap["kid"] {
+		return fmt.Errorf("PoP token validate failed: cnf claim mismatch")
+	}
+	return nil
 }
 
 func convertTime(i interface{}, tm *time.Time) {
