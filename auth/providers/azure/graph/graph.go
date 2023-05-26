@@ -234,11 +234,13 @@ func (u *UserInfo) getMemberGroupsUsingARCOboService(ctx context.Context, access
 	duration := time.Since(start).Seconds()
 	internalServerCode := strconv.Itoa(http.StatusInternalServerError)
 	if err != nil {
-		getMemberGroupsUsingARCOboServiceCounter.WithLabelValues(internalServerCode).Inc()
-		getMemberGroupsUsingARCOboServiceHistogram.WithLabelValues(internalServerCode).Observe(duration)
+		pushMetricsForArcGetMemberGroups(internalServerCode, duration)
 		klog.V(5).Infof("CorrelationID: %s, Error: Failed to fetch group info using getMemberGroups: %s", correlationID.String(), err.Error())
 		return nil, errors.Errorf("CorrelationID: %s, Error: Failed to fetch group info using getMemberGroups", correlationID.String())
 	}
+
+	respStatusCode := strconv.Itoa(resp.StatusCode)
+	pushMetricsForArcGetMemberGroups(respStatusCode, duration)
 
 	// use retryable client only for unavailable and gatewaytimeout errors
 	if resp.StatusCode == http.StatusServiceUnavailable || resp.StatusCode == http.StatusGatewayTimeout {
@@ -246,17 +248,15 @@ func (u *UserInfo) getMemberGroupsUsingARCOboService(ctx context.Context, access
 		resp, err = u.client.Do(req.WithContext(ctx))
 		duration = time.Since(start).Seconds()
 		if err != nil {
-			getMemberGroupsUsingARCOboServiceCounter.WithLabelValues(internalServerCode).Inc()
-			getMemberGroupsUsingARCOboServiceHistogram.WithLabelValues(internalServerCode).Observe(duration)
+			pushMetricsForArcGetMemberGroups(internalServerCode, duration)
 			klog.V(5).Infof("CorrelationID: %s, Error: Failed to fetch group info using getMemberGroups on retries: %s", correlationID.String(), err.Error())
 			return nil, errors.Errorf("CorrelationID: %s, Error: Failed to fetch group info using getMemberGroups on retries", correlationID.String())
 		}
+		statusCode := strconv.Itoa(resp.StatusCode)
+		pushMetricsForArcGetMemberGroups(statusCode, duration)
 	}
 
 	defer resp.Body.Close()
-	respStatusCode := strconv.Itoa(resp.StatusCode)
-	getMemberGroupsUsingARCOboServiceCounter.WithLabelValues(respStatusCode).Inc()
-	getMemberGroupsUsingARCOboServiceHistogram.WithLabelValues(respStatusCode).Observe(duration)
 
 	if resp.StatusCode != http.StatusOK {
 		data, err := io.ReadAll(resp.Body)
@@ -286,6 +286,11 @@ func (u *UserInfo) getMemberGroupsUsingARCOboService(ctx context.Context, access
 	klog.V(10).Infof("No of groups returned by OBO service: %d", totalGroups)
 
 	return groupIDs, nil
+}
+
+func pushMetricsForArcGetMemberGroups(statusCode string, duration float64) {
+	getMemberGroupsUsingARCOboServiceCounter.WithLabelValues(statusCode).Inc()
+	getMemberGroupsUsingARCOboServiceHistogram.WithLabelValues(statusCode).Observe(duration)
 }
 
 func getOBORegionalEndpointFunc(location string, resourceID string) (string, error) {
