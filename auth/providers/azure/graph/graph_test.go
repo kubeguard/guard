@@ -18,15 +18,71 @@ package graph
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
 	"go.kubeguard.dev/guard/util/httpclient"
+
+	"gopkg.in/square/go-jose.v2"
 )
+
+const (
+	accessTokenWithOverageClaim       = `{ "aud": "client", "iss" : "%v", "exp" : "%v",  "upn": "arc", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
+	accessTokenWithOverageClaimForApp = `{ "aud": "client", "iss" : "%v", "exp" : "%v", "idtyp" : "app", "upn": "arc", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
+	location                          = "eastus"
+	tenant_id                         = "tenantId"
+)
+
+type swKey struct {
+	keyID  string
+	pKey   *rsa.PrivateKey
+	pubKey interface{}
+}
+
+func (swk *swKey) Alg() string {
+	return "RS256"
+}
+
+func (swk *swKey) KeyID() string {
+	return ""
+}
+
+func NewSwkKey() (*swKey, error) {
+	rsa, err := rsa.GenerateKey(rand.Reader, 1028)
+	if err != nil {
+		return nil, err
+	}
+	return &swKey{"", rsa, rsa.Public()}, nil
+}
+
+func (swk *swKey) GenerateToken(payload []byte) (string, error) {
+	pKey := &jose.JSONWebKey{Key: swk.pKey, Algorithm: swk.Alg(), KeyID: swk.KeyID()}
+
+	// create a Square.jose RSA signer, used to sign the JWT
+	signerOpts := jose.SignerOptions{}
+	signerOpts.WithType("JWT")
+	rsaSigner, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.RS256, Key: pKey}, &signerOpts)
+	if err != nil {
+		return "", err
+	}
+	jws, err := rsaSigner.Sign(payload)
+	if err != nil {
+		return "", err
+	}
+
+	token, err := jws.CompactSerialize()
+	if err != nil {
+		return "", err
+	}
+	return token, nil
+}
 
 func getAuthServerAndUserInfo(returnCode int, body, clientID, clientSecret string) (*httptest.Server, *UserInfo) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -250,6 +306,140 @@ func TestGetExpandedGroups(t *testing.T) {
 	})
 }
 
+func TestGetMemberGroupsUsingARCOboService(t *testing.T) {
+	ctx := context.Background()
+	key, err := NewSwkKey()
+	if err != nil {
+		t.Fatalf("Failed to generate SF key. Error:%+v", err)
+	}
+
+	t.Run("successful request", func(t *testing.T) {
+		validBody := `{
+			"value": [
+				"f36ec2c5-fa5t-4f05-b87f-deadbeef"
+			]
+		  }`
+
+		ts, u := getAPIServerAndUserInfo(http.StatusOK, validBody)
+		u.region = location
+		u.authMode = arcAuthMode
+		u.resourceID = ts.URL
+		u.tenantID = tenant_id
+		defer ts.Close()
+
+		getOBORegionalEndpoint = func(location string, resourceID string) (string, error) {
+			return ts.URL, nil
+		}
+
+		u.headers.Set("Authorization", "Bearer msitoken")
+
+		tokenstring, err := key.GenerateToken([]byte(fmt.Sprintf(accessTokenWithOverageClaim, ts.URL, time.Now().Add(time.Minute*5).Unix())))
+		if err != nil {
+			t.Fatalf("Error when generating token. Error:%+v", err)
+		}
+
+		groups, err := u.getMemberGroupsUsingARCOboService(ctx, tokenstring)
+		if err != nil {
+			t.Errorf("Should not have gotten error: %s", err)
+		}
+		if len(groups) != 1 {
+			t.Errorf("Should have gotten a list of groups with 1 entry. Got: %d", len(groups))
+		}
+	})
+	t.Run("bad server response", func(t *testing.T) {
+		ts, u := getAPIServerAndUserInfo(http.StatusInternalServerError, "shutdown")
+		u.region = location
+		u.authMode = arcAuthMode
+		u.resourceID = ts.URL
+		u.tenantID = tenant_id
+		defer ts.Close()
+
+		getOBORegionalEndpoint = func(location string, resourceID string) (string, error) {
+			return ts.URL, nil
+		}
+
+		u.headers.Set("Authorization", "Bearer msitoken")
+
+		tokenstring, err := key.GenerateToken([]byte(fmt.Sprintf(accessTokenWithOverageClaim, ts.URL, time.Now().Add(time.Minute*5).Unix())))
+		if err != nil {
+			t.Fatalf("Error when generating token. Error:%+v", err)
+		}
+
+		groups, err := u.getMemberGroupsUsingARCOboService(ctx, tokenstring)
+		if err == nil {
+			t.Error("Should have gotten error")
+		}
+		if groups != nil {
+			t.Error("Group list should be nil")
+		}
+
+		if !strings.Contains(err.Error(), "Failed to fetch group info with status code: 500") {
+			t.Errorf("Expected: Failed to fetch group info with status code: 500, Got: %s", err.Error())
+		}
+	})
+	t.Run("applications not supported error", func(t *testing.T) {
+		ts, u := getAPIServerAndUserInfo(http.StatusBadRequest, "")
+		u.region = location
+		u.authMode = arcAuthMode
+		u.resourceID = ts.URL
+		u.tenantID = tenant_id
+		defer ts.Close()
+		getOBORegionalEndpoint = func(location string, resourceID string) (string, error) {
+			return ts.URL, nil
+		}
+
+		u.headers.Set("Authorization", "Bearer msitoken")
+
+		tokenstring, err := key.GenerateToken([]byte(fmt.Sprintf(accessTokenWithOverageClaimForApp, ts.URL, time.Now().Add(time.Minute*5).Unix())))
+		if err != nil {
+			t.Fatalf("Error when generating token. Error:%+v", err)
+		}
+
+		groups, err := u.getMemberGroupsUsingARCOboService(ctx, tokenstring)
+		if err == nil {
+			t.Error("Should have gotten error")
+		}
+		if groups != nil {
+			t.Error("Group list should be nil")
+		}
+
+		if !strings.Contains(err.Error(), "Overage claim (users with more than 200 group membership) for SPN is currently not supported. For troubleshooting, please refer to aka.ms/overageclaimtroubleshoot") {
+			t.Errorf("Expected: Overage claim (users with more than 200 group membership) for SPN is currently not supported. For troubleshooting, please refer to aka.ms/overageclaimtroubleshoot, Got: %s", err.Error())
+		}
+	})
+	t.Run("bad response body", func(t *testing.T) {
+		ts, u := getAPIServerAndUserInfo(http.StatusOK, "{bad_json")
+		u.region = location
+		u.authMode = arcAuthMode
+		u.resourceID = ts.URL
+		u.tenantID = tenant_id
+		defer ts.Close()
+
+		getOBORegionalEndpoint = func(location string, resourceID string) (string, error) {
+			return ts.URL, nil
+		}
+
+		u.headers.Set("Authorization", "Bearer msitoken")
+
+		tokenstring, err := key.GenerateToken([]byte(fmt.Sprintf(accessTokenWithOverageClaim, ts.URL, time.Now().Add(time.Minute*5).Unix())))
+		if err != nil {
+			t.Fatalf("Error when generating token. Error:%+v", err)
+		}
+
+		groups, err := u.getMemberGroupsUsingARCOboService(ctx, tokenstring)
+		if err == nil {
+			t.Error("Should have gotten error")
+		}
+		if groups != nil {
+			t.Error("Group list should be nil")
+		}
+
+		if !strings.Contains(err.Error(), "Failed to decode response for request") {
+			t.Errorf("Expected: Failed to decode response for request, Got: %s", err.Error())
+		}
+	})
+}
+
 // This is only testing the full function run, error cases are handled in the tests above
 func TestGetGroups(t *testing.T) {
 	ctx := context.Background()
@@ -292,7 +482,7 @@ func TestGetGroups(t *testing.T) {
 	}
 	defer ts.Close()
 
-	groups, err := u.GetGroups(ctx, "blackbriar@cia.gov")
+	groups, err := u.GetGroups(ctx, "blackbriar@cia.gov", "")
 	if err != nil {
 		t.Errorf("Should not have gotten error: %s", err)
 	}
@@ -310,7 +500,7 @@ func TestGetGroups(t *testing.T) {
 	}
 	defer ts.Close()
 
-	groups, err = uWithGroupID.GetGroups(ctx, "blackbriar@cia.gov")
+	groups, err = uWithGroupID.GetGroups(ctx, "blackbriar@cia.gov", "")
 	if err != nil {
 		t.Errorf("Should not have gotten error: %s", err)
 	}
@@ -386,7 +576,7 @@ func TestGetGroupsPaging(t *testing.T) {
 	defer ts.Close()
 
 	ctx := context.Background()
-	groups, err := u.GetGroups(ctx, "blackbriar@cia.gov")
+	groups, err := u.GetGroups(ctx, "blackbriar@cia.gov", "")
 	if err != nil {
 		t.Errorf("Should not have gotten error: %s", err)
 	}

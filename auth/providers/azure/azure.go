@@ -104,6 +104,8 @@ func New(ctx context.Context, opts Options) (auth.Interface, error) {
 	switch opts.AuthMode {
 	case ClientCredentialAuthMode:
 		c.graphClient, err = graph.New(c.ClientID, c.ClientSecret, c.TenantID, c.UseGroupUID, authInfoVal.AADEndpoint, authInfoVal.MSGraphHost)
+	case ARCAuthMode:
+		c.graphClient, err = graph.NewWithARC(c.ClientID, c.ResourceId, c.TenantID, c.AzureRegion)
 	case OBOAuthMode:
 		c.graphClient, err = graph.NewWithOBO(c.ClientID, c.ClientSecret, c.TenantID, authInfoVal.AADEndpoint, authInfoVal.MSGraphHost)
 	case AKSAuthMode:
@@ -226,10 +228,11 @@ func (s Authenticator) Check(ctx context.Context, token string) (*authv1.UserInf
 		if err := s.graphClient.RefreshToken(ctx, token); err != nil {
 			return nil, err
 		}
-		resp.Groups, err = s.graphClient.GetGroups(ctx, resp.Username)
+		resp.Groups, err = s.graphClient.GetGroups(ctx, resp.Username, token)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get groups")
 		}
+
 	}
 	return resp, nil
 }

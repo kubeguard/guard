@@ -101,9 +101,6 @@ func (o *Options) Validate(azure azure.Options) []error {
 	}
 
 	if o.AuthzMode == ARCAuthzMode {
-		if azure.ClientSecret == "" {
-			errs = append(errs, errors.New("azure.client-secret must be non-empty"))
-		}
 		if azure.ClientID == "" {
 			errs = append(errs, errors.New("azure.client-id must be non-empty"))
 		}

@@ -24,11 +24,15 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"go.kubeguard.dev/guard/util/httpclient"
 
+	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/moul/http2curl"
 	"github.com/pkg/errors"
@@ -41,16 +45,38 @@ import (
 var (
 	json                  = jsoniter.ConfigCompatibleWithStandardLibrary
 	expandedGroupsPerCall = 500
+	idtypClaim            = "idtyp"
 
 	getMemberGroupsFailed = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "guard_azure_graph_failure_total",
 		Help: "Azure graph getMemberGroups call failed.",
 	})
+
+	getMemberGroupsUsingARCOboServiceCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "guard_azure_arc_obo_request_total",
+		Help: "Total no of arc obo getMemberGroups calls by code.",
+	}, []string{"code"})
+
+	// getMemberGroupsUsingARCOboServiceHistogram is partitioned by the HTTP status code It uses custom
+	// buckets based on the expected request duration.
+	getMemberGroupsUsingARCOboServiceHistogram = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "guard_azure_arc_obo_request_duration_seconds",
+			Help:    "A histogram of latencies for getMemberGroups via arc obo requests.",
+			Buckets: []float64{.25, .5, 1, 2.5, 5, 10, 15, 20},
+		},
+		[]string{"code"},
+	)
+
+	getOBORegionalEndpoint = getOBORegionalEndpointFunc
 )
 
 const (
-	expiryDelta = 60 * time.Second
-	getterName  = "ms-graph"
+	expiryDelta            = 60 * time.Second
+	getMemberGroupsTimeout = 23 * time.Second
+	getterName             = "ms-graph"
+	arcAuthMode            = "arc"
+	arcOboEndpointFormat   = "https://%s.obo.arc.azure.%s:8084%s/getMemberGroups?api-version=v1"
 )
 
 // UserInfo allows you to get user data from MS Graph
@@ -65,6 +91,11 @@ type UserInfo struct {
 	useGroupUID   bool
 
 	tokenProvider TokenProvider
+	authMode      string
+	tenantID      string
+	resourceID    string
+	region        string
+	lock          sync.RWMutex
 }
 
 func (u *UserInfo) getGroupIDs(ctx context.Context, userPrincipal string) ([]string, error) {
@@ -151,23 +182,167 @@ func (u *UserInfo) getExpandedGroups(ctx context.Context, ids []string) (*GroupL
 	return groups, nil
 }
 
-func (u *UserInfo) RefreshToken(ctx context.Context, token string) error {
-	resp, err := u.tokenProvider.Acquire(ctx, token)
-	if err != nil {
-		return errors.Errorf("%s: failed to refresh token: %s", u.tokenProvider.Name(), err)
+// GetMemberGroupsUsingARCOboService gets a list of all groups that the given user principal is part of using the ARC OBO service
+func (u *UserInfo) getMemberGroupsUsingARCOboService(ctx context.Context, accessToken string) ([]string, error) {
+	reqBody := struct {
+		TenantID    string `json:"tenantID"`
+		AccessToken string `json:"accessToken"`
+	}{
+		TenantID:    u.tenantID,
+		AccessToken: accessToken,
 	}
 
-	// Set the authorization headers for future requests
-	u.headers.Set("Authorization", fmt.Sprintf("Bearer %s", resp.Token))
-	expIn := time.Duration(resp.Expires) * time.Second
-	u.expires = time.Now().Add(expIn - expiryDelta)
+	claims := jwt.MapClaims{}
+	// ParseUnverfied
+	parsedToken, _, err := new(jwt.Parser).ParseUnverified(accessToken, claims)
+	if err != nil {
+		if parsedToken == nil {
+			return nil, errors.Wrap(err, "Error while parsing accessToken for validation, token is nil")
+		}
+		return nil, errors.Wrap(err, "Error while parsing accessToken for validation")
+	}
+
+	// the arc obo service does not support getting groups for applications
+	if claims[idtypClaim] != nil {
+		return nil, errors.New("Overage claim (users with more than 200 group membership) for SPN is currently not supported. For troubleshooting, please refer to aka.ms/overageclaimtroubleshoot")
+	}
+
+	buf := new(bytes.Buffer)
+	if err := json.NewEncoder(buf).Encode(reqBody); err != nil {
+		return nil, errors.Wrap(err, "failed to encode token request")
+	}
+	endpoint, err := getOBORegionalEndpoint(u.region, u.resourceID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create getMemberGroups request")
+	}
+	req, err := http.NewRequest(http.MethodPost, endpoint, buf)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create getMemberGroups request")
+	}
+	// Set the auth headers
+	req.Header = u.headers
+
+	correlationID := uuid.New()
+	req.Header.Set("x-ms-correlation-request-id", correlationID.String())
+	getMemberGroupsCtx, cancel := context.WithTimeout(context.Background(), getMemberGroupsTimeout)
+	defer cancel()
+	start := time.Now()
+	klog.V(5).Infof("Sending getMemberGroups request with correlationID: %s", correlationID.String())
+	// use default httpclient without retries first
+	client := *httpclient.DefaultHTTPClient
+	resp, err := client.Do(req.WithContext(getMemberGroupsCtx))
+	duration := time.Since(start).Seconds()
+	internalServerCode := strconv.Itoa(http.StatusInternalServerError)
+	if err != nil {
+		pushMetricsForArcGetMemberGroups(internalServerCode, duration)
+		klog.V(5).Infof("CorrelationID: %s, Error: Failed to fetch group info using getMemberGroups: %s", correlationID.String(), err.Error())
+		return nil, errors.Errorf("CorrelationID: %s, Error: Failed to fetch group info using getMemberGroups", correlationID.String())
+	}
+
+	respStatusCode := strconv.Itoa(resp.StatusCode)
+	pushMetricsForArcGetMemberGroups(respStatusCode, duration)
+
+	// use retryable client only for unavailable and gatewaytimeout errors
+	if resp.StatusCode == http.StatusServiceUnavailable || resp.StatusCode == http.StatusGatewayTimeout {
+		start = time.Now()
+		resp, err = u.client.Do(req.WithContext(ctx))
+		duration = time.Since(start).Seconds()
+		if err != nil {
+			pushMetricsForArcGetMemberGroups(internalServerCode, duration)
+			klog.V(5).Infof("CorrelationID: %s, Error: Failed to fetch group info using getMemberGroups on retries: %s", correlationID.String(), err.Error())
+			return nil, errors.Errorf("CorrelationID: %s, Error: Failed to fetch group info using getMemberGroups on retries", correlationID.String())
+		}
+		statusCode := strconv.Itoa(resp.StatusCode)
+		pushMetricsForArcGetMemberGroups(statusCode, duration)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, errors.Errorf("CorrelationID: %s, Error: Failed while reading response body: %s", correlationID.String(), err.Error())
+		}
+		klog.V(5).Infof("CorrelationID: %s, Error: Failed to fetch group info with status code: %d and response: %s", correlationID.String(), resp.StatusCode, string(data))
+		return nil, errors.Errorf("CorrelationID: %s, Error: Failed to fetch group info with status code: %d", correlationID.String(), resp.StatusCode)
+	}
+
+	groupResponse := struct {
+		Value []string `json:"value"`
+	}{}
+	// Decode the response
+	var groupIDs []string
+	err = json.NewDecoder(resp.Body).Decode(&groupResponse)
+	if err != nil {
+		return nil, errors.Wrapf(err, "CorrelationID: %s, Error: Failed to decode response for request %s", correlationID.String(), req.URL.Path)
+	}
+
+	// Extract out the Group objects into a list of strings
+	for i := 0; i < len(groupResponse.Value); i++ {
+		groupIDs = append(groupIDs, groupResponse.Value[i])
+	}
+
+	totalGroups := len(groupIDs)
+	klog.V(10).Infof("No of groups returned by OBO service: %d", totalGroups)
+
+	return groupIDs, nil
+}
+
+func pushMetricsForArcGetMemberGroups(statusCode string, duration float64) {
+	getMemberGroupsUsingARCOboServiceCounter.WithLabelValues(statusCode).Inc()
+	getMemberGroupsUsingARCOboServiceHistogram.WithLabelValues(statusCode).Observe(duration)
+}
+
+func getOBORegionalEndpointFunc(location string, resourceID string) (string, error) {
+	var suffix string
+
+	if strings.HasPrefix(location, "usgov") || strings.HasPrefix(location, "usdod") {
+		suffix = "us"
+	} else if strings.HasPrefix(location, "china") {
+		suffix = "cn"
+	} else {
+		suffix = "com"
+	}
+
+	if !strings.HasPrefix(resourceID, "/") {
+		resourceID = "/" + resourceID
+	}
+	return fmt.Sprintf(arcOboEndpointFormat, location, suffix, resourceID), nil
+}
+
+func (u *UserInfo) RefreshToken(ctx context.Context, token string) error {
+	u.lock.Lock()
+	defer u.lock.Unlock()
+	if u.isTokenExpired() {
+		resp, err := u.tokenProvider.Acquire(ctx, token)
+		if err != nil {
+			return errors.Errorf("%s: failed to refresh token: %s", u.tokenProvider.Name(), err)
+		}
+		// Set the authorization headers for future requests
+		u.headers.Set("Authorization", fmt.Sprintf("Bearer %s", resp.Token))
+		expIn := time.Duration(resp.Expires) * time.Second
+		u.expires = time.Now().Add(expIn - expiryDelta)
+		klog.Infof("Token refreshed successfully on %s. Expire at:%s", time.Now(), u.expires)
+	}
 
 	return nil
 }
 
+func (u *UserInfo) isTokenExpired() bool {
+	return u.expires.Before(time.Now())
+}
+
 // GetGroups gets a list of all groups that the given user principal is part of
 // Generally in federated directories the email address is the userPrincipalName
-func (u *UserInfo) GetGroups(ctx context.Context, userPrincipal string) ([]string, error) {
+func (u *UserInfo) GetGroups(ctx context.Context, userPrincipal string, token string) ([]string, error) {
+	// use arc obo service to get groups if authn mode is arc
+	if u.authMode == arcAuthMode {
+		groupIds, err := u.getMemberGroupsUsingARCOboService(ctx, token)
+		if err != nil {
+			return nil, err
+		}
+		return groupIds, nil
+	}
 	// Get the group IDs for the user
 	groupIDs, err := u.getGroupIDs(ctx, userPrincipal)
 	if err != nil {
@@ -226,6 +401,8 @@ func newUserInfo(tokenProvider TokenProvider, graphURL *url.URL, useGroupUID boo
 		tokenProvider: tokenProvider,
 	}
 
+	u.lock = sync.RWMutex{}
+
 	return u, nil
 }
 
@@ -263,6 +440,22 @@ func NewWithAKS(tokenURL, tenantID, msgraphHost string) (*UserInfo, error) {
 	return newUserInfo(tokenProvider, graphURL, true)
 }
 
+// NewWithARC returns a new UserInfo object used in ARC
+func NewWithARC(msiAudience, resourceId, tenantId, region string) (*UserInfo, error) {
+	graphURL, _ := url.Parse("")
+	tokenProvider := NewMSITokenProvider(msiAudience, MSIEndpointForARC)
+
+	userInfo, err := newUserInfo(tokenProvider, graphURL, false)
+	if err != nil {
+		return nil, err
+	}
+	userInfo.tenantID = tenantId
+	userInfo.resourceID = resourceId
+	userInfo.region = region
+	userInfo.authMode = arcAuthMode
+	return userInfo, nil
+}
+
 func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string, useGroupUID bool) (*UserInfo, error) {
 	parsedApi, err := url.Parse(apiUrl)
 	if err != nil {
@@ -283,4 +476,8 @@ func TestUserInfo(clientID, clientSecret, loginUrl, apiUrl string, useGroupUID b
 	}
 
 	return u, nil
+}
+
+func init() {
+	prometheus.MustRegister(getMemberGroupsUsingARCOboServiceHistogram, getMemberGroupsUsingARCOboServiceCounter)
 }
