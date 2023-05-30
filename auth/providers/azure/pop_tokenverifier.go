@@ -168,7 +168,7 @@ func (p *PoPTokenVerifier) ValidatePopToken(token string) (string, error) {
 			return "", errors.Errorf("Invalid token. at claim should be string")
 		}
 	} else {
-		return "", errors.Errorf("Invlaid token. access token missing")
+		return "", errors.Errorf("Invalid token. access token missing")
 	}
 	if err = p.verifyAccessTokenClaims(jwk, at); err != nil {
 		return "", err
