@@ -165,7 +165,7 @@ func (p *PoPTokenVerifier) ValidatePopToken(token string) (string, error) {
 	var at string
 	if atClaim, ok := claims["at"]; ok {
 		if at, ok = atClaim.(string); !ok {
-			return "", errors.Errorf("Invalid token. at claim should be string")
+			return "", errors.Errorf("Invalid token. 'at' claim should be string")
 		}
 	} else {
 		return "", errors.Errorf("Invalid token. access token missing")
