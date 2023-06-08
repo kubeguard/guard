@@ -293,9 +293,9 @@ func TestPopTokenVerifier_Verify(t *testing.T) {
 
 	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", atCnfClaimMissing)
 	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "could not retrieve cnf claim from access token")
+	assert.EqualError(t, err, "could not retrieve 'cnf' claim from access token")
 
 	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", atCnfClaimWrong)
 	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "PoP token validate failed: cnf claim mismatch")
+	assert.EqualError(t, err, "PoP token validate failed: 'cnf' claim mismatch")
 }
