@@ -245,7 +245,7 @@ func (p *PoPTokenVerifier) verifyAccessTokenClaims(publicKey jwk, accessToken st
 	encodedJwt := base64.RawURLEncoding.EncodeToString(jwkS256[:])
 
 	if encodedJwt != cnfMap["kid"] {
-		return fmt.Errorf("PoP token validate failed: cnf claim mismatch")
+		return fmt.Errorf("PoP token validate failed: 'cnf' claim mismatch")
 	}
 	return nil
 }
