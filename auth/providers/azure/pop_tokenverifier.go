@@ -236,7 +236,7 @@ func (p *PoPTokenVerifier) verifyAccessTokenClaims(publicKey jwk, accessToken st
 	}
 	cnfMap := map[string]string{}
 	if err := marshalGenericTo(cnf, &cnfMap); err != nil {
-		return fmt.Errorf("failed while parsing cnf in access token: %w", err)
+		return fmt.Errorf("failed while parsing 'cnf' in access token: %w", err)
 	}
 
 	// Build the expected public key data
