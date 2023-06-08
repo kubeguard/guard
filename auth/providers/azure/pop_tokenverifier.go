@@ -232,7 +232,7 @@ func (p *PoPTokenVerifier) verifyAccessTokenClaims(publicKey jwk, accessToken st
 	// Get CNF (confirmation) claim
 	cnf, ok := claims["cnf"]
 	if !ok {
-		return errors.New("could not retrieve cnf claim from access token")
+		return errors.New("could not retrieve 'cnf' claim from access token")
 	}
 	cnfMap := map[string]string{}
 	if err := marshalGenericTo(cnf, &cnfMap); err != nil {
