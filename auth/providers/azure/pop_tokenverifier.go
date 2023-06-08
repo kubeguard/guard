@@ -222,7 +222,7 @@ func (p *PoPTokenVerifier) verifyAccessTokenClaims(publicKey jwk, accessToken st
 		return fmt.Errorf("could not parse access token in PoP token: %w", err)
 	}
 
-	// Get claims
+	// Get claims (don't verify signature since that's done by a separate verifier later)
 	var claims Claims
 	err = accessTokenJwt.UnsafeClaimsWithoutVerification(&claims)
 	if err != nil {
