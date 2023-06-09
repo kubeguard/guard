@@ -34,7 +34,8 @@ import (
 )
 
 const (
-	popAccessToken = `{ "aud": "client", "iss" : "kd", "exp" : "%d","cnf": {"kid":"%s","xms_ksl":"sw"} }`
+	popAccessToken           = `{ "aud": "client", "iss" : "kd", "exp" : "%d","cnf": {"kid":"%s","xms_ksl":"sw"} }`
+	popAccessTokenWithoutCnf = `{ "aud": "client", "iss" : "kd", "exp" : "%d" }`
 )
 
 type swPoPKey struct {
@@ -144,6 +145,8 @@ const (
 	tsClaimsMissing     = "tsClaimsMissing"
 	cnfClaimsMissing    = "cnfClaimsMissing"
 	cnfJwkClaimsWrong   = "cnfJwkClaimsWrong"
+	atCnfClaimMissing   = "atCnfClaimMissing"
+	atCnfClaimWrong     = "atCnfClaimWrong"
 )
 
 func GeneratePoPToken(ts int64, hostName, kid string) (string, error) {
@@ -160,12 +163,21 @@ func GeneratePoPToken(ts int64, hostName, kid string) (string, error) {
 		return "", fmt.Errorf("Failed to generate SF key. Error:%+v", err)
 	}
 
-	var cnf string = kid
-	if cnf == "" {
+	var cnf string
+	if kid == atCnfClaimWrong {
+		cnf = "wrongCnf"
+	} else {
 		cnf = popKey.KeyID()
 	}
 
-	at, err := key.GenerateToken([]byte(fmt.Sprintf(popAccessToken, time.Now().Add(time.Minute*5).Unix(), cnf)))
+	var accessTokenData string
+	if kid == atCnfClaimMissing {
+		accessTokenData = fmt.Sprintf(popAccessTokenWithoutCnf, time.Now().Add(time.Minute*5).Unix())
+	} else {
+		accessTokenData = fmt.Sprintf(popAccessToken, time.Now().Add(time.Minute*5).Unix(), cnf)
+	}
+
+	at, err := key.GenerateToken([]byte(accessTokenData))
 	if err != nil {
 		return "", fmt.Errorf("Error when generating token. Error:%+v", err)
 	}
@@ -206,7 +218,7 @@ func GeneratePoPToken(ts int64, hostName, kid string) (string, error) {
 		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "cnf":{"jwk":%s}, "nonce":"%s"}`, at, ts, popKey.Jwk(), nonce)
 	}
 	if kid == cnfClaimsMissing {
-		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s"`, at, ts, hostName)
+		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "nonce": "%s"}`, at, ts, hostName, nonce)
 	}
 	if kid == cnfJwkClaimsWrong {
 		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "cnf":{}, "nonce":"%s"}`, at, ts, hostName, nonce)
@@ -270,4 +282,20 @@ func TestPopTokenVerifier_Verify(t *testing.T) {
 	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "", uClaimsMissing)
 	_, err = verifier.ValidatePopToken(invalidToken)
 	assert.EqualError(t, err, "Invalid token. 'u' claim is missing")
+
+	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", cnfClaimsMissing)
+	_, err = verifier.ValidatePopToken(invalidToken)
+	assert.EqualError(t, err, "Invalid token. 'cnf' claim is missing")
+
+	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", cnfJwkClaimsWrong)
+	_, err = verifier.ValidatePopToken(invalidToken)
+	assert.EqualError(t, err, "Invalid token. 'jwk' claim is empty")
+
+	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", atCnfClaimMissing)
+	_, err = verifier.ValidatePopToken(invalidToken)
+	assert.EqualError(t, err, "could not retrieve 'cnf' claim from access token")
+
+	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", atCnfClaimWrong)
+	_, err = verifier.ValidatePopToken(invalidToken)
+	assert.EqualError(t, err, "PoP token validate failed: 'cnf' claim mismatch")
 }
