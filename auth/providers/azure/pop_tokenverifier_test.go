@@ -270,6 +270,7 @@ func TestPopTokenVerifier_Verify(t *testing.T) {
 	expiredToken, _ := GeneratePoPToken(time.Now().Add(time.Minute*-20).Unix(), "", "")
 	_, err = verifier.ValidatePopToken(expiredToken)
 	assert.NotNilf(t, err, "PoP verification succeed.")
+	assert.Containsf(t, err.Error(), "Token is expired", "Error message is not as expected")
 
 	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "", tsClaimsMissing)
 	_, err = verifier.ValidatePopToken(invalidToken)
