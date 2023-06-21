@@ -112,7 +112,7 @@ func (p *PoPTokenVerifier) ValidatePopToken(token string) (string, error) {
 	var issuedTime time.Time
 	if ts, ok := claims["ts"]; ok {
 		convertTime(ts, &issuedTime)
-		expireat := issuedTime.Add(p.PoPTokenValidityDuration * time.Minute)
+		expireat := issuedTime.Add(p.PoPTokenValidityDuration)
 		if expireat.Before(now) {
 			return "", errors.Errorf("Token is expired. Now: %v, Valid till: %v", now, expireat)
 		}

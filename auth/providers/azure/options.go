@@ -74,7 +74,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.AKSTokenURL, "azure.aks-token-url", "", "url to call for AKS OBO flow")
 	fs.StringVar(&o.POPTokenHostname, "azure.pop-hostname", "", "hostname used to run the pop hostname verification; 'u' claim")
 	fs.BoolVar(&o.EnablePOP, "azure.enable-pop", false, "Enabling pop token verification")
-	fs.DurationVar(&o.PoPTokenValidityDuration, "azure.pop-token-validity-duration", 15, "time duration for PoP token to be considered valid from creation time, default 15 min")
+	fs.DurationVar(&o.PoPTokenValidityDuration, "azure.pop-token-validity-duration", 15*time.Minute, "time duration for PoP token to be considered valid from creation time, default 15 min")
 	fs.BoolVar(&o.ResolveGroupMembershipOnlyOnOverageClaim, "azure.graph-call-on-overage-claim", o.ResolveGroupMembershipOnlyOnOverageClaim, "set to true to resolve group membership only when overage claim is present. setting to false will always call graph api to resolve group membership")
 	fs.BoolVar(&o.VerifyClientID, "azure.verify-clientID", o.VerifyClientID, "set to true to validate token's audience claim matches clientID")
 	fs.BoolVar(&o.SkipGroupMembershipResolution, "azure.skip-group-membership-resolution", false, "when set to true, this will bypass getting group membership from graph api")
