@@ -37,9 +37,6 @@ func Generate(authopts AuthOptions, authzopts AuthzOptions) ([]byte, error) {
 	if authopts.Namespace != metav1.NamespaceSystem && authopts.Namespace != metav1.NamespaceDefault {
 		objects = append(objects, newNamespace(authopts.Namespace))
 	}
-	objects = append(objects, newServiceAccount(authopts.Namespace))
-	objects = append(objects, newClusterRole(authopts.Namespace))
-	objects = append(objects, newClusterRoleBinding(authopts.Namespace))
 	if authopts.HttpsProxy != "" || authopts.HttpProxy != "" || authopts.NoProxy != "" {
 		objects = append(objects, newProxySecret(authopts.Namespace, authopts.HttpsProxy, authopts.HttpProxy, authopts.NoProxy))
 		if authopts.ProxyCert != "" {
