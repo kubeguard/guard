@@ -53,12 +53,9 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 			Template: core.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
-					Annotations: map[string]string{
-						"scheduler.alpha.kubernetes.io/critical-pod": "",
-					},
 				},
 				Spec: core.PodSpec{
-					ServiceAccountName: "guard",
+					PriorityClassName: "system-cluster-critical",
 					Containers: []core.Container{
 						{
 							Name:  "guard",
