@@ -24,6 +24,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -143,10 +144,16 @@ const (
 	headerBadtypMissing = "headerBadtypMissing"
 	uClaimsMissing      = "uClaimsMissing"
 	tsClaimsMissing     = "tsClaimsMissing"
+	atClaimsMissing     = "atClaimsMissing"
 	cnfClaimsMissing    = "cnfClaimsMissing"
+	cnfJwkClaimsEmpty   = "cnfJwkClaimsEmpty"
 	cnfJwkClaimsWrong   = "cnfJwkClaimsWrong"
+	atClaimsWrongType   = "atClaimsWrongType"
 	atCnfClaimMissing   = "atCnfClaimMissing"
 	atCnfClaimWrong     = "atCnfClaimWrong"
+	tsClaimsTypeString  = "tsClaimsTypeString"
+	tsClaimsTypeUnknown = "tsClaimsTypeUnknown"
+	uClaimsWrongType    = "uClaimsWrongType"
 )
 
 func GeneratePoPToken(ts int64, hostName, kid string) (string, error) {
@@ -200,7 +207,7 @@ func GeneratePoPToken(ts int64, hostName, kid string) (string, error) {
 
 	if kid == headerBadtypType {
 		wrongTyp := 1
-		header = fmt.Sprintf(`{"typ":"%d","alg":"%s","kid":"%s"}`, wrongTyp, algo, keyID)
+		header = fmt.Sprintf(`{"typ":%d,"alg":"%s","kid":"%s"}`, wrongTyp, algo, keyID)
 	}
 
 	if kid == headerBadtypMissing {
@@ -220,8 +227,26 @@ func GeneratePoPToken(ts int64, hostName, kid string) (string, error) {
 	if kid == cnfClaimsMissing {
 		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "nonce": "%s"}`, at, ts, hostName, nonce)
 	}
-	if kid == cnfJwkClaimsWrong {
+	if kid == cnfJwkClaimsEmpty {
 		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "cnf":{}, "nonce":"%s"}`, at, ts, hostName, nonce)
+	}
+	if kid == cnfJwkClaimsWrong {
+		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "cnf":1, "nonce":"%s"}`, at, ts, hostName, nonce)
+	}
+	if kid == tsClaimsTypeString {
+		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : "%s", "u": "%s", "cnf":{"jwk":%s}, "nonce":"%s"}`, at, strconv.FormatInt(ts, 10), hostName, popKey.Jwk(), nonce)
+	}
+	if kid == tsClaimsTypeUnknown {
+		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %t, "u": "%s", "cnf":{"jwk":%s}, "nonce":"%s"}`, at, bool(true), hostName, popKey.Jwk(), nonce)
+	}
+	if kid == atClaimsWrongType {
+		payload = fmt.Sprintf(`{ "at" : %d, "ts" : %d, "u": "%s", "cnf":{"jwk":%s}, "nonce":"%s"}`, 12, ts, hostName, popKey.Jwk(), nonce)
+	}
+	if kid == uClaimsWrongType {
+		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": %d, "cnf":{"jwk":%s}, "nonce":"%s"}`, at, ts, 1, popKey.Jwk(), nonce)
+	}
+	if kid == atClaimsMissing {
+		payload = fmt.Sprintf(`{ "ts" : %d, "u": "%s", "cnf":{"jwk":%s}, "nonce":"%s"}`, ts, hostName, popKey.Jwk(), nonce)
 	}
 
 	payloadB64 = base64.RawURLEncoding.EncodeToString([]byte(payload))
@@ -241,6 +266,10 @@ func TestPopTokenVerifier_Verify(t *testing.T) {
 
 	validToken, _ := GeneratePoPToken(time.Now().Unix(), "testHostname", "")
 	_, err := verifier.ValidatePopToken(validToken)
+	assert.NoError(t, err)
+
+	validToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", tsClaimsTypeString)
+	_, err = verifier.ValidatePopToken(validToken)
 	assert.NoError(t, err)
 
 	invalidToken, _ := GeneratePoPToken(time.Now().Unix(), "", badTokenKey)
@@ -288,7 +317,7 @@ func TestPopTokenVerifier_Verify(t *testing.T) {
 	_, err = verifier.ValidatePopToken(invalidToken)
 	assert.EqualError(t, err, "Invalid token. 'cnf' claim is missing")
 
-	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", cnfJwkClaimsWrong)
+	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", cnfJwkClaimsEmpty)
 	_, err = verifier.ValidatePopToken(invalidToken)
 	assert.EqualError(t, err, "Invalid token. 'jwk' claim is empty")
 
@@ -299,4 +328,28 @@ func TestPopTokenVerifier_Verify(t *testing.T) {
 	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", atCnfClaimWrong)
 	_, err = verifier.ValidatePopToken(invalidToken)
 	assert.EqualError(t, err, "PoP token validate failed: 'cnf' claim mismatch")
+
+	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", tsClaimsTypeUnknown)
+	_, err = verifier.ValidatePopToken(invalidToken)
+	assert.Containsf(t, err.Error(), "Token is expired", "Error message is not as expected")
+
+	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", atClaimsWrongType)
+	_, err = verifier.ValidatePopToken(invalidToken)
+	assert.EqualError(t, err, "Invalid token. 'at' claim should be string")
+
+	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", uClaimsWrongType)
+	_, err = verifier.ValidatePopToken(invalidToken)
+	assert.EqualError(t, err, "Invalid token. 'u' claim should be of string")
+
+	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", cnfJwkClaimsWrong)
+	_, err = verifier.ValidatePopToken(invalidToken)
+	assert.EqualError(t, err, "Invalid token. 'cnf' claim is not in expected format")
+
+	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", headerBadtypType)
+	_, err = verifier.ValidatePopToken(invalidToken)
+	assert.EqualError(t, err, "Invalid token. 'typ' claim should be of string")
+
+	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", atClaimsMissing)
+	_, err = verifier.ValidatePopToken(invalidToken)
+	assert.EqualError(t, err, "Invalid token. access token missing")
 }
