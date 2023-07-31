@@ -55,6 +55,7 @@ type Options struct {
 	VerifyClientID                           bool
 	ResourceId                               string
 	AzureRegion                              string
+	HttpClientRetryCount                     int
 }
 
 func NewOptions() Options {
@@ -81,6 +82,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	// resource id and region are needed to retrieve user's security group info via Arc obo service
 	fs.StringVar(&o.ResourceId, "azure.auth-resource-id", "", "azure cluster resource id (//subscription/<subName>/resourcegroups/<RGname>/providers/Microsoft.Kubernetes/connectedClusters/<clustername> for connectedk8s) used for making getMemberGroups to ARC OBO service")
 	fs.StringVar(&o.AzureRegion, "azure.region", "", "region where cluster is deployed")
+	fs.IntVar(&o.HttpClientRetryCount, "azure.http-client-retry-count", 2, "number of retries for retryablehttp client")
 }
 
 func (o *Options) Validate() []error {
@@ -221,6 +223,8 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 	args = append(args, fmt.Sprintf("--azure.graph-call-on-overage-claim=%t", o.ResolveGroupMembershipOnlyOnOverageClaim))
 
 	args = append(args, fmt.Sprintf("--azure.verify-clientID=%t", o.VerifyClientID))
+
+	args = append(args, fmt.Sprintf("--azure.http-client-retry-count=%d", o.HttpClientRetryCount))
 
 	container.Args = args
 	d.Spec.Template.Spec.Containers[0] = container

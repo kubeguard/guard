@@ -56,6 +56,7 @@ const (
 	accessTokenWithNoGroups        = `{ "aud": "client_id", "iss" : "%v", "oid": "abc-123d4" }`
 	accessTokenWithoutOverageClaim = `{ "aud": "client_id", "iss" : "%v", "upn": "nahid", "_claim_names": {"foo": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
 	badToken                       = "bad_token"
+	httpClientRetryCount           = 2
 )
 
 type signingKey struct {
@@ -103,15 +104,16 @@ func newRSAKey() (*signingKey, error) {
 func clientSetup(clientID, clientSecret, tenantID, serverUrl string, useGroupUID, verifyClientID bool, authMode string) (*Authenticator, error) {
 	c := &Authenticator{
 		Options: Options{
-			Environment:    "",
-			ClientID:       clientID,
-			ClientSecret:   clientSecret,
-			TenantID:       tenantID,
-			UseGroupUID:    useGroupUID,
-			AuthMode:       ClientCredentialAuthMode,
-			AKSTokenURL:    "",
-			VerifyClientID: verifyClientID,
-			AzureRegion:    "eastus",
+			Environment:          "",
+			ClientID:             clientID,
+			ClientSecret:         clientSecret,
+			TenantID:             tenantID,
+			UseGroupUID:          useGroupUID,
+			AuthMode:             ClientCredentialAuthMode,
+			AKSTokenURL:          "",
+			VerifyClientID:       verifyClientID,
+			AzureRegion:          "eastus",
+			HttpClientRetryCount: httpClientRetryCount,
 		},
 	}
 
@@ -545,16 +547,16 @@ func TestString(t *testing.T) {
 
 func TestGetAuthInfo(t *testing.T) {
 	ctx := context.Background()
-	authInfo, err := getAuthInfo(ctx, "AzurePublicCloud", "testTenant", localGetMetadata)
+	authInfo, err := getAuthInfo(ctx, "AzurePublicCloud", "testTenant", httpClientRetryCount, localGetMetadata)
 	assert.NoError(t, err)
 	assert.Contains(t, authInfo.AADEndpoint, "login.microsoftonline.com")
 
-	authInfo, err = getAuthInfo(ctx, "AzureChinaCloud", "testTenant", localGetMetadata)
+	authInfo, err = getAuthInfo(ctx, "AzureChinaCloud", "testTenant", httpClientRetryCount, localGetMetadata)
 	assert.NoError(t, err)
 	assert.Contains(t, authInfo.AADEndpoint, "login.chinacloudapi.cn")
 }
 
-func localGetMetadata(context.Context, string, string) (*metadataJSON, error) {
+func localGetMetadata(context.Context, string, string, int) (*metadataJSON, error) {
 	return &metadataJSON{
 		Issuer:      "testIssuer",
 		MsgraphHost: "testHost",
@@ -570,9 +572,9 @@ func TestGetMetadata(t *testing.T) {
 			_, _ = writer.Write([]byte(`{"issuer":"testIssuer","msgraph_host":"testHost"}`))
 		}))
 		defer testServer.Close()
-		expectedMetadata, _ := localGetMetadata(ctx, "", "")
+		expectedMetadata, _ := localGetMetadata(ctx, "", "", httpClientRetryCount)
 
-		metadata, err := getMetadata(ctx, testServer.URL+"/", "testTenant")
+		metadata, err := getMetadata(ctx, testServer.URL+"/", "testTenant", httpClientRetryCount)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedMetadata, metadata)
 	})
@@ -599,9 +601,9 @@ func TestGetMetadata(t *testing.T) {
 			}
 		}))
 		defer testServer.Close()
-		expectedMetadata, _ := localGetMetadata(ctx, "", "")
+		expectedMetadata, _ := localGetMetadata(ctx, "", "", httpClientRetryCount)
 
-		metadata, err := getMetadata(ctx, testServer.URL+"/", "testTenant")
+		metadata, err := getMetadata(ctx, testServer.URL+"/", "testTenant", httpClientRetryCount)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedMetadata, metadata)
 	})
@@ -612,7 +614,7 @@ func TestGetMetadata(t *testing.T) {
 			testServer.CloseClientConnections()
 		}))
 
-		metadata, err := getMetadata(ctx, testServer.URL+"/", "testTenant")
+		metadata, err := getMetadata(ctx, testServer.URL+"/", "testTenant", httpClientRetryCount)
 		assert.Error(t, err)
 		assert.Nil(t, metadata)
 	})

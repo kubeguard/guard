@@ -83,14 +83,14 @@ func New(ctx context.Context, opts Options) (auth.Interface, error) {
 	c := &Authenticator{
 		Options: opts,
 	}
-	authInfoVal, err := getAuthInfo(ctx, c.Environment, c.TenantID, getMetadata)
+	authInfoVal, err := getAuthInfo(ctx, c.Environment, c.TenantID, c.HttpClientRetryCount, getMetadata)
 	if err != nil {
 		return nil, err
 	}
 
 	klog.V(3).Infof("Using issuer url: %v", authInfoVal.Issuer)
 
-	ctx = withRetryableHttpClient(ctx)
+	ctx = withRetryableHttpClient(ctx, c.HttpClientRetryCount)
 	provider, err := oidc.NewProvider(ctx, authInfoVal.Issuer)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create provider for azure")
@@ -118,8 +118,8 @@ func New(ctx context.Context, opts Options) (auth.Interface, error) {
 }
 
 // makeRetryableHttpClient creates an HTTP client which attempts the request
-// 3 times and has a 3 second timeout per attempt.
-func makeRetryableHttpClient() retryablehttp.Client {
+// (1 + retryCount) times and has a 3 second timeout per attempt.
+func makeRetryableHttpClient(retryCount int) retryablehttp.Client {
 	// Copy the default HTTP client so we can set a timeout.
 	// (It uses the same transport since the pointer gets copied)
 	httpClient := *httpclient.DefaultHTTPClient
@@ -130,7 +130,7 @@ func makeRetryableHttpClient() retryablehttp.Client {
 		HTTPClient:   &httpClient,
 		RetryWaitMin: 500 * time.Millisecond,
 		RetryWaitMax: 2 * time.Second,
-		RetryMax:     2, // initial + 2 retries = 3 attempts
+		RetryMax:     retryCount, // initial + retryCount retries = (1 + retryCount) attempts
 		CheckRetry:   retryablehttp.DefaultRetryPolicy,
 		Backoff:      retryablehttp.DefaultBackoff,
 		Logger:       log.Default(),
@@ -141,8 +141,8 @@ func makeRetryableHttpClient() retryablehttp.Client {
 // *http.Client made from makeRetryableHttpClient.
 // Some of the libraries we use will take the client out of the context via
 // oauth2.HTTPClient and use it, so this way we can add retries to external code.
-func withRetryableHttpClient(ctx context.Context) context.Context {
-	retryClient := makeRetryableHttpClient()
+func withRetryableHttpClient(ctx context.Context, retryCount int) context.Context {
+	retryClient := makeRetryableHttpClient(retryCount)
 	return context.WithValue(ctx, oauth2.HTTPClient, retryClient.StandardClient())
 }
 
@@ -152,9 +152,9 @@ type metadataJSON struct {
 }
 
 // https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-convert-app-to-be-multi-tenant
-func getMetadata(ctx context.Context, aadEndpoint, tenantID string) (*metadataJSON, error) {
+func getMetadata(ctx context.Context, aadEndpoint, tenantID string, retryCount int) (*metadataJSON, error) {
 	metadataURL := aadEndpoint + tenantID + "/.well-known/openid-configuration"
-	retryClient := makeRetryableHttpClient()
+	retryClient := makeRetryableHttpClient(retryCount)
 
 	request, err := retryablehttp.NewRequest("GET", metadataURL, nil)
 	if err != nil {
@@ -198,7 +198,7 @@ func (s Authenticator) Check(ctx context.Context, token string) (*authv1.UserInf
 		}
 	}
 
-	ctx = withRetryableHttpClient(ctx)
+	ctx = withRetryableHttpClient(ctx, s.HttpClientRetryCount)
 	idToken, err := s.verifier.Verify(ctx, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to verify token for azure")
@@ -365,9 +365,9 @@ func (c claims) string(key string) (string, error) {
 	return s, nil
 }
 
-type getMetadataFunc = func(context.Context, string, string) (*metadataJSON, error)
+type getMetadataFunc = func(context.Context, string, string, int) (*metadataJSON, error)
 
-func getAuthInfo(ctx context.Context, environment, tenantID string, getMetadata getMetadataFunc) (*authInfo, error) {
+func getAuthInfo(ctx context.Context, environment, tenantID string, retryCount int, getMetadata getMetadataFunc) (*authInfo, error) {
 	var err error
 	env := azure.PublicCloud
 	if environment != "" {
@@ -377,7 +377,7 @@ func getAuthInfo(ctx context.Context, environment, tenantID string, getMetadata 
 		}
 	}
 
-	metadata, err := getMetadata(ctx, env.ActiveDirectoryEndpoint, tenantID)
+	metadata, err := getMetadata(ctx, env.ActiveDirectoryEndpoint, tenantID, retryCount)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get metadata for azure")
 	}
