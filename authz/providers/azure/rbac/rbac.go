@@ -86,6 +86,7 @@ type AccessInfo struct {
 	skipAuthzForNonAADUsers         bool
 	allowNonResDiscoveryPathAccess  bool
 	useNamespaceResourceScopeFormat bool
+	httpClientRetryCount            int
 	lock                            sync.RWMutex
 }
 
@@ -155,7 +156,7 @@ func getClusterType(clsType string) string {
 	}
 }
 
-func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts authzOpts.Options) (*AccessInfo, error) {
+func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts authzOpts.Options, authopts auth.Options) (*AccessInfo, error) {
 	u := &AccessInfo{
 		client: httpclient.DefaultHTTPClient,
 		headers: http.Header{
@@ -169,6 +170,7 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 		skipAuthzForNonAADUsers:         opts.SkipAuthzForNonAADUsers,
 		allowNonResDiscoveryPathAccess:  opts.AllowNonResDiscoveryPathAccess,
 		useNamespaceResourceScopeFormat: opts.UseNamespaceResourceScopeFormat,
+		httpClientRetryCount:            authopts.HttpClientRetryCount,
 	}
 
 	u.skipCheck = make(map[string]void, len(opts.SkipAuthzCheck))
@@ -207,7 +209,7 @@ func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo) (*
 		tokenProvider = graph.NewAKSTokenProvider(opts.AKSAuthzTokenURL, authopts.TenantID)
 	}
 
-	return newAccessInfo(tokenProvider, rbacURL, opts)
+	return newAccessInfo(tokenProvider, rbacURL, opts, authopts)
 }
 
 func (a *AccessInfo) RefreshToken(ctx context.Context) error {
@@ -328,6 +330,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 			// create a request id for every checkaccess request
 			requestUUID := uuid.New()
 			reqContext := context.WithValue(egCtx, correlationRequestIDKey(correlationRequestIDHeader), []string{requestUUID.String()})
+			reqContext = azureutils.WithRetryableHttpClient(reqContext, a.httpClientRetryCount)
 			err := a.sendCheckAccessRequest(reqContext, checkAccessUsername, checkAccessURL, body, ch)
 			if err != nil {
 				code := http.StatusInternalServerError
@@ -397,7 +400,8 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 	// start time to calculate checkaccess duration
 	start := time.Now()
 	klog.V(5).Infof("Sending checkAccess request with correlationID: %s", correlationID[0])
-	resp, err := a.client.Do(req)
+	client := azureutils.LoadClientWithContext(ctx, a.client)
+	resp, err := client.Do(req)
 	duration := time.Since(start).Seconds()
 	if err != nil {
 		checkAccessTotal.WithLabelValues(internalServerCode).Inc()
