@@ -21,22 +21,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 
 	"go.kubeguard.dev/guard/auth"
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
-	"go.kubeguard.dev/guard/util/httpclient"
+	azureutils "go.kubeguard.dev/guard/util/azure"
 
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/coreos/go-oidc"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/pkg/errors"
-	"golang.org/x/oauth2"
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/klog/v2"
 )
@@ -120,7 +117,7 @@ func getOIDCIssuerProvider(issuerURL string, issuerGetRetryCount int) (*oidc.Pro
 
 	// NOTE: we start a root context here to allow background remote key set refresh
 	ctx := context.Background()
-	ctx = withRetryableHttpClient(ctx, issuerGetRetryCount)
+	ctx = azureutils.WithRetryableHttpClient(ctx, issuerGetRetryCount)
 	provider, err := oidc.NewProvider(ctx, issuerURL)
 	if err != nil {
 		// failed in this attempt, let other attempts retry
@@ -180,35 +177,6 @@ func New(ctx context.Context, opts Options) (auth.Interface, error) {
 	return c, nil
 }
 
-// makeRetryableHttpClient creates an HTTP client which attempts the request
-// (1 + retryCount) times and has a 3 second timeout per attempt.
-func makeRetryableHttpClient(retryCount int) retryablehttp.Client {
-	// Copy the default HTTP client so we can set a timeout.
-	// (It uses the same transport since the pointer gets copied)
-	httpClient := *httpclient.DefaultHTTPClient
-	httpClient.Timeout = 3 * time.Second
-
-	// Attempt the request up to 3 times
-	return retryablehttp.Client{
-		HTTPClient:   &httpClient,
-		RetryWaitMin: 500 * time.Millisecond,
-		RetryWaitMax: 2 * time.Second,
-		RetryMax:     retryCount, // initial + retryCount retries = (1 + retryCount) attempts
-		CheckRetry:   retryablehttp.DefaultRetryPolicy,
-		Backoff:      retryablehttp.DefaultBackoff,
-		Logger:       log.Default(),
-	}
-}
-
-// withRetryableHttpClient sets the oauth2.HTTPClient key of the context to an
-// *http.Client made from makeRetryableHttpClient.
-// Some of the libraries we use will take the client out of the context via
-// oauth2.HTTPClient and use it, so this way we can add retries to external code.
-func withRetryableHttpClient(ctx context.Context, retryCount int) context.Context {
-	retryClient := makeRetryableHttpClient(retryCount)
-	return context.WithValue(ctx, oauth2.HTTPClient, retryClient.StandardClient())
-}
-
 type metadataJSON struct {
 	Issuer      string `json:"issuer"`
 	MsgraphHost string `json:"msgraph_host"`
@@ -217,7 +185,7 @@ type metadataJSON struct {
 // https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-convert-app-to-be-multi-tenant
 func getMetadata(ctx context.Context, aadEndpoint, tenantID string, retryCount int) (*metadataJSON, error) {
 	metadataURL := aadEndpoint + tenantID + "/.well-known/openid-configuration"
-	retryClient := makeRetryableHttpClient(retryCount)
+	retryClient := azureutils.MakeRetryableHttpClient(retryCount)
 
 	request, err := retryablehttp.NewRequest("GET", metadataURL, nil)
 	if err != nil {
@@ -261,7 +229,7 @@ func (s Authenticator) Check(ctx context.Context, token string) (*authv1.UserInf
 		}
 	}
 
-	ctx = withRetryableHttpClient(ctx, s.HttpClientRetryCount)
+	ctx = azureutils.WithRetryableHttpClient(ctx, s.HttpClientRetryCount)
 	idToken, err := s.verifier.Verify(ctx, token)
 	if err != nil {
 		if klog.V(7).Enabled() {
