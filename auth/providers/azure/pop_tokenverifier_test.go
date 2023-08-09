@@ -14,289 +14,209 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package azure
+package azure_test
 
 import (
-	"crypto"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha256"
-	"encoding/base64"
 	"fmt"
-	"math/big"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"go.kubeguard.dev/guard/auth/providers/azure"
+
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/square/go-jose.v2"
 )
-
-const (
-	popAccessToken           = `{ "aud": "client", "iss" : "kd", "exp" : "%d","cnf": {"kid":"%s","xms_ksl":"sw"} }`
-	popAccessTokenWithoutCnf = `{ "aud": "client", "iss" : "kd", "exp" : "%d" }`
-)
-
-type swPoPKey struct {
-	key    *rsa.PrivateKey
-	keyID  string
-	jwk    string
-	jwkTP  string
-	reqCnf string
-}
-
-func (swk *swPoPKey) Alg() string {
-	return "RS256"
-}
-
-func (swk *swPoPKey) Sign(payload []byte) ([]byte, error) {
-	return swk.key.Sign(rand.Reader, payload, crypto.SHA256)
-}
-
-func (swk *swPoPKey) KeyID() string {
-	return swk.keyID
-}
-
-func (swk *swPoPKey) Cnf() string {
-	return swk.reqCnf
-}
-
-func (swk *swPoPKey) Jwk() string {
-	return swk.jwk
-}
-
-func NewSWPoPKey() (*swPoPKey, error) {
-	pop := &swPoPKey{}
-	rsa, err := rsa.GenerateKey(rand.Reader, 1028)
-	if err != nil {
-		return nil, err
-	}
-	pop.key = rsa
-	pubKey := rsa.PublicKey
-	e := big.NewInt(int64(pubKey.E))
-	eB64 := base64.RawURLEncoding.EncodeToString(e.Bytes())
-	n := pubKey.N
-	nB64 := base64.RawURLEncoding.EncodeToString(n.Bytes())
-	jwk := fmt.Sprintf(`{"e":"%s","kty":"RSA","n":"%s"}`, eB64, nB64)
-	jwkS256 := sha256.Sum256([]byte(jwk))
-	pop.jwkTP = base64.RawURLEncoding.EncodeToString(jwkS256[:])
-
-	reqCnfJSON := fmt.Sprintf(`{"kid":"%s","xms_ksl":"sw"}`, pop.jwkTP)
-	pop.reqCnf = base64.RawURLEncoding.EncodeToString([]byte(reqCnfJSON))
-	pop.keyID = pop.jwkTP
-	pop.jwk = fmt.Sprintf(`{"e":"%s","kty":"RSA","n":"%s","alg":"RS256","kid":"%s"}`, eB64, nB64, pop.keyID)
-
-	return pop, nil
-}
-
-type swKey struct {
-	keyID  string
-	pKey   *rsa.PrivateKey
-	pubKey interface{}
-}
-
-func (swk *swKey) Alg() string {
-	return "RS256"
-}
-
-func (swk *swKey) KeyID() string {
-	return ""
-}
-
-func NewSwkKey() (*swKey, error) {
-	rsa, err := rsa.GenerateKey(rand.Reader, 1028)
-	if err != nil {
-		return nil, err
-	}
-	return &swKey{"", rsa, rsa.Public()}, nil
-}
-
-func (swk *swKey) GenerateToken(payload []byte) (string, error) {
-	pKey := &jose.JSONWebKey{Key: swk.pKey, Algorithm: swk.Alg(), KeyID: swk.KeyID()}
-
-	// create a Square.jose RSA signer, used to sign the JWT
-	signerOpts := jose.SignerOptions{}
-	signerOpts.WithType("JWT")
-	rsaSigner, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.RS256, Key: pKey}, &signerOpts)
-	if err != nil {
-		return "", err
-	}
-	jws, err := rsaSigner.Sign(payload)
-	if err != nil {
-		return "", err
-	}
-
-	token, err := jws.CompactSerialize()
-	if err != nil {
-		return "", err
-	}
-	return token, nil
-}
-
-const (
-	badTokenKey         = "badToken"
-	headerBadKeyID      = "headerBadKeyID"
-	headerBadAlgo       = "headerBadAlgo"
-	headerBadtyp        = "headerBadtyp"
-	headerBadtypType    = "headerBadtypType"
-	headerBadtypMissing = "headerBadtypMissing"
-	uClaimsMissing      = "uClaimsMissing"
-	tsClaimsMissing     = "tsClaimsMissing"
-	cnfClaimsMissing    = "cnfClaimsMissing"
-	cnfJwkClaimsWrong   = "cnfJwkClaimsWrong"
-	atCnfClaimMissing   = "atCnfClaimMissing"
-	atCnfClaimWrong     = "atCnfClaimWrong"
-)
-
-func GeneratePoPToken(ts int64, hostName, kid string) (string, error) {
-	if strings.Contains(kid, badTokenKey) {
-		return kid, nil
-	}
-	popKey, err := NewSWPoPKey()
-	if err != nil {
-		return "", fmt.Errorf("Failed to generate Pop key. Error:%+v", err)
-	}
-
-	key, err := NewSwkKey()
-	if err != nil {
-		return "", fmt.Errorf("Failed to generate SF key. Error:%+v", err)
-	}
-
-	var cnf string
-	if kid == atCnfClaimWrong {
-		cnf = "wrongCnf"
-	} else {
-		cnf = popKey.KeyID()
-	}
-
-	var accessTokenData string
-	if kid == atCnfClaimMissing {
-		accessTokenData = fmt.Sprintf(popAccessTokenWithoutCnf, time.Now().Add(time.Minute*5).Unix())
-	} else {
-		accessTokenData = fmt.Sprintf(popAccessToken, time.Now().Add(time.Minute*5).Unix(), cnf)
-	}
-
-	at, err := key.GenerateToken([]byte(accessTokenData))
-	if err != nil {
-		return "", fmt.Errorf("Error when generating token. Error:%+v", err)
-	}
-	var header, headerB64 string
-	nonce := uuid.New().String()
-	nonce = strings.Replace(nonce, "-", "", -1)
-	keyID := popKey.KeyID()
-	algo := popKey.Alg()
-	typ := "pop"
-	if kid == headerBadKeyID {
-		keyID = ""
-	}
-	if kid == headerBadAlgo {
-		algo = "wrong"
-	}
-	if kid == headerBadtyp {
-		typ = "wrong"
-	}
-	header = fmt.Sprintf(`{"typ":"%s","alg":"%s","kid":"%s"}`, typ, algo, keyID)
-
-	if kid == headerBadtypType {
-		wrongTyp := 1
-		header = fmt.Sprintf(`{"typ":"%d","alg":"%s","kid":"%s"}`, wrongTyp, algo, keyID)
-	}
-
-	if kid == headerBadtypMissing {
-		header = fmt.Sprintf(`{"alg":"%s","kid":"%s"}`, algo, keyID)
-	}
-
-	headerB64 = base64.RawURLEncoding.EncodeToString([]byte(header))
-
-	var payload, payloadB64 string
-	payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "cnf":{"jwk":%s}, "nonce":"%s"}`, at, ts, hostName, popKey.Jwk(), nonce)
-	if kid == tsClaimsMissing {
-		payload = fmt.Sprintf(`{ "at" : "%s", "u": "%d", "cnf":{"jwk":%s}, "nonce":"%s"}`, at, 1, popKey.Jwk(), nonce)
-	}
-	if kid == uClaimsMissing {
-		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "cnf":{"jwk":%s}, "nonce":"%s"}`, at, ts, popKey.Jwk(), nonce)
-	}
-	if kid == cnfClaimsMissing {
-		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "nonce": "%s"}`, at, ts, hostName, nonce)
-	}
-	if kid == cnfJwkClaimsWrong {
-		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "cnf":{}, "nonce":"%s"}`, at, ts, hostName, nonce)
-	}
-
-	payloadB64 = base64.RawURLEncoding.EncodeToString([]byte(payload))
-	h256 := sha256.Sum256([]byte(headerB64 + "." + payloadB64))
-	signature, err := popKey.Sign(h256[:])
-	if err != nil {
-		return "", fmt.Errorf("Error while signing pop key. Error:%+v", err)
-	}
-	signatureB64 := base64.RawURLEncoding.EncodeToString(signature)
-
-	finalToken := headerB64 + "." + payloadB64 + "." + signatureB64
-	return finalToken, nil
-}
 
 func TestPopTokenVerifier_Verify(t *testing.T) {
-	verifier := NewPoPVerifier("testHostname", 15*time.Minute)
+	verifier := azure.NewPoPVerifier("testHostname", 15*time.Minute)
 
-	validToken, _ := GeneratePoPToken(time.Now().Unix(), "testHostname", "")
-	_, err := verifier.ValidatePopToken(validToken)
-	assert.NoError(t, err)
+	// Test cases where no error is expected
+	noErrorTestCases := []struct {
+		desc string
+		kid  string
+	}{
+		{
+			desc: "happy path test case, all arguments are passed correctly",
+		},
+		{
+			desc: "'ts' claim is passed as string",
+			kid:  azure.TsClaimsTypeString,
+		},
+	}
+	for _, tC := range noErrorTestCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			validToken, _ := azure.NewPoPTokenBuilder().SetTimestamp(time.Now().Unix()).SetHostName("testHostname").SetKid(tC.kid).GetToken()
+			_, err := verifier.ValidatePopToken(validToken)
+			assert.NoError(t, err)
+		})
+	}
 
-	invalidToken, _ := GeneratePoPToken(time.Now().Unix(), "", badTokenKey)
-	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "PoP token invalid schema. Token length: 1")
+	// Test cases asserting "ErrorEquals"
+	testCases := []struct {
+		desc      string
+		kid       string
+		hostname  string
+		errString string
+	}{
+		{
+			desc:      "PoP token is not in the right format",
+			kid:       azure.BadTokenKey,
+			errString: "PoP token invalid schema. Token length: 1",
+		},
+		{
+			desc:      "PoP token is in the right format but is incorrect and could not be parsed",
+			kid:       fmt.Sprintf("%s.%s.%s", azure.BadTokenKey, azure.BadTokenKey, azure.BadTokenKey),
+			hostname:  "testHostname",
+			errString: "Could not parse PoP token. Error: invalid character 'm' looking for beginning of value",
+		},
+		{
+			desc:      "'keyID' claim in the header is missing",
+			kid:       azure.HeaderBadKeyID,
+			errString: "No KeyID found in PoP token header",
+		},
+		{
+			desc:      "'algo' claim in the header is incorrect",
+			kid:       azure.HeaderBadAlgo,
+			errString: "Wrong algorithm found in PoP token header, expected 'RS256' having 'wrong'",
+		},
+		{
+			desc:      "'typ' claim in the header is incorrect",
+			kid:       azure.HeaderBadtyp,
+			errString: "Wrong typ. Expected 'pop' having 'wrong'",
+		},
+		{
+			desc:      "'typ' claim is not present in the header",
+			kid:       azure.HeaderBadtypMissing,
+			errString: "Invalid token. 'typ' claim is missing",
+		},
+		{
+			desc:      "Invalid token. 'typ' claim should be of string",
+			kid:       azure.HeaderBadtypType,
+			hostname:  "testHostname",
+			errString: "Invalid token. 'typ' claim should be of string",
+		},
+		{
+			desc:      "'ts' claim is not present in the payload",
+			kid:       azure.TsClaimsMissing,
+			errString: "Invalid token. 'ts' claim is missing",
+		},
+		{
+			desc:      "Request and validation for the PoP token are running for different hostnames",
+			hostname:  "wrongHostnme",
+			errString: "Invalid Pop token due to host mismatch. Expected: \"testHostname\", received: \"wrongHostnme\"",
+		},
+		{
+			desc:      "'cnf' is not present in the access token",
+			kid:       azure.AtCnfClaimMissing,
+			hostname:  "testHostname",
+			errString: "could not retrieve 'cnf' claim from access token",
+		},
+		{
+			desc:      "'cnf' in the access token does not have the right value",
+			kid:       azure.AtCnfClaimWrong,
+			hostname:  "testHostname",
+			errString: "PoP token validate failed: 'cnf' claim mismatch",
+		},
+		{
+			desc:      "'cnf' claim in the payload is not present",
+			kid:       azure.CnfClaimsMissing,
+			hostname:  "testHostname",
+			errString: "Invalid token. 'cnf' claim is missing",
+		},
+		{
+			desc:      "'cnf' claim in the payload does not have 'jwk'",
+			kid:       azure.CnfJwkClaimsMissing,
+			hostname:  "testHostname",
+			errString: "Invalid token. 'cnf' claim is not in expected format",
+		},
+		{
+			desc:      "'jwk' in 'cnf' claim in the payload is empty",
+			kid:       azure.CnfJwkClaimsEmpty,
+			hostname:  "testHostname",
+			errString: "Invalid token. 'jwk' claim is empty",
+		},
+		{
+			desc:      "'u' claim is not present in the payload",
+			kid:       azure.UClaimsMissing,
+			hostname:  "testHostname",
+			errString: "Invalid token. 'u' claim is missing",
+		},
+		{
+			desc:      "'u' claim in the payload is not of string type",
+			kid:       azure.UClaimsWrongType,
+			hostname:  "testHostname",
+			errString: "Invalid token. 'u' claim should be of string",
+		},
+		{
+			desc:      "'at' claim in the payload is not of type string",
+			kid:       azure.AtClaimsWrongType,
+			hostname:  "testHostname",
+			errString: "Invalid token. 'at' claim should be string",
+		},
+		{
+			desc:      "'at' claim is not present in the payload",
+			kid:       azure.AtClaimsMissing,
+			hostname:  "testHostname",
+			errString: "Invalid token. access token missing",
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			invalidToken, _ := azure.NewPoPTokenBuilder().SetTimestamp(time.Now().Unix()).SetHostName(tC.hostname).SetKid(tC.kid).GetToken()
+			_, err := verifier.ValidatePopToken(invalidToken)
+			assert.EqualError(t, err, tC.errString)
+		})
+	}
 
-	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", fmt.Sprintf("%s.%s.%s", badTokenKey, badTokenKey, badTokenKey))
-	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "Could not parse PoP token. Error: invalid character 'm' looking for beginning of value")
+	// Test cases asserting ErrorContains
+	testCasesContainsErrors := []struct {
+		desc      string
+		kid       string
+		ts        int64
+		hostname  string
+		errString string
+	}{
+		{
+			desc:      "'jwk' in the 'cnf' claim in the payload is not of string type",
+			kid:       azure.CnfJwkClaimsWrong,
+			errString: "failed while parsing 'jwk' claim in PoP token",
+		},
+		{
+			desc:      "'jwk' in the 'cnf' claim in the access token is not of string type",
+			kid:       azure.AccessTokenCnfWrong,
+			hostname:  "testHostname",
+			errString: "failed while parsing 'cnf' in access token",
+		},
+		{
+			desc:      "'at' claim value in they payload is not correct and could not be parsed",
+			kid:       azure.AtClaimIncorrect,
+			hostname:  "testHostname",
+			errString: "could not parse access token in PoP token",
+		},
+		{
+			desc:      "RSA verify error due to invalid signature in the PoP token",
+			kid:       azure.SignatureWrongType,
+			hostname:  "testHostname",
+			errString: "RSA verify err: crypto/rsa: verification error",
+		},
+	}
+	for _, tC := range testCasesContainsErrors {
+		t.Run(tC.desc, func(t *testing.T) {
+			invalidToken, _ := azure.NewPoPTokenBuilder().SetTimestamp(time.Now().Unix()).SetHostName("testHostname").SetKid(tC.kid).GetToken()
+			_, err := verifier.ValidatePopToken(invalidToken)
+			assert.ErrorContains(t, err, tC.errString)
+		})
+	}
 
-	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "", headerBadKeyID)
-	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "No KeyID found in PoP token header")
+	t.Run("'ts' has an expired timestamp", func(t *testing.T) {
+		expiredToken, _ := azure.NewPoPTokenBuilder().SetTimestamp(time.Now().Add(time.Minute * -20).Unix()).GetToken()
+		_, err := verifier.ValidatePopToken(expiredToken)
+		assert.NotNilf(t, err, "PoP verification succeed.")
+		assert.Containsf(t, err.Error(), "Token is expired", "Error message is not as expected")
+	})
 
-	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "", headerBadAlgo)
-	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "Wrong algorithm found in PoP token header, expected 'RS256' having 'wrong'")
-
-	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "", headerBadtyp)
-	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "Wrong typ. Expected 'pop' having 'wrong'")
-
-	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "", headerBadtypMissing)
-	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "Invalid token. 'typ' claim is missing")
-
-	expiredToken, _ := GeneratePoPToken(time.Now().Add(time.Minute*-20).Unix(), "", "")
-	_, err = verifier.ValidatePopToken(expiredToken)
-	assert.NotNilf(t, err, "PoP verification succeed.")
-	assert.Containsf(t, err.Error(), "Token is expired", "Error message is not as expected")
-
-	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "", tsClaimsMissing)
-	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "Invalid token. 'ts' claim is missing")
-
-	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "wrongHostnme", "")
-	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "Invalid Pop token due to host mismatch. Expected: \"testHostname\", received: \"wrongHostnme\"")
-
-	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "", uClaimsMissing)
-	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "Invalid token. 'u' claim is missing")
-
-	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", cnfClaimsMissing)
-	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "Invalid token. 'cnf' claim is missing")
-
-	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", cnfJwkClaimsWrong)
-	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "Invalid token. 'jwk' claim is empty")
-
-	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", atCnfClaimMissing)
-	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "could not retrieve 'cnf' claim from access token")
-
-	invalidToken, _ = GeneratePoPToken(time.Now().Unix(), "testHostname", atCnfClaimWrong)
-	_, err = verifier.ValidatePopToken(invalidToken)
-	assert.EqualError(t, err, "PoP token validate failed: 'cnf' claim mismatch")
+	t.Run("'ts' claim in the payload is of unknown type and cannot be parsed. 'ts' is set to the default timestamp which has expired", func(t *testing.T) {
+		invalidToken, _ := azure.NewPoPTokenBuilder().SetTimestamp(time.Now().Unix()).SetHostName("testHostname").SetKid(azure.TsClaimsTypeUnknown).GetToken()
+		_, err := verifier.ValidatePopToken(invalidToken)
+		assert.Containsf(t, err.Error(), "Token is expired", "Error message is not as expected")
+	})
 }
