@@ -24,6 +24,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"go.kubeguard.dev/guard/auth"
@@ -79,19 +80,35 @@ type authInfo struct {
 	Issuer      string
 }
 
+var (
+	cachedAuthInfo *authInfo
+	mutex          = &sync.Mutex{}
+)
+
+// New is called per authentication request
 func New(ctx context.Context, opts Options) (auth.Interface, error) {
 	c := &Authenticator{
 		Options: opts,
 	}
-	authInfoVal, err := getAuthInfo(ctx, c.Environment, c.TenantID, c.HttpClientRetryCount, getMetadata)
-	if err != nil {
-		return nil, err
+
+	if cachedAuthInfo == nil {
+		mutex.Lock()
+		defer mutex.Unlock()
+		if cachedAuthInfo == nil {
+			// getAuthInfo gets the issuer, graph, and AAD endpoints from the Azure metadata endpoint
+			// since it won't change at all, we can cache it
+			authInfoVal, err := getAuthInfo(ctx, c.Environment, c.TenantID, c.HttpClientRetryCount, getMetadata)
+			if err != nil {
+				return nil, err
+			}
+			cachedAuthInfo = authInfoVal
+		}
 	}
 
-	klog.V(3).Infof("Using issuer url: %v", authInfoVal.Issuer)
+	klog.V(3).Infof("Using issuer url: %v", cachedAuthInfo.Issuer)
 
 	ctx = withRetryableHttpClient(ctx, c.HttpClientRetryCount)
-	provider, err := oidc.NewProvider(ctx, authInfoVal.Issuer)
+	provider, err := oidc.NewProvider(ctx, cachedAuthInfo.Issuer)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create provider for azure")
 	}
@@ -103,13 +120,13 @@ func New(ctx context.Context, opts Options) (auth.Interface, error) {
 
 	switch opts.AuthMode {
 	case ClientCredentialAuthMode:
-		c.graphClient, err = graph.New(c.ClientID, c.ClientSecret, c.TenantID, c.UseGroupUID, authInfoVal.AADEndpoint, authInfoVal.MSGraphHost)
+		c.graphClient, err = graph.New(c.ClientID, c.ClientSecret, c.TenantID, c.UseGroupUID, cachedAuthInfo.AADEndpoint, cachedAuthInfo.MSGraphHost)
 	case ARCAuthMode:
 		c.graphClient, err = graph.NewWithARC(c.ClientID, c.ResourceId, c.TenantID, c.AzureRegion)
 	case OBOAuthMode:
-		c.graphClient, err = graph.NewWithOBO(c.ClientID, c.ClientSecret, c.TenantID, authInfoVal.AADEndpoint, authInfoVal.MSGraphHost)
+		c.graphClient, err = graph.NewWithOBO(c.ClientID, c.ClientSecret, c.TenantID, cachedAuthInfo.AADEndpoint, cachedAuthInfo.MSGraphHost)
 	case AKSAuthMode:
-		c.graphClient, err = graph.NewWithAKS(c.AKSTokenURL, c.TenantID, authInfoVal.MSGraphHost)
+		c.graphClient, err = graph.NewWithAKS(c.AKSTokenURL, c.TenantID, cachedAuthInfo.MSGraphHost)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create ms graph client")
