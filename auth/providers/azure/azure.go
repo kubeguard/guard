@@ -90,7 +90,7 @@ var (
 )
 
 func getOIDCIssuerProvider(issuerURL string, issuerGetRetryCount int) (*oidc.Provider, error) {
-    // fast path: read from cache
+	// fast path: read from cache
 	cachedOIDCIssuerProvidersMutex.RLock()
 	cached, ok := cachedOIDCIssuerProviders[issuerURL]
 	cachedOIDCIssuerProvidersMutex.RUnlock()
