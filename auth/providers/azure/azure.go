@@ -80,10 +80,56 @@ type authInfo struct {
 	Issuer      string
 }
 
+// TODO: combine auth info and issuer into one
 var (
 	cachedAuthInfo *authInfo
 	mutex          = &sync.Mutex{}
+
+	cachedOIDCIssuerProvider       *oidc.Provider
+	cachedOIDCIssuerProvidersMutex = &sync.RWMutex{}
 )
+
+// getCachedOIDCIssuerProviderUnsafe returns the cached OIDC issuer provider and whether it exists.
+// It requires the caller to hold the cachedOIDCIssuerProvidersMutex.
+func getCachedOIDCIssuerProviderUnsafe() (*oidc.Provider, bool) {
+	if cachedOIDCIssuerProvider == nil {
+		return nil, false
+	}
+	return cachedOIDCIssuerProvider, true
+}
+
+func getOIDCIssuerProvider(issuerURL string, issuerGetRetryCount int) (*oidc.Provider, error) {
+	cachedOIDCIssuerProvidersMutex.RLock()
+	// fast path: read from cache
+	if cached, ok := getCachedOIDCIssuerProviderUnsafe(); ok {
+		cachedOIDCIssuerProvidersMutex.RUnlock()
+		return cached, nil
+	}
+	cachedOIDCIssuerProvidersMutex.RUnlock()
+
+	// slow path: construct from remote
+	// NOTE: we hold the lock even it's doing HTTP call to avoid sending multiple requests
+	cachedOIDCIssuerProvidersMutex.Lock()
+	defer cachedOIDCIssuerProvidersMutex.Unlock()
+
+	if cached, ok := getCachedOIDCIssuerProviderUnsafe(); ok {
+		// another goroutine has already constructed the provider
+		return cached, nil
+	}
+
+	// NOTE: we start a root context here to allow background remote key set refresh
+	ctx := context.Background()
+	ctx = withRetryableHttpClient(ctx, issuerGetRetryCount)
+	provider, err := oidc.NewProvider(ctx, issuerURL)
+	if err != nil {
+		// failed in this attempt, let other attempts retry
+		return nil, errors.Wrap(err, "failed to create provider for azure")
+	}
+
+	cachedOIDCIssuerProvider = provider
+
+	return provider, nil
+}
 
 // New is called per authentication request
 func New(ctx context.Context, opts Options) (auth.Interface, error) {
@@ -107,8 +153,7 @@ func New(ctx context.Context, opts Options) (auth.Interface, error) {
 
 	klog.V(3).Infof("Using issuer url: %v", cachedAuthInfo.Issuer)
 
-	ctx = withRetryableHttpClient(ctx, c.HttpClientRetryCount)
-	provider, err := oidc.NewProvider(ctx, cachedAuthInfo.Issuer)
+	provider, err := getOIDCIssuerProvider(cachedAuthInfo.Issuer, c.HttpClientRetryCount)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create provider for azure")
 	}
