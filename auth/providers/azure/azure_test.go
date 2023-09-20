@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -627,4 +628,21 @@ func Test_getOIDCIssuerProvider_ErrorCase(t *testing.T) {
 	provider, err := getOIDCIssuerProvider(testServer.URL+"/", 3)
 	assert.Error(t, err)
 	assert.Nil(t, provider)
+}
+
+func Test_getOIDCIssuerProvider_ErrorCase_Concurrent(t *testing.T) {
+	testServer := httptest.NewServer(http.NotFoundHandler())
+	defer testServer.Close()
+
+	wg := &sync.WaitGroup{}
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			provider, err := getOIDCIssuerProvider(testServer.URL+"/", 3)
+			assert.Error(t, err)
+			assert.Nil(t, provider)
+		}()
+	}
+	wg.Wait()
 }
