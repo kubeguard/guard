@@ -85,16 +85,23 @@ var (
 	cachedAuthInfo *authInfo
 	mutex          = &sync.Mutex{}
 
-	cachedOIDCIssuerProviders map[string]*oidc.Provider = make(map[string]*oidc.Provider)
+	cachedOIDCIssuerProvider *oidc.Provider
 	cachedOIDCIssuerProvidersMutex = &sync.RWMutex{}
 )
 
+func getCachedOIDCIssuerProvider() (*oidc.Provider, bool) {
+	cachedOIDCIssuerProvidersMutex.RLock()
+	defer cachedOIDCIssuerProvidersMutex.RUnlock()
+
+	if cachedOIDCIssuerProvider == nil {
+		return nil, false
+	}
+	return cachedOIDCIssuerProvider, true
+}
+
 func getOIDCIssuerProvider(issuerURL string, issuerGetRetryCount int) (*oidc.Provider, error) {
 	// fast path: read from cache
-	cachedOIDCIssuerProvidersMutex.RLock()
-	cached, ok := cachedOIDCIssuerProviders[issuerURL]
-	cachedOIDCIssuerProvidersMutex.RUnlock()
-	if ok {
+	if cached, ok := getCachedOIDCIssuerProvider(); ok {
 		return cached, nil
 	}
 
@@ -103,7 +110,7 @@ func getOIDCIssuerProvider(issuerURL string, issuerGetRetryCount int) (*oidc.Pro
 	cachedOIDCIssuerProvidersMutex.Lock()
 	defer cachedOIDCIssuerProvidersMutex.Unlock()
 
-	if cached, ok := cachedOIDCIssuerProviders[issuerURL]; ok {
+	if cached, ok := getCachedOIDCIssuerProvider(); ok {
 		// another goroutine has already constructed the provider
 		return cached, nil
 	}
@@ -117,7 +124,7 @@ func getOIDCIssuerProvider(issuerURL string, issuerGetRetryCount int) (*oidc.Pro
 		return nil, errors.Wrap(err, "failed to create provider for azure")
 	}
 
-	cachedOIDCIssuerProviders[issuerURL] = provider
+	cachedOIDCIssuerProvider = provider
 
 	return provider, nil
 }
