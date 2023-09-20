@@ -120,7 +120,6 @@ func getOIDCIssuerProvider(issuerURL string, issuerGetRetryCount int) (*oidc.Pro
 	// NOTE: we start a root context here to allow background remote key set refresh
 	ctx := context.Background()
 	ctx = withRetryableHttpClient(ctx, issuerGetRetryCount)
-	fmt.Println(issuerURL)
 	provider, err := oidc.NewProvider(ctx, issuerURL)
 	if err != nil {
 		// failed in this attempt, let other attempts retry
