@@ -33,6 +33,7 @@ import (
 
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/coreos/go-oidc"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
@@ -263,6 +264,11 @@ func (s Authenticator) Check(ctx context.Context, token string) (*authv1.UserInf
 	ctx = withRetryableHttpClient(ctx, s.HttpClientRetryCount)
 	idToken, err := s.verifier.Verify(ctx, token)
 	if err != nil {
+		if klog.V(7).Enabled() {
+			if claims, err := extractTokenClaims(token); err == nil {
+				klog.V(7).Infof("token claims: %s", claims)
+			}
+		}
 		return nil, errors.Wrap(err, "failed to verify token for azure")
 	}
 
@@ -454,4 +460,21 @@ func getAuthInfo(ctx context.Context, environment, tenantID string, retryCount i
 		MSGraphHost: msgraphHost,
 		Issuer:      metadata.Issuer,
 	}, nil
+}
+
+func extractTokenClaims(rawToken string) (string, error) {
+	token, _, err := new(jwt.Parser).ParseUnverified(rawToken, jwt.MapClaims{})
+	if err != nil {
+		return "", err
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		payload, err := json.Marshal(claims)
+		if err != nil {
+			return "", err
+		}
+		return string(payload), nil
+	}
+
+	return "", errors.New("Invalid JWT Token")
 }
