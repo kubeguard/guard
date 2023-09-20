@@ -85,7 +85,7 @@ var (
 	cachedAuthInfo *authInfo
 	mutex          = &sync.Mutex{}
 
-	cachedOIDCIssuerProvider *oidc.Provider
+	cachedOIDCIssuerProvider       *oidc.Provider
 	cachedOIDCIssuerProvidersMutex = &sync.RWMutex{}
 )
 
