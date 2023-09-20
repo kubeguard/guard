@@ -105,7 +105,7 @@ func getOIDCIssuerProvider(issuerURL string, issuerGetRetryCount int) (*oidc.Pro
 		cachedOIDCIssuerProvidersMutex.RUnlock()
 		return cached, nil
 	}
-		cachedOIDCIssuerProvidersMutex.RUnlock()
+	cachedOIDCIssuerProvidersMutex.RUnlock()
 
 	// slow path: construct from remote
 	// NOTE: we hold the lock even it's doing HTTP call to avoid sending multiple requests
