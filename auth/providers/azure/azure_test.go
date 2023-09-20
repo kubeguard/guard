@@ -619,3 +619,12 @@ func TestGetMetadata(t *testing.T) {
 		assert.Nil(t, metadata)
 	})
 }
+
+func Test_getOIDCIssuerProvider_ErrorCase(t *testing.T) {
+	testServer := httptest.NewServer(http.NotFoundHandler())
+	defer testServer.Close()
+
+	provider, err := getOIDCIssuerProvider(testServer.URL+"/", 3)
+	assert.Error(t, err)
+	assert.Nil(t, provider)
+}

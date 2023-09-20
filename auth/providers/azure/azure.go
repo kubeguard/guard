@@ -89,10 +89,9 @@ var (
 	cachedOIDCIssuerProvidersMutex = &sync.RWMutex{}
 )
 
-func getCachedOIDCIssuerProvider() (*oidc.Provider, bool) {
-	cachedOIDCIssuerProvidersMutex.RLock()
-	defer cachedOIDCIssuerProvidersMutex.RUnlock()
-
+// getCachedOIDCIssuerProviderUnsafe returns the cached OIDC issuer provider and whether it exists.
+// It requires the caller to hold the cachedOIDCIssuerProvidersMutex.
+func getCachedOIDCIssuerProviderUnsafe() (*oidc.Provider, bool) {
 	if cachedOIDCIssuerProvider == nil {
 		return nil, false
 	}
@@ -100,17 +99,20 @@ func getCachedOIDCIssuerProvider() (*oidc.Provider, bool) {
 }
 
 func getOIDCIssuerProvider(issuerURL string, issuerGetRetryCount int) (*oidc.Provider, error) {
+	cachedOIDCIssuerProvidersMutex.RLock()
 	// fast path: read from cache
-	if cached, ok := getCachedOIDCIssuerProvider(); ok {
+	if cached, ok := getCachedOIDCIssuerProviderUnsafe(); ok {
+		cachedOIDCIssuerProvidersMutex.RUnlock()
 		return cached, nil
 	}
+		cachedOIDCIssuerProvidersMutex.RUnlock()
 
 	// slow path: construct from remote
 	// NOTE: we hold the lock even it's doing HTTP call to avoid sending multiple requests
 	cachedOIDCIssuerProvidersMutex.Lock()
 	defer cachedOIDCIssuerProvidersMutex.Unlock()
 
-	if cached, ok := getCachedOIDCIssuerProvider(); ok {
+	if cached, ok := getCachedOIDCIssuerProviderUnsafe(); ok {
 		// another goroutine has already constructed the provider
 		return cached, nil
 	}
@@ -118,6 +120,7 @@ func getOIDCIssuerProvider(issuerURL string, issuerGetRetryCount int) (*oidc.Pro
 	// NOTE: we start a root context here to allow background remote key set refresh
 	ctx := context.Background()
 	ctx = withRetryableHttpClient(ctx, issuerGetRetryCount)
+	fmt.Println(issuerURL)
 	provider, err := oidc.NewProvider(ctx, issuerURL)
 	if err != nil {
 		// failed in this attempt, let other attempts retry
