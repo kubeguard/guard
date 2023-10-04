@@ -27,7 +27,7 @@ import (
 )
 
 func TestPopTokenVerifier_Verify(t *testing.T) {
-	verifier := azure.NewPoPVerifier("testHostname", 15*time.Minute)
+	verifier := azure.NewPoPVerifier("testHostname", 15*time.Minute, 1*time.Minute)
 
 	// Test cases where no error is expected
 	noErrorTestCases := []struct {
@@ -158,6 +158,18 @@ func TestPopTokenVerifier_Verify(t *testing.T) {
 			hostname:  "testHostname",
 			errString: "Invalid token. access token missing",
 		},
+		{
+			desc:      "'nonce' claim in the payload is missing",
+			kid:       azure.NonceClaimMissing,
+			hostname:  "testHostname",
+			errString: "Invalid token. 'nonce' claim is missing",
+		},
+		{
+			desc:      "'nonce' claim in the payload is not a string",
+			kid:       azure.NonceClaimNotString,
+			hostname:  "testHostname",
+			errString: "Invalid token. 'nonce' claim should be of type string",
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
@@ -218,5 +230,18 @@ func TestPopTokenVerifier_Verify(t *testing.T) {
 		invalidToken, _ := azure.NewPoPTokenBuilder().SetTimestamp(time.Now().Unix()).SetHostName("testHostname").SetKid(azure.TsClaimsTypeUnknown).GetToken()
 		_, err := verifier.ValidatePopToken(invalidToken)
 		assert.Containsf(t, err.Error(), "Token is expired", "Error message is not as expected")
+	})
+
+	t.Run("'nonce' claim been reused - Cache validation", func(t *testing.T) {
+		nonceVerifier := azure.NewPoPVerifier("testHostname", 4*time.Second, -3*time.Second)
+		validToken, _ := azure.NewPoPTokenBuilder().SetTimestamp(time.Now().Unix()).SetHostName("testHostname").SetKid(azure.NonceClaimHardcoded).GetToken()
+		_, err := nonceVerifier.ValidatePopToken(validToken)
+		assert.NoError(t, err)
+		validToken, _ = azure.NewPoPTokenBuilder().SetTimestamp(time.Now().Unix()).SetHostName("testHostname").SetKid(azure.NonceClaimHardcoded).GetToken()
+		_, err = nonceVerifier.ValidatePopToken(validToken)
+		assert.Containsf(t, err.Error(), "Invalid token. 'nonce' claim is reused", "Error message is not as expected")
+		time.Sleep(2 * time.Second)
+		_, err = nonceVerifier.ValidatePopToken(validToken)
+		assert.NoError(t, err)
 	})
 }

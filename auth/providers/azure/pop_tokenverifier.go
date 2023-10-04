@@ -27,6 +27,7 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -34,16 +35,48 @@ import (
 	"k8s.io/klog/v2"
 )
 
+// create a cache to save nonce claim to make sure the nonce is not reused
+var nonceMap = nonceCache{v: make(map[string]time.Time)}
+
+type nonceCache struct {
+	mu sync.Mutex
+	v  map[string]time.Time
+}
+
+func (c *nonceCache) AddToCache(key string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if _, ok := c.v[key]; ok {
+		return errors.Errorf("nonce claim already exists")
+	}
+	c.v[key] = time.Now()
+	return nil
+}
+
+func (c *nonceCache) RemoveFromCache(key string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.v, key)
+}
+
+func (c *nonceCache) GetCounter() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.v)
+}
+
 // PopTokenVerifier is validator for PoP tokens.
 type PoPTokenVerifier struct {
 	hostName                 string
 	PoPTokenValidityDuration time.Duration
+	mapCacheRetentionBuffer  time.Duration
 }
 
-func NewPoPVerifier(hostName string, popTokenValidityDuration time.Duration) *PoPTokenVerifier {
+func NewPoPVerifier(hostName string, popTokenValidityDuration, cacheRetentionBuffer time.Duration) *PoPTokenVerifier {
 	return &PoPTokenVerifier{
 		PoPTokenValidityDuration: popTokenValidityDuration,
 		hostName:                 hostName,
+		mapCacheRetentionBuffer:  cacheRetentionBuffer,
 	}
 }
 
@@ -209,6 +242,28 @@ func (p *PoPTokenVerifier) ValidatePopToken(token string) (string, error) {
 	if err != nil {
 		return "", errors.Errorf("RSA verify err: %+v", err)
 	}
+
+	// Verify host 'nonce' claim
+	var nonce string
+	if nonceClaim, ok := claims["nonce"]; ok {
+		if _, ok := nonceClaim.(string); !ok {
+			return "", errors.Errorf("Invalid token. 'nonce' claim should be of type string")
+		}
+		nonce = nonceClaim.(string)
+	} else {
+		return "", errors.Errorf("Invalid token. 'nonce' claim is missing")
+	}
+	// Making sure nonce is not reused
+	err = nonceMap.AddToCache(nonce)
+	if err != nil {
+		return "", errors.Errorf("Invalid token. 'nonce' claim is reused")
+	}
+	klog.V(6).Infof("nonce claim added to the cache. Cache size is: %d", nonceMap.GetCounter())
+	// Cleaning cached nonce token after PoPTokenValidityDuration minutes + 1 minute by default
+	go func() {
+		time.Sleep(p.PoPTokenValidityDuration + p.mapCacheRetentionBuffer)
+		nonceMap.RemoveFromCache(nonce)
+	}()
 
 	return claims["at"].(string), nil
 }
