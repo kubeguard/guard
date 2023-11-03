@@ -447,7 +447,7 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	return cacheKey
 }
 
-func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, resourceId string, useNamespaceResourceScopeFormat bool) ([]*CheckAccessRequest, error) {
+func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, resourceId string, skipNamespace, useNamespaceResourceScopeFormat bool) ([]*CheckAccessRequest, error) {
 	/* This is how sample SubjectAccessReview request will look like
 		{
 			"kind": "SubjectAccessReview",
@@ -522,7 +522,11 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 		checkaccessreq.Subject.Attributes.Groups = groups
 		checkaccessreq.Subject.Attributes.ObjectId = userOid
 		checkaccessreq.Actions = actions[i:j]
-		checkaccessreq.Resource.Id = getScope(resourceId, req.ResourceAttributes, useNamespaceResourceScopeFormat)
+		if skipNamespace {
+			checkaccessreq.Resource.Id = resourceId
+		} else {
+			checkaccessreq.Resource.Id = getScope(resourceId, req.ResourceAttributes, useNamespaceResourceScopeFormat)
+		}
 		checkAccessReqs = append(checkAccessReqs, &checkaccessreq)
 	}
 
