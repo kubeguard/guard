@@ -214,7 +214,7 @@ func (s Server) ListenAndServe() {
 			options := data.DefaultOptions
 			authzhandler.Store, err = data.NewDataStore(options)
 			if authzhandler.Store == nil || err != nil {
-				klog.Fatalf("Error in initalizing cache. Error:%s", err.Error())
+				klog.Fatalf("Error in initializing cache. Error:%s", err.Error())
 			}
 
 			if s.AuthzRecommendedOptions.Azure.DiscoverResources {
