@@ -21,8 +21,6 @@ import (
 	"errors"
 	"time"
 
-	"go.kubeguard.dev/guard/authz"
-
 	"github.com/allegro/bigcache"
 )
 
@@ -34,6 +32,14 @@ const (
 	maxEntrySize     = 100
 	maxEntriesInWin  = 10 * 10 * 60
 )
+
+type Interface interface {
+	Set(key string, value interface{}) error
+	Get(key string, value interface{}) (bool, error)
+	CheckAndSet(key string, value interface{}) error
+	Delete(key string) error
+	Close() error
+}
 
 type DataStore struct {
 	cache *bigcache.BigCache
@@ -51,6 +57,22 @@ func (s *DataStore) Set(key string, value interface{}) error {
 		return err
 	}
 	return s.cache.Set(key, data)
+}
+
+var ErrEntryAlreadySet = errors.New("entry already set once in the cache")
+
+// CheckAndSet makes sure we set an entry in the cache if it doesn't exist.
+func (s *DataStore) CheckAndSet(key string, value interface{}) error {
+	data, err := s.Get(key, value)
+	if err != nil {
+		if err == bigcache.ErrEntryNotFound {
+			return s.Set(key, value)
+		}
+	}
+	if data {
+		return ErrEntryAlreadySet
+	}
+	return err
 }
 
 // Get retrieves the Stored value for the given key.
@@ -113,6 +135,10 @@ type Options struct {
 	// Default value is 0 which means unlimited size. When the limit is higher than 0 and reached then
 	// the oldest entries are overridden for the new ones.
 	HardMaxCacheSize int
+	// OnRemove is a callback fired when the oldest entry is removed because of its expiration time or no space left
+	// for the new entry, or because delete was called.
+	// Default value is nil which means no callback and it prevents from unwrapping the oldest entry.
+	OnRemove func(key string, entry []byte)
 }
 
 // DefaultOptions is an Options object with default values.
@@ -131,10 +157,11 @@ var DefaultOptions = Options{
 	MaxEntriesInWindow: maxEntriesInWin,
 	MaxEntrySize:       maxEntrySize,
 	Verbose:            false,
+	OnRemove:           nil,
 }
 
 // NewDataStore creates a BigCache store.
-func NewDataStore(options Options) (authz.Store, error) {
+func NewDataStore(options Options) (Interface, error) {
 	config := bigcache.Config{
 		Shards:             options.Shards,
 		LifeWindow:         options.LifeWindow,
@@ -143,7 +170,7 @@ func NewDataStore(options Options) (authz.Store, error) {
 		MaxEntrySize:       options.MaxEntriesInWindow,
 		Verbose:            options.Verbose,
 		HardMaxCacheSize:   options.HardMaxCacheSize,
-		OnRemove:           nil,
+		OnRemove:           options.OnRemove,
 		OnRemoveWithReason: nil,
 	}
 

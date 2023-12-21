@@ -26,6 +26,7 @@ import (
 	"go.kubeguard.dev/guard/authz"
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 	"go.kubeguard.dev/guard/authz/providers/azure/rbac"
+	"go.kubeguard.dev/guard/util/data"
 	errutils "go.kubeguard.dev/guard/util/error"
 
 	"github.com/Azure/go-autorest/autorest/azure"
@@ -79,7 +80,7 @@ func newAuthzClient(opts authzOpts.Options, authopts auth.Options) (authz.Interf
 	return c, nil
 }
 
-func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, store authz.Store) (*authzv1.SubjectAccessReviewStatus, error) {
+func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, store data.Interface) (*authzv1.SubjectAccessReviewStatus, error) {
 	if request == nil {
 		return nil, errutils.WithCode(errors.New("subject access review is nil"), http.StatusBadRequest)
 	}

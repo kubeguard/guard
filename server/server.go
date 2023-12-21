@@ -29,8 +29,8 @@ import (
 
 	"go.kubeguard.dev/guard/auth/providers/token"
 	"go.kubeguard.dev/guard/authz/providers/azure"
-	"go.kubeguard.dev/guard/authz/providers/azure/data"
 	azureutils "go.kubeguard.dev/guard/util/azure"
+	"go.kubeguard.dev/guard/util/data"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"

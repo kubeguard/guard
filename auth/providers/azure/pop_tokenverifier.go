@@ -27,57 +27,73 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
+	cache "go.kubeguard.dev/guard/util/data"
 	"gopkg.in/square/go-jose.v2/jwt"
 	"k8s.io/klog/v2"
 )
 
-// create a cache to save nonce claim to make sure the nonce is not reused
-var nonceMap = nonceCache{v: make(map[string]time.Time)}
+// // create a cache to save nonce claim to make sure the nonce is not reused
+// var nonceMap = nonceCache{v: make(map[string]time.Time)}
 
-type nonceCache struct {
-	mu sync.Mutex
-	v  map[string]time.Time
-}
+// type nonceCache struct {
+// 	mu sync.Mutex
+// 	v  map[string]time.Time
+// }
 
-func (c *nonceCache) AddToCache(key string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if _, ok := c.v[key]; ok {
-		return errors.Errorf("nonce claim already exists")
-	}
-	c.v[key] = time.Now()
-	return nil
-}
+// func (c *nonceCache) AddToCache(key string) error {
+// 	c.mu.Lock()
+// 	defer c.mu.Unlock()
+// 	if _, ok := c.v[key]; ok {
+// 		return errors.Errorf("nonce claim already exists")
+// 	}
+// 	c.v[key] = time.Now()
+// 	return nil
+// }
 
-func (c *nonceCache) RemoveFromCache(key string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	delete(c.v, key)
-}
+// func (c *nonceCache) RemoveFromCache(key string) {
+// 	c.mu.Lock()
+// 	defer c.mu.Unlock()
+// 	delete(c.v, key)
+// }
 
-func (c *nonceCache) GetCounter() int {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return len(c.v)
-}
+// func (c *nonceCache) GetCounter() int {
+// 	c.mu.Lock()
+// 	defer c.mu.Unlock()
+// 	return len(c.v)
+// }
 
 // PopTokenVerifier is validator for PoP tokens.
 type PoPTokenVerifier struct {
 	hostName                 string
 	PoPTokenValidityDuration time.Duration
-	mapCacheRetentionBuffer  time.Duration
+	store                    cache.Interface
 }
 
-func NewPoPVerifier(hostName string, popTokenValidityDuration, cacheRetentionBuffer time.Duration) *PoPTokenVerifier {
+func NewPoPVerifier(hostName string, popTokenValidityDuration, cacheRetentionBuffer time.Duration) (*PoPTokenVerifier, error) {
+	ds, err := cache.NewDataStore(cache.Options{
+		HardMaxCacheSize:   1,
+		Shards:             1,
+		LifeWindow:         cacheRetentionBuffer,
+		CleanWindow:        cacheRetentionBuffer,
+		MaxEntriesInWindow: 10,
+		MaxEntrySize:       5,
+		Verbose:            klog.V(9).Enabled(),
+		OnRemove: func(key string, entry []byte) {
+			klog.V(9).Infof("nonce claim (%s) removed from the cache.", key)
+		},
+	})
+	if err != nil {
+
+		return nil, err
+	}
 	return &PoPTokenVerifier{
 		PoPTokenValidityDuration: popTokenValidityDuration,
 		hostName:                 hostName,
-		mapCacheRetentionBuffer:  cacheRetentionBuffer,
-	}
+		store:                    ds,
+	}, nil
 }
 
 // Claims maintains token claims
@@ -156,9 +172,7 @@ func (p *PoPTokenVerifier) ValidatePopToken(token string) (string, error) {
 	// Verify host 'u' claim
 	if uc, ok := claims["u"]; ok {
 		if reqHostName, ok := uc.(string); ok {
-			if klog.V(6).Enabled() {
-				klog.V(6).Infof("pop token validation running with hostName: %s. Request is coming for hostName: %s", p.hostName, reqHostName)
-			}
+			klog.V(6).Infof("pop token validation running with hostName: %s. Request is coming for hostName: %s", p.hostName, reqHostName)
 			if !strings.EqualFold(reqHostName, p.hostName) {
 				return "", errors.Errorf("Invalid Pop token due to host mismatch. Expected: %q, received: %q", p.hostName, reqHostName)
 			}
@@ -254,16 +268,14 @@ func (p *PoPTokenVerifier) ValidatePopToken(token string) (string, error) {
 		return "", errors.Errorf("Invalid token. 'nonce' claim is missing")
 	}
 	// Making sure nonce is not reused
-	err = nonceMap.AddToCache(nonce)
+	err = p.store.CheckAndSet(nonce, true)
 	if err != nil {
-		return "", errors.Errorf("Invalid token. 'nonce' claim is reused")
+		if err == cache.ErrEntryAlreadySet {
+			return "", errors.Errorf("Invalid token. 'nonce' claim is reused")
+		}
+		return "", errors.Errorf("error caching 'nonce' claim. Error: %+v", err)
 	}
-	klog.V(6).Infof("nonce claim added to the cache. Cache size is: %d", nonceMap.GetCounter())
-	// Cleaning cached nonce token after PoPTokenValidityDuration minutes + 1 minute by default
-	go func() {
-		time.Sleep(p.PoPTokenValidityDuration + p.mapCacheRetentionBuffer)
-		nonceMap.RemoveFromCache(nonce)
-	}()
+	klog.V(6).Infof("nonce claim (%s) added to the cache. Cache size is: %d", nonce)
 
 	return claims["at"].(string), nil
 }

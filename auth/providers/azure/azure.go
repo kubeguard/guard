@@ -161,7 +161,10 @@ func New(ctx context.Context, opts Options) (auth.Interface, error) {
 
 	c.verifier = provider.Verifier(&oidc.Config{SkipClientIDCheck: !opts.VerifyClientID, ClientID: opts.ClientID})
 	if opts.EnablePOP {
-		c.popTokenVerifier = NewPoPVerifier(c.POPTokenHostname, c.PoPTokenValidityDuration, 1*time.Minute)
+		c.popTokenVerifier, err = NewPoPVerifier(c.POPTokenHostname, c.PoPTokenValidityDuration, 1*time.Minute)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create pop token verifier")
+		}
 	}
 
 	switch opts.AuthMode {
