@@ -251,7 +251,7 @@ func (b *PoPTokenBuilderImpl) SetPayload() error {
 
 	at, err := b.swkKey.GenerateToken([]byte(accessTokenData))
 	if err != nil {
-		return fmt.Errorf("Error when generating token. Error:%+v", err)
+		return fmt.Errorf("error when generating token. Error:%+v", err)
 	}
 
 	payload := fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "cnf":{"jwk":%s}, "nonce":"%s"}`, at, b.ts, b.hostName, b.popKey.Jwk(), b.nonce)
@@ -310,7 +310,7 @@ func (b *PoPTokenBuilderImpl) SetSignature() error {
 	h256 := sha256.Sum256([]byte(b.token.Header + "." + b.token.Payload))
 	signature, err := b.popKey.Sign(h256[:])
 	if err != nil {
-		return fmt.Errorf("Error while signing pop key. Error:%+v", err)
+		return fmt.Errorf("error while signing pop key. Error:%+v", err)
 	}
 	b.token.Signature = base64.RawURLEncoding.EncodeToString(signature)
 	return nil
@@ -321,11 +321,11 @@ func (b *PoPTokenBuilderImpl) GetToken() (string, error) {
 	var err error
 	b.popKey, err = NewSWPoPKey()
 	if err != nil {
-		return "", fmt.Errorf("Failed to generate Pop key. Error:%+v", err)
+		return "", fmt.Errorf("failed to generate Pop key. Error:%+v", err)
 	}
 	b.swkKey, err = NewSwkKey()
 	if err != nil {
-		return "", fmt.Errorf("Failed to generate SF key. Error:%+v", err)
+		return "", fmt.Errorf("failed to generate SF key. Error:%+v", err)
 	}
 
 	if strings.Contains(b.kid, BadTokenKey) {

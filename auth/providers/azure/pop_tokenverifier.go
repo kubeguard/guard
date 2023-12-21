@@ -29,8 +29,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	cache "go.kubeguard.dev/guard/util/data"
+
+	"github.com/pkg/errors"
 	"gopkg.in/square/go-jose.v2/jwt"
 	"k8s.io/klog/v2"
 )
@@ -86,7 +87,6 @@ func NewPoPVerifier(hostName string, popTokenValidityDuration, cacheRetentionBuf
 		},
 	})
 	if err != nil {
-
 		return nil, err
 	}
 	return &PoPTokenVerifier{

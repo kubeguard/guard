@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"go.kubeguard.dev/guard/util/data"
+
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	authzv1 "k8s.io/api/authorization/v1"
