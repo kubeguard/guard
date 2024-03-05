@@ -298,6 +298,8 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		return nil, errors.Wrap(err, "error in preparing check access request")
 	}
 
+	checkAccessUsername := request.User
+
 	checkAccessURL := *a.apiURL
 	// Append the path for azure cluster resource id
 	checkAccessURL.Path = path.Join(checkAccessURL.Path, a.azureResourceId)
@@ -326,7 +328,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 			// create a request id for every checkaccess request
 			requestUUID := uuid.New()
 			reqContext := context.WithValue(egCtx, correlationRequestIDKey(correlationRequestIDHeader), []string{requestUUID.String()})
-			err := a.sendCheckAccessRequest(reqContext, checkAccessURL, body, ch)
+			err := a.sendCheckAccessRequest(reqContext, checkAccessUsername, checkAccessURL, body, ch)
 			if err != nil {
 				code := http.StatusInternalServerError
 				if v, ok := err.(errutils.HttpStatusCode); ok {
@@ -370,7 +372,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	return finalStatus, nil
 }
 
-func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessURL url.URL, checkAccessBody *CheckAccessRequest, ch chan *authzv1.SubjectAccessReviewStatus) error {
+func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUsername string, checkAccessURL url.URL, checkAccessBody *CheckAccessRequest, ch chan *authzv1.SubjectAccessReviewStatus) error {
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(checkAccessBody); err != nil {
 		return errutils.WithCode(errors.Wrap(err, "error encoding check access request"), http.StatusInternalServerError)
@@ -447,7 +449,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessURL 
 	}
 
 	// Decode response and prepare k8s response
-	status, err := ConvertCheckAccessResponse(data)
+	status, err := ConvertCheckAccessResponse(checkAccessUsername, data)
 	if err != nil {
 		return err
 	}

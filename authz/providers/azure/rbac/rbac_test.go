@@ -117,6 +117,45 @@ func TestCheckAccess(t *testing.T) {
 		assert.Nilf(t, response, "response should be nil")
 		assert.NotNilf(t, err, "should get error")
 	})
+
+	t.Run("concurrent access to CheckAccess method", func(t *testing.T) {
+		validBody := `[{"accessDecision":"Allowed",
+		"actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete",
+		"isDataAction":true,"roleAssignment":null,"denyAssignment":null,"timeToLiveInMs":300000}]`
+
+		ts, u := getAPIServerAndAccessInfo(http.StatusOK, validBody, "arc", "resourceid")
+		defer ts.Close()
+
+		requestTimes := 5
+		requests := []*authzv1.SubjectAccessReviewSpec{}
+		for i := 0; i < requestTimes; i++ {
+			requests = append(
+				requests,
+				&authzv1.SubjectAccessReviewSpec{
+					User: fmt.Sprintf("user%d@bing.com", i),
+					ResourceAttributes: &authzv1.ResourceAttributes{
+						Namespace: "dev", Group: "", Resource: "pods",
+						Subresource: "status", Version: "v1", Name: "test", Verb: "delete",
+					}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
+				},
+			)
+		}
+
+		wg := new(sync.WaitGroup)
+		for _, request := range requests {
+			wg.Add(1)
+			go func(request *authzv1.SubjectAccessReviewSpec) {
+				defer wg.Done()
+				response, err := u.CheckAccess(request)
+				assert.NoError(t, err)
+				assert.NotNil(t, response)
+				assert.True(t, response.Allowed)
+				assert.False(t, response.Denied)
+			}(request)
+		}
+
+		wg.Wait()
+	})
 }
 
 func getAuthServerAndAccessInfo(returnCode int, body, clientID, clientSecret string) (*httptest.Server, *AccessInfo) {

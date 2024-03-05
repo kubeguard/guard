@@ -47,10 +47,7 @@ const (
 	PodsResource                = "pods"
 )
 
-var (
-	username               string
-	getStoredOperationsMap = azureutils.DeepCopyOperationsMap
-)
+var getStoredOperationsMap = azureutils.DeepCopyOperationsMap
 
 type SubjectInfoAttributes struct {
 	ObjectId string   `json:"ObjectId"`
@@ -506,7 +503,6 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 		return nil, errutils.WithCode(errors.New("oid info not sent from authentication module"), http.StatusBadRequest)
 	}
 	groups := getValidSecurityGroups(req.Groups)
-	username = req.User
 	actions, err := getDataActions(req, clusterType)
 	if err != nil {
 		return nil, errutils.WithCode(errors.Wrap(err, "Error while creating list of dataactions for check access call"), http.StatusInternalServerError)
@@ -542,7 +538,7 @@ func getNameSpaceScope(req *authzv1.SubjectAccessReviewSpec, useNamespaceResourc
 	return false, namespace
 }
 
-func ConvertCheckAccessResponse(body []byte) (*authzv1.SubjectAccessReviewStatus, error) {
+func ConvertCheckAccessResponse(username string, body []byte) (*authzv1.SubjectAccessReviewStatus, error) {
 	var (
 		response []AuthorizationDecision
 		allowed  bool
