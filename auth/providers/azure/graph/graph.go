@@ -408,8 +408,8 @@ func newUserInfo(tokenProvider TokenProvider, graphURL *url.URL, useGroupUID boo
 
 // New returns a new UserInfo object
 func New(clientID, clientSecret, tenantID string, useGroupUID bool, aadEndpoint, msgraphHost string) (*UserInfo, error) {
-	graphEndpoint := "https://" + msgraphHost + "/"
-	graphURL, _ := url.Parse(graphEndpoint + "v1.0")
+	graphEndpoint := "https://" + msgraphHost + "/"  //nolint:goconst // expected url building
+	graphURL, _ := url.Parse(graphEndpoint + "v1.0") //nolint:goconst // expected url building
 
 	tokenProvider := NewClientCredentialTokenProvider(clientID, clientSecret,
 		fmt.Sprintf("%s%s/oauth2/v2.0/token", aadEndpoint, tenantID),
@@ -420,8 +420,8 @@ func New(clientID, clientSecret, tenantID string, useGroupUID bool, aadEndpoint,
 
 // NewWithOBO returns a new UserInfo object
 func NewWithOBO(clientID, clientSecret, tenantID string, aadEndpoint, msgraphHost string) (*UserInfo, error) {
-	graphEndpoint := "https://" + msgraphHost + "/"
-	graphURL, _ := url.Parse(graphEndpoint + "v1.0")
+	graphEndpoint := "https://" + msgraphHost + "/"  //nolint:goconst // expected url building
+	graphURL, _ := url.Parse(graphEndpoint + "v1.0") //nolint:goconst // expected url building
 
 	tokenProvider := NewOBOTokenProvider(clientID, clientSecret,
 		fmt.Sprintf("%s%s/oauth2/v2.0/token", aadEndpoint, tenantID),
@@ -432,8 +432,8 @@ func NewWithOBO(clientID, clientSecret, tenantID string, aadEndpoint, msgraphHos
 
 // NewWithAKS returns a new UserInfo object used in AKS
 func NewWithAKS(tokenURL, tenantID, msgraphHost string) (*UserInfo, error) {
-	graphEndpoint := "https://" + msgraphHost + "/"
-	graphURL, _ := url.Parse(graphEndpoint + "v1.0")
+	graphEndpoint := "https://" + msgraphHost + "/"  //nolint:goconst // expected url building
+	graphURL, _ := url.Parse(graphEndpoint + "v1.0") //nolint:goconst // expected url building
 
 	tokenProvider := NewAKSTokenProvider(tokenURL, tenantID)
 
