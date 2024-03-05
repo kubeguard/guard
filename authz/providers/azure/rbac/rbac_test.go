@@ -123,7 +123,7 @@ func TestCheckAccess(t *testing.T) {
 		"actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete",
 		"isDataAction":true,"roleAssignment":null,"denyAssignment":null,"timeToLiveInMs":300000}]`
 
-		ts, u := getAPIServerAndAccessInfo(http.StatusOK, validBody, "arc", "resourceid")
+		ts, u := getAPIServerAndAccessInfo(http.StatusOK, validBody, "aks", "aks-managed-cluster")
 		defer ts.Close()
 
 		requestTimes := 5
