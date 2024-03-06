@@ -22,6 +22,7 @@ import (
 
 	"go.kubeguard.dev/guard/authz"
 	"go.kubeguard.dev/guard/authz/providers/azure"
+	"go.kubeguard.dev/guard/util/data"
 	errutils "go.kubeguard.dev/guard/util/error"
 
 	"github.com/pkg/errors"
@@ -32,7 +33,7 @@ import (
 type Authzhandler struct {
 	AuthRecommendedOptions  *AuthRecommendedOptions
 	AuthzRecommendedOptions *AuthzRecommendedOptions
-	Store                   authz.Store
+	Store                   data.Interface
 }
 
 func (s *Authzhandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {

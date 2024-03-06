@@ -32,9 +32,9 @@ import (
 
 	auth "go.kubeguard.dev/guard/auth/providers/azure"
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
-	"go.kubeguard.dev/guard/authz"
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 	azureutils "go.kubeguard.dev/guard/util/azure"
+	"go.kubeguard.dev/guard/util/data"
 	errutils "go.kubeguard.dev/guard/util/error"
 	"go.kubeguard.dev/guard/util/httpclient"
 
@@ -238,7 +238,7 @@ func (a *AccessInfo) ShouldSkipAuthzCheckForNonAADUsers() bool {
 	return a.skipAuthzForNonAADUsers
 }
 
-func (a *AccessInfo) GetResultFromCache(request *authzv1.SubjectAccessReviewSpec, store authz.Store) (bool, bool) {
+func (a *AccessInfo) GetResultFromCache(request *authzv1.SubjectAccessReviewSpec, store data.Interface) (bool, bool) {
 	var result bool
 	key := getResultCacheKey(request)
 	klog.V(10).Infof("Cache search for key: %s", key)
@@ -263,7 +263,7 @@ func (a *AccessInfo) SkipAuthzCheck(request *authzv1.SubjectAccessReviewSpec) bo
 	return false
 }
 
-func (a *AccessInfo) SetResultInCache(request *authzv1.SubjectAccessReviewSpec, result bool, store authz.Store) error {
+func (a *AccessInfo) SetResultInCache(request *authzv1.SubjectAccessReviewSpec, result bool, store data.Interface) error {
 	key := getResultCacheKey(request)
 	klog.V(5).Infof("Cache set for key: %s, value: %t", key, result)
 	return store.Set(key, result)

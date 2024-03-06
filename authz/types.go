@@ -21,6 +21,8 @@ import (
 	"sort"
 	"strings"
 
+	"go.kubeguard.dev/guard/util/data"
+
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	authzv1 "k8s.io/api/authorization/v1"
@@ -50,12 +52,5 @@ func (o orgs) String() string {
 }
 
 type Interface interface {
-	Check(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, store Store) (*authzv1.SubjectAccessReviewStatus, error)
-}
-
-type Store interface {
-	Set(key string, value interface{}) error
-	Get(key string, value interface{}) (bool, error)
-	Delete(key string) error
-	Close() error
+	Check(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, store data.Interface) (*authzv1.SubjectAccessReviewStatus, error)
 }

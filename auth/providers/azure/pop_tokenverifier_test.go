@@ -27,7 +27,8 @@ import (
 )
 
 func TestPopTokenVerifier_Verify(t *testing.T) {
-	verifier := azure.NewPoPVerifier("testHostname", 15*time.Minute)
+	verifier, err := azure.NewPoPVerifier("testHostname", 15*time.Minute, 1*time.Minute)
+	assert.NoError(t, err)
 
 	// Test cases where no error is expected
 	noErrorTestCases := []struct {
@@ -158,6 +159,18 @@ func TestPopTokenVerifier_Verify(t *testing.T) {
 			hostname:  "testHostname",
 			errString: "Invalid token. access token missing",
 		},
+		{
+			desc:      "'nonce' claim in the payload is missing",
+			kid:       azure.NonceClaimMissing,
+			hostname:  "testHostname",
+			errString: "Invalid token. 'nonce' claim is missing",
+		},
+		{
+			desc:      "'nonce' claim in the payload is not a string",
+			kid:       azure.NonceClaimNotString,
+			hostname:  "testHostname",
+			errString: "Invalid token. 'nonce' claim should be of type string",
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
@@ -218,5 +231,24 @@ func TestPopTokenVerifier_Verify(t *testing.T) {
 		invalidToken, _ := azure.NewPoPTokenBuilder().SetTimestamp(time.Now().Unix()).SetHostName("testHostname").SetKid(azure.TsClaimsTypeUnknown).GetToken()
 		_, err := verifier.ValidatePopToken(invalidToken)
 		assert.Containsf(t, err.Error(), "Token is expired", "Error message is not as expected")
+	})
+
+	t.Run("'nonce' claim been reused - Cache validation", func(t *testing.T) {
+		// Setting up the verifier expiration time to 4 seconds and cache expiration time to -3 seconds.
+		// This will ensure that the cache is expired before the verifier on the second call after 1sec.
+		nonceVerifier, err := azure.NewPoPVerifier("testHostname", 4*time.Second, 1*time.Second)
+		assert.NoError(t, err)
+		// Generating a first valid token with a nonce claim hard coded to be reused. This should pass the validation.
+		validToken, _ := azure.NewPoPTokenBuilder().SetTimestamp(time.Now().Unix()).SetHostName("testHostname").SetKid(azure.NonceClaimHardcoded).GetToken()
+		_, err = nonceVerifier.ValidatePopToken(validToken)
+		assert.NoError(t, err)
+		// Generating a second valid token with a nonce claim hard coded to be reused. This should fail the validation because the value is cached.
+		validToken, _ = azure.NewPoPTokenBuilder().SetTimestamp(time.Now().Unix()).SetHostName("testHostname").SetKid(azure.NonceClaimHardcoded).GetToken()
+		_, err = nonceVerifier.ValidatePopToken(validToken)
+		assert.Containsf(t, err.Error(), "Invalid token. 'nonce' claim is reused", "Error message is not as expected")
+		// Sleeping for 3 seconds to ensure that the cache is expired before the verifier is called again.
+		time.Sleep(3 * time.Second)
+		_, err = nonceVerifier.ValidatePopToken(validToken)
+		assert.NoError(t, err)
 	})
 }

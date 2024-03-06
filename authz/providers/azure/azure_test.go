@@ -25,10 +25,9 @@ import (
 	"time"
 
 	auth "go.kubeguard.dev/guard/auth/providers/azure"
-	"go.kubeguard.dev/guard/authz"
-	"go.kubeguard.dev/guard/authz/providers/azure/data"
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 	"go.kubeguard.dev/guard/authz/providers/azure/rbac"
+	"go.kubeguard.dev/guard/util/data"
 	errutils "go.kubeguard.dev/guard/util/error"
 
 	"github.com/go-chi/chi/v5"
@@ -98,7 +97,7 @@ func serverSetup(loginResp, checkaccessResp string, loginStatus, checkaccessStat
 	return srv, nil
 }
 
-func getServerAndClient(t *testing.T, loginResp, checkaccessResp string, checkaccessStatus int, sleepFor time.Duration) (*httptest.Server, *Authorizer, authz.Store) {
+func getServerAndClient(t *testing.T, loginResp, checkaccessResp string, checkaccessStatus int, sleepFor time.Duration) (*httptest.Server, *Authorizer, data.Interface) {
 	srv, err := serverSetup(loginResp, checkaccessResp, http.StatusOK, checkaccessStatus, sleepFor)
 	if err != nil {
 		t.Fatalf("Error when creating server, reason: %v", err)

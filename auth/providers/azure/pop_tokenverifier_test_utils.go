@@ -156,6 +156,9 @@ const (
 	TsClaimsTypeUnknown = "tsClaimsTypeUnknown"
 	UClaimsWrongType    = "uClaimsWrongType"
 	SignatureWrongType  = "signatureWrongType"
+	NonceClaimMissing   = "nonceMissing"
+	NonceClaimHardcoded = "nonceHardcoded"
+	NonceClaimNotString = "nonceNotString"
 )
 
 // A struct that represents a PoP token
@@ -173,6 +176,7 @@ type PoPTokenBuilderImpl struct {
 	hostName string
 	kid      string // used for testing purposes
 	token    PoPToken
+	nonce    string
 }
 
 // A constructor function that returns a new PoPTokenBuilderImpl
@@ -231,8 +235,11 @@ func (b *PoPTokenBuilderImpl) SetPayload() error {
 		cnf = b.popKey.KeyID()
 	}
 
-	nonce := uuid.New().String()
-	nonce = strings.Replace(nonce, "-", "", -1)
+	if b.kid == NonceClaimHardcoded {
+		b.nonce = "hardcodedNonce"
+	} else {
+		b.nonce = strings.Replace(uuid.New().String(), "-", "", -1)
+	}
 
 	accessTokenData := fmt.Sprintf(popAccessToken, time.Now().Add(time.Minute*5).Unix(), cnf)
 	if b.kid == AtCnfClaimMissing {
@@ -244,45 +251,51 @@ func (b *PoPTokenBuilderImpl) SetPayload() error {
 
 	at, err := b.swkKey.GenerateToken([]byte(accessTokenData))
 	if err != nil {
-		return fmt.Errorf("Error when generating token. Error:%+v", err)
+		return fmt.Errorf("error when generating token. Error:%+v", err)
 	}
 
-	payload := fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "cnf":{"jwk":%s}, "nonce":"%s"}`, at, b.ts, b.hostName, b.popKey.Jwk(), nonce)
+	payload := fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "cnf":{"jwk":%s}, "nonce":"%s"}`, at, b.ts, b.hostName, b.popKey.Jwk(), b.nonce)
 	if b.kid == TsClaimsMissing {
-		payload = fmt.Sprintf(`{ "at" : "%s", "u": "%d", "cnf":{"jwk":%s}, "nonce":"%s"}`, at, 1, b.popKey.Jwk(), nonce)
+		payload = fmt.Sprintf(`{ "at" : "%s", "u": "%d", "cnf":{"jwk":%s}, "nonce":"%s"}`, at, 1, b.popKey.Jwk(), b.nonce)
 	}
 	if b.kid == UClaimsMissing {
-		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "cnf":{"jwk":%s}, "nonce":"%s"}`, at, b.ts, b.popKey.Jwk(), nonce)
+		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "cnf":{"jwk":%s}, "nonce":"%s"}`, at, b.ts, b.popKey.Jwk(), b.nonce)
 	}
 	if b.kid == CnfJwkClaimsEmpty {
-		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "cnf":{}, "nonce":"%s"}`, at, b.ts, b.hostName, nonce)
+		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "cnf":{}, "nonce":"%s"}`, at, b.ts, b.hostName, b.nonce)
 	}
 	if b.kid == CnfJwkClaimsMissing {
-		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "cnf":1, "nonce":"%s"}`, at, b.ts, b.hostName, nonce)
+		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "cnf":1, "nonce":"%s"}`, at, b.ts, b.hostName, b.nonce)
 	}
 	if b.kid == CnfJwkClaimsWrong {
-		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "cnf":{"jwk":1}, "nonce":"%s"}`, at, b.ts, b.hostName, nonce)
+		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "cnf":{"jwk":1}, "nonce":"%s"}`, at, b.ts, b.hostName, b.nonce)
 	}
 	if b.kid == CnfClaimsMissing {
-		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "nonce": "%s"}`, at, b.ts, b.hostName, nonce)
+		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "nonce": "%s"}`, at, b.ts, b.hostName, b.nonce)
 	}
 	if b.kid == TsClaimsTypeString {
-		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : "%s", "u": "%s", "cnf":{"jwk":%s}, "nonce":"%s"}`, at, strconv.FormatInt(b.ts, 10), b.hostName, b.popKey.Jwk(), nonce)
+		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : "%s", "u": "%s", "cnf":{"jwk":%s}, "nonce":"%s"}`, at, strconv.FormatInt(b.ts, 10), b.hostName, b.popKey.Jwk(), b.nonce)
 	}
 	if b.kid == TsClaimsTypeUnknown {
-		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %t, "u": "%s", "cnf":{"jwk":%s}, "nonce":"%s"}`, at, bool(true), b.hostName, b.popKey.Jwk(), nonce)
+		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %t, "u": "%s", "cnf":{"jwk":%s}, "nonce":"%s"}`, at, bool(true), b.hostName, b.popKey.Jwk(), b.nonce)
 	}
 	if b.kid == AtClaimsWrongType {
-		payload = fmt.Sprintf(`{ "at" : %d, "ts" : %d, "u": "%s", "cnf":{"jwk":%s}, "nonce":"%s"}`, 12, b.ts, b.hostName, b.popKey.Jwk(), nonce)
+		payload = fmt.Sprintf(`{ "at" : %d, "ts" : %d, "u": "%s", "cnf":{"jwk":%s}, "nonce":"%s"}`, 12, b.ts, b.hostName, b.popKey.Jwk(), b.nonce)
 	}
 	if b.kid == UClaimsWrongType {
-		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": %d, "cnf":{"jwk":%s}, "nonce":"%s"}`, at, b.ts, 1, b.popKey.Jwk(), nonce)
+		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": %d, "cnf":{"jwk":%s}, "nonce":"%s"}`, at, b.ts, 1, b.popKey.Jwk(), b.nonce)
 	}
 	if b.kid == AtClaimsMissing {
-		payload = fmt.Sprintf(`{ "ts" : %d, "u": "%s", "cnf":{"jwk":%s}, "nonce":"%s"}`, b.ts, b.hostName, b.popKey.Jwk(), nonce)
+		payload = fmt.Sprintf(`{ "ts" : %d, "u": "%s", "cnf":{"jwk":%s}, "nonce":"%s"}`, b.ts, b.hostName, b.popKey.Jwk(), b.nonce)
 	}
 	if b.kid == AtClaimIncorrect {
-		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "cnf":{"jwk":%s}, "nonce":"%s"}`, fmt.Sprintf("%s.%s.%s", BadTokenKey, BadTokenKey, BadTokenKey), b.ts, b.hostName, b.popKey.Jwk(), nonce)
+		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "cnf":{"jwk":%s}, "nonce":"%s"}`, fmt.Sprintf("%s.%s.%s", BadTokenKey, BadTokenKey, BadTokenKey), b.ts, b.hostName, b.popKey.Jwk(), b.nonce)
+	}
+	if b.kid == NonceClaimMissing {
+		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "cnf":{"jwk":%s}}`, at, b.ts, b.hostName, b.popKey.Jwk())
+	}
+	if b.kid == NonceClaimNotString {
+		payload = fmt.Sprintf(`{ "at" : "%s", "ts" : %d, "u": "%s", "cnf":{"jwk":%s}, "nonce":%d}`, at, b.ts, b.hostName, b.popKey.Jwk(), 1)
 	}
 	b.token.Payload = base64.RawURLEncoding.EncodeToString([]byte(payload))
 	return nil
@@ -297,7 +310,7 @@ func (b *PoPTokenBuilderImpl) SetSignature() error {
 	h256 := sha256.Sum256([]byte(b.token.Header + "." + b.token.Payload))
 	signature, err := b.popKey.Sign(h256[:])
 	if err != nil {
-		return fmt.Errorf("Error while signing pop key. Error:%+v", err)
+		return fmt.Errorf("error while signing pop key. Error:%+v", err)
 	}
 	b.token.Signature = base64.RawURLEncoding.EncodeToString(signature)
 	return nil
@@ -308,11 +321,11 @@ func (b *PoPTokenBuilderImpl) GetToken() (string, error) {
 	var err error
 	b.popKey, err = NewSWPoPKey()
 	if err != nil {
-		return "", fmt.Errorf("Failed to generate Pop key. Error:%+v", err)
+		return "", fmt.Errorf("failed to generate Pop key. Error:%+v", err)
 	}
 	b.swkKey, err = NewSwkKey()
 	if err != nil {
-		return "", fmt.Errorf("Failed to generate SF key. Error:%+v", err)
+		return "", fmt.Errorf("failed to generate SF key. Error:%+v", err)
 	}
 
 	if strings.Contains(b.kid, BadTokenKey) {
