@@ -37,7 +37,8 @@ import (
 )
 
 const (
-	loginResp = `{ "token_type": "Bearer", "expires_in": 8459, "access_token": "%v"}`
+	loginResp            = `{ "token_type": "Bearer", "expires_in": 8459, "access_token": "%v"}`
+	httpClientRetryCount = 2
 )
 
 func clientSetup(serverUrl, mode string) (*Authorizer, error) {
@@ -52,9 +53,10 @@ func clientSetup(serverUrl, mode string) (*Authorizer, error) {
 	}
 
 	authOpts := auth.Options{
-		ClientID:     "client_id",
-		ClientSecret: "client_secret",
-		TenantID:     "tenant_id",
+		ClientID:             "client_id",
+		ClientSecret:         "client_secret",
+		TenantID:             "tenant_id",
+		HttpClientRetryCount: httpClientRetryCount,
 	}
 
 	authzInfo := rbac.AuthzInfo{
@@ -194,7 +196,7 @@ func TestCheck(t *testing.T) {
 		resp, err := client.Check(ctx, request, store)
 		assert.Nilf(t, resp, "response should be nil")
 		assert.NotNilf(t, err, "should get error")
-		assert.Contains(t, err.Error(), "Checkaccess requests have timed out")
+		assert.Contains(t, err.Error(), "context deadline exceeded")
 		if v, ok := err.(errutils.HttpStatusCode); ok {
 			assert.Equal(t, v.Code(), http.StatusInternalServerError)
 		}
