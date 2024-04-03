@@ -26,6 +26,7 @@ import (
 	"go.kubeguard.dev/guard/authz"
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 	"go.kubeguard.dev/guard/authz/providers/azure/rbac"
+	azureutils "go.kubeguard.dev/guard/util/azure"
 	errutils "go.kubeguard.dev/guard/util/error"
 
 	"github.com/Azure/go-autorest/autorest/azure"
@@ -49,7 +50,8 @@ func init() {
 }
 
 type Authorizer struct {
-	rbacClient *rbac.AccessInfo
+	rbacClient           *rbac.AccessInfo
+	httpClientRetryCount int
 }
 
 func New(opts authzOpts.Options, authopts auth.Options) (authz.Interface, error) {
@@ -64,7 +66,9 @@ func New(opts authzOpts.Options, authopts auth.Options) (authz.Interface, error)
 }
 
 func newAuthzClient(opts authzOpts.Options, authopts auth.Options) (authz.Interface, error) {
-	c := &Authorizer{}
+	c := &Authorizer{
+		httpClientRetryCount: authopts.HttpClientRetryCount,
+	}
 
 	authzInfoVal, err := getAuthzInfo(authopts.Environment)
 	if err != nil {
@@ -119,6 +123,8 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 		_ = s.rbacClient.SetResultInCache(request, true, store)
 		return &authzv1.SubjectAccessReviewStatus{Allowed: true, Reason: rbac.AccessAllowedVerdict}, nil
 	}
+
+	ctx = azureutils.WithRetryableHttpClient(ctx, s.httpClientRetryCount)
 
 	if s.rbacClient.IsTokenExpired() {
 		if err := s.rbacClient.RefreshToken(ctx); err != nil {
