@@ -319,10 +319,8 @@ lint: $(BUILD_DIRS)
 	    -v $$(pwd)/.go/cache:/.cache                            \
 	    --env HTTP_PROXY=$(HTTP_PROXY)                          \
 	    --env HTTPS_PROXY=$(HTTPS_PROXY)                        \
-	    --env GO111MODULE=on                                    \
-	    --env GOFLAGS="-mod=vendor"                             \
 	    $(BUILD_IMAGE)                                          \
-	    golangci-lint run --enable $(ADDTL_LINTERS) --deadline=10m --skip-files="generated.*\.go$\" --skip-dirs-use-default --skip-dirs=client,vendor
+	    golangci-lint run --enable $(ADDTL_LINTERS) --deadline=10m --skip-files="generated.*\.go$\" --skip-dirs-use-default --skip-dirs=client
 
 $(BUILD_DIRS):
 	@mkdir -p $@
@@ -335,8 +333,7 @@ verify: verify-gen verify-modules
 
 .PHONY: verify-modules
 verify-modules:
-	GO111MODULE=on go mod tidy
-	GO111MODULE=on go mod vendor
+	go mod tidy
 	@if !(git diff --exit-code HEAD); then \
 		echo "go module files are out of date"; exit 1; \
 	fi
@@ -358,7 +355,7 @@ add-license:
 		--env HTTP_PROXY=$(HTTP_PROXY)                   \
 		--env HTTPS_PROXY=$(HTTPS_PROXY)                 \
 		$(BUILD_IMAGE)                                   \
-		ltag -t "./hack/license" --excludes "vendor contrib" -v
+		ltag -t "./hack/license" --excludes "contrib" -v
 
 .PHONY: check-license
 check-license:
@@ -371,7 +368,7 @@ check-license:
 		--env HTTP_PROXY=$(HTTP_PROXY)                   \
 		--env HTTPS_PROXY=$(HTTPS_PROXY)                 \
 		$(BUILD_IMAGE)                                   \
-		ltag -t "./hack/license" --excludes "vendor contrib" --check -v
+		ltag -t "./hack/license" --excludes "contrib" --check -v
 
 .PHONY: ci
 ci: verify check-license lint build unit-tests #cover
