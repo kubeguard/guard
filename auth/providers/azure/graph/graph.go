@@ -76,7 +76,7 @@ const (
 	getMemberGroupsTimeout = 23 * time.Second
 	getterName             = "ms-graph"
 	arcAuthMode            = "arc"
-	arcOboEndpointFormat   = "https://eastus2euap.aks-test.obo.arc.azure.%s:8084%s/getMemberGroups?api-version=v1"
+	arcOboEndpointFormat   = "https://%s.obo.arc.azure.%s:8084%s/getMemberGroups?api-version=v1"
 )
 
 // UserInfo allows you to get user data from MS Graph
@@ -307,7 +307,7 @@ func getOBORegionalEndpointFunc(location string, resourceID string) (string, err
 	if !strings.HasPrefix(resourceID, "/") {
 		resourceID = "/" + resourceID
 	}
-	return fmt.Sprintf(arcOboEndpointFormat, suffix, resourceID), nil
+	return fmt.Sprintf(arcOboEndpointFormat, location, suffix, resourceID), nil
 }
 
 func (u *UserInfo) RefreshToken(ctx context.Context, token string) error {
