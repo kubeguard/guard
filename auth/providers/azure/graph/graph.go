@@ -202,8 +202,17 @@ func (u *UserInfo) getMemberGroupsUsingARCOboService(ctx context.Context, access
 		return nil, errors.Wrap(err, "Error while parsing accessToken for validation")
 	}
 
-	// the arc obo service does not support getting groups for applications
-	if claims[idtypClaim] != nil && !strings.EqualFold(claims[idtypClaim].(string), "user") {
+	// the arc obo service does not support getting groups for applications(SPN)
+	isAADUser := false
+	if (claims[idtypClaim] == nil) {
+		isAADUser = true
+	} else {
+		idtyp, ok := claims[idtypClaim].(string)
+		if ok && strings.EqualFold(idtyp, "user") {
+			isAADUser = true
+		}
+	}
+	if !isAADUser {
 		return nil, errors.New("Overage claim (users with more than 200 group membership) for SPN is currently not supported. For troubleshooting, please refer to aka.ms/overageclaimtroubleshoot")
 	}
 
