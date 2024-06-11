@@ -204,7 +204,7 @@ func (u *UserInfo) getMemberGroupsUsingARCOboService(ctx context.Context, access
 
 	// the arc obo service does not support getting groups for applications(SPN)
 	isAADUser := false
-	if (claims[idtypClaim] == nil) {
+	if claims[idtypClaim] == nil {
 		isAADUser = true
 	} else {
 		idtyp, ok := claims[idtypClaim].(string)

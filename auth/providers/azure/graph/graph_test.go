@@ -34,11 +34,11 @@ import (
 )
 
 const (
-	accessTokenWithOverageClaim       = `{ "aud": "client", "iss" : "%v", "exp" : "%v",  "upn": "arc", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
-	accessTokenWithOverageClaimForApp = `{ "aud": "client", "iss" : "%v", "exp" : "%v", "idtyp" : "app", "upn": "arc", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
+	accessTokenWithOverageClaim        = `{ "aud": "client", "iss" : "%v", "exp" : "%v",  "upn": "arc", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
+	accessTokenWithOverageClaimForApp  = `{ "aud": "client", "iss" : "%v", "exp" : "%v", "idtyp" : "app", "upn": "arc", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
 	accessTokenWithOverageClaimForUser = `{ "aud": "client", "iss" : "%v", "exp" : "%v", "idtyp" : "user", "upn": "arc", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
-	location                          = "eastus"
-	tenant_id                         = "tenantId"
+	location                           = "eastus"
+	tenant_id                          = "tenantId"
 )
 
 type swKey struct {
