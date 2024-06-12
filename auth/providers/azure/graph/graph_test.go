@@ -34,10 +34,11 @@ import (
 )
 
 const (
-	accessTokenWithOverageClaim       = `{ "aud": "client", "iss" : "%v", "exp" : "%v",  "upn": "arc", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
-	accessTokenWithOverageClaimForApp = `{ "aud": "client", "iss" : "%v", "exp" : "%v", "idtyp" : "app", "upn": "arc", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
-	location                          = "eastus"
-	tenant_id                         = "tenantId"
+	accessTokenWithOverageClaim        = `{ "aud": "client", "iss" : "%v", "exp" : "%v",  "upn": "arc", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
+	accessTokenWithOverageClaimForApp  = `{ "aud": "client", "iss" : "%v", "exp" : "%v", "idtyp" : "app", "upn": "arc", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
+	accessTokenWithOverageClaimForUser = `{ "aud": "client", "iss" : "%v", "exp" : "%v", "idtyp" : "user", "upn": "arc", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
+	location                           = "eastus"
+	tenant_id                          = "tenantId"
 )
 
 type swKey struct {
@@ -334,6 +335,39 @@ func TestGetMemberGroupsUsingARCOboService(t *testing.T) {
 		u.headers.Set("Authorization", "Bearer msitoken")
 
 		tokenstring, err := key.GenerateToken([]byte(fmt.Sprintf(accessTokenWithOverageClaim, ts.URL, time.Now().Add(time.Minute*5).Unix())))
+		if err != nil {
+			t.Fatalf("Error when generating token. Error:%+v", err)
+		}
+
+		groups, err := u.getMemberGroupsUsingARCOboService(ctx, tokenstring)
+		if err != nil {
+			t.Errorf("Should not have gotten error: %s", err)
+		}
+		if len(groups) != 1 {
+			t.Errorf("Should have gotten a list of groups with 1 entry. Got: %d", len(groups))
+		}
+	})
+	t.Run("successful request for token with 'user' idtyp claim", func(t *testing.T) {
+		validBody := `{
+			"value": [
+				"f36ec2c5-fa5t-4f05-b87f-deadbeef"
+			]
+		  }`
+
+		ts, u := getAPIServerAndUserInfo(http.StatusOK, validBody)
+		u.region = location
+		u.authMode = arcAuthMode
+		u.resourceID = ts.URL
+		u.tenantID = tenant_id
+		defer ts.Close()
+
+		getOBORegionalEndpoint = func(location string, resourceID string) (string, error) {
+			return ts.URL, nil
+		}
+
+		u.headers.Set("Authorization", "Bearer msitoken")
+
+		tokenstring, err := key.GenerateToken([]byte(fmt.Sprintf(accessTokenWithOverageClaimForUser, ts.URL, time.Now().Add(time.Minute*5).Unix())))
 		if err != nil {
 			t.Fatalf("Error when generating token. Error:%+v", err)
 		}
