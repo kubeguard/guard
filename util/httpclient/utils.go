@@ -20,7 +20,11 @@ import (
 	"crypto/tls"
 	"net"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
+
+	"golang.org/x/net/http2"
 )
 
 var DefaultHTTPClient *http.Client
@@ -41,6 +45,21 @@ func init() {
 		TLSClientConfig: &tls.Config{
 			MinVersion: tls.VersionTLS12,
 		},
+	}
+	// If HTTP2_CLIENT_PING_ENABLED env var is set, the transport will setup http2 ping
+	v, _ := strconv.ParseBool(os.Getenv("HTTP2_CLIENT_PING_ENABLED"))
+	if v {
+		tr2 := defaultTransport.Clone()
+		if http2Transport, err := http2.ConfigureTransports(tr2); err == nil {
+			// if the connection has been idle for 3 seconds, send a ping frame for a health check
+			http2Transport.ReadIdleTimeout = 3 * time.Second
+			// if there's no response to the ping within the timeout, the connection will be closed
+			http2Transport.PingTimeout = 2 * time.Second
+			DefaultHTTPClient = &http.Client{
+				Transport: tr2,
+			}
+			return
+		}
 	}
 	DefaultHTTPClient = &http.Client{
 		Transport: defaultTransport,
