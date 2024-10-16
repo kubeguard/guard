@@ -46,6 +46,17 @@ func TestHTTPClientInitialization(t *testing.T) {
 			expectedReadIdleTimeout:        30 * time.Second,
 			expectedPingTimeout:            5 * time.Second,
 		},
+		{
+			name: "HTTP2 client ping enabled with defaults values when using invalid timeouts",
+			envVars: map[string]string{
+				"HTTP2_TRANSPORT_PING_ENABLED":      "true",
+				"HTTP2_TRANSPORT_READ_IDLE_TIMEOUT": "whatever",
+				"HTTP2_TRANSPORT_PING_TIMEOUT":      "whatever",
+			},
+			expectedHTTP2ClientPingEnabled: true,
+			expectedReadIdleTimeout:        30 * time.Second,
+			expectedPingTimeout:            5 * time.Second,
+		},
 	}
 
 	for _, tt := range tests {
