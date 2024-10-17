@@ -20,10 +20,42 @@ import (
 	"crypto/tls"
 	"net"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
+
+	"golang.org/x/net/http2"
+	"k8s.io/klog/v2"
 )
 
-var DefaultHTTPClient *http.Client
+var (
+	DefaultHTTPClient             *http.Client
+	http2ClientPingEnabled        bool
+	http2TransportReadIdleTimeout time.Duration
+	http2TransportPingTimeout     time.Duration
+)
+
+const (
+	readIdleTimeout = 30 * time.Second
+	pingTimeout     = 5 * time.Second
+)
+
+// initOsEnv initializes the environment variables
+// We are enabling 3 env variables to control the HTTP2 client ping feature:
+// 1. HTTP2_CLIENT_PING_ENABLED: If set to true, the transport will setup http2 ping
+// 2. HTTP2_TRANSPORT_READ_IDLE_TIMEOUT: The duration after which the connection will be closed if it has been idle
+// 3. HTTP2_TRANSPORT_PING_TIMEOUT: The duration after which the connection will be closed if there's no response to the ping
+func initOsEnv() {
+	http2ClientPingEnabled, _ = strconv.ParseBool(os.Getenv("HTTP2_TRANSPORT_PING_ENABLED"))
+	http2TransportReadIdleTimeout = readIdleTimeout
+	if val, err := time.ParseDuration(os.Getenv("HTTP2_TRANSPORT_READ_IDLE_TIMEOUT")); err == nil && val > 0 {
+		http2TransportReadIdleTimeout = val
+	}
+	http2TransportPingTimeout = pingTimeout
+	if val, err := time.ParseDuration(os.Getenv("HTTP2_TRANSPORT_PING_TIMEOUT")); err == nil && val > 0 {
+		http2TransportPingTimeout = val
+	}
+}
 
 func init() {
 	defaultTransport := &http.Transport{
@@ -42,7 +74,37 @@ func init() {
 			MinVersion: tls.VersionTLS12,
 		},
 	}
+	initOsEnv()
+	// If HTTP2_CLIENT_PING_ENABLED env var is set, the transport will setup http2 ping
+	http2ClientPingEnabled, _ := strconv.ParseBool(os.Getenv("HTTP2_CLIENT_PING_ENABLED"))
+	if http2ClientPingEnabled {
+		tr2 := defaultTransport.Clone()
+		if http2Transport, err := http2.ConfigureTransports(tr2); err == nil {
+			klog.V(10).Infof("HTTP2 client ping enabled with read idle timeout: %v and ping timeout: %v", http2TransportReadIdleTimeout, http2TransportPingTimeout)
+			// if the connection has been idle for 30 seconds, send a ping frame for a health check
+			http2Transport.ReadIdleTimeout = http2TransportReadIdleTimeout
+			// if there's no response to the ping within the timeout, the connection will be closed
+			http2Transport.PingTimeout = http2TransportPingTimeout
+			DefaultHTTPClient = &http.Client{
+				Transport: tr2,
+			}
+			return
+		}
+	}
 	DefaultHTTPClient = &http.Client{
 		Transport: defaultTransport,
 	}
+}
+
+// Getter functions to access the read-only variables
+func IsHTTP2ClientPingEnabled() bool {
+	return http2ClientPingEnabled
+}
+
+func GetHTTP2TransportReadIdleTimeout() time.Duration {
+	return http2TransportReadIdleTimeout
+}
+
+func GetHTTP2TransportPingTimeout() time.Duration {
+	return http2TransportPingTimeout
 }
