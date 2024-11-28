@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 )
 
@@ -28,7 +29,7 @@ func TestMSITokenProvider(t *testing.T) {
 	const (
 		inputAccessToken    = "inputAccessToken"
 		msiAccessToken      = "msiAccessToken"
-		tokenResponse       = `{"token_type":"Bearer","expires_in":"3599","access_token":"%s"}`
+		tokenResponse       = `{"access_token":"%s","expires_in":"86700","refresh_token":"","expires_on":"1732881796","not_before":"1732795096","resource":"https://management.azure.com","token_type":"Bearer"}`
 		expectedContentType = "application/json"
 		expectedTokenType   = "Bearer"
 	)
@@ -52,12 +53,24 @@ func TestMSITokenProvider(t *testing.T) {
 		if err != nil {
 			t.Fatalf("refresh should not return error: %s", err)
 		}
+		t.Logf("Response: %v", resp)
+
+		var expectedResp TokenResponse
+		err = json.Unmarshal([]byte(tokenResponse), &expectedResp)
+		if err != nil {
+			t.Fatalf("failed to unmarshal token response: %v", err)
+		}
 
 		if resp.Token != msiAccessToken {
 			t.Errorf("returned obo token '%s' doesn't match expected '%s'", resp.Token, msiAccessToken)
 		}
 		if resp.TokenType != expectedTokenType {
 			t.Errorf("expected token type: Bearer, actual: %s", resp.TokenType)
+		}
+
+		expectedExpiresOn, _ := strconv.Atoi(expectedResp.ExpiresOn)
+		if resp.ExpiresOn != expectedExpiresOn {
+			t.Errorf("expected expires on: %s, actual: %d", expectedResp.ExpiresOn, resp.ExpiresOn)
 		}
 	})
 
