@@ -97,7 +97,7 @@ func (u *msiTokenProvider) Acquire(ctx context.Context, token string) (AuthRespo
 
 	authResp.TokenType = tokenResp.TokenType
 	// This value is true only at token creation time, if a cached token is used, its not accurate
-	authResp.Expires, err = strconv.Atoi(tokenResp.ExpiresIn)
+	authResp.ExpiresIn, err = strconv.Atoi(tokenResp.ExpiresIn)
 	if err != nil {
 		return authResp, errors.Wrapf(err, "Failed to decode expires_in field for token")
 	}

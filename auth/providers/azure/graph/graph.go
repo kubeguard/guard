@@ -327,7 +327,7 @@ func (u *UserInfo) RefreshToken(ctx context.Context, token string) error {
 		if err != nil {
 			return errors.Errorf("%s: failed to refresh token: %s", u.tokenProvider.Name(), err)
 		}
-		klog.Infof("Token received with expires_in %d and expires_at %d", resp.Expires, resp.ExpiresOn)
+		klog.Infof("Token received with expires_in %d and expires_at %d", resp.ExpiresIn, resp.ExpiresOn)
 		// Set the authorization headers for future requests
 		u.headers.Set("Authorization", fmt.Sprintf("Bearer %s", resp.Token))
 		// Use ExpiresOn to set the expiration time
