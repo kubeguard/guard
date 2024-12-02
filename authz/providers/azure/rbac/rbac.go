@@ -228,7 +228,7 @@ func (a *AccessInfo) RefreshToken(ctx context.Context) error {
 		// Use ExpiresOn to set the expiration time
 		expOn := time.Unix(int64(resp.ExpiresOn), 0)
 		a.expiresAt = expOn.Add(-expiryDelta)
-		klog.Infof("Token refreshed successfully on %s. Expire at: %s", time.Now(), a.expiresAt)
+		klog.Infof("Token refreshed successfully at %s. Expire at set to: %s", time.Now(), a.expiresAt)
 	}
 
 	return nil
