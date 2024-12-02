@@ -55,7 +55,7 @@ const (
 	checkAccessPath            = "/providers/Microsoft.Authorization/checkaccess"
 	checkAccessAPIVersion      = "2018-09-01-preview"
 	remainingSubReadARMHeader  = "x-ms-ratelimit-remaining-subscription-reads"
-	expiryDelta                = 60 * time.Second
+	tokenExpiryDelta           = 300 * time.Second
 	checkaccessContextTimeout  = 23 * time.Second
 	correlationRequestIDHeader = "x-ms-correlation-request-id"
 )
@@ -227,7 +227,7 @@ func (a *AccessInfo) RefreshToken(ctx context.Context) error {
 
 		// Use ExpiresOn to set the expiration time
 		expOn := time.Unix(int64(resp.ExpiresOn), 0)
-		a.expiresAt = expOn.Add(-expiryDelta)
+		a.expiresAt = expOn.Add(-tokenExpiryDelta)
 		klog.Infof("Token refreshed successfully at %s. Expire at set to: %s", time.Now(), a.expiresAt)
 	}
 
