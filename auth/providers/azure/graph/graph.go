@@ -72,6 +72,7 @@ var (
 )
 
 const (
+	// Time delta to refresh token before expiry
 	tokenExpiryDelta       = 300 * time.Second
 	getMemberGroupsTimeout = 23 * time.Second
 	getterName             = "ms-graph"

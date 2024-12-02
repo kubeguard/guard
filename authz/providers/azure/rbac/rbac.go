@@ -49,12 +49,13 @@ import (
 )
 
 const (
-	managedClusters            = "Microsoft.ContainerService/managedClusters"
-	fleets                     = "Microsoft.ContainerService/fleets"
-	connectedClusters          = "Microsoft.Kubernetes/connectedClusters"
-	checkAccessPath            = "/providers/Microsoft.Authorization/checkaccess"
-	checkAccessAPIVersion      = "2018-09-01-preview"
-	remainingSubReadARMHeader  = "x-ms-ratelimit-remaining-subscription-reads"
+	managedClusters           = "Microsoft.ContainerService/managedClusters"
+	fleets                    = "Microsoft.ContainerService/fleets"
+	connectedClusters         = "Microsoft.Kubernetes/connectedClusters"
+	checkAccessPath           = "/providers/Microsoft.Authorization/checkaccess"
+	checkAccessAPIVersion     = "2018-09-01-preview"
+	remainingSubReadARMHeader = "x-ms-ratelimit-remaining-subscription-reads"
+	// Time delta to refresh token before expiry
 	tokenExpiryDelta           = 300 * time.Second
 	checkaccessContextTimeout  = 23 * time.Second
 	correlationRequestIDHeader = "x-ms-correlation-request-id"
