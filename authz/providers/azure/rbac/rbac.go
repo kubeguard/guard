@@ -224,9 +224,11 @@ func (a *AccessInfo) RefreshToken(ctx context.Context) error {
 
 		// Set the authorization headers for future requests
 		a.headers.Set("Authorization", fmt.Sprintf("Bearer %s", resp.Token))
-		expIn := time.Duration(resp.Expires) * time.Second
-		a.expiresAt = time.Now().Add(expIn - expiryDelta)
-		klog.Infof("Token refreshed successfully on %s. Expire at:%s", time.Now(), a.expiresAt)
+
+		// Use ExpiresOn to set the expiration time
+		expOn := time.Unix(int64(resp.ExpiresOn), 0)
+		a.expiresAt = expOn.Add(-expiryDelta)
+		klog.Infof("Token refreshed successfully on %s. Expire at: %s", time.Now(), a.expiresAt)
 	}
 
 	return nil

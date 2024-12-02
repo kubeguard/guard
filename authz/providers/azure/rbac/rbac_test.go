@@ -178,9 +178,11 @@ func TestLogin(t *testing.T) {
 		validBody := `{
 							"token_type": "Bearer",
 							"expires_in": 3599,
-							"access_token": "%s"
+							"access_token": "%s",
+							"expires_on": %d
 						}`
-		ts, u := getAuthServerAndAccessInfo(http.StatusOK, fmt.Sprintf(validBody, validToken), "jason", "bourne")
+		expiresOn := time.Now().Add(time.Second * 3599).Unix()
+		ts, u := getAuthServerAndAccessInfo(http.StatusOK, fmt.Sprintf(validBody, validToken, expiresOn), "jason", "bourne")
 		defer ts.Close()
 
 		ctx := context.Background()
