@@ -106,7 +106,6 @@ func TestLogin(t *testing.T) {
 		validToken := "blackbriar"
 		validBody := `{
   "token_type": "Bearer",
-  "expires_in": 3599,
   "access_token": "%s",
   "expires_on": %d
 }`
@@ -499,7 +498,7 @@ func TestGetGroups(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.Handle("/login", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
-		_, _ = w.Write([]byte(`{ "token_type": "Bearer", "expires_in": 8459, "access_token": "secret"}`))
+		_, _ = w.Write([]byte(`{ "token_type": "Bearer", "expires_on": 1732881796, "access_token": "secret"}`))
 	}))
 	mux.Handle("/users/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)

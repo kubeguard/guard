@@ -38,7 +38,7 @@ import (
 )
 
 const (
-	loginResp            = `{ "token_type": "Bearer", "expires_in": 8459, "access_token": "%v"}`
+	loginResp            = `{ "token_type": "Bearer", "expires_on": 1732881796, "access_token": "%v"}`
 	httpClientRetryCount = 2
 )
 

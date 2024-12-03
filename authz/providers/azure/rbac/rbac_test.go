@@ -177,7 +177,6 @@ func TestLogin(t *testing.T) {
 		validToken := "blackbriar"
 		validBody := `{
 							"token_type": "Bearer",
-							"expires_in": 3599,
 							"access_token": "%s",
 							"expires_on": %d
 						}`
