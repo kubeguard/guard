@@ -28,7 +28,7 @@ func TestMSITokenProvider(t *testing.T) {
 	const (
 		inputAccessToken    = "inputAccessToken"
 		msiAccessToken      = "msiAccessToken"
-		tokenResponse       = `{"access_token":"%s","expires_in":"86700","refresh_token":"","expires_on":"1732881796","not_before":"1732795096","resource":"https://management.azure.com","token_type":"Bearer"}`
+		tokenResponse       = `{"access_token":"%s","expires_in":"86700","refresh_token":"","expires_on":"1732881796","not_before":"%d","resource":"https://management.azure.com","token_type":"Bearer"}`
 		expectedContentType = "application/json"
 		expectedTokenType   = "Bearer"
 		expectedExpiresOn   = 1732881796
@@ -42,7 +42,7 @@ func TestMSITokenProvider(t *testing.T) {
 			if req.Header.Get("Content-Type") != expectedContentType {
 				t.Errorf("expected content type: %s, actual: %s", expectedContentType, req.Header.Get("Content-Type"))
 			}
-			_, _ = rw.Write([]byte(fmt.Sprintf(tokenResponse, msiAccessToken)))
+			_, _ = rw.Write([]byte(fmt.Sprintf(tokenResponse, msiAccessToken, expectedExpiresOn)))
 		})
 
 		defer stopMSITestServer(t, s)
