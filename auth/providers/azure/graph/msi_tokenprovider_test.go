@@ -28,7 +28,7 @@ func TestMSITokenProvider(t *testing.T) {
 	const (
 		inputAccessToken    = "inputAccessToken"
 		msiAccessToken      = "msiAccessToken"
-		tokenResponse       = `{"access_token":"%s","expires_in":"86700","refresh_token":"","expires_on":"1732881796","not_before":"%d","resource":"https://management.azure.com","token_type":"Bearer"}`
+		tokenResponse       = `{"access_token":"%s","expires_in":"86700","refresh_token":"","expires_on":"%d","not_before":"1732795096","resource":"https://management.azure.com","token_type":"Bearer"}`
 		expectedContentType = "application/json"
 		expectedTokenType   = "Bearer"
 		expectedExpiresOn   = 1732881796
