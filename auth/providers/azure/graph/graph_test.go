@@ -110,8 +110,8 @@ func TestLogin(t *testing.T) {
   "access_token": "%s",
   "expires_on": %d
 }`
-		expiresOn := time.Now().Add(time.Second * 3599).Unix()
-		ts, u := getAuthServerAndUserInfo(http.StatusOK, fmt.Sprintf(validBody, validToken, expiresOn), "jason", "bourne")
+		expiresOn := time.Now().Add(time.Second * 3599)
+		ts, u := getAuthServerAndUserInfo(http.StatusOK, fmt.Sprintf(validBody, validToken, expiresOn.Unix()), "jason", "bourne")
 		defer ts.Close()
 		err := u.RefreshToken(ctx, "")
 		if err != nil {
@@ -122,6 +122,10 @@ func TestLogin(t *testing.T) {
 		}
 		if !time.Now().Before(u.expires) {
 			t.Errorf("Expiry not set properly. Expected it to be after the current time. Actual: %v", u.expires)
+		}
+		// Expect u.expires to be tokenExpiryDelta before expiresOn
+		if expiresOn.Add(-tokenExpiryDelta).Equal(u.expires) {
+			t.Errorf("Expiry not set properly. Expected it to be %d before expiresOn. Actual: %v", tokenExpiryDelta, u.expires)
 		}
 	})
 
