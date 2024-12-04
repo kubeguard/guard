@@ -177,10 +177,11 @@ func TestLogin(t *testing.T) {
 		validToken := "blackbriar"
 		validBody := `{
 							"token_type": "Bearer",
-							"expires_in": 3599,
-							"access_token": "%s"
+							"access_token": "%s",
+							"expires_on": %d
 						}`
-		ts, u := getAuthServerAndAccessInfo(http.StatusOK, fmt.Sprintf(validBody, validToken), "jason", "bourne")
+		expiresOn := time.Now().Add(time.Second * 3599)
+		ts, u := getAuthServerAndAccessInfo(http.StatusOK, fmt.Sprintf(validBody, validToken, expiresOn.Unix()), "jason", "bourne")
 		defer ts.Close()
 
 		ctx := context.Background()
@@ -193,6 +194,13 @@ func TestLogin(t *testing.T) {
 		}
 		if !time.Now().Before(u.expiresAt) {
 			t.Errorf("Expiry not set properly. Expected it to be after the current time. Actual: %v", u.expiresAt)
+		}
+
+		// Normalize to second precision for comparison
+		expectedExpiresOn := expiresOn.Add(-tokenExpiryDelta).Truncate(time.Second)
+		actualExpires := u.expiresAt.Truncate(time.Second)
+		if !expectedExpiresOn.Equal(actualExpires) {
+			t.Errorf("Expiry not set properly. Expected it to be %v equal to expiresOn. Actual: %v", expectedExpiresOn, actualExpires)
 		}
 	})
 

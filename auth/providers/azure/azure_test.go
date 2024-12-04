@@ -46,7 +46,7 @@ var jsonLib = jsoniter.ConfigCompatibleWithStandardLibrary
 const (
 	username                       = "nahid"
 	objectID                       = "abc-123d4"
-	loginResp                      = `{ "token_type": "Bearer", "expires_in": 8459, "access_token": "%v"}`
+	loginResp                      = `{ "token_type": "Bearer", "expires_on": 1732881796, "access_token": "%v"}`
 	accessToken                    = `{ "aud": "client_id", "iss" : "%v", "upn": "nahid", "groups": [ "1", "2", "3"] }`
 	accessTokenWithOid             = `{ "aud": "client_id","iss" : "%v", "oid": "abc-123d4", "groups": [ "1", "2", "3"] }`
 	accessTokenWithUpnAndOid       = `{ "aud": "client_id","iss" : "%v", "upn": "nahid", "oid": "abc-123d4", "groups": [ "1", "2", "3"] }`

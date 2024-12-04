@@ -106,12 +106,12 @@ func TestLogin(t *testing.T) {
 		validToken := "blackbriar"
 		validBody := `{
   "token_type": "Bearer",
-  "expires_in": 3599,
-  "access_token": "%s"
+  "access_token": "%s",
+  "expires_on": %d
 }`
-		ts, u := getAuthServerAndUserInfo(http.StatusOK, fmt.Sprintf(validBody, validToken), "jason", "bourne")
+		expiresOn := time.Now().Add(time.Second * 3599)
+		ts, u := getAuthServerAndUserInfo(http.StatusOK, fmt.Sprintf(validBody, validToken, expiresOn.Unix()), "jason", "bourne")
 		defer ts.Close()
-
 		err := u.RefreshToken(ctx, "")
 		if err != nil {
 			t.Errorf("Error when trying to log in: %s", err)
@@ -121,6 +121,12 @@ func TestLogin(t *testing.T) {
 		}
 		if !time.Now().Before(u.expires) {
 			t.Errorf("Expiry not set properly. Expected it to be after the current time. Actual: %v", u.expires)
+		}
+		// Normalize to second precision for comparison
+		expectedExpiresOn := expiresOn.Add(-tokenExpiryDelta).Truncate(time.Second)
+		actualExpires := u.expires.Truncate(time.Second)
+		if !expectedExpiresOn.Equal(actualExpires) {
+			t.Errorf("Expiry not set properly. Expected it to be %v equal to expiresOn. Actual: %v", expectedExpiresOn, actualExpires)
 		}
 	})
 
@@ -494,7 +500,7 @@ func TestGetGroups(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.Handle("/login", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
-		_, _ = w.Write([]byte(`{ "token_type": "Bearer", "expires_in": 8459, "access_token": "secret"}`))
+		_, _ = w.Write([]byte(`{ "token_type": "Bearer", "expires_on": 1732881796, "access_token": "secret"}`))
 	}))
 	mux.Handle("/users/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)

@@ -19,8 +19,9 @@ package graph
 // AuthResponse represents a response from the MS Graph auth API
 type AuthResponse struct {
 	TokenType string `json:"token_type"`
-	Expires   int    `json:"expires_in"`
 	Token     string `json:"access_token"`
+	// This is the actual time the token expires on in Unix time
+	ExpiresOn int `json:"expires_on"`
 }
 
 // NOTE: These below are partial implementations of the API objects containing

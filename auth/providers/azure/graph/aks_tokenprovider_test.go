@@ -28,7 +28,7 @@ func TestAKSTokenProvider(t *testing.T) {
 		inputAccessToken    = "inputAccessToken"
 		oboAccessToken      = "oboAccessToken"
 		tenantID            = "tenantID"
-		oboResponse         = `{"token_type":"Bearer","expires_in":3599,"access_token":"%s"}`
+		oboResponse         = `{"token_type":"Bearer","expires_on":1732881796,"access_token":"%s"}`
 		expectedContentType = "application/json"
 		expectedTokneType   = "Bearer"
 	)

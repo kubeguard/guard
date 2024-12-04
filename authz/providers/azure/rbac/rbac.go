@@ -49,13 +49,14 @@ import (
 )
 
 const (
-	managedClusters            = "Microsoft.ContainerService/managedClusters"
-	fleets                     = "Microsoft.ContainerService/fleets"
-	connectedClusters          = "Microsoft.Kubernetes/connectedClusters"
-	checkAccessPath            = "/providers/Microsoft.Authorization/checkaccess"
-	checkAccessAPIVersion      = "2018-09-01-preview"
-	remainingSubReadARMHeader  = "x-ms-ratelimit-remaining-subscription-reads"
-	expiryDelta                = 60 * time.Second
+	managedClusters           = "Microsoft.ContainerService/managedClusters"
+	fleets                    = "Microsoft.ContainerService/fleets"
+	connectedClusters         = "Microsoft.Kubernetes/connectedClusters"
+	checkAccessPath           = "/providers/Microsoft.Authorization/checkaccess"
+	checkAccessAPIVersion     = "2018-09-01-preview"
+	remainingSubReadARMHeader = "x-ms-ratelimit-remaining-subscription-reads"
+	// Time delta to refresh token before expiry
+	tokenExpiryDelta           = 300 * time.Second
 	checkaccessContextTimeout  = 23 * time.Second
 	correlationRequestIDHeader = "x-ms-correlation-request-id"
 )
@@ -224,9 +225,11 @@ func (a *AccessInfo) RefreshToken(ctx context.Context) error {
 
 		// Set the authorization headers for future requests
 		a.headers.Set("Authorization", fmt.Sprintf("Bearer %s", resp.Token))
-		expIn := time.Duration(resp.Expires) * time.Second
-		a.expiresAt = time.Now().Add(expIn - expiryDelta)
-		klog.Infof("Token refreshed successfully on %s. Expire at:%s", time.Now(), a.expiresAt)
+
+		// Use ExpiresOn to set the expiration time
+		expOn := time.Unix(int64(resp.ExpiresOn), 0)
+		a.expiresAt = expOn.Add(-tokenExpiryDelta)
+		klog.Infof("Token refreshed successfully at %s. Expire at set to: %s", time.Now(), a.expiresAt)
 	}
 
 	return nil

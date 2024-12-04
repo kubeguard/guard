@@ -30,7 +30,7 @@ func TestClientCredentialTokenProvider(t *testing.T) {
 		clientID            = "fakeID"
 		clientSecret        = "fakeSecret"
 		scope               = "https://graph.microsoft.com/.default"
-		oboResponse         = `{"token_type":"Bearer","expires_in":3599,"access_token":"%s"}`
+		oboResponse         = `{"token_type":"Bearer","expires_on":1732881796,"access_token":"%s"}`
 		expectedContentType = "application/x-www-form-urlencoded"
 		expectedGrantType   = "client_credentials"
 		expectedTokneType   = "Bearer"

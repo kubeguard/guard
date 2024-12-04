@@ -72,7 +72,8 @@ var (
 )
 
 const (
-	expiryDelta            = 60 * time.Second
+	// Time delta to refresh token before expiry
+	tokenExpiryDelta       = 300 * time.Second
 	getMemberGroupsTimeout = 23 * time.Second
 	getterName             = "ms-graph"
 	arcAuthMode            = "arc"
@@ -327,11 +328,13 @@ func (u *UserInfo) RefreshToken(ctx context.Context, token string) error {
 		if err != nil {
 			return errors.Errorf("%s: failed to refresh token: %s", u.tokenProvider.Name(), err)
 		}
+		klog.Infof("Token received, expires_at %d", resp.ExpiresOn)
 		// Set the authorization headers for future requests
 		u.headers.Set("Authorization", fmt.Sprintf("Bearer %s", resp.Token))
-		expIn := time.Duration(resp.Expires) * time.Second
-		u.expires = time.Now().Add(expIn - expiryDelta)
-		klog.Infof("Token refreshed successfully on %s. Expire at:%s", time.Now(), u.expires)
+		// Use ExpiresOn to set the expiration time
+		expOn := time.Unix(int64(resp.ExpiresOn), 0)
+		u.expires = expOn.Add(-tokenExpiryDelta)
+		klog.Infof("Token refreshed successfully at %s. Expire at set to: %s", time.Now(), u.expires)
 	}
 
 	return nil
