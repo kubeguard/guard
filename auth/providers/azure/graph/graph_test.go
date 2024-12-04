@@ -125,7 +125,6 @@ func TestLogin(t *testing.T) {
 		// Normalize to second precision for comparison
 		expectedExpiresOn := expiresOn.Add(-tokenExpiryDelta).Truncate(time.Second)
 		actualExpires := u.expires.Truncate(time.Second)
-		// Expect u.expires to be tokenExpiryDelta before expiresOn
 		if !expectedExpiresOn.Equal(actualExpires) {
 			t.Errorf("Expiry not set properly. Expected it to be %v equal to expiresOn. Actual: %v", expectedExpiresOn, actualExpires)
 		}
