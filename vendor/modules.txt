@@ -616,7 +616,7 @@ gomodules.xyz/flags
 # gomodules.xyz/jsonpatch/v2 v2.2.0
 ## explicit; go 1.12
 gomodules.xyz/jsonpatch/v2
-# gomodules.xyz/logs v0.0.6
+# gomodules.xyz/logs v0.0.7
 ## explicit; go 1.16
 gomodules.xyz/logs
 # gomodules.xyz/password-generator v0.2.7
