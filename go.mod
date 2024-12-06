@@ -10,7 +10,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-ldap/ldap/v3 v3.4.4
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/golang-jwt/jwt/v4 v4.2.0
+	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/google/go-github/v50 v50.1.0
 	github.com/google/gofuzz v1.2.0
 	github.com/google/uuid v1.3.0
