@@ -574,7 +574,7 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	createOperationsMap(clusterType)
 	wantErr := errors.New("oid info not sent from authenticatoin module")
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, false)
 
 	if got != nil && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", nil, wantErr, got, gotErr)
@@ -584,7 +584,7 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	clusterType = "arc"
 	wantErr = errors.New("oid info sent from authenticatoin module is not valid")
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false, false)
 
 	if got != nil && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", nil, wantErr, got, gotErr)
@@ -600,7 +600,7 @@ func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
 	// testing with new ns scope format
 	var want string = "resourceId/providers/Microsoft.KubernetesConfiguration/namespaces/dev"
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, true)
+	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
@@ -613,7 +613,19 @@ func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
 	// testing with the old namespace format
 	want = "resourceId/namespaces/dev"
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false, false)
+	if got == nil {
+		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
+	}
+
+	if got != nil && got[0].Resource.Id != want {
+		t.Errorf("Want:%v, got:%v", want, got)
+	}
+
+	// testing without namespace
+	want = "resourceId"
+
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, true, false)
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
 	}
