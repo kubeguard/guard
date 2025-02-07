@@ -205,7 +205,6 @@ func (p *PoPTokenVerifier) ValidatePopToken(token string) (string, error) {
 		return "", errors.Errorf("Failed to write message to hasher. Error:%+v", err)
 	}
 	err = rsa.VerifyPKCS1v15(publicKey, crypto.SHA256, hasher.Sum(nil), signature)
-
 	if err != nil {
 		return "", errors.Errorf("RSA verify err: %+v", err)
 	}
