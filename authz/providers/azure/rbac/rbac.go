@@ -85,6 +85,7 @@ type AccessInfo struct {
 	armCallLimit                    int
 	skipCheck                       map[string]void
 	skipAuthzForNonAADUsers         bool
+	skipAuthzNamespace              bool
 	allowNonResDiscoveryPathAccess  bool
 	useNamespaceResourceScopeFormat bool
 	httpClientRetryCount            int
@@ -169,6 +170,7 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 		azureResourceId:                 opts.ResourceId,
 		armCallLimit:                    opts.ARMCallLimit,
 		skipAuthzForNonAADUsers:         opts.SkipAuthzForNonAADUsers,
+		skipAuthzNamespace:              opts.SkipAuthzNamespace,
 		allowNonResDiscoveryPathAccess:  opts.AllowNonResDiscoveryPathAccess,
 		useNamespaceResourceScopeFormat: opts.UseNamespaceResourceScopeFormat,
 		httpClientRetryCount:            authopts.HttpClientRetryCount,
@@ -298,7 +300,7 @@ func (a *AccessInfo) setReqHeaders(req *http.Request) {
 }
 
 func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
-	checkAccessBodies, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat)
+	checkAccessBodies, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.skipAuthzNamespace, a.useNamespaceResourceScopeFormat)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in preparing check access request")
 	}
@@ -308,9 +310,11 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	checkAccessURL := *a.apiURL
 	// Append the path for azure cluster resource id
 	checkAccessURL.Path = path.Join(checkAccessURL.Path, a.azureResourceId)
-	exist, nameSpaceString := getNameSpaceScope(request, a.useNamespaceResourceScopeFormat)
-	if exist {
-		checkAccessURL.Path = path.Join(checkAccessURL.Path, nameSpaceString)
+	if !a.skipAuthzNamespace {
+		exist, nameSpaceString := getNameSpaceScope(request, a.useNamespaceResourceScopeFormat)
+		if exist {
+			checkAccessURL.Path = path.Join(checkAccessURL.Path, nameSpaceString)
+		}
 	}
 
 	checkAccessURL.Path = path.Join(checkAccessURL.Path, checkAccessPath)
