@@ -30,6 +30,12 @@ import (
 
 const resourceId = "resourceId"
 
+var customResourceDataActions = []azureutils.AuthorizationActionInfo{
+	{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
+	{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/write"}, IsDataAction: true},
+	{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/delete"}, IsDataAction: true},
+}
+
 func createOperationsMap(clusterType string) azureutils.OperationsMap {
 	return azureutils.OperationsMap{
 		"apps": azureutils.ResourceAndVerbMap{
@@ -52,6 +58,31 @@ func createOperationsMap(clusterType string) azureutils.OperationsMap {
 				"exec/action": azureutils.DataAction{ActionInfo: azureutils.AuthorizationActionInfo{AuthorizationEntity: azureutils.AuthorizationEntity{Id: fmt.Sprintf("%s/pods/exec/action", clusterType)}, IsDataAction: true}, IsNamespacedResource: true},
 			},
 		},
+	}
+}
+
+func addOperationMap(operationsMap azureutils.OperationsMap, subRevReq *authzv1.SubjectAccessReviewSpec, authInfo []azureutils.AuthorizationActionInfo) {
+	if subRevReq.ResourceAttributes != nil {
+		group := subRevReq.ResourceAttributes.Group
+		resource := subRevReq.ResourceAttributes.Resource
+		verb := subRevReq.ResourceAttributes.Verb
+
+		if group == "*" || resource == "*" || verb == "*" {
+			return
+		}
+
+		if _, ok := operationsMap[group]; !ok {
+			operationsMap[group] = azureutils.ResourceAndVerbMap{}
+		}
+		if _, ok := operationsMap[group][resource]; !ok {
+			operationsMap[group][resource] = azureutils.VerbAndActionsMap{}
+		}
+		for _, auth := range authInfo {
+			action := getActionName(subRevReq.ResourceAttributes.Verb)
+			if _, ok := operationsMap[group][resource][action]; !ok {
+				operationsMap[group][resource][action] = azureutils.DataAction{ActionInfo: auth, IsNamespacedResource: true}
+			}
+		}
 	}
 }
 
@@ -115,6 +146,7 @@ func Test_getValidSecurityGroups(t *testing.T) {
 
 func Test_getDataActions(t *testing.T) {
 	type args struct {
+		isCrTest       bool
 		isWildcardTest bool
 		subRevReq      *authzv1.SubjectAccessReviewSpec
 		clusterType    string
@@ -474,10 +506,74 @@ func Test_getDataActions(t *testing.T) {
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/apps/deployments/write"}, IsDataAction: true},
 			},
 		},
+
+		{
+			"customResource",
+			args{
+				isCrTest:       true,
+				isWildcardTest: false,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "customresources.contoso.io", Resource: "contosoCustomResource", Subresource: "*", Version: "*", Name: "test", Verb: "list"},
+				}, clusterType: "aks",
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
+			},
+		},
+
+		{
+			"crResourceIsStar",
+			args{
+				isCrTest:       true,
+				isWildcardTest: true,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "customresources.contoso.io", Resource: "*", Subresource: "*", Version: "*", Name: "test", Verb: "get"},
+				}, clusterType: "aks",
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
+			},
+		},
+
+		{
+			"crVerbIsStar",
+			args{
+				isCrTest:       true,
+				isWildcardTest: true,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "customresources.contoso.io", Resource: "contosoCustomResource", Subresource: "*", Version: "*", Name: "test", Verb: "*"},
+				}, clusterType: "aks",
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/write"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/delete"}, IsDataAction: true},
+			},
+		},
+
+		{
+			"crResourceAndVerbIsStar",
+			args{
+				isCrTest:       true,
+				isWildcardTest: true,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "customresources.contoso.io", Resource: "*", Subresource: "*", Version: "*", Name: "test", Verb: "*"},
+				}, clusterType: "aks",
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/write"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/delete"}, IsDataAction: true},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			operationsMap := createOperationsMap(tt.args.clusterType)
+			if !tt.args.isCrTest {
+				addOperationMap(operationsMap, tt.args.subRevReq, tt.want)
+			}
+
 			getStoredOperationsMap = func() azureutils.OperationsMap {
 				return operationsMap
 			}

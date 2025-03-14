@@ -127,6 +127,29 @@ type AuthorizationDecision struct {
 	TimeToLiveInMs      int                 `json:"timeToLiveInMs"`
 }
 
+func getCustomResourceOperationsMap(clusterType string) map[string]azureutils.AuthorizationActionInfo {
+	return map[string]azureutils.AuthorizationActionInfo{
+		"read": {
+			IsDataAction: true,
+			AuthorizationEntity: azureutils.AuthorizationEntity{
+				Id: path.Join(clusterType, "customresources", "read"),
+			},
+		},
+		"write": {
+			IsDataAction: true,
+			AuthorizationEntity: azureutils.AuthorizationEntity{
+				Id: path.Join(clusterType, "customresources", "write"),
+			},
+		},
+		"delete": {
+			IsDataAction: true,
+			AuthorizationEntity: azureutils.AuthorizationEntity{
+				Id: path.Join(clusterType, "customresources", "delete"),
+			},
+		},
+	}
+}
+
 func getScope(resourceId string, attr *authzv1.ResourceAttributes, useNamespaceResourceScopeFormat bool) string {
 	if attr != nil && attr.Namespace != "" {
 		if useNamespaceResourceScopeFormat {
@@ -217,6 +240,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 	var err error
 
 	if subRevReq.ResourceAttributes != nil {
+		storedOperationsMap := getStoredOperationsMap()
 		if subRevReq.ResourceAttributes.Resource != "*" && subRevReq.ResourceAttributes.Group != "*" && subRevReq.ResourceAttributes.Verb != "*" {
 			/*
 				  This sections handles the following scenarios:
@@ -230,6 +254,11 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 				IsDataAction: true,
 			}
 
+			if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group][subRevReq.ResourceAttributes.Resource][getActionName(subRevReq.ResourceAttributes.Verb)]; subRevReq.ResourceAttributes.Group != "" && !found {
+				// This is a custom resource and <clusterType>/customresources/<action> DataAction must be used.
+				return getAuthInfoListForCustomResource(subRevReq.ResourceAttributes.Verb, clusterType)
+			}
+
 			authInfoSingle.AuthorizationEntity.Id = clusterType
 
 			if subRevReq.ResourceAttributes.Group != "" {
@@ -241,12 +270,11 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 			authInfoList = append(authInfoList, authInfoSingle)
 
 		} else {
-			storedOperationsMap := getStoredOperationsMap()
 			if storedOperationsMap == nil || (storedOperationsMap != nil && len(storedOperationsMap) == 0) {
 				return nil, errors.Errorf("Wildcard support for Resource/Verb/Group is not enabled for request Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb)
 			}
 
-			authInfoList, err = getAuthInfoListForWildcard(subRevReq, storedOperationsMap)
+			authInfoList, err = getAuthInfoListForWildcard(subRevReq, storedOperationsMap, clusterType)
 			if err != nil {
 				return nil, errors.Wrap(err, fmt.Sprintf("Error which creating actions for checkaccess for Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb))
 			}
@@ -262,7 +290,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 	return authInfoList, nil
 }
 
-func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, storedOperationsMap azureutils.OperationsMap) ([]azureutils.AuthorizationActionInfo, error) {
+func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, storedOperationsMap azureutils.OperationsMap, clusterType string) ([]azureutils.AuthorizationActionInfo, error) {
 	var authInfoList []azureutils.AuthorizationActionInfo
 	var err error
 	finalFilteredOperations := azureutils.NewOperationsMap()
@@ -286,6 +314,9 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 		if subRevReq.ResourceAttributes.Group == "*" {
 			// all resources under all apigroups
 			filteredOperations = storedOperationsMap
+		} else if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group]; subRevReq.ResourceAttributes.Group != "" && !found {
+			// This is a custom resource and <clusterType>/customresources/<action> DataAction must be used.
+			return getAuthInfoListForCustomResource(subRevReq.ResourceAttributes.Verb, clusterType)
 		} else if subRevReq.ResourceAttributes.Group != "" {
 			// all resources under specified apigroup
 			if value, found := storedOperationsMap[subRevReq.ResourceAttributes.Group]; found {
@@ -342,6 +373,9 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 					finalFilteredOperations[group][subRevReq.ResourceAttributes.Resource] = verbMap
 				}
 			}
+		} else if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group]; subRevReq.ResourceAttributes.Group != "" && !found {
+			// #2 This is a custom resource and <clusterType>/customresources/<action> DataAction must be used.
+			return getAuthInfoListForCustomResource(subRevReq.ResourceAttributes.Verb, clusterType)
 		} else { // #2
 			group := "v1" // core api group key
 			if subRevReq.ResourceAttributes.Group != "" {
@@ -369,6 +403,24 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 	}
 
 	return authInfoList, nil
+}
+
+func getAuthInfoListForCustomResource(verb string, clusterType string) ([]azureutils.AuthorizationActionInfo, error) {
+	var authInfoList []azureutils.AuthorizationActionInfo
+	if verb == "*" {
+		for _, action := range getCustomResourceOperationsMap(clusterType) {
+			authInfoList = append(authInfoList, action)
+		}
+		return authInfoList, nil
+	} else {
+		action := getActionName(verb)
+		authInfoSingle, found := getCustomResourceOperationsMap(clusterType)[action]
+		if !found {
+			return nil, errors.Errorf("No actions found for verb %s", verb)
+		}
+		authInfoList = append(authInfoList, authInfoSingle)
+		return authInfoList, nil
+	}
 }
 
 func initializeMapForGroupAndResource(filteredOperations azureutils.OperationsMap, group string, resourceName string) azureutils.OperationsMap {
