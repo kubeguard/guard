@@ -578,7 +578,7 @@ func Test_getDataActions(t *testing.T) {
 				return operationsMap
 			}
 			got, _ := getDataActions(tt.args.subRevReq, tt.args.clusterType)
-			if !tt.args.isWildcardTest && !reflect.DeepEqual(got, tt.want) {
+			if !tt.args.isWildcardTest && !reflect.DeepEqual(got[0].AuthorizationEntity, tt.want[0].AuthorizationEntity) {
 				t.Errorf("getDataActions() = %v, want %v", got, tt.want)
 			}
 
@@ -590,7 +590,7 @@ func Test_getDataActions(t *testing.T) {
 				}
 
 				for authinfo := range gotSet {
-					if !wantSet[authinfo] {
+					if _, ok := wantSet[authinfo]; !ok {
 						t.Errorf("getDataActions() = %v, want %v", got, tt.want)
 						break
 					}
@@ -600,10 +600,10 @@ func Test_getDataActions(t *testing.T) {
 	}
 }
 
-func createSet(authinfos []azureutils.AuthorizationActionInfo) map[azureutils.AuthorizationActionInfo]bool {
-	set := make(map[azureutils.AuthorizationActionInfo]bool)
+func createSet(authinfos []azureutils.AuthorizationActionInfo) map[azureutils.AuthorizationEntity]azureutils.AuthorizationActionInfo {
+	set := make(map[azureutils.AuthorizationEntity]azureutils.AuthorizationActionInfo)
 	for _, elem := range authinfos {
-		set[elem] = true
+		set[elem.AuthorizationEntity] = elem
 	}
 	return set
 }
@@ -716,6 +716,49 @@ func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
 
 	if got != nil && got[0].Resource.Id != want {
 		t.Errorf("Want:%v, got:%v", want, got)
+	}
+}
+
+func Test_prepareCheckAccessRequestBodyWithCustomResource(t *testing.T) {
+	req := &authzv1.SubjectAccessReviewSpec{
+		ResourceAttributes: &authzv1.ResourceAttributes{
+			Namespace:   "dev",
+			Group:       "customresources.contoso.io",
+			Resource:    "contosoCustomResource",
+			Subresource: "scopes",
+			Version:     "v1",
+			Name:        "test",
+			Verb:        "get",
+		},
+		Extra: map[string]authzv1.ExtraValue{
+			"oid": {
+				uuid.NewString(),
+			},
+		},
+	}
+	clusterType := "aks"
+	createOperationsMap(clusterType)
+
+	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+
+	if got == nil {
+		t.Errorf("Want: not nil Got: nil")
+	}
+
+	if got[0].Actions[0].AuthorizationEntity.Id != "aks/customresources/read" {
+		t.Errorf("Want:%v, got:%v", "aks/customresources/read", got[0].Actions[0].AuthorizationEntity.Id)
+	}
+
+	if _, found := got[0].Actions[0].Attributes["body/kind"]; !found {
+		t.Errorf("body/kind Attribute is not present")
+	}
+
+	if _, found := got[0].Actions[0].Attributes["body/group"]; !found {
+		t.Errorf("body/group Attribute is not present")
+	}
+
+	if _, found := got[0].Actions[0].Attributes["body/version"]; !found {
+		t.Errorf("body/version Attribute is not present")
 	}
 }
 

@@ -256,7 +256,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 
 			if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group][subRevReq.ResourceAttributes.Resource][getActionName(subRevReq.ResourceAttributes.Verb)]; subRevReq.ResourceAttributes.Group != "" && !found {
 				// This is a custom resource and <clusterType>/customresources/<action> DataAction must be used.
-				return getAuthInfoListForCustomResource(subRevReq.ResourceAttributes.Verb, clusterType)
+				return getAuthInfoListForCustomResource(subRevReq, clusterType)
 			}
 
 			authInfoSingle.AuthorizationEntity.Id = clusterType
@@ -316,7 +316,7 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 			filteredOperations = storedOperationsMap
 		} else if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group]; subRevReq.ResourceAttributes.Group != "" && !found {
 			// This is a custom resource and <clusterType>/customresources/<action> DataAction must be used.
-			return getAuthInfoListForCustomResource(subRevReq.ResourceAttributes.Verb, clusterType)
+			return getAuthInfoListForCustomResource(subRevReq, clusterType)
 		} else if subRevReq.ResourceAttributes.Group != "" {
 			// all resources under specified apigroup
 			if value, found := storedOperationsMap[subRevReq.ResourceAttributes.Group]; found {
@@ -375,7 +375,7 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 			}
 		} else if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group]; subRevReq.ResourceAttributes.Group != "" && !found {
 			// #2 This is a custom resource and <clusterType>/customresources/<action> DataAction must be used.
-			return getAuthInfoListForCustomResource(subRevReq.ResourceAttributes.Verb, clusterType)
+			return getAuthInfoListForCustomResource(subRevReq, clusterType)
 		} else { // #2
 			group := "v1" // core api group key
 			if subRevReq.ResourceAttributes.Group != "" {
@@ -405,21 +405,40 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 	return authInfoList, nil
 }
 
-func getAuthInfoListForCustomResource(verb string, clusterType string) ([]azureutils.AuthorizationActionInfo, error) {
+func getAuthInfoListForCustomResource(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string) ([]azureutils.AuthorizationActionInfo, error) {
 	var authInfoList []azureutils.AuthorizationActionInfo
-	if verb == "*" {
+	if subRevReq.ResourceAttributes.Verb == "*" {
 		for _, action := range getCustomResourceOperationsMap(clusterType) {
 			authInfoList = append(authInfoList, action)
 		}
-		return authInfoList, nil
 	} else {
-		action := getActionName(verb)
+		action := getActionName(subRevReq.ResourceAttributes.Verb)
 		authInfoSingle, found := getCustomResourceOperationsMap(clusterType)[action]
 		if !found {
-			return nil, errors.Errorf("No actions found for verb %s", verb)
+			return nil, errors.Errorf("No actions found for verb %s", subRevReq.ResourceAttributes.Verb)
 		}
 		authInfoList = append(authInfoList, authInfoSingle)
-		return authInfoList, nil
+	}
+
+	for i := range authInfoList {
+		setAuthInfoResourceAttributes(&authInfoList[i], subRevReq)
+	}
+
+	return authInfoList, nil
+}
+
+func setAuthInfoResourceAttributes(action *azureutils.AuthorizationActionInfo, subRevReq *authzv1.SubjectAccessReviewSpec) {
+	if subRevReq.ResourceAttributes != nil {
+		action.Attributes = make(map[string]string)
+		if subRevReq.ResourceAttributes.Resource != "" {
+			action.Attributes["body/kind"] = subRevReq.ResourceAttributes.Resource
+		}
+		if subRevReq.ResourceAttributes.Group != "" {
+			action.Attributes["body/group"] = subRevReq.ResourceAttributes.Group
+		}
+		if subRevReq.ResourceAttributes.Version != "" {
+			action.Attributes["body/version"] = subRevReq.ResourceAttributes.Version
+		}
 	}
 }
 
@@ -536,6 +555,11 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 				{
 					"Id": "Microsoft.Kubernetes/connectedClusters/extensions/deployments/read",
 					"IsDataAction": true
+					"Attributes": {
+						"body/kind": "SecretProviderClass",
+						"body/group": "extensions",
+						"body/version": "v1beta1",
+					}
 				}
 			],
 			"Resource": {
