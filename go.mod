@@ -30,7 +30,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/xanzy/go-gitlab v0.80.3
 	golang.org/x/exp v0.0.0-20230307190834-24139beb5833
-	golang.org/x/net v0.33.0
+	golang.org/x/net v0.36.0
 	golang.org/x/oauth2 v0.10.0
 	golang.org/x/sync v0.11.0
 	golang.org/x/text v0.22.0
