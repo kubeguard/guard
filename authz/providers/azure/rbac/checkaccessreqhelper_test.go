@@ -591,7 +591,7 @@ func Test_getDataActions(t *testing.T) {
 			getStoredOperationsMap = func() azureutils.OperationsMap {
 				return operationsMap
 			}
-			got, _ := getDataActions(tt.args.subRevReq, tt.args.clusterType)
+			got, _ := getDataActions(tt.args.subRevReq, tt.args.clusterType, true)
 			if !tt.args.isWildcardTest && !reflect.DeepEqual(got[0].AuthorizationEntity, tt.want[0].AuthorizationEntity) {
 				t.Errorf("getDataActions() = %v, want %v", got, tt.want)
 			}
@@ -684,7 +684,7 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	createOperationsMap(clusterType)
 	wantErr := errors.New("oid info not sent from authenticatoin module")
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
 
 	if got != nil && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", nil, wantErr, got, gotErr)
@@ -694,7 +694,7 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	clusterType = "arc"
 	wantErr = errors.New("oid info sent from authenticatoin module is not valid")
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
 
 	if got != nil && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", nil, wantErr, got, gotErr)
@@ -710,7 +710,7 @@ func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
 	// testing with new ns scope format
 	var want string = "resourceId/providers/Microsoft.KubernetesConfiguration/namespaces/dev"
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, true)
+	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, true, true)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
@@ -723,7 +723,7 @@ func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
 	// testing with the old namespace format
 	want = "resourceId/namespaces/dev"
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
 	}
@@ -752,7 +752,7 @@ func Test_prepareCheckAccessRequestBodyWithCustomResource(t *testing.T) {
 	clusterType := "aks"
 	createOperationsMap(clusterType)
 
-	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil")
@@ -775,7 +775,7 @@ func Test_prepareCheckAccessRequestBodyWithCustomResource(t *testing.T) {
 	}
 }
 
-func Test_prepareCheckAccessRequestBodyWithCustomResourceTypeVerificationDisabled(t *testing.T) {
+func Test_prepareCheckAccessRequestBodyWithCustomResourceOperationsMapEmpty(t *testing.T) {
 	req := &authzv1.SubjectAccessReviewSpec{
 		ResourceAttributes: &authzv1.ResourceAttributes{
 			Namespace: "dev",
@@ -797,7 +797,41 @@ func Test_prepareCheckAccessRequestBodyWithCustomResourceTypeVerificationDisable
 		return azureutils.OperationsMap{}
 	}
 
-	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
+
+	if got == nil {
+		t.Errorf("Want: not nil Got: nil")
+	}
+
+	if got[0].Actions[0].AuthorizationEntity.Id != "aks/customresources.contoso.io/contosoCustomResource/read" {
+		t.Errorf("Want:%v, got:%v", "aks/customresources.contoso.io/contosoCustomResource/read", got[0].Actions[0].AuthorizationEntity.Id)
+	}
+}
+
+func Test_prepareCheckAccessRequestBodyWithCustomResourceTypeCheckDisabled(t *testing.T) {
+	req := &authzv1.SubjectAccessReviewSpec{
+		ResourceAttributes: &authzv1.ResourceAttributes{
+			Namespace: "dev",
+			Group:     "customresources.contoso.io",
+			Resource:  "contosoCustomResource",
+			Version:   "v1",
+			Name:      "test",
+			Verb:      "get",
+		},
+		Extra: map[string]authzv1.ExtraValue{
+			"oid": {
+				uuid.NewString(),
+			},
+		},
+	}
+	clusterType := "aks"
+	operationsMap := createOperationsMap(clusterType)
+
+	getStoredOperationsMap = func() azureutils.OperationsMap {
+		return operationsMap
+	}
+
+	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, false)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil")
@@ -831,7 +865,7 @@ func Test_prepareCheckAccessRequestBodyWithCustomResourceAndStars(t *testing.T) 
 		return operationsMap
 	}
 
-	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil")

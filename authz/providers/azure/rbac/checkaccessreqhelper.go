@@ -239,7 +239,7 @@ func getResourceAndAction(resource string, subResource string, verb string) stri
 	return action
 }
 
-func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string) ([]azureutils.AuthorizationActionInfo, error) {
+func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string, allowCustomResourceTypeCheck bool) ([]azureutils.AuthorizationActionInfo, error) {
 	var authInfoList []azureutils.AuthorizationActionInfo
 	var err error
 
@@ -258,12 +258,13 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 				IsDataAction: true,
 			}
 
-			if storedOperationsMap == nil || (storedOperationsMap != nil && len(storedOperationsMap) == 0) {
+			if !allowCustomResourceTypeCheck || storedOperationsMap == nil || len(storedOperationsMap) == 0 {
 				/*
-					In this case, the storedOperationsMap is empty. CustomResource type verification is not available.
+					In this case, CustomResource type verification is not available. Either the storedOperationsMap is empty or feature is disabled.
 				*/
 				klog.V(7).Info("CustomResource type verification is not available for this request")
-			} else if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group][subRevReq.ResourceAttributes.Resource]; subRevReq.ResourceAttributes.Group != "" && subRevReq.ResourceAttributes.Resource != "" && !found {
+			} else if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group][subRevReq.ResourceAttributes.Resource]; !found &&
+				subRevReq.ResourceAttributes.Group != "" && subRevReq.ResourceAttributes.Resource != "" {
 				/*
 					In this case both Res and Group are not *, but there is no matching DataAction present on the storedOperationsMap.
 					The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
@@ -286,7 +287,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 				return nil, errors.Errorf("Wildcard support for Resource/Verb/Group is not enabled for request Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb)
 			}
 
-			authInfoList, err = getAuthInfoListForWildcard(subRevReq, storedOperationsMap, clusterType)
+			authInfoList, err = getAuthInfoListForWildcard(subRevReq, storedOperationsMap, clusterType, allowCustomResourceTypeCheck)
 			if err != nil {
 				return nil, errors.Wrap(err, fmt.Sprintf("Error which creating actions for checkaccess for Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb))
 			}
@@ -302,7 +303,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 	return authInfoList, nil
 }
 
-func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, storedOperationsMap azureutils.OperationsMap, clusterType string) ([]azureutils.AuthorizationActionInfo, error) {
+func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, storedOperationsMap azureutils.OperationsMap, clusterType string, allowCustomResourceTypeCheck bool) ([]azureutils.AuthorizationActionInfo, error) {
 	var authInfoList []azureutils.AuthorizationActionInfo
 	var err error
 	finalFilteredOperations := azureutils.NewOperationsMap()
@@ -326,7 +327,7 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 		if subRevReq.ResourceAttributes.Group == "*" {
 			// all resources under all apigroups
 			filteredOperations = storedOperationsMap
-		} else if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group]; subRevReq.ResourceAttributes.Group != "" && !found {
+		} else if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group]; !found && subRevReq.ResourceAttributes.Group != "" && allowCustomResourceTypeCheck {
 			/*
 				In this case Group is not *, but there are no matching DataActions present on the storedOperationsMap.
 				The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
@@ -388,7 +389,8 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 					finalFilteredOperations[group][subRevReq.ResourceAttributes.Resource] = verbMap
 				}
 			}
-		} else if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group][subRevReq.ResourceAttributes.Resource]; subRevReq.ResourceAttributes.Group != "" && subRevReq.ResourceAttributes.Resource != "" && !found {
+		} else if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group][subRevReq.ResourceAttributes.Resource]; !found &&
+			subRevReq.ResourceAttributes.Group != "" && subRevReq.ResourceAttributes.Resource != "" && allowCustomResourceTypeCheck {
 			/*
 				In this case both Res and Group are not *, but there are no matching DataActions present on the storedOperationsMap.
 				The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
@@ -539,7 +541,7 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	return cacheKey
 }
 
-func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, resourceId string, useNamespaceResourceScopeFormat bool) ([]*CheckAccessRequest, error) {
+func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, resourceId string, useNamespaceResourceScopeFormat bool, allowCustomResourceTypeCheck bool) ([]*CheckAccessRequest, error) {
 	/* This is how sample SubjectAccessReview request will look like
 		{
 			"kind": "SubjectAccessReview",
@@ -603,7 +605,7 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 		return nil, errutils.WithCode(errors.New("oid info not sent from authentication module"), http.StatusBadRequest)
 	}
 	groups := getValidSecurityGroups(req.Groups)
-	actions, err := getDataActions(req, clusterType)
+	actions, err := getDataActions(req, clusterType, allowCustomResourceTypeCheck)
 	if err != nil {
 		return nil, errutils.WithCode(errors.Wrap(err, "Error while creating list of dataactions for check access call"), http.StatusInternalServerError)
 	}
