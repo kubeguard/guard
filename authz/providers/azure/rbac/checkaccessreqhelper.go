@@ -45,6 +45,10 @@ const (
 	NonAADUserNoOpVerdict       = "Azure does not have opinion for this non AAD user. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig"
 	NonAADUserNotAllowedVerdict = "Access denied by Azure RBAC for non AAD users. Configure --azure.skip-authz-for-non-aad-users to enable access. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig."
 	PodsResource                = "pods"
+	CustomResources             = "customresources"
+	ReadVerb                    = "read"
+	WriteVerb                   = "write"
+	DeleteVerb                  = "delete"
 )
 
 var getStoredOperationsMap = azureutils.DeepCopyOperationsMap
@@ -129,22 +133,22 @@ type AuthorizationDecision struct {
 
 func getCustomResourceOperationsMap(clusterType string) map[string]azureutils.AuthorizationActionInfo {
 	return map[string]azureutils.AuthorizationActionInfo{
-		"read": {
+		ReadVerb: {
 			IsDataAction: true,
 			AuthorizationEntity: azureutils.AuthorizationEntity{
-				Id: path.Join(clusterType, "customresources", "read"),
+				Id: path.Join(clusterType, CustomResources, ReadVerb),
 			},
 		},
-		"write": {
+		WriteVerb: {
 			IsDataAction: true,
 			AuthorizationEntity: azureutils.AuthorizationEntity{
-				Id: path.Join(clusterType, "customresources", "write"),
+				Id: path.Join(clusterType, CustomResources, WriteVerb),
 			},
 		},
-		"delete": {
+		DeleteVerb: {
 			IsDataAction: true,
 			AuthorizationEntity: azureutils.AuthorizationEntity{
-				Id: path.Join(clusterType, "customresources", "delete"),
+				Id: path.Join(clusterType, CustomResources, DeleteVerb),
 			},
 		},
 	}
@@ -254,8 +258,16 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 				IsDataAction: true,
 			}
 
-			if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group][subRevReq.ResourceAttributes.Resource][getActionName(subRevReq.ResourceAttributes.Verb)]; subRevReq.ResourceAttributes.Group != "" && !found {
-				// This is a custom resource and <clusterType>/customresources/<action> DataAction must be used.
+			if storedOperationsMap == nil || (storedOperationsMap != nil && len(storedOperationsMap) == 0) {
+				/*
+					In this case, the storedOperationsMap is empty. CustomResource type verification is not available.
+				*/
+				klog.V(7).Info("CustomResource type verification is not available for this request")
+			} else if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group][subRevReq.ResourceAttributes.Resource]; subRevReq.ResourceAttributes.Group != "" && subRevReq.ResourceAttributes.Resource != "" && !found {
+				/*
+					In this case both Res and Group are not *, but there is no matching DataAction present on the storedOperationsMap.
+					The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
+				*/
 				return getAuthInfoListForCustomResource(subRevReq, clusterType)
 			}
 
@@ -315,7 +327,10 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 			// all resources under all apigroups
 			filteredOperations = storedOperationsMap
 		} else if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group]; subRevReq.ResourceAttributes.Group != "" && !found {
-			// This is a custom resource and <clusterType>/customresources/<action> DataAction must be used.
+			/*
+				In this case Group is not *, but there are no matching DataActions present on the storedOperationsMap.
+				The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
+			*/
 			return getAuthInfoListForCustomResource(subRevReq, clusterType)
 		} else if subRevReq.ResourceAttributes.Group != "" {
 			// all resources under specified apigroup
@@ -373,8 +388,11 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 					finalFilteredOperations[group][subRevReq.ResourceAttributes.Resource] = verbMap
 				}
 			}
-		} else if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group]; subRevReq.ResourceAttributes.Group != "" && !found {
-			// #2 This is a custom resource and <clusterType>/customresources/<action> DataAction must be used.
+		} else if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group][subRevReq.ResourceAttributes.Resource]; subRevReq.ResourceAttributes.Group != "" && subRevReq.ResourceAttributes.Resource != "" && !found {
+			/*
+				In this case both Res and Group are not *, but there are no matching DataActions present on the storedOperationsMap.
+				The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
+			*/
 			return getAuthInfoListForCustomResource(subRevReq, clusterType)
 		} else { // #2
 			group := "v1" // core api group key
@@ -421,25 +439,31 @@ func getAuthInfoListForCustomResource(subRevReq *authzv1.SubjectAccessReviewSpec
 	}
 
 	for i := range authInfoList {
-		setAuthInfoResourceAttributes(&authInfoList[i], subRevReq)
+		err := setAuthInfoResourceAttributes(&authInfoList[i], subRevReq)
+		if err != nil {
+			return nil, errors.Errorf("Error while setting resource attributes: %s", err.Error())
+		}
 	}
 
 	return authInfoList, nil
 }
 
-func setAuthInfoResourceAttributes(action *azureutils.AuthorizationActionInfo, subRevReq *authzv1.SubjectAccessReviewSpec) {
-	if subRevReq.ResourceAttributes != nil {
-		action.Attributes = make(map[string]string)
-		if subRevReq.ResourceAttributes.Resource != "" {
-			action.Attributes["body/kind"] = subRevReq.ResourceAttributes.Resource
-		}
-		if subRevReq.ResourceAttributes.Group != "" {
-			action.Attributes["body/group"] = subRevReq.ResourceAttributes.Group
-		}
-		if subRevReq.ResourceAttributes.Version != "" {
-			action.Attributes["body/version"] = subRevReq.ResourceAttributes.Version
-		}
+func setAuthInfoResourceAttributes(action *azureutils.AuthorizationActionInfo, subRevReq *authzv1.SubjectAccessReviewSpec) error {
+	if subRevReq.ResourceAttributes == nil {
+		return errors.New("Resource attributes are empty")
 	}
+	if subRevReq.ResourceAttributes.Group == "" {
+		return errors.New("Group is empty")
+	}
+	action.Attributes = make(map[string]string)
+	action.Attributes["body/group"] = subRevReq.ResourceAttributes.Group
+	if subRevReq.ResourceAttributes.Version != "" {
+		action.Attributes["body/version"] = subRevReq.ResourceAttributes.Version
+	}
+	if subRevReq.ResourceAttributes.Resource != "" {
+		action.Attributes["body/kind"] = subRevReq.ResourceAttributes.Resource
+	}
+	return nil
 }
 
 func initializeMapForGroupAndResource(filteredOperations azureutils.OperationsMap, group string, resourceName string) azureutils.OperationsMap {

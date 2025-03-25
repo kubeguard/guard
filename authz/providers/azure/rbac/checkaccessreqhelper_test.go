@@ -566,6 +566,20 @@ func Test_getDataActions(t *testing.T) {
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/delete"}, IsDataAction: true},
 			},
 		},
+
+		{
+			"customResourceBuiltinAPI",
+			args{
+				isCrTest:       true,
+				isWildcardTest: false,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "apps", Resource: "aCustomResource", Subresource: "status", Version: "v1", Name: "test", Verb: "get"},
+				}, clusterType: "aks",
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -722,13 +736,12 @@ func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
 func Test_prepareCheckAccessRequestBodyWithCustomResource(t *testing.T) {
 	req := &authzv1.SubjectAccessReviewSpec{
 		ResourceAttributes: &authzv1.ResourceAttributes{
-			Namespace:   "dev",
-			Group:       "customresources.contoso.io",
-			Resource:    "contosoCustomResource",
-			Subresource: "scopes",
-			Version:     "v1",
-			Name:        "test",
-			Verb:        "get",
+			Namespace: "dev",
+			Group:     "customresources.contoso.io",
+			Resource:  "contosoCustomResource",
+			Version:   "v1",
+			Name:      "test",
+			Verb:      "get",
 		},
 		Extra: map[string]authzv1.ExtraValue{
 			"oid": {
@@ -759,6 +772,85 @@ func Test_prepareCheckAccessRequestBodyWithCustomResource(t *testing.T) {
 
 	if _, found := got[0].Actions[0].Attributes["body/version"]; !found {
 		t.Errorf("body/version Attribute is not present")
+	}
+}
+
+func Test_prepareCheckAccessRequestBodyWithCustomResourceTypeVerificationDisabled(t *testing.T) {
+	req := &authzv1.SubjectAccessReviewSpec{
+		ResourceAttributes: &authzv1.ResourceAttributes{
+			Namespace: "dev",
+			Group:     "customresources.contoso.io",
+			Resource:  "contosoCustomResource",
+			Version:   "v1",
+			Name:      "test",
+			Verb:      "get",
+		},
+		Extra: map[string]authzv1.ExtraValue{
+			"oid": {
+				uuid.NewString(),
+			},
+		},
+	}
+	clusterType := "aks"
+
+	getStoredOperationsMap = func() azureutils.OperationsMap {
+		return azureutils.OperationsMap{}
+	}
+
+	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+
+	if got == nil {
+		t.Errorf("Want: not nil Got: nil")
+	}
+
+	if got[0].Actions[0].AuthorizationEntity.Id != "aks/customresources.contoso.io/contosoCustomResource/read" {
+		t.Errorf("Want:%v, got:%v", "aks/customresources.contoso.io/contosoCustomResource/read", got[0].Actions[0].AuthorizationEntity.Id)
+	}
+}
+
+func Test_prepareCheckAccessRequestBodyWithCustomResourceAndStars(t *testing.T) {
+	req := &authzv1.SubjectAccessReviewSpec{
+		ResourceAttributes: &authzv1.ResourceAttributes{
+			Namespace: "dev",
+			Group:     "customresources.contoso.io",
+			Resource:  "*",
+			Version:   "v1",
+			Name:      "test",
+			Verb:      "*",
+		},
+		Extra: map[string]authzv1.ExtraValue{
+			"oid": {
+				uuid.NewString(),
+			},
+		},
+	}
+	clusterType := "aks"
+	operationsMap := createOperationsMap(clusterType)
+
+	getStoredOperationsMap = func() azureutils.OperationsMap {
+		return operationsMap
+	}
+
+	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+
+	if got == nil {
+		t.Errorf("Want: not nil Got: nil")
+	}
+
+	customResourceActions := []azureutils.AuthorizationActionInfo{
+		{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true, Attributes: map[string]string{"body/kind": "*", "body/group": "customresources.contoso.io", "body/version": "v1"}},
+		{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/write"}, IsDataAction: true, Attributes: map[string]string{"body/kind": "*", "body/group": "customresources.contoso.io", "body/version": "v1"}},
+		{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/delete"}, IsDataAction: true, Attributes: map[string]string{"body/kind": "*", "body/group": "customresources.contoso.io", "body/version": "v1"}},
+	}
+
+	if len(got[0].Actions) != len(customResourceActions) {
+		t.Errorf("Expected %d actions, got %d", len(customResourceActions), len(got))
+	}
+
+	for i := range customResourceActions {
+		if !reflect.DeepEqual(got[0].Actions[i].Attributes, customResourceActions[i].Attributes) {
+			t.Errorf("Expected action %v, got %v", customResourceActions[i].AuthorizationEntity.Id, got[0].Actions[i].AuthorizationEntity.Id)
+		}
 	}
 }
 
