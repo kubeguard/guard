@@ -58,7 +58,7 @@ func NewOptions() Options {
 		SkipAuthzCheck:                      []string{""},
 		SkipAuthzForNonAADUsers:             true,
 		AllowNonResDiscoveryPathAccess:      true,
-		AllowCustomResourceTypeCheck:        true,
+		AllowCustomResourceTypeCheck:        false,
 		UseNamespaceResourceScopeFormat:     false,
 		DiscoverResources:                   false,
 		ReconcileDiscoverResourcesFrequency: 5 * time.Minute,
@@ -111,6 +111,10 @@ func (o *Options) Validate(azure azure.Options) []error {
 
 	if o.ARMCallLimit > maxPermissibleArmCallLimit {
 		errs = append(errs, fmt.Errorf("azure.arm-call-limit must not be more than %d", maxPermissibleArmCallLimit))
+	}
+
+	if !o.DiscoverResources && o.AllowCustomResourceTypeCheck {
+		errs = append(errs, errors.New("azure.discover-resources must also be enabled when azure.allow-custom-resource-type-check is enabled"))
 	}
 
 	return errs

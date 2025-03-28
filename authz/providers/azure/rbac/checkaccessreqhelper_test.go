@@ -61,31 +61,6 @@ func createOperationsMap(clusterType string) azureutils.OperationsMap {
 	}
 }
 
-func addOperationMap(operationsMap azureutils.OperationsMap, subRevReq *authzv1.SubjectAccessReviewSpec, authInfo []azureutils.AuthorizationActionInfo) {
-	if subRevReq.ResourceAttributes != nil {
-		group := subRevReq.ResourceAttributes.Group
-		resource := subRevReq.ResourceAttributes.Resource
-		verb := subRevReq.ResourceAttributes.Verb
-
-		if group == "*" || resource == "*" || verb == "*" {
-			return
-		}
-
-		if _, ok := operationsMap[group]; !ok {
-			operationsMap[group] = azureutils.ResourceAndVerbMap{}
-		}
-		if _, ok := operationsMap[group][resource]; !ok {
-			operationsMap[group][resource] = azureutils.VerbAndActionsMap{}
-		}
-		for _, auth := range authInfo {
-			action := getActionName(subRevReq.ResourceAttributes.Verb)
-			if _, ok := operationsMap[group][resource][action]; !ok {
-				operationsMap[group][resource][action] = azureutils.DataAction{ActionInfo: auth, IsNamespacedResource: true}
-			}
-		}
-	}
-}
-
 func Test_getScope(t *testing.T) {
 	type args struct {
 		resourceId                      string
@@ -581,17 +556,15 @@ func Test_getDataActions(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			operationsMap := createOperationsMap(tt.args.clusterType)
-			if !tt.args.isCrTest {
-				addOperationMap(operationsMap, tt.args.subRevReq, tt.want)
-			}
-
 			getStoredOperationsMap = func() azureutils.OperationsMap {
 				return operationsMap
 			}
-			got, _ := getDataActions(tt.args.subRevReq, tt.args.clusterType, true)
+
+			got, _ := getDataActions(tt.args.subRevReq, tt.args.clusterType, tt.args.isCrTest)
 			if !tt.args.isWildcardTest && !reflect.DeepEqual(got[0].AuthorizationEntity, tt.want[0].AuthorizationEntity) {
 				t.Errorf("getDataActions() = %v, want %v", got, tt.want)
 			}

@@ -245,26 +245,26 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 
 	if subRevReq.ResourceAttributes != nil {
 		storedOperationsMap := getStoredOperationsMap()
+
+		isCustomerResourceTypeCheckAvailable := allowCustomResourceTypeCheck && storedOperationsMap != nil && len(storedOperationsMap) != 0
+		if !isCustomerResourceTypeCheckAvailable {
+			klog.V(5).Info("CustomResource type verification is not available for this request")
+		}
+
 		if subRevReq.ResourceAttributes.Resource != "*" && subRevReq.ResourceAttributes.Group != "*" && subRevReq.ResourceAttributes.Verb != "*" {
 			/*
-				  This sections handles the following scenarios:
+				This sections handles the following scenarios:
 
-				    | Scenario                      | Namespace is empty (Cluster scope call)      | Namespace is not empty (NS scope)        |
-					 ------------------------------- ---------------------------------------------- ------------------------------------------
-					| Verb, Res and Group are not * | Normal single resource call at cluster scope | Normal single resource call  at ns scope |
+				| Scenario                      | Namespace is empty (Cluster scope call)      | Namespace is not empty (NS scope)        |
+				------------------------------- ---------------------------------------------- ------------------------------------------
+				| Verb, Res and Group are not * | Normal single resource call at cluster scope | Normal single resource call  at ns scope |
 
 			*/
 			authInfoSingle := azureutils.AuthorizationActionInfo{
 				IsDataAction: true,
 			}
 
-			if !allowCustomResourceTypeCheck || storedOperationsMap == nil || len(storedOperationsMap) == 0 {
-				/*
-					In this case, CustomResource type verification is not available. Either the storedOperationsMap is empty or feature is disabled.
-				*/
-				klog.V(7).Info("CustomResource type verification is not available for this request")
-			} else if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group][subRevReq.ResourceAttributes.Resource]; !found &&
-				subRevReq.ResourceAttributes.Group != "" && subRevReq.ResourceAttributes.Resource != "" {
+			if isCustomerResourceTypeCheckAvailable && isCustomResourceAccessRequest(subRevReq, &storedOperationsMap) {
 				/*
 					In this case both Res and Group are not *, but there is no matching DataAction present on the storedOperationsMap.
 					The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
@@ -287,7 +287,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 				return nil, errors.Errorf("Wildcard support for Resource/Verb/Group is not enabled for request Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb)
 			}
 
-			authInfoList, err = getAuthInfoListForWildcard(subRevReq, storedOperationsMap, clusterType, allowCustomResourceTypeCheck)
+			authInfoList, err = getAuthInfoListForWildcard(subRevReq, storedOperationsMap, clusterType, isCustomerResourceTypeCheckAvailable)
 			if err != nil {
 				return nil, errors.Wrap(err, fmt.Sprintf("Error which creating actions for checkaccess for Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb))
 			}
@@ -303,7 +303,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 	return authInfoList, nil
 }
 
-func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, storedOperationsMap azureutils.OperationsMap, clusterType string, allowCustomResourceTypeCheck bool) ([]azureutils.AuthorizationActionInfo, error) {
+func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, storedOperationsMap azureutils.OperationsMap, clusterType string, isCustomerResourceTypeCheckAvailable bool) ([]azureutils.AuthorizationActionInfo, error) {
 	var authInfoList []azureutils.AuthorizationActionInfo
 	var err error
 	finalFilteredOperations := azureutils.NewOperationsMap()
@@ -327,7 +327,7 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 		if subRevReq.ResourceAttributes.Group == "*" {
 			// all resources under all apigroups
 			filteredOperations = storedOperationsMap
-		} else if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group]; !found && subRevReq.ResourceAttributes.Group != "" && allowCustomResourceTypeCheck {
+		} else if isCustomerResourceTypeCheckAvailable && isCustomResourceAccessRequest(subRevReq, &storedOperationsMap) {
 			/*
 				In this case Group is not *, but there are no matching DataActions present on the storedOperationsMap.
 				The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
@@ -389,8 +389,7 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 					finalFilteredOperations[group][subRevReq.ResourceAttributes.Resource] = verbMap
 				}
 			}
-		} else if _, found := storedOperationsMap[subRevReq.ResourceAttributes.Group][subRevReq.ResourceAttributes.Resource]; !found &&
-			subRevReq.ResourceAttributes.Group != "" && subRevReq.ResourceAttributes.Resource != "" && allowCustomResourceTypeCheck {
+		} else if isCustomerResourceTypeCheckAvailable && isCustomResourceAccessRequest(subRevReq, &storedOperationsMap) {
 			/*
 				In this case both Res and Group are not *, but there are no matching DataActions present on the storedOperationsMap.
 				The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
@@ -466,6 +465,22 @@ func setAuthInfoResourceAttributes(action *azureutils.AuthorizationActionInfo, s
 		action.Attributes["body/kind"] = subRevReq.ResourceAttributes.Resource
 	}
 	return nil
+}
+
+func isCustomResourceAccessRequest(subRevReq *authzv1.SubjectAccessReviewSpec, operationsMap *azureutils.OperationsMap) bool {
+	if subRevReq.ResourceAttributes == nil {
+		return false
+	}
+	if subRevReq.ResourceAttributes.Group == "" || subRevReq.ResourceAttributes.Group == "*" {
+		return false
+	}
+	if subRevReq.ResourceAttributes.Resource == "" || subRevReq.ResourceAttributes.Resource == "*" {
+		_, found := (*operationsMap)[subRevReq.ResourceAttributes.Group]
+		return !found
+	} else {
+		_, found := (*operationsMap)[subRevReq.ResourceAttributes.Group][subRevReq.ResourceAttributes.Resource]
+		return !found
+	}
 }
 
 func initializeMapForGroupAndResource(filteredOperations azureutils.OperationsMap, group string, resourceName string) azureutils.OperationsMap {
