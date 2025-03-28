@@ -30,6 +30,12 @@ import (
 
 const resourceId = "resourceId"
 
+var customResourceDataActions = []azureutils.AuthorizationActionInfo{
+	{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
+	{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/write"}, IsDataAction: true},
+	{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/delete"}, IsDataAction: true},
+}
+
 func createOperationsMap(clusterType string) azureutils.OperationsMap {
 	return azureutils.OperationsMap{
 		"apps": azureutils.ResourceAndVerbMap{
@@ -115,6 +121,7 @@ func Test_getValidSecurityGroups(t *testing.T) {
 
 func Test_getDataActions(t *testing.T) {
 	type args struct {
+		isCrTest       bool
 		isWildcardTest bool
 		subRevReq      *authzv1.SubjectAccessReviewSpec
 		clusterType    string
@@ -474,15 +481,91 @@ func Test_getDataActions(t *testing.T) {
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/apps/deployments/write"}, IsDataAction: true},
 			},
 		},
+
+		{
+			"customResource",
+			args{
+				isCrTest:       true,
+				isWildcardTest: false,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "customresources.contoso.io", Resource: "contosoCustomResource", Subresource: "*", Version: "*", Name: "test", Verb: "list"},
+				}, clusterType: "aks",
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
+			},
+		},
+
+		{
+			"crResourceIsStar",
+			args{
+				isCrTest:       true,
+				isWildcardTest: true,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "customresources.contoso.io", Resource: "*", Subresource: "*", Version: "*", Name: "test", Verb: "get"},
+				}, clusterType: "aks",
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
+			},
+		},
+
+		{
+			"crVerbIsStar",
+			args{
+				isCrTest:       true,
+				isWildcardTest: true,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "customresources.contoso.io", Resource: "contosoCustomResource", Subresource: "*", Version: "*", Name: "test", Verb: "*"},
+				}, clusterType: "aks",
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/write"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/delete"}, IsDataAction: true},
+			},
+		},
+
+		{
+			"crResourceAndVerbIsStar",
+			args{
+				isCrTest:       true,
+				isWildcardTest: true,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "customresources.contoso.io", Resource: "*", Subresource: "*", Version: "*", Name: "test", Verb: "*"},
+				}, clusterType: "aks",
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/write"}, IsDataAction: true},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/delete"}, IsDataAction: true},
+			},
+		},
+
+		{
+			"customResourceBuiltinAPI",
+			args{
+				isCrTest:       true,
+				isWildcardTest: false,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "apps", Resource: "aCustomResource", Subresource: "status", Version: "v1", Name: "test", Verb: "get"},
+				}, clusterType: "aks",
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
+			},
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			operationsMap := createOperationsMap(tt.args.clusterType)
 			getStoredOperationsMap = func() azureutils.OperationsMap {
 				return operationsMap
 			}
-			got, _ := getDataActions(tt.args.subRevReq, tt.args.clusterType)
-			if !tt.args.isWildcardTest && !reflect.DeepEqual(got, tt.want) {
+
+			got, _ := getDataActions(tt.args.subRevReq, tt.args.clusterType, tt.args.isCrTest)
+			if !tt.args.isWildcardTest && !reflect.DeepEqual(got[0].AuthorizationEntity, tt.want[0].AuthorizationEntity) {
 				t.Errorf("getDataActions() = %v, want %v", got, tt.want)
 			}
 
@@ -494,7 +577,7 @@ func Test_getDataActions(t *testing.T) {
 				}
 
 				for authinfo := range gotSet {
-					if !wantSet[authinfo] {
+					if _, ok := wantSet[authinfo]; !ok {
 						t.Errorf("getDataActions() = %v, want %v", got, tt.want)
 						break
 					}
@@ -504,10 +587,10 @@ func Test_getDataActions(t *testing.T) {
 	}
 }
 
-func createSet(authinfos []azureutils.AuthorizationActionInfo) map[azureutils.AuthorizationActionInfo]bool {
-	set := make(map[azureutils.AuthorizationActionInfo]bool)
+func createSet(authinfos []azureutils.AuthorizationActionInfo) map[azureutils.AuthorizationEntity]azureutils.AuthorizationActionInfo {
+	set := make(map[azureutils.AuthorizationEntity]azureutils.AuthorizationActionInfo)
 	for _, elem := range authinfos {
-		set[elem] = true
+		set[elem.AuthorizationEntity] = elem
 	}
 	return set
 }
@@ -574,7 +657,7 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	createOperationsMap(clusterType)
 	wantErr := errors.New("oid info not sent from authenticatoin module")
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
 
 	if got != nil && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", nil, wantErr, got, gotErr)
@@ -584,7 +667,7 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	clusterType = "arc"
 	wantErr = errors.New("oid info sent from authenticatoin module is not valid")
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
 
 	if got != nil && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", nil, wantErr, got, gotErr)
@@ -600,7 +683,7 @@ func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
 	// testing with new ns scope format
 	var want string = "resourceId/providers/Microsoft.KubernetesConfiguration/namespaces/dev"
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, true)
+	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, true, true)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
@@ -613,13 +696,168 @@ func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
 	// testing with the old namespace format
 	want = "resourceId/namespaces/dev"
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false)
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
 	}
 
 	if got != nil && got[0].Resource.Id != want {
 		t.Errorf("Want:%v, got:%v", want, got)
+	}
+}
+
+func Test_prepareCheckAccessRequestBodyWithCustomResource(t *testing.T) {
+	req := &authzv1.SubjectAccessReviewSpec{
+		ResourceAttributes: &authzv1.ResourceAttributes{
+			Namespace: "dev",
+			Group:     "customresources.contoso.io",
+			Resource:  "contosoCustomResource",
+			Version:   "v1",
+			Name:      "test",
+			Verb:      "get",
+		},
+		Extra: map[string]authzv1.ExtraValue{
+			"oid": {
+				uuid.NewString(),
+			},
+		},
+	}
+	clusterType := "aks"
+	createOperationsMap(clusterType)
+
+	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
+
+	if got == nil {
+		t.Errorf("Want: not nil Got: nil")
+	}
+
+	if got[0].Actions[0].AuthorizationEntity.Id != "aks/customresources/read" {
+		t.Errorf("Want:%v, got:%v", "aks/customresources/read", got[0].Actions[0].AuthorizationEntity.Id)
+	}
+
+	if _, found := got[0].Actions[0].Attributes["body/kind"]; !found {
+		t.Errorf("body/kind Attribute is not present")
+	}
+
+	if _, found := got[0].Actions[0].Attributes["body/group"]; !found {
+		t.Errorf("body/group Attribute is not present")
+	}
+
+	if _, found := got[0].Actions[0].Attributes["body/version"]; !found {
+		t.Errorf("body/version Attribute is not present")
+	}
+}
+
+func Test_prepareCheckAccessRequestBodyWithCustomResourceOperationsMapEmpty(t *testing.T) {
+	req := &authzv1.SubjectAccessReviewSpec{
+		ResourceAttributes: &authzv1.ResourceAttributes{
+			Namespace: "dev",
+			Group:     "customresources.contoso.io",
+			Resource:  "contosoCustomResource",
+			Version:   "v1",
+			Name:      "test",
+			Verb:      "get",
+		},
+		Extra: map[string]authzv1.ExtraValue{
+			"oid": {
+				uuid.NewString(),
+			},
+		},
+	}
+	clusterType := "aks"
+
+	getStoredOperationsMap = func() azureutils.OperationsMap {
+		return azureutils.OperationsMap{}
+	}
+
+	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
+
+	if got == nil {
+		t.Errorf("Want: not nil Got: nil")
+	}
+
+	if got[0].Actions[0].AuthorizationEntity.Id != "aks/customresources.contoso.io/contosoCustomResource/read" {
+		t.Errorf("Want:%v, got:%v", "aks/customresources.contoso.io/contosoCustomResource/read", got[0].Actions[0].AuthorizationEntity.Id)
+	}
+}
+
+func Test_prepareCheckAccessRequestBodyWithCustomResourceTypeCheckDisabled(t *testing.T) {
+	req := &authzv1.SubjectAccessReviewSpec{
+		ResourceAttributes: &authzv1.ResourceAttributes{
+			Namespace: "dev",
+			Group:     "customresources.contoso.io",
+			Resource:  "contosoCustomResource",
+			Version:   "v1",
+			Name:      "test",
+			Verb:      "get",
+		},
+		Extra: map[string]authzv1.ExtraValue{
+			"oid": {
+				uuid.NewString(),
+			},
+		},
+	}
+	clusterType := "aks"
+	operationsMap := createOperationsMap(clusterType)
+
+	getStoredOperationsMap = func() azureutils.OperationsMap {
+		return operationsMap
+	}
+
+	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, false)
+
+	if got == nil {
+		t.Errorf("Want: not nil Got: nil")
+	}
+
+	if got[0].Actions[0].AuthorizationEntity.Id != "aks/customresources.contoso.io/contosoCustomResource/read" {
+		t.Errorf("Want:%v, got:%v", "aks/customresources.contoso.io/contosoCustomResource/read", got[0].Actions[0].AuthorizationEntity.Id)
+	}
+}
+
+func Test_prepareCheckAccessRequestBodyWithCustomResourceAndStars(t *testing.T) {
+	req := &authzv1.SubjectAccessReviewSpec{
+		ResourceAttributes: &authzv1.ResourceAttributes{
+			Namespace: "dev",
+			Group:     "customresources.contoso.io",
+			Resource:  "*",
+			Version:   "v1",
+			Name:      "test",
+			Verb:      "*",
+		},
+		Extra: map[string]authzv1.ExtraValue{
+			"oid": {
+				uuid.NewString(),
+			},
+		},
+	}
+	clusterType := "aks"
+	operationsMap := createOperationsMap(clusterType)
+
+	getStoredOperationsMap = func() azureutils.OperationsMap {
+		return operationsMap
+	}
+
+	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
+
+	if got == nil {
+		t.Errorf("Want: not nil Got: nil")
+	}
+
+	customResourceActions := []azureutils.AuthorizationActionInfo{
+		{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true, Attributes: map[string]string{"body/kind": "*", "body/group": "customresources.contoso.io", "body/version": "v1"}},
+		{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/write"}, IsDataAction: true, Attributes: map[string]string{"body/kind": "*", "body/group": "customresources.contoso.io", "body/version": "v1"}},
+		{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/delete"}, IsDataAction: true, Attributes: map[string]string{"body/kind": "*", "body/group": "customresources.contoso.io", "body/version": "v1"}},
+	}
+
+	if len(got[0].Actions) != len(customResourceActions) {
+		t.Errorf("Expected %d actions, got %d", len(customResourceActions), len(got))
+	}
+
+	for i := range customResourceActions {
+		if !reflect.DeepEqual(got[0].Actions[i].Attributes, customResourceActions[i].Attributes) {
+			t.Errorf("Expected action %v, got %v", customResourceActions[i].AuthorizationEntity.Id, got[0].Actions[i].AuthorizationEntity.Id)
+		}
 	}
 }
 
