@@ -44,6 +44,7 @@ type Options struct {
 	ARMCallLimit                        int
 	SkipAuthzCheck                      []string
 	SkipAuthzForNonAADUsers             bool
+	SkipAuthzNamespace                  bool
 	AllowNonResDiscoveryPathAccess      bool
 	UseNamespaceResourceScopeFormat     bool
 	DiscoverResources                   bool
@@ -56,6 +57,7 @@ func NewOptions() Options {
 		ARMCallLimit:                        defaultArmCallLimit,
 		SkipAuthzCheck:                      []string{""},
 		SkipAuthzForNonAADUsers:             true,
+		SkipAuthzNamespace:                  false,
 		AllowNonResDiscoveryPathAccess:      true,
 		UseNamespaceResourceScopeFormat:     false,
 		DiscoverResources:                   false,
@@ -70,6 +72,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&o.ARMCallLimit, "azure.arm-call-limit", o.ARMCallLimit, "No of calls before which webhook switch to new ARM instance to avoid throttling")
 	fs.StringSliceVar(&o.SkipAuthzCheck, "azure.skip-authz-check", o.SkipAuthzCheck, "name of usernames/email for which authz check will be skipped")
 	fs.BoolVar(&o.SkipAuthzForNonAADUsers, "azure.skip-authz-for-non-aad-users", o.SkipAuthzForNonAADUsers, "skip authz for non AAD users")
+	fs.BoolVar(&o.SkipAuthzNamespace, "azure.skip-authz-namespace", o.SkipAuthzNamespace, "skip authz namespace information")
 	fs.BoolVar(&o.AllowNonResDiscoveryPathAccess, "azure.allow-nonres-discovery-path-access", o.AllowNonResDiscoveryPathAccess, "allow access on Non Resource paths required for discovery, setting it false will require explicit non resource path role assignment for all users in Azure RBAC")
 	fs.BoolVar(&o.UseNamespaceResourceScopeFormat, "azure.use-ns-resource-scope-format", o.UseNamespaceResourceScopeFormat, "use namespace as resource scope format for making rbac checkaccess calls at namespace scope")
 	fs.StringVar(&o.KubeConfigFile, "azure.kubeconfig-file", "", "path to the kubeconfig of cluster.")
