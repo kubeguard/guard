@@ -375,6 +375,80 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 
 		finalStatus = status
 	}
+	if finalStatus != nil && finalStatus.Allowed {
+		return finalStatus, nil
+	}
+
+	// we have a potential denied status for namespace scoped request so we need to check managedNamespaces scope as well
+	checkAccessURLManagedNS := *a.apiURL
+	checkAccessURLManagedNS.Path = path.Join(checkAccessURLManagedNS.Path, a.azureResourceId)
+	exists, managedNameSpaceString := getNameSpaceScope(request, a.useNamespaceResourceScopeFormat)
+	if !exists {
+		return finalStatus, nil
+	}
+	checkAccessURLManagedNS.Path = path.Join(checkAccessURLManagedNS.Path, managedNameSpaceString)
+	checkAccessURLManagedNS.Path = path.Join(checkAccessURLManagedNS.Path, checkAccessPath)
+	paramsManagedNS := url.Values{}
+	paramsManagedNS.Add("api-version", checkAccessAPIVersion)
+	checkAccessURLManagedNS.RawQuery = params.Encode()
+
+	ctx, cancel = context.WithTimeout(context.Background(), checkaccessContextTimeout)
+	defer cancel()
+	eg, egCtx = errgroup.WithContext(ctx)
+
+	ch = make(chan *authzv1.SubjectAccessReviewStatus, len(checkAccessBodies))
+	if len(checkAccessBodies) > 1 {
+		klog.V(5).Infof("Number of checkaccess requests to make: %d", len(checkAccessBodies))
+	}
+	eg.SetLimit(len(checkAccessBodies))
+	for _, checkAccessBody := range checkAccessBodies {
+		body := checkAccessBody
+		eg.Go(func() error {
+			// create a request id for every checkaccess request
+			requestUUID := uuid.New()
+			reqContext := context.WithValue(egCtx, correlationRequestIDKey(correlationRequestIDHeader), []string{requestUUID.String()})
+			reqContext = azureutils.WithRetryableHttpClient(reqContext, a.httpClientRetryCount)
+			err := a.sendCheckAccessRequest(reqContext, checkAccessUsername, checkAccessURLManagedNS, body, ch)
+			if err != nil {
+				code := http.StatusInternalServerError
+				if v, ok := err.(errutils.HttpStatusCode); ok {
+					code = v.Code()
+				}
+				err = errutils.WithCode(errors.Errorf("Error: %s. Correlation ID: %s", err, requestUUID.String()), code)
+				return err
+			}
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			klog.V(5).Infof("Checkaccess requests have timed out. Error: %v", ctx.Err())
+			actionsCount := 0
+			for i := 0; i < len(checkAccessBodies); i += 1 {
+				actionsCount = actionsCount + len(checkAccessBodies[i].Actions)
+			}
+			checkAccessContextTimedOutCount.WithLabelValues(azureutils.ConvertIntToString(len(checkAccessBodies)), azureutils.ConvertIntToString(actionsCount)).Inc()
+			close(ch)
+			return nil, errutils.WithCode(errors.Wrap(ctx.Err(), "Checkaccess requests have timed out."), http.StatusInternalServerError)
+		} else {
+			close(ch)
+			// print error we get from sendcheckAccessRequest
+			klog.Error(err)
+			return nil, err
+		}
+	}
+	close(ch)
+
+	for status := range ch {
+		if status.Denied {
+			finalStatus = status
+			break
+		}
+
+		finalStatus = status
+	}
+
 	return finalStatus, nil
 }
 
