@@ -379,10 +379,11 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		return finalStatus, nil
 	}
 
-	// we have a potential denied status for namespace scoped request so we need to check managedNamespaces scope as well
 	checkAccessURLManagedNS := *a.apiURL
 	checkAccessURLManagedNS.Path = path.Join(checkAccessURLManagedNS.Path, a.azureResourceId)
-	exists, managedNameSpaceString := getNameSpaceScope(request, a.useNamespaceResourceScopeFormat)
+
+	// we have a potential denied status for namespace scoped request so we need to check managedNamespaces scope as well
+	exists, managedNameSpaceString := getManagedNameSpaceScope(request)
 	if !exists {
 		return finalStatus, nil
 	}
