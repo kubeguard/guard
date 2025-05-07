@@ -86,6 +86,7 @@ type AccessInfo struct {
 	skipCheck                       map[string]void
 	skipAuthzForNonAADUsers         bool
 	allowNonResDiscoveryPathAccess  bool
+	enableManagedNamespaceRBAC      bool
 	useNamespaceResourceScopeFormat bool
 	httpClientRetryCount            int
 	lock                            sync.RWMutex
@@ -170,6 +171,7 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 		armCallLimit:                    opts.ARMCallLimit,
 		skipAuthzForNonAADUsers:         opts.SkipAuthzForNonAADUsers,
 		allowNonResDiscoveryPathAccess:  opts.AllowNonResDiscoveryPathAccess,
+		enableManagedNamespaceRBAC:      opts.EnableManagedNamespaceRBAC,
 		useNamespaceResourceScopeFormat: opts.UseNamespaceResourceScopeFormat,
 		httpClientRetryCount:            authopts.HttpClientRetryCount,
 	}
@@ -379,10 +381,14 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		return finalStatus, nil
 	}
 
+	if !a.enableManagedNamespaceRBAC {
+		return finalStatus, nil
+	}
+
+	// we have a potential denied status for namespace scoped request so we need to check managedNamespaces scope as well
 	checkAccessURLManagedNS := *a.apiURL
 	checkAccessURLManagedNS.Path = path.Join(checkAccessURLManagedNS.Path, a.azureResourceId)
 
-	// we have a potential denied status for namespace scoped request so we need to check managedNamespaces scope as well
 	exists, managedNameSpaceString := getManagedNameSpaceScope(request)
 	if !exists {
 		return finalStatus, nil
