@@ -47,6 +47,7 @@ type Options struct {
 	AllowNonResDiscoveryPathAccess      bool
 	UseNamespaceResourceScopeFormat     bool
 	DiscoverResources                   bool
+	EnableManagedNamespaceRBAC          bool
 	ReconcileDiscoverResourcesFrequency time.Duration
 	KubeConfigFile                      string
 }
@@ -73,6 +74,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.AllowNonResDiscoveryPathAccess, "azure.allow-nonres-discovery-path-access", o.AllowNonResDiscoveryPathAccess, "allow access on Non Resource paths required for discovery, setting it false will require explicit non resource path role assignment for all users in Azure RBAC")
 	fs.BoolVar(&o.UseNamespaceResourceScopeFormat, "azure.use-ns-resource-scope-format", o.UseNamespaceResourceScopeFormat, "use namespace as resource scope format for making rbac checkaccess calls at namespace scope")
 	fs.StringVar(&o.KubeConfigFile, "azure.kubeconfig-file", "", "path to the kubeconfig of cluster.")
+	fs.BoolVar(&o.EnableManagedNamespaceRBAC, "azure.enable-managed-namespace-rbac", o.EnableManagedNamespaceRBAC, "enable managed namespace RBAC for azure authz mode")
 	fs.BoolVar(&o.DiscoverResources, "azure.discover-resources", o.DiscoverResources, "fetch list of resources and operations from apiserver and azure. Default: false")
 	fs.DurationVar(&o.ReconcileDiscoverResourcesFrequency, "azure.discover-resources-frequency", o.ReconcileDiscoverResourcesFrequency, "Frequency at which discover resources should be reconciled. Default: 5m")
 }
