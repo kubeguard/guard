@@ -378,14 +378,17 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		finalStatus = status
 	}
 	if finalStatus != nil && finalStatus.Allowed {
+		klog.V(5).Infof("Checkaccess request is allowed for user %s", checkAccessUsername)
 		return finalStatus, nil
 	}
 
 	if !a.enableManagedNamespaceRBAC {
+		klog.V(5).Infof("Checkaccess request is denied for user %s", checkAccessUsername)
 		return finalStatus, nil
 	}
 
-	// we have a potential denied status for namespace scoped request so we need to check managedNamespaces scope as well
+	klog.V(5).Infof("Falling back to checking managed namespace scope", checkAccessUsername)
+
 	checkAccessURLManagedNS := *a.apiURL
 	checkAccessURLManagedNS.Path = path.Join(checkAccessURLManagedNS.Path, a.azureResourceId)
 
@@ -453,6 +456,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 
 	for status := range ch {
 		if status.Denied {
+			klog.V(5).Infof("Checkaccess request is denied because one of the actions is denied for user %s in managedNamespace scope", checkAccessUsername)
 			finalStatusManagedNS = status
 			break
 		}
@@ -460,6 +464,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		finalStatusManagedNS = status
 	}
 
+	klog.V(5).Infof("Checkaccess request is allowed by the managedNamespace scope for user %s", checkAccessUsername)
 	return finalStatusManagedNS, nil
 }
 
