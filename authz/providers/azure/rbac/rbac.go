@@ -300,6 +300,8 @@ func (a *AccessInfo) setReqHeaders(req *http.Request) {
 }
 
 func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
+	// temporarily log the request TODO: remove
+	klog.V(5).Infof("CheckAccess request: %s", request)
 	checkAccessBodies, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in preparing check access request")
@@ -394,6 +396,8 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 
 	exists, managedNameSpaceString := getManagedNameSpaceScope(request)
 	if !exists {
+		// cluster level request
+		klog.V(5).Infof("Skipping managed namespace check for user %s because SAR is cluster scoped", checkAccessUsername)
 		return finalStatus, nil
 	}
 	checkAccessURLManagedNS.Path = path.Join(checkAccessURLManagedNS.Path, managedNameSpaceString)
