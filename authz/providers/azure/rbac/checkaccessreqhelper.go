@@ -41,6 +41,7 @@ const (
 	AccessNotAllowedVerdict     = "User does not have access to the resource in Azure. Update role assignment to allow access."
 	NamespaceResourceFormat     = "/providers/Microsoft.KubernetesConfiguration/namespaces"
 	namespaces                  = "namespaces"
+	managedNamespaces           = "managedNamespaces"
 	NoOpinionVerdict            = "Azure does not have opinion for this user."
 	NonAADUserNoOpVerdict       = "Azure does not have opinion for this non AAD user. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig"
 	NonAADUserNotAllowedVerdict = "Access denied by Azure RBAC for non AAD users. Configure --azure.skip-authz-for-non-aad-users to enable access. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig."
@@ -533,6 +534,15 @@ func getNameSpaceScope(req *authzv1.SubjectAccessReviewSpec, useNamespaceResourc
 		} else {
 			namespace = path.Join(namespaces, req.ResourceAttributes.Namespace)
 		}
+		return true, namespace
+	}
+	return false, namespace
+}
+
+func getManagedNameSpaceScope(req *authzv1.SubjectAccessReviewSpec) (bool, string) {
+	var namespace string = ""
+	if req.ResourceAttributes != nil && req.ResourceAttributes.Namespace != "" {
+		namespace = path.Join(managedNamespaces, req.ResourceAttributes.Namespace)
 		return true, namespace
 	}
 	return false, namespace
