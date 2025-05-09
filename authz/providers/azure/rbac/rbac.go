@@ -400,7 +400,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	checkAccessURLManagedNS.Path = path.Join(checkAccessURLManagedNS.Path, checkAccessPath)
 	paramsManagedNS := url.Values{}
 	paramsManagedNS.Add("api-version", checkAccessAPIVersion)
-	checkAccessURLManagedNS.RawQuery = params.Encode()
+	checkAccessURLManagedNS.RawQuery = paramsManagedNS.Encode()
 
 	ctx, cancel = context.WithTimeout(context.Background(), checkaccessContextTimeout)
 	defer cancel()
