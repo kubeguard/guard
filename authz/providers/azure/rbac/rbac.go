@@ -300,8 +300,7 @@ func (a *AccessInfo) setReqHeaders(req *http.Request) {
 }
 
 func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
-	// temporarily log the request TODO: remove
-	klog.V(5).Infof("CheckAccess request: %s", request)
+	klog.V(5).Infof("CheckAccess request for user %s, verb %s, resource %s", request.User, request.ResourceAttributes.Verb, request.ResourceAttributes.Resource)
 	checkAccessBodies, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in preparing check access request")
