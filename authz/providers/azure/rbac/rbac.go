@@ -384,7 +384,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		return finalStatus, nil
 	}
 
-	if !a.enableManagedNamespaceRBAC {
+	if !a.enableManagedNamespaceRBAC || a.clusterType != managedClusters {
 		klog.V(5).Infof("Checkaccess request is denied for user %s", checkAccessUsername)
 		return finalStatus, nil
 	}
@@ -419,6 +419,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		body := checkAccessBody
 		// replace namespaces with managedNamespaces TODO make more robust
 		body.Resource.Id = strings.Replace(body.Resource.Id, "/namespaces/", "/managedNamespaces/", 1)
+		// body.Resource.Id = getManagedNameSpaceScope(request)
 		eg.Go(func() error {
 			// create a request id for every checkaccess request
 			requestUUID := uuid.New()
