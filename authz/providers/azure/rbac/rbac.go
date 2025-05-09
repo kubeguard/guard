@@ -417,9 +417,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	eg.SetLimit(len(checkAccessBodies))
 	for _, checkAccessBody := range checkAccessBodies {
 		body := checkAccessBody
-		// replace namespaces with managedNamespaces TODO make more robust
-		body.Resource.Id = strings.Replace(body.Resource.Id, "/namespaces/", "/managedNamespaces/", 1)
-		// body.Resource.Id = getManagedNameSpaceScope(request)
+		body.Resource.Id = path.Join(a.azureResourceId, managedNameSpaceString)
 		eg.Go(func() error {
 			// create a request id for every checkaccess request
 			requestUUID := uuid.New()
