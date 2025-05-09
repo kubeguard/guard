@@ -463,9 +463,6 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 
 		finalStatusManagedNS = status
 	}
-
-	// todo buggy log below, remove
-	klog.V(5).Infof("Checkaccess request is allowed by the managedNamespace scope for user %s", checkAccessUsername)
 	return finalStatusManagedNS, nil
 }
 
