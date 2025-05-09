@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -37,6 +38,39 @@ func getAPIServerAndAccessInfo(returnCode int, body, clusterType, resourceId str
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(returnCode)
 		_, _ = w.Write([]byte(body))
+	}))
+	apiURL, _ := url.Parse(ts.URL)
+	u := &AccessInfo{
+		client:          httpclient.DefaultHTTPClient,
+		apiURL:          apiURL,
+		headers:         http.Header{},
+		expiresAt:       time.Now().Add(time.Hour),
+		clusterType:     clusterType,
+		azureResourceId: resourceId,
+		armCallLimit:    0,
+		lock:            sync.RWMutex{},
+	}
+	return ts, u
+}
+
+// getAPIServerAndAccessInfoWithPaths allows custom status and body for /managedNamespaces/ and /namespaces/ paths
+func getAPIServerAndAccessInfoWithPaths(
+	defaultStatus int, defaultBody, clusterType, resourceId string,
+	managedNamespacesStatus int, managedNamespacesBody string,
+	namespacesStatus int, namespacesBody string,
+) (*httptest.Server, *AccessInfo) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/managedNamespaces/") {
+			w.WriteHeader(managedNamespacesStatus)
+			_, _ = w.Write([]byte(managedNamespacesBody))
+			return
+		} else if strings.Contains(r.URL.Path, "/namespaces/") {
+			w.WriteHeader(namespacesStatus)
+			_, _ = w.Write([]byte(namespacesBody))
+			return
+		}
+		w.WriteHeader(defaultStatus)
+		_, _ = w.Write([]byte(defaultBody))
 	}))
 	apiURL, _ := url.Parse(ts.URL)
 	u := &AccessInfo{
@@ -155,6 +189,132 @@ func TestCheckAccess(t *testing.T) {
 		}
 
 		wg.Wait()
+	})
+
+	t.Run("differing responses for managedNamespaces and namespaces", func(t *testing.T) {
+		t.Parallel()
+		type testCase struct {
+			name                       string
+			managedStatus              int
+			managedBody                string
+			namespaceStatus            int
+			namespaceBody              string
+			expectedAllowed            bool
+			expectedDenied             bool
+			enableManagedNamespaceRBAC bool
+		}
+
+		tests := []testCase{
+			{
+				name:                       "allowed for managedNamespaces, denied for namespaces",
+				managedStatus:              http.StatusOK,
+				managedBody:                `[{"accessDecision":"Allowed","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				namespaceStatus:            http.StatusOK,
+				namespaceBody:              `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				expectedAllowed:            true,
+				expectedDenied:             false,
+				enableManagedNamespaceRBAC: true,
+			},
+			{
+				name:                       "denied for managedNamespaces, allowed for namespaces",
+				managedStatus:              http.StatusOK,
+				managedBody:                `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				namespaceStatus:            http.StatusOK,
+				namespaceBody:              `[{"accessDecision":"Allowed","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				expectedAllowed:            true,
+				expectedDenied:             false,
+				enableManagedNamespaceRBAC: true,
+			},
+			{
+				name:                       "denied for both",
+				managedStatus:              http.StatusOK,
+				managedBody:                `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				namespaceStatus:            http.StatusOK,
+				namespaceBody:              `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				expectedAllowed:            false,
+				expectedDenied:             true,
+				enableManagedNamespaceRBAC: true,
+			},
+			{
+				name:                       "allowed for both",
+				managedStatus:              http.StatusOK,
+				managedBody:                `[{"accessDecision":"Allowed","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				namespaceStatus:            http.StatusOK,
+				namespaceBody:              `[{"accessDecision":"Allowed","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				expectedAllowed:            true,
+				expectedDenied:             false,
+				enableManagedNamespaceRBAC: true,
+			},
+			{
+				name:                       "allowed for both flag off",
+				managedStatus:              http.StatusOK,
+				managedBody:                `[{"accessDecision":"Allowed","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				namespaceStatus:            http.StatusOK,
+				namespaceBody:              `[{"accessDecision":"Allowed","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				expectedAllowed:            true,
+				expectedDenied:             false,
+				enableManagedNamespaceRBAC: false,
+			},
+			{
+				name:                       "denied for both flag off",
+				managedStatus:              http.StatusOK,
+				managedBody:                `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				namespaceStatus:            http.StatusOK,
+				namespaceBody:              `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				expectedAllowed:            false,
+				expectedDenied:             true,
+				enableManagedNamespaceRBAC: false,
+			},
+			{
+				name:            "allowed for managedNamespaces, denied for namespaces flag off",
+				managedStatus:   http.StatusOK,
+				managedBody:     `[{"accessDecision":"Allowed","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				namespaceStatus: http.StatusOK,
+
+				namespaceBody:              `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				expectedAllowed:            false,
+				expectedDenied:             true,
+				enableManagedNamespaceRBAC: false,
+			},
+			{
+				name:                       "denied for managedNamespaces, allowed for namespaces flag off",
+				managedStatus:              http.StatusOK,
+				managedBody:                `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				namespaceStatus:            http.StatusOK,
+				namespaceBody:              `[{"accessDecision":"Allowed","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				expectedAllowed:            true,
+				expectedDenied:             false,
+				enableManagedNamespaceRBAC: false,
+			},
+		}
+
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+				ts, u := getAPIServerAndAccessInfoWithPaths(
+					http.StatusOK, tc.namespaceBody, "aks", "resourceid",
+					tc.managedStatus, tc.managedBody,
+					tc.namespaceStatus, tc.namespaceBody,
+				)
+				u.enableManagedNamespaceRBAC = tc.enableManagedNamespaceRBAC
+				defer ts.Close()
+
+				request := &authzv1.SubjectAccessReviewSpec{
+					User: "test@bing.com",
+					ResourceAttributes: &authzv1.ResourceAttributes{
+						Namespace: "dev", Group: "", Resource: "pods",
+						Subresource: "status", Version: "v1", Name: "test", Verb: "delete",
+					},
+					Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
+				}
+
+				response, err := u.CheckAccess(request)
+				assert.NoError(t, err)
+				assert.NotNil(t, response)
+				assert.Equal(t, tc.expectedAllowed, response.Allowed)
+				assert.Equal(t, tc.expectedDenied, response.Denied)
+			})
+		}
 	})
 }
 
