@@ -316,7 +316,7 @@ func TestCheckAccess(t *testing.T) {
 					tc.managedStatus, tc.managedBody,
 					tc.namespaceStatus, tc.namespaceBody,
 				)
-				u.enableManagedNamespaceRBAC = tc.enableManagedNamespaceRBAC
+				u.useManagedNamespaceResourceScopeFormat = tc.enableManagedNamespaceRBAC
 				u.clusterType = tc.clusterType
 				defer ts.Close()
 

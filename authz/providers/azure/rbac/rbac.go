@@ -79,17 +79,17 @@ type AccessInfo struct {
 	// These allow us to mock out the URL for testing
 	apiURL *url.URL
 
-	tokenProvider                   graph.TokenProvider
-	clusterType                     string
-	azureResourceId                 string
-	armCallLimit                    int
-	skipCheck                       map[string]void
-	skipAuthzForNonAADUsers         bool
-	allowNonResDiscoveryPathAccess  bool
-	enableManagedNamespaceRBAC      bool
-	useNamespaceResourceScopeFormat bool
-	httpClientRetryCount            int
-	lock                            sync.RWMutex
+	tokenProvider                          graph.TokenProvider
+	clusterType                            string
+	azureResourceId                        string
+	armCallLimit                           int
+	skipCheck                              map[string]void
+	skipAuthzForNonAADUsers                bool
+	allowNonResDiscoveryPathAccess         bool
+	useManagedNamespaceResourceScopeFormat bool
+	useNamespaceResourceScopeFormat        bool
+	httpClientRetryCount                   int
+	lock                                   sync.RWMutex
 }
 
 var (
@@ -165,15 +165,15 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 			"Content-Type": []string{"application/json"},
 			"User-Agent":   []string{fmt.Sprintf("guard-%s-%s-%s-%s", v.Version.Platform, v.Version.GoVersion, v.Version.Version, opts.AuthzMode)},
 		},
-		apiURL:                          rbacURL,
-		tokenProvider:                   tokenProvider,
-		azureResourceId:                 opts.ResourceId,
-		armCallLimit:                    opts.ARMCallLimit,
-		skipAuthzForNonAADUsers:         opts.SkipAuthzForNonAADUsers,
-		allowNonResDiscoveryPathAccess:  opts.AllowNonResDiscoveryPathAccess,
-		enableManagedNamespaceRBAC:      opts.EnableManagedNamespaceRBAC,
-		useNamespaceResourceScopeFormat: opts.UseNamespaceResourceScopeFormat,
-		httpClientRetryCount:            authopts.HttpClientRetryCount,
+		apiURL:                                 rbacURL,
+		tokenProvider:                          tokenProvider,
+		azureResourceId:                        opts.ResourceId,
+		armCallLimit:                           opts.ARMCallLimit,
+		skipAuthzForNonAADUsers:                opts.SkipAuthzForNonAADUsers,
+		allowNonResDiscoveryPathAccess:         opts.AllowNonResDiscoveryPathAccess,
+		useManagedNamespaceResourceScopeFormat: opts.UseManagedNamespaceResourceScopeFormat,
+		useNamespaceResourceScopeFormat:        opts.UseNamespaceResourceScopeFormat,
+		httpClientRetryCount:                   authopts.HttpClientRetryCount,
 	}
 
 	u.skipCheck = make(map[string]void, len(opts.SkipAuthzCheck))
@@ -383,7 +383,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		return finalStatus, nil
 	}
 
-	if !a.enableManagedNamespaceRBAC || a.clusterType != managedClusters {
+	if !a.useManagedNamespaceResourceScopeFormat || a.clusterType != managedClusters {
 		klog.V(5).Infof("Checkaccess request is denied for user %s", checkAccessUsername)
 		return finalStatus, nil
 	}
