@@ -300,24 +300,36 @@ func (a *AccessInfo) setReqHeaders(req *http.Request) {
 }
 
 func (a *AccessInfo) performCheckAccess(
-	ctx context.Context,
 	url url.URL,
 	bodies []*CheckAccessRequest,
 	username string,
 ) (*authzv1.SubjectAccessReviewStatus, error) {
-	ch := make(chan *authzv1.SubjectAccessReviewStatus, len(bodies))
+	ctx, cancel := context.WithTimeout(context.Background(), checkaccessContextTimeout)
+	defer cancel()
 	eg, egCtx := errgroup.WithContext(ctx)
-	eg.SetLimit(len(bodies))
+
+	ch := make(chan *authzv1.SubjectAccessReviewStatus, len(bodies))
 	if len(bodies) > 1 {
 		klog.V(5).Infof("Number of checkaccess requests to make: %d", len(bodies))
 	}
+	eg.SetLimit(len(bodies))
 	for _, body := range bodies {
 		b := body
 		eg.Go(func() error {
+			// create a request id for every checkaccess request
 			reqID := uuid.New()
 			rqCtx := context.WithValue(egCtx, correlationRequestIDKey(correlationRequestIDHeader), []string{reqID.String()})
 			rqCtx = azureutils.WithRetryableHttpClient(rqCtx, a.httpClientRetryCount)
-			return a.sendCheckAccessRequest(rqCtx, username, url, b, ch)
+			err := a.sendCheckAccessRequest(rqCtx, username, url, b, ch)
+			if err != nil {
+				code := http.StatusInternalServerError
+				if v, ok := err.(errutils.HttpStatusCode); ok {
+					code = v.Code()
+				}
+				err = errutils.WithCode(errors.Errorf("Error: %s. Correlation ID: %s", err, reqID.String()), code)
+				return err
+			}
+			return nil
 		})
 	}
 
@@ -327,30 +339,27 @@ func (a *AccessInfo) performCheckAccess(
 			for _, b := range bodies {
 				actionsCount += len(b.Actions)
 			}
-			checkAccessContextTimedOutCount.WithLabelValues(
-				strconv.Itoa(len(bodies)),
-				strconv.Itoa(actionsCount),
-			).Inc()
+			checkAccessContextTimedOutCount.WithLabelValues(azureutils.ConvertIntToString(len(bodies)), azureutils.ConvertIntToString(actionsCount)).Inc()
 			close(ch)
-			return nil, errutils.WithCode(
-				errors.Wrap(ctx.Err(), "Checkaccess requests have timed out."),
-				http.StatusInternalServerError,
-			)
+			return nil, errutils.WithCode(errors.Wrap(ctx.Err(), "Checkaccess requests have timed out."), http.StatusInternalServerError)
+		} else {
+			close(ch)
+			// print error we get from sendcheckAccessRequest
+			klog.Error(err)
+			return nil, err
 		}
-		close(ch)
-		return nil, err
 	}
 	close(ch)
 
-	var final *authzv1.SubjectAccessReviewStatus
-	for st := range ch {
-		if st.Denied {
-			final = st
+	var finalStatus *authzv1.SubjectAccessReviewStatus
+	for status := range ch {
+		if status.Denied {
+			finalStatus = status
 			break
 		}
-		final = st
+		finalStatus = status
 	}
-	return final, nil
+	return finalStatus, nil
 }
 
 func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
