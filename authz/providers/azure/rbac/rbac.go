@@ -335,9 +335,10 @@ func (a *AccessInfo) performCheckAccess(
 
 	if err := eg.Wait(); err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
+			klog.V(5).Infof("Checkaccess requests have timed out. Error: %v", ctx.Err())
 			actionsCount := 0
-			for _, b := range checkAccessBodies {
-				actionsCount += len(b.Actions)
+			for i := 0; i < len(checkAccessBodies); i += 1 {
+				actionsCount = actionsCount + len(checkAccessBodies[i].Actions)
 			}
 			checkAccessContextTimedOutCount.WithLabelValues(azureutils.ConvertIntToString(len(checkAccessBodies)), azureutils.ConvertIntToString(actionsCount)).Inc()
 			close(ch)
