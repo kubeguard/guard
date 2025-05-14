@@ -358,9 +358,9 @@ func (a *AccessInfo) performCheckAccess(
 			finalStatus = status
 			break
 		}
+
 		finalStatus = status
 	}
-
 	return finalStatus, nil
 }
 
