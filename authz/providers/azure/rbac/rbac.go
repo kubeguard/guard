@@ -396,7 +396,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	exists, managedNameSpaceString := getManagedNameSpaceScope(request)
 	if !exists {
 		// cluster level request
-		klog.V(5).Infof("Skipping managed namespace check for user %s because SAR is cluster scoped", checkAccessUsername)
+		klog.V(5).Infof("Skipping managed namespace check for user %s because subject access review is cluster scoped", checkAccessUsername)
 		return finalStatus, nil
 	}
 	checkAccessURLManagedNS.Path = path.Join(checkAccessURLManagedNS.Path, managedNameSpaceString)
