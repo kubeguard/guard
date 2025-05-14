@@ -300,33 +300,33 @@ func (a *AccessInfo) setReqHeaders(req *http.Request) {
 }
 
 func (a *AccessInfo) performCheckAccess(
-	url url.URL,
-	bodies []*CheckAccessRequest,
-	username string,
+	checkAccessURL url.URL,
+	checkAccessBodies []*CheckAccessRequest,
+	checkAccessUsername string,
 ) (*authzv1.SubjectAccessReviewStatus, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), checkaccessContextTimeout)
 	defer cancel()
 	eg, egCtx := errgroup.WithContext(ctx)
 
-	ch := make(chan *authzv1.SubjectAccessReviewStatus, len(bodies))
-	if len(bodies) > 1 {
-		klog.V(5).Infof("Number of checkaccess requests to make: %d", len(bodies))
+	ch := make(chan *authzv1.SubjectAccessReviewStatus, len(checkAccessBodies))
+	if len(checkAccessBodies) > 1 {
+		klog.V(5).Infof("Number of checkaccess requests to make: %d", len(checkAccessBodies))
 	}
-	eg.SetLimit(len(bodies))
-	for _, body := range bodies {
-		b := body
+	eg.SetLimit(len(checkAccessBodies))
+	for _, checkAccessBody := range checkAccessBodies {
+		body := checkAccessBody
 		eg.Go(func() error {
 			// create a request id for every checkaccess request
-			reqID := uuid.New()
-			rqCtx := context.WithValue(egCtx, correlationRequestIDKey(correlationRequestIDHeader), []string{reqID.String()})
-			rqCtx = azureutils.WithRetryableHttpClient(rqCtx, a.httpClientRetryCount)
-			err := a.sendCheckAccessRequest(rqCtx, username, url, b, ch)
+			requestUUID := uuid.New()
+			reqContext := context.WithValue(egCtx, correlationRequestIDKey(correlationRequestIDHeader), []string{requestUUID.String()})
+			reqContext = azureutils.WithRetryableHttpClient(reqContext, a.httpClientRetryCount)
+			err := a.sendCheckAccessRequest(reqContext, checkAccessUsername, checkAccessURL, body, ch)
 			if err != nil {
 				code := http.StatusInternalServerError
 				if v, ok := err.(errutils.HttpStatusCode); ok {
 					code = v.Code()
 				}
-				err = errutils.WithCode(errors.Errorf("Error: %s. Correlation ID: %s", err, reqID.String()), code)
+				err = errutils.WithCode(errors.Errorf("Error: %s. Correlation ID: %s", err, requestUUID.String()), code)
 				return err
 			}
 			return nil
@@ -336,10 +336,10 @@ func (a *AccessInfo) performCheckAccess(
 	if err := eg.Wait(); err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
 			actionsCount := 0
-			for _, b := range bodies {
+			for _, b := range checkAccessBodies {
 				actionsCount += len(b.Actions)
 			}
-			checkAccessContextTimedOutCount.WithLabelValues(azureutils.ConvertIntToString(len(bodies)), azureutils.ConvertIntToString(actionsCount)).Inc()
+			checkAccessContextTimedOutCount.WithLabelValues(azureutils.ConvertIntToString(len(checkAccessBodies)), azureutils.ConvertIntToString(actionsCount)).Inc()
 			close(ch)
 			return nil, errutils.WithCode(errors.Wrap(ctx.Err(), "Checkaccess requests have timed out."), http.StatusInternalServerError)
 		} else {
