@@ -339,6 +339,69 @@ func TestCheckAccess(t *testing.T) {
 	})
 }
 
+func TestCheckAccess_ClusterScoped(t *testing.T) {
+	tests := []struct {
+		name           string
+		returnCode     int
+		body           string
+		expectedAllow  bool
+		expectedDeny   bool
+	}{
+		{
+			name:          "cluster-scoped empty namespace → allowed",
+			returnCode:    http.StatusOK,
+			body:          `[{"accessDecision":"Allowed","actionId":"foo","isDataAction":false}]`,
+			expectedAllow: true,
+			expectedDeny:  false,
+		},
+		{
+			name:          "cluster-scoped empty namespace → denied",
+			returnCode:    http.StatusOK,
+			body:          `[{"accessDecision":"Denied","actionId":"foo","isDataAction":false}]`,
+			expectedAllow: false,
+			expectedDeny:  true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// set up a fake ARM endpoint that always returns tc.body
+			ts, u := getAPIServerAndAccessInfo(
+				tc.returnCode,
+				tc.body,
+				managedClusters,
+				"resourceid",
+			)
+			defer ts.Close()
+
+			// build a SAR with Namespace = ""
+			request := &authzv1.SubjectAccessReviewSpec{
+				User: "cluster-admin@company.com",
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace:   "",       // empty = cluster-scoped
+					Group:       "",
+					Resource:    "pods",
+					Version:     "v1",
+					Verb:        "get",
+					Name:        "my-pod",
+					Subresource: "",
+				},
+				Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
+			}
+
+			u.useManagedNamespaceResourceScopeFormat = true
+
+			resp, err := u.CheckAccess(request)
+
+			assert.NoError(t, err, "CheckAccess should not return error")
+			assert.NotNil(t, resp, "response should always be non-nil")
+			assert.Equal(t, tc.expectedAllow, resp.Allowed, "Allowed mismatch")
+			assert.Equal(t, tc.expectedDeny, resp.Denied, "Denied mismatch")
+		})
+	}
+}
+
+
 func getAuthServerAndAccessInfo(returnCode int, body, clientID, clientSecret string) (*httptest.Server, *AccessInfo) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(returnCode)
