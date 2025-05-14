@@ -383,152 +383,43 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	params := url.Values{}
 	params.Add("api-version", checkAccessAPIVersion)
 	checkAccessURL.RawQuery = params.Encode()
-
-	ctx, cancel := context.WithTimeout(context.Background(), checkaccessContextTimeout)
-	defer cancel()
-	eg, egCtx := errgroup.WithContext(ctx)
-
-	ch := make(chan *authzv1.SubjectAccessReviewStatus, len(checkAccessBodies))
-	if len(checkAccessBodies) > 1 {
-		klog.V(5).Infof("Number of checkaccess requests to make: %d", len(checkAccessBodies))
+	status, err := a.performCheckAccess(checkAccessURL, checkAccessBodies, checkAccessUsername)
+	if err != nil {
+		return nil, err
 	}
-	eg.SetLimit(len(checkAccessBodies))
-	for _, checkAccessBody := range checkAccessBodies {
-		body := checkAccessBody
-		eg.Go(func() error {
-			// create a request id for every checkaccess request
-			requestUUID := uuid.New()
-			reqContext := context.WithValue(egCtx, correlationRequestIDKey(correlationRequestIDHeader), []string{requestUUID.String()})
-			reqContext = azureutils.WithRetryableHttpClient(reqContext, a.httpClientRetryCount)
-			err := a.sendCheckAccessRequest(reqContext, checkAccessUsername, checkAccessURL, body, ch)
-			if err != nil {
-				code := http.StatusInternalServerError
-				if v, ok := err.(errutils.HttpStatusCode); ok {
-					code = v.Code()
-				}
-				err = errutils.WithCode(errors.Errorf("Error: %s. Correlation ID: %s", err, requestUUID.String()), code)
-				return err
-			}
-			return nil
-		})
-	}
-
-	if err := eg.Wait(); err != nil {
-		if ctx.Err() == context.DeadlineExceeded {
-			klog.V(5).Infof("Checkaccess requests have timed out. Error: %v", ctx.Err())
-			actionsCount := 0
-			for i := 0; i < len(checkAccessBodies); i += 1 {
-				actionsCount = actionsCount + len(checkAccessBodies[i].Actions)
-			}
-			checkAccessContextTimedOutCount.WithLabelValues(azureutils.ConvertIntToString(len(checkAccessBodies)), azureutils.ConvertIntToString(actionsCount)).Inc()
-			close(ch)
-			return nil, errutils.WithCode(errors.Wrap(ctx.Err(), "Checkaccess requests have timed out."), http.StatusInternalServerError)
-		} else {
-			close(ch)
-			// print error we get from sendcheckAccessRequest
-			klog.Error(err)
-			return nil, err
-		}
-	}
-	close(ch)
-
-	var finalStatus *authzv1.SubjectAccessReviewStatus
-	for status := range ch {
-		if status.Denied {
-			finalStatus = status
-			break
-		}
-
-		finalStatus = status
-	}
-	if finalStatus != nil && finalStatus.Allowed {
+	if status != nil && status.Allowed {
 		klog.V(7).Infof("Checkaccess request is allowed for user %s", checkAccessUsername)
-		return finalStatus, nil
+		return status, nil
 	}
 
 	if !a.useManagedNamespaceResourceScopeFormat || a.clusterType != managedClusters {
 		klog.V(7).Infof("Checkaccess request is denied for user %s", checkAccessUsername)
-		return finalStatus, nil
+		return status, nil
 	}
 
-	klog.V(7).Infof("Falling back to checking managed namespace scope", checkAccessUsername)
-
-	checkAccessURLManagedNS := *a.apiURL
-	checkAccessURLManagedNS.Path = path.Join(checkAccessURLManagedNS.Path, a.azureResourceId)
-
-	exists, managedNameSpaceString := getManagedNameSpaceScope(request)
+	klog.V(7).Infof("Falling back to checking managed namespace scope for user %s", checkAccessUsername)
+	managedNamespaceURL := *a.apiURL
+	managedNamespaceURL.Path = path.Join(managedNamespaceURL.Path, a.azureResourceId)
+	exists, managedNamespacePath := getManagedNameSpaceScope(request)
 	if !exists {
-		// cluster level request
-		klog.V(7).Infof("Skipping managed namespace check for user %s because subject access review is cluster scoped", checkAccessUsername)
-		return finalStatus, nil
+		klog.V(7).Infof(
+			"Skipping managed namespace check for user %s because subject access review is cluster scoped",
+			checkAccessUsername,
+		)
+		return status, nil
 	}
-	checkAccessURLManagedNS.Path = path.Join(checkAccessURLManagedNS.Path, managedNameSpaceString)
-	checkAccessURLManagedNS.Path = path.Join(checkAccessURLManagedNS.Path, checkAccessPath)
+	managedNamespaceURL.Path = path.Join(managedNamespaceURL.Path, managedNamespacePath)
+	managedNamespaceURL.Path = path.Join(managedNamespaceURL.Path, checkAccessPath)
 	paramsManagedNS := url.Values{}
 	paramsManagedNS.Add("api-version", checkAccessAPIVersion)
-	checkAccessURLManagedNS.RawQuery = paramsManagedNS.Encode()
+	managedNamespaceURL.RawQuery = paramsManagedNS.Encode()
 
-	ctx, cancel = context.WithTimeout(context.Background(), checkaccessContextTimeout)
-	defer cancel()
-	eg, egCtx = errgroup.WithContext(ctx)
-
-	ch = make(chan *authzv1.SubjectAccessReviewStatus, len(checkAccessBodies))
-	if len(checkAccessBodies) > 1 {
-		klog.V(5).Infof("Number of checkaccess requests to make: %d", len(checkAccessBodies))
-	}
-	eg.SetLimit(len(checkAccessBodies))
-	for _, checkAccessBody := range checkAccessBodies {
-		body := checkAccessBody
-		body.Resource.Id = path.Join(a.azureResourceId, managedNameSpaceString)
-		eg.Go(func() error {
-			// create a request id for every checkaccess request
-			requestUUID := uuid.New()
-			reqContext := context.WithValue(egCtx, correlationRequestIDKey(correlationRequestIDHeader), []string{requestUUID.String()})
-			reqContext = azureutils.WithRetryableHttpClient(reqContext, a.httpClientRetryCount)
-			err := a.sendCheckAccessRequest(reqContext, checkAccessUsername, checkAccessURLManagedNS, body, ch)
-			if err != nil {
-				code := http.StatusInternalServerError
-				if v, ok := err.(errutils.HttpStatusCode); ok {
-					code = v.Code()
-				}
-				err = errutils.WithCode(errors.Errorf("Error: %s. Correlation ID: %s", err, requestUUID.String()), code)
-				return err
-			}
-			return nil
-		})
+	// update resource IDs for managed namespace
+	for _, b := range checkAccessBodies {
+		b.Resource.Id = path.Join(a.azureResourceId, managedNamespacePath)
 	}
 
-	if err := eg.Wait(); err != nil {
-		if ctx.Err() == context.DeadlineExceeded {
-			klog.Errorf("Checkaccess requests have timed out. Error: %v", ctx.Err())
-			actionsCount := 0
-			for i := 0; i < len(checkAccessBodies); i += 1 {
-				actionsCount = actionsCount + len(checkAccessBodies[i].Actions)
-			}
-			checkAccessContextTimedOutCount.WithLabelValues(azureutils.ConvertIntToString(len(checkAccessBodies)), azureutils.ConvertIntToString(actionsCount)).Inc()
-			close(ch)
-			return nil, errutils.WithCode(errors.Wrap(ctx.Err(), "Checkaccess requests have timed out."), http.StatusInternalServerError)
-		} else {
-			close(ch)
-			// print error we get from sendcheckAccessRequest
-			klog.Error(err)
-			return nil, err
-		}
-	}
-	close(ch)
-
-	var finalStatusManagedNS *authzv1.SubjectAccessReviewStatus
-
-	for status := range ch {
-		if status.Denied {
-			klog.V(7).Infof("Checkaccess request is denied because one of the actions is denied for user %s in managedNamespace scope", checkAccessUsername)
-			finalStatusManagedNS = status
-			break
-		}
-
-		finalStatusManagedNS = status
-	}
-	return finalStatusManagedNS, nil
+	return a.performCheckAccess(managedNamespaceURL, checkAccessBodies, checkAccessUsername)
 }
 
 func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUsername string, checkAccessURL url.URL, checkAccessBody *CheckAccessRequest, ch chan *authzv1.SubjectAccessReviewStatus) error {
