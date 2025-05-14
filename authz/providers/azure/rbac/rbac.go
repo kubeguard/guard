@@ -379,16 +379,16 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		finalStatus = status
 	}
 	if finalStatus != nil && finalStatus.Allowed {
-		klog.V(5).Infof("Checkaccess request is allowed for user %s", checkAccessUsername)
+		klog.V(7).Infof("Checkaccess request is allowed for user %s", checkAccessUsername)
 		return finalStatus, nil
 	}
 
 	if !a.useManagedNamespaceResourceScopeFormat || a.clusterType != managedClusters {
-		klog.V(5).Infof("Checkaccess request is denied for user %s", checkAccessUsername)
+		klog.V(7).Infof("Checkaccess request is denied for user %s", checkAccessUsername)
 		return finalStatus, nil
 	}
 
-	klog.V(5).Infof("Falling back to checking managed namespace scope", checkAccessUsername)
+	klog.V(7).Infof("Falling back to checking managed namespace scope", checkAccessUsername)
 
 	checkAccessURLManagedNS := *a.apiURL
 	checkAccessURLManagedNS.Path = path.Join(checkAccessURLManagedNS.Path, a.azureResourceId)
@@ -396,7 +396,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	exists, managedNameSpaceString := getManagedNameSpaceScope(request)
 	if !exists {
 		// cluster level request
-		klog.V(5).Infof("Skipping managed namespace check for user %s because subject access review is cluster scoped", checkAccessUsername)
+		klog.V(7).Infof("Skipping managed namespace check for user %s because subject access review is cluster scoped", checkAccessUsername)
 		return finalStatus, nil
 	}
 	checkAccessURLManagedNS.Path = path.Join(checkAccessURLManagedNS.Path, managedNameSpaceString)
@@ -458,7 +458,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 
 	for status := range ch {
 		if status.Denied {
-			klog.V(5).Infof("Checkaccess request is denied because one of the actions is denied for user %s in managedNamespace scope", checkAccessUsername)
+			klog.V(7).Infof("Checkaccess request is denied because one of the actions is denied for user %s in managedNamespace scope", checkAccessUsername)
 			finalStatusManagedNS = status
 			break
 		}
