@@ -299,6 +299,60 @@ func (a *AccessInfo) setReqHeaders(req *http.Request) {
 	}
 }
 
+func (a *AccessInfo) performCheckAccess(
+	ctx context.Context,
+	url url.URL,
+	bodies []*CheckAccessRequest,
+	username string,
+) (*authzv1.SubjectAccessReviewStatus, error) {
+	ch := make(chan *authzv1.SubjectAccessReviewStatus, len(bodies))
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.SetLimit(len(bodies))
+	if len(bodies) > 1 {
+		klog.V(5).Infof("Number of checkaccess requests to make: %d", len(bodies))
+	}
+	for _, body := range bodies {
+		b := body
+		eg.Go(func() error {
+			reqID := uuid.New()
+			rqCtx := context.WithValue(egCtx, correlationRequestIDKey(correlationRequestIDHeader), []string{reqID.String()})
+			rqCtx = azureutils.WithRetryableHttpClient(rqCtx, a.httpClientRetryCount)
+			return a.sendCheckAccessRequest(rqCtx, username, url, b, ch)
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			actionsCount := 0
+			for _, b := range bodies {
+				actionsCount += len(b.Actions)
+			}
+			checkAccessContextTimedOutCount.WithLabelValues(
+				strconv.Itoa(len(bodies)),
+				strconv.Itoa(actionsCount),
+			).Inc()
+			close(ch)
+			return nil, errutils.WithCode(
+				errors.Wrap(ctx.Err(), "Checkaccess requests have timed out."),
+				http.StatusInternalServerError,
+			)
+		}
+		close(ch)
+		return nil, err
+	}
+	close(ch)
+
+	var final *authzv1.SubjectAccessReviewStatus
+	for st := range ch {
+		if st.Denied {
+			final = st
+			break
+		}
+		final = st
+	}
+	return final, nil
+}
+
 func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
 	klog.V(7).Infof("CheckAccess request for user %s, resource attributes: %s", request.User, request.ResourceAttributes)
 	checkAccessBodies, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat)
