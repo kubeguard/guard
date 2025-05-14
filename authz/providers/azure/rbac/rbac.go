@@ -360,6 +360,7 @@ func (a *AccessInfo) performCheckAccess(
 		}
 		finalStatus = status
 	}
+
 	return finalStatus, nil
 }
 
