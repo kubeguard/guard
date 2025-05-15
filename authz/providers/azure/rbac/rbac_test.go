@@ -341,11 +341,11 @@ func TestCheckAccess(t *testing.T) {
 
 func TestCheckAccess_ClusterScoped(t *testing.T) {
 	tests := []struct {
-		name           string
-		returnCode     int
-		body           string
-		expectedAllow  bool
-		expectedDeny   bool
+		name          string
+		returnCode    int
+		body          string
+		expectedAllow bool
+		expectedDeny  bool
 	}{
 		{
 			name:          "cluster-scoped empty namespace → allowed",
@@ -378,7 +378,7 @@ func TestCheckAccess_ClusterScoped(t *testing.T) {
 			request := &authzv1.SubjectAccessReviewSpec{
 				User: "cluster-admin@company.com",
 				ResourceAttributes: &authzv1.ResourceAttributes{
-					Namespace:   "",       // empty = cluster-scoped
+					Namespace:   "", // empty = cluster-scoped
 					Group:       "",
 					Resource:    "pods",
 					Version:     "v1",
@@ -400,7 +400,6 @@ func TestCheckAccess_ClusterScoped(t *testing.T) {
 		})
 	}
 }
-
 
 func getAuthServerAndAccessInfo(returnCode int, body, clientID, clientSecret string) (*httptest.Server, *AccessInfo) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
