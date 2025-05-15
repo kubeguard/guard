@@ -372,18 +372,10 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 
 	checkAccessUsername := request.User
 
-	checkAccessURL := *a.apiURL
-	// Append the path for azure cluster resource id
-	checkAccessURL.Path = path.Join(checkAccessURL.Path, a.azureResourceId)
+	// Build primary check access URL
 	exist, nameSpaceString := getNameSpaceScope(request, a.useNamespaceResourceScopeFormat)
-	if exist {
-		checkAccessURL.Path = path.Join(checkAccessURL.Path, nameSpaceString)
-	}
+	checkAccessURL := buildCheckAccessURL(*a.apiURL, a.azureResourceId, exist, nameSpaceString)
 
-	checkAccessURL.Path = path.Join(checkAccessURL.Path, checkAccessPath)
-	params := url.Values{}
-	params.Add("api-version", checkAccessAPIVersion)
-	checkAccessURL.RawQuery = params.Encode()
 	status, err := a.performCheckAccess(checkAccessURL, checkAccessBodies, checkAccessUsername)
 	if err != nil {
 		return nil, err
@@ -393,14 +385,13 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		return status, nil
 	}
 
+	// Fallback to managed namespace check
 	if !a.useManagedNamespaceResourceScopeFormat || a.clusterType != managedClusters {
 		klog.V(7).Infof("Checkaccess request is denied for user %s", checkAccessUsername)
 		return status, nil
 	}
 
 	klog.V(7).Infof("Falling back to checking managed namespace scope for user %s", checkAccessUsername)
-	managedNamespaceURL := *a.apiURL
-	managedNamespaceURL.Path = path.Join(managedNamespaceURL.Path, a.azureResourceId)
 	exists, managedNamespacePath := getManagedNameSpaceScope(request)
 	if !exists {
 		klog.V(7).Infof(
@@ -409,18 +400,31 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		)
 		return status, nil
 	}
-	managedNamespaceURL.Path = path.Join(managedNamespaceURL.Path, managedNamespacePath)
-	managedNamespaceURL.Path = path.Join(managedNamespaceURL.Path, checkAccessPath)
-	paramsManagedNS := url.Values{}
-	paramsManagedNS.Add("api-version", checkAccessAPIVersion)
-	managedNamespaceURL.RawQuery = paramsManagedNS.Encode()
 
-	// update resource IDs for managed namespace
+	// Build managed namespace URL
+	managedNamespaceURL := buildCheckAccessURL(*a.apiURL, a.azureResourceId, true, managedNamespacePath)
+
+	// Update resource IDs for managed namespace
 	for _, b := range checkAccessBodies {
 		b.Resource.Id = path.Join(a.azureResourceId, managedNamespacePath)
 	}
 
 	return a.performCheckAccess(managedNamespaceURL, checkAccessBodies, checkAccessUsername)
+}
+
+// Helper to build the check access URL
+func buildCheckAccessURL(base url.URL, resourceID string, hasNamespace bool, namespacePath string) url.URL {
+	base.Path = path.Join(base.Path, resourceID)
+	if hasNamespace {
+		base.Path = path.Join(base.Path, namespacePath)
+	}
+	base.Path = path.Join(base.Path, checkAccessPath)
+
+	params := url.Values{}
+	params.Add("api-version", checkAccessAPIVersion)
+	base.RawQuery = params.Encode()
+
+	return base
 }
 
 func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUsername string, checkAccessURL url.URL, checkAccessBody *CheckAccessRequest, ch chan *authzv1.SubjectAccessReviewStatus) error {
