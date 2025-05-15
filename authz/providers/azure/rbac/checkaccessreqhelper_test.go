@@ -86,6 +86,45 @@ func Test_getScope(t *testing.T) {
 	}
 }
 
+func Test_getManagedNamespaceScope(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		request  *authzv1.SubjectAccessReviewSpec
+		wantOk   bool
+		wantPath string
+	}{
+		{
+			name:     "nil ResourceAttributes",
+			request:  &authzv1.SubjectAccessReviewSpec{ResourceAttributes: nil},
+			wantOk:   false,
+			wantPath: "",
+		},
+		{
+			name:     "empty Namespace",
+			request:  &authzv1.SubjectAccessReviewSpec{ResourceAttributes: &authzv1.ResourceAttributes{Namespace: ""}},
+			wantOk:   false,
+			wantPath: "",
+		},
+		{
+			name:     "valid Namespace",
+			request:  &authzv1.SubjectAccessReviewSpec{ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev"}},
+			wantOk:   true,
+			wantPath: "managedNamespaces/dev",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			gotOk, gotPath := getManagedNameSpaceScope(tt.request)
+			if gotOk != tt.wantOk || gotPath != tt.wantPath {
+				t.Errorf("getManagedNamespaceScope() = (%v, %q), want (%v, %q)", gotOk, gotPath, tt.wantOk, tt.wantPath)
+			}
+		})
+	}
+}
+
 func Test_getValidSecurityGroups(t *testing.T) {
 	type args struct {
 		groups []string
