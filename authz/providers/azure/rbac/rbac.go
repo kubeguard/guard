@@ -517,7 +517,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 	}
 
 	klog.V(7).Infof("checkaccess response: %s, Configured ARM call limit: %d", string(data), a.armCallLimit)
-	// We can expect the response to be a 200 OK for proxy resources or 404 Not Found for non-proxy resources due to resource deletion
+	// We can expect the response to be a 200 OK for ARM proxy resources or 404 Not Found for ARM tracked resources due to resource deletion
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
 		klog.Errorf("error in check access response. error code: %d, response: %s, correlationID: %s", resp.StatusCode, string(data), correlationID[0])
 		// metrics for calls with StatusCode >= 300
