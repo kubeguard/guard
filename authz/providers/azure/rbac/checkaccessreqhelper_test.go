@@ -777,7 +777,6 @@ func Test_getResultCacheKey(t *testing.T) {
 }
 
 func Test_buildCheckAccessURL(t *testing.T) {
-
 	mustCreateURL := func(rawURL string) url.URL {
 		t.Helper()
 

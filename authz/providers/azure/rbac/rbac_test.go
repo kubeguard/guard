@@ -500,7 +500,6 @@ func TestLogin(t *testing.T) {
 }
 
 func Test_auditSARIfNeeded(t *testing.T) {
-
 	createSAR := func(mu ...func(*authzv1.SubjectAccessReviewSpec)) *authzv1.SubjectAccessReviewSpec {
 		sar := &authzv1.SubjectAccessReviewSpec{}
 		for _, m := range mu {
