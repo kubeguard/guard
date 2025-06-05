@@ -508,6 +508,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 
 	var status *authzv1.SubjectAccessReviewStatus
 	if isTrackedResource && resp.StatusCode == http.StatusNotFound {
+		klog.V(10).Infof("CheckAccess returned 404 which means tracked resource is already deleted, returning default not found decision")
 		status = defaultNotFoundDecision()
 	} else {
 		// Decode response and prepare k8s response
