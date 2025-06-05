@@ -600,6 +600,7 @@ func buildCheckAccessURL(
 	rv := base // shallow copy of the base URL to allow checking before returning
 
 	rv.Path = path.Join(rv.Path, azureResourceID)
+	azureResourceIDPrefix := rv.Path
 	if hasNamespace {
 		rv.Path = path.Join(rv.Path, namespacePath)
 	}
@@ -628,10 +629,10 @@ func buildCheckAccessURL(
 		return "", err
 	}
 	// invariant 4
-	if !strings.HasPrefix(strings.TrimPrefix(rv.Path, "/"), strings.TrimPrefix(azureResourceID, "/")) {
+	if !strings.HasPrefix(strings.TrimPrefix(rv.Path, "/"), strings.TrimPrefix(azureResourceIDPrefix, "/")) {
 		err := fmt.Errorf(
 			"invalid URL path %q, expected to start with %q",
-			rv.Path, azureResourceID,
+			rv.Path, azureResourceIDPrefix,
 		)
 		return "", err
 	}

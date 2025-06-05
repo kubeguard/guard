@@ -832,6 +832,14 @@ func Test_buildCheckAccessURL(t *testing.T) {
 			namespacePath: namespaces + "/dev/pods",
 			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/subResource/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
 		},
+		{
+			name:          "valid with previous set sub path",
+			baseURL:       mustCreateURL("https://management.azure.com/test-sub-path"),
+			resourceID:    "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/subResource",
+			hasNamespace:  false,
+			namespacePath: namespaces + "/dev/pods",
+			want:          "https://management.azure.com/test-sub-path/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/subResource/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
+		},
 		// invalid test cases
 		// invariant 1
 		{
@@ -855,6 +863,14 @@ func Test_buildCheckAccessURL(t *testing.T) {
 		{
 			name:          "path traversal in namespace path",
 			baseURL:       mustCreateURL("https://management.azure.com"),
+			resourceID:    testAzureResourceID,
+			hasNamespace:  true,
+			namespacePath: "../",
+			wantErr:       true,
+		},
+		{
+			name:          "path traversal in namespace path",
+			baseURL:       mustCreateURL("https://management.azure.com/test-sub-path"),
 			resourceID:    testAzureResourceID,
 			hasNamespace:  true,
 			namespacePath: "../",
