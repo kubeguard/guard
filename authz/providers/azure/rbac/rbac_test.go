@@ -29,25 +29,14 @@ import (
 
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 	"go.kubeguard.dev/guard/util/httpclient"
+	"go.kubeguard.dev/guard/util/httpclient/httpclienttesting"
 
 	"github.com/stretchr/testify/assert"
 	authzv1 "k8s.io/api/authorization/v1"
 )
 
-func adaptCheckAccessHTTPClientWithTestTLSConfig(
-	checkAccessHTTPClient *http.Client,
-	testServer *httptest.Server,
-) *http.Client {
-	testTransport := testServer.Client().Transport
-	if tt, ok := testTransport.(*http.Transport); ok {
-		if httpClientTransport, ok := checkAccessHTTPClient.Transport.(*http.Transport); ok {
-			// Copy the TLS config from the test server to the checkAccess HTTP client
-			httpClientTransport.TLSClientConfig = tt.TLSClientConfig
-			checkAccessHTTPClient.Transport = httpClientTransport
-		}
-	}
-
-	return checkAccessHTTPClient
+func init() {
+	httpclienttesting.HijackDefaultHTTPClientTransportWithSelfSignedTLS()
 }
 
 func getAPIServerAndAccessInfo(returnCode int, body, clusterType, resourceId string) (*httptest.Server, *AccessInfo) {
@@ -58,7 +47,7 @@ func getAPIServerAndAccessInfo(returnCode int, body, clusterType, resourceId str
 
 	apiURL, _ := url.Parse(ts.URL)
 	u := &AccessInfo{
-		client:          adaptCheckAccessHTTPClientWithTestTLSConfig(httpclient.DefaultHTTPClient, ts),
+		client:          httpclient.DefaultHTTPClient,
 		apiURL:          apiURL,
 		headers:         http.Header{},
 		expiresAt:       time.Now().Add(time.Hour),
@@ -92,7 +81,7 @@ func getAPIServerAndAccessInfoWithPaths(
 	}))
 	apiURL, _ := url.Parse(ts.URL)
 	u := &AccessInfo{
-		client:          adaptCheckAccessHTTPClientWithTestTLSConfig(httpclient.DefaultHTTPClient, ts),
+		client:          httpclient.DefaultHTTPClient,
 		apiURL:          apiURL,
 		headers:         http.Header{},
 		expiresAt:       time.Now().Add(time.Hour),
