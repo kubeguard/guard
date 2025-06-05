@@ -583,6 +583,7 @@ func defaultNotFoundDecision() *authzv1.SubjectAccessReviewStatus {
 		Denied:  true,
 		Reason:  AccessNotAllowedVerdict,
 	}
+}
 
 // buildCheckAccessURL constructs the Azure check access URL in string form.
 //
