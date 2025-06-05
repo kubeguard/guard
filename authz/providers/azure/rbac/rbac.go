@@ -303,7 +303,6 @@ func (a *AccessInfo) performCheckAccess(
 	checkAccessURL url.URL,
 	checkAccessBodies []*CheckAccessRequest,
 	checkAccessUsername string,
-	isTrackedResource bool,
 ) (*authzv1.SubjectAccessReviewStatus, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), checkaccessContextTimeout)
 	defer cancel()
@@ -321,7 +320,7 @@ func (a *AccessInfo) performCheckAccess(
 			requestUUID := uuid.New()
 			reqContext := context.WithValue(egCtx, correlationRequestIDKey(correlationRequestIDHeader), []string{requestUUID.String()})
 			reqContext = azureutils.WithRetryableHttpClient(reqContext, a.httpClientRetryCount)
-			err := a.sendCheckAccessRequest(reqContext, checkAccessUsername, checkAccessURL, body, ch, isTrackedResource)
+			err := a.sendCheckAccessRequest(reqContext, checkAccessUsername, checkAccessURL, body, ch)
 			if err != nil {
 				code := http.StatusInternalServerError
 				if v, ok := err.(errutils.HttpStatusCode); ok {
@@ -377,7 +376,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	exist, nameSpaceString := getNameSpaceScope(request, a.useNamespaceResourceScopeFormat)
 	checkAccessURL := buildCheckAccessURL(*a.apiURL, a.azureResourceId, exist, nameSpaceString)
 
-	status, err := a.performCheckAccess(checkAccessURL, checkAccessBodies, checkAccessUsername, false)
+	status, err := a.performCheckAccess(checkAccessURL, checkAccessBodies, checkAccessUsername)
 	if err != nil {
 		return nil, err
 	}
@@ -410,7 +409,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		b.Resource.Id = path.Join(a.azureResourceId, managedNamespacePath)
 	}
 
-	return a.performCheckAccess(managedNamespaceURL, checkAccessBodies, checkAccessUsername, true)
+	return a.performCheckAccess(managedNamespaceURL, checkAccessBodies, checkAccessUsername)
 }
 
 // Helper to build the check access URL
@@ -428,7 +427,7 @@ func buildCheckAccessURL(base url.URL, resourceID string, hasNamespace bool, nam
 	return base
 }
 
-func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUsername string, checkAccessURL url.URL, checkAccessBody *CheckAccessRequest, ch chan *authzv1.SubjectAccessReviewStatus, isTrackedResource bool) error {
+func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUsername string, checkAccessURL url.URL, checkAccessBody *CheckAccessRequest, ch chan *authzv1.SubjectAccessReviewStatus) error {
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(checkAccessBody); err != nil {
 		return errutils.WithCode(errors.Wrap(err, "error encoding check access request"), http.StatusInternalServerError)
@@ -475,8 +474,8 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 	}
 
 	klog.V(7).Infof("checkaccess response: %s, Configured ARM call limit: %d", string(data), a.armCallLimit)
-	// For deny scenarios due to resource deletion, we expect the response to be a 200 OK for proxy resources and 404 Not Found for non-proxy resources
-	if resp.StatusCode != http.StatusOK && !(isTrackedResource && resp.StatusCode == http.StatusNotFound) {
+	// For deny scenarios, we can expect the response to be a 200 OK for proxy resources or 404 Not Found for non-proxy resources due to resource deletion
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
 		klog.Errorf("error in check access response. error code: %d, response: %s, correlationID: %s", resp.StatusCode, string(data), correlationID[0])
 		// metrics for calls with StatusCode >= 300
 		if resp.StatusCode >= http.StatusMultipleChoices {
@@ -507,7 +506,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 	}
 
 	var status *authzv1.SubjectAccessReviewStatus
-	if isTrackedResource && resp.StatusCode == http.StatusNotFound {
+	if resp.StatusCode == http.StatusNotFound {
 		klog.V(10).Infof("CheckAccess returned 404 which means tracked resource is already deleted, returning default not found decision")
 		status = defaultNotFoundDecision()
 	} else {
