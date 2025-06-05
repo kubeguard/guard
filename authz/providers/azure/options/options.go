@@ -50,6 +50,7 @@ type Options struct {
 	UseManagedNamespaceResourceScopeFormat bool
 	ReconcileDiscoverResourcesFrequency    time.Duration
 	KubeConfigFile                         string
+	AuditSAR                               bool
 }
 
 func NewOptions() Options {
@@ -78,6 +79,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.UseManagedNamespaceResourceScopeFormat, "azure.use-managed-namespace-resource-scope-format", o.UseManagedNamespaceResourceScopeFormat, "enable managed namespace RBAC for azure authz mode")
 	fs.BoolVar(&o.DiscoverResources, "azure.discover-resources", o.DiscoverResources, "fetch list of resources and operations from apiserver and azure. Default: false")
 	fs.DurationVar(&o.ReconcileDiscoverResourcesFrequency, "azure.discover-resources-frequency", o.ReconcileDiscoverResourcesFrequency, "Frequency at which discover resources should be reconciled. Default: 5m")
+	fs.BoolVar(&o.AuditSAR, "azure.audit-sar", o.AuditSAR, "enable audit of SAR requests in azure authz mode. Default: false")
 }
 
 func (o *Options) Validate(azure azure.Options) []error {
