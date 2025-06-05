@@ -364,7 +364,6 @@ func TestCheckAccess(t *testing.T) {
 		assert.True(t, response.Denied, "Denied should be true")
 		assert.Equal(t, AccessNotAllowedVerdict, response.Reason, "Reason should indicate denial by Azure RBAC")
 	})
-
 }
 
 func TestCheckAccess_ClusterScoped(t *testing.T) {
