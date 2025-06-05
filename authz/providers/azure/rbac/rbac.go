@@ -506,10 +506,15 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 		checkAccessSucceeded.Inc()
 	}
 
-	// Decode response and prepare k8s response
-	status, err := ConvertCheckAccessResponse(checkAccessUsername, data)
-	if err != nil {
-		return err
+	var status *authzv1.SubjectAccessReviewStatus
+	if isTrackedResource && resp.StatusCode == http.StatusNotFound {
+		status = defaultNotFoundDecision()
+	} else {
+		// Decode response and prepare k8s response
+		status, err = ConvertCheckAccessResponse(checkAccessUsername, data)
+		if err != nil {
+			return err
+		}
 	}
 
 	ch <- status

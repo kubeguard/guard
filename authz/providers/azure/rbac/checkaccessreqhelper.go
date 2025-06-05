@@ -575,3 +575,11 @@ func ConvertCheckAccessResponse(username string, body []byte) (*authzv1.SubjectA
 
 	return &authzv1.SubjectAccessReviewStatus{Allowed: allowed, Reason: verdict, Denied: denied}, nil
 }
+
+func defaultNotFoundDecision() *authzv1.SubjectAccessReviewStatus {
+	return &authzv1.SubjectAccessReviewStatus{
+		Allowed: false,
+		Denied:  true,
+		Reason:  AccessNotAllowedVerdict,
+	}
+}
