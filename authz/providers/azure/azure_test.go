@@ -77,7 +77,7 @@ func clientSetup(serverUrl, mode string) (*Authorizer, error) {
 	return c, nil
 }
 
-func serverSetup(loginResp, checkaccessResp string, loginStatus, checkaccessStatus int, sleepFor time.Duration) (*httptest.Server, error) {
+func serverSetup(loginResp, checkaccessResp string, loginStatus, checkaccessStatus int, sleepFor time.Duration) *httptest.Server {
 	m := chi.NewRouter()
 
 	m.Post("/login/*", func(w http.ResponseWriter, r *http.Request) {
@@ -93,14 +93,11 @@ func serverSetup(loginResp, checkaccessResp string, loginStatus, checkaccessStat
 
 	srv := httptest.NewTLSServer(m)
 
-	return srv, nil
+	return srv
 }
 
 func getServerAndClient(t *testing.T, loginResp, checkaccessResp string, checkaccessStatus int, sleepFor time.Duration) (*httptest.Server, *Authorizer, authz.Store) {
-	srv, err := serverSetup(loginResp, checkaccessResp, http.StatusOK, checkaccessStatus, sleepFor)
-	if err != nil {
-		t.Fatalf("Error when creating server, reason: %v", err)
-	}
+	srv := serverSetup(loginResp, checkaccessResp, http.StatusOK, checkaccessStatus, sleepFor)
 
 	client, err := clientSetup(srv.URL, "arc")
 	if err != nil {
