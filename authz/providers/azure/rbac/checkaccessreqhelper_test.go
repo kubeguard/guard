@@ -18,13 +18,16 @@ package rbac
 
 import (
 	"fmt"
+	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 
 	azureutils "go.kubeguard.dev/guard/util/azure"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 	authzv1 "k8s.io/api/authorization/v1"
 )
 
@@ -768,6 +771,141 @@ func Test_getResultCacheKey(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := getResultCacheKey(tt.args.subRevReq); got != tt.want {
 				t.Errorf("getResultCacheKey() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_buildCheckAccessURL(t *testing.T) {
+
+	mustCreateURL := func(rawURL string) url.URL {
+		t.Helper()
+
+		parsedURL, err := url.Parse(rawURL)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		return *parsedURL
+	}
+
+	const testAzureResourceID = "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName"
+	testResourceIDSegCount := len(strings.Split(testAzureResourceID, "/"))
+
+	tests := []struct {
+		name          string
+		baseURL       url.URL
+		resourceID    string
+		hasNamespace  bool
+		namespacePath string
+		want          string
+		wantErr       bool
+	}{
+		// valid test cases
+		{
+			name:          "valid without namespace",
+			baseURL:       mustCreateURL("https://management.azure.com"),
+			resourceID:    testAzureResourceID,
+			hasNamespace:  false,
+			namespacePath: "",
+			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
+		},
+		{
+			name:          "valid with namespace",
+			baseURL:       mustCreateURL("https://management.azure.com"),
+			resourceID:    testAzureResourceID,
+			hasNamespace:  true,
+			namespacePath: namespaces + "/dev",
+			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/namespaces/dev/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
+		},
+		{
+			name:          "valid with managed namespace",
+			baseURL:       mustCreateURL("https://management.azure.com"),
+			resourceID:    testAzureResourceID,
+			hasNamespace:  true,
+			namespacePath: managedNamespaces + "/dev",
+			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/managedNamespaces/dev/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
+		},
+		{
+			name:          "valid with sub resource",
+			baseURL:       mustCreateURL("https://management.azure.com"),
+			resourceID:    "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/subResource",
+			hasNamespace:  false,
+			namespacePath: namespaces + "/dev/pods",
+			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/subResource/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
+		},
+		// invalid test cases
+		// invariant 1
+		{
+			name:          "invalid scheme",
+			baseURL:       mustCreateURL("http://management.azure.com"),
+			resourceID:    testAzureResourceID,
+			hasNamespace:  false,
+			namespacePath: "",
+			wantErr:       true,
+		},
+		// invariant 2
+		{
+			name:          "empty resource ID",
+			baseURL:       mustCreateURL("https://management.azure.com"),
+			resourceID:    "",
+			hasNamespace:  false,
+			namespacePath: "",
+			wantErr:       true,
+		},
+		// invariant 4
+		{
+			name:          "path traversal in namespace path",
+			baseURL:       mustCreateURL("https://management.azure.com"),
+			resourceID:    testAzureResourceID,
+			hasNamespace:  true,
+			namespacePath: "../",
+			wantErr:       true,
+		},
+		{
+			name:          "path traversal in namespace path",
+			baseURL:       mustCreateURL("https://management.azure.com"),
+			resourceID:    testAzureResourceID,
+			hasNamespace:  true,
+			namespacePath: strings.Repeat("../", testResourceIDSegCount) + "/dev",
+			wantErr:       true,
+		},
+		{
+			name:          "path traversal in namespace path",
+			baseURL:       mustCreateURL("https://management.azure.com"),
+			resourceID:    testAzureResourceID,
+			hasNamespace:  true,
+			namespacePath: strings.Repeat("../", testResourceIDSegCount+1) + "/dev",
+			wantErr:       true,
+		},
+		// url encoded input
+		{
+			name:          "url encoded data",
+			baseURL:       mustCreateURL("https://management.azure.com"),
+			resourceID:    testAzureResourceID,
+			hasNamespace:  true,
+			namespacePath: namespaces + "%2E%2E%2F%2E%2E%2Fdev",
+			wantErr:       false,
+			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/namespaces%252E%252E%252F%252E%252E%252Fdev/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
+		},
+		{
+			name:          "url encoded data",
+			baseURL:       mustCreateURL("https://management.azure.com"),
+			resourceID:    testAzureResourceID,
+			hasNamespace:  true,
+			namespacePath: namespaces + "%2Fdev",
+			wantErr:       false,
+			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/namespaces%252Fdev/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := buildCheckAccessURL(tt.baseURL, tt.resourceID, tt.hasNamespace, tt.namespacePath)
+			if tt.wantErr {
+				assert.Errorf(t, err, "expect error, but got none. Got: %q", got)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
 			}
 		})
 	}

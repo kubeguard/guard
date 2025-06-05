@@ -34,14 +34,31 @@ import (
 	authzv1 "k8s.io/api/authorization/v1"
 )
 
+func adaptCheckAccessHTTPClientWithTestTLSConfig(
+	checkAccessHTTPClient *http.Client,
+	testServer *httptest.Server,
+) *http.Client {
+	testTransport := testServer.Client().Transport
+	if tt, ok := testTransport.(*http.Transport); ok {
+		if httpClientTransport, ok := checkAccessHTTPClient.Transport.(*http.Transport); ok {
+			// Copy the TLS config from the test server to the checkAccess HTTP client
+			httpClientTransport.TLSClientConfig = tt.TLSClientConfig
+			checkAccessHTTPClient.Transport = httpClientTransport
+		}
+	}
+
+	return checkAccessHTTPClient
+}
+
 func getAPIServerAndAccessInfo(returnCode int, body, clusterType, resourceId string) (*httptest.Server, *AccessInfo) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(returnCode)
 		_, _ = w.Write([]byte(body))
 	}))
+
 	apiURL, _ := url.Parse(ts.URL)
 	u := &AccessInfo{
-		client:          httpclient.DefaultHTTPClient,
+		client:          adaptCheckAccessHTTPClientWithTestTLSConfig(httpclient.DefaultHTTPClient, ts),
 		apiURL:          apiURL,
 		headers:         http.Header{},
 		expiresAt:       time.Now().Add(time.Hour),
@@ -49,6 +66,7 @@ func getAPIServerAndAccessInfo(returnCode int, body, clusterType, resourceId str
 		azureResourceId: resourceId,
 		armCallLimit:    0,
 		lock:            sync.RWMutex{},
+		auditSAR:        true,
 	}
 	return ts, u
 }
@@ -59,7 +77,7 @@ func getAPIServerAndAccessInfoWithPaths(
 	managedNamespacesStatus int, managedNamespacesBody string,
 	namespacesStatus int, namespacesBody string,
 ) (*httptest.Server, *AccessInfo) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/managedNamespaces/") {
 			w.WriteHeader(managedNamespacesStatus)
 			_, _ = w.Write([]byte(managedNamespacesBody))
@@ -74,7 +92,7 @@ func getAPIServerAndAccessInfoWithPaths(
 	}))
 	apiURL, _ := url.Parse(ts.URL)
 	u := &AccessInfo{
-		client:          httpclient.DefaultHTTPClient,
+		client:          adaptCheckAccessHTTPClientWithTestTLSConfig(httpclient.DefaultHTTPClient, ts),
 		apiURL:          apiURL,
 		headers:         http.Header{},
 		expiresAt:       time.Now().Add(time.Hour),
@@ -82,6 +100,7 @@ func getAPIServerAndAccessInfoWithPaths(
 		azureResourceId: resourceId,
 		armCallLimit:    0,
 		lock:            sync.RWMutex{},
+		auditSAR:        true,
 	}
 	return ts, u
 }
@@ -478,4 +497,68 @@ func TestLogin(t *testing.T) {
 		err := u.RefreshToken(ctx)
 		assert.NotNilf(t, err, "Should have gotten error")
 	})
+}
+
+func Test_auditSARIfNeeded(t *testing.T) {
+
+	createSAR := func(mu ...func(*authzv1.SubjectAccessReviewSpec)) *authzv1.SubjectAccessReviewSpec {
+		sar := &authzv1.SubjectAccessReviewSpec{}
+		for _, m := range mu {
+			m(sar)
+		}
+		return sar
+	}
+
+	cases := []struct {
+		name       string
+		accessInfo *AccessInfo
+		request    *authzv1.SubjectAccessReviewSpec
+	}{
+		{
+			name:       "audit disabled",
+			accessInfo: &AccessInfo{auditSAR: false},
+			request:    createSAR(),
+		},
+		{
+			name:       "audit enabled, nil request",
+			accessInfo: &AccessInfo{auditSAR: true},
+			request:    nil,
+		},
+		{
+			name:       "audit enabled, empty request",
+			accessInfo: &AccessInfo{auditSAR: true},
+			request:    createSAR(),
+		},
+		{
+			name:       "audit enabled, request with ResourceAttributes",
+			accessInfo: &AccessInfo{auditSAR: true},
+			request: createSAR(func(sar *authzv1.SubjectAccessReviewSpec) {
+				sar.ResourceAttributes = &authzv1.ResourceAttributes{
+					Namespace:   "test-namespace",
+					Group:       "test-group",
+					Resource:    "test-resource",
+					Version:     "v1",
+					Verb:        "get",
+					Name:        "test-name",
+					Subresource: "status",
+				}
+			}),
+		},
+		{
+			name:       "audit enabled, request with NonResourceAttributes",
+			accessInfo: &AccessInfo{auditSAR: true},
+			request: createSAR(func(sar *authzv1.SubjectAccessReviewSpec) {
+				sar.NonResourceAttributes = &authzv1.NonResourceAttributes{
+					Path: "/api/v1/test",
+					Verb: "get",
+				}
+			}),
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			c.accessInfo.auditSARIfNeeded(c.request)
+		})
+	}
 }
