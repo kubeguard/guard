@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"path"
 	"strings"
 
@@ -574,4 +575,75 @@ func ConvertCheckAccessResponse(username string, body []byte) (*authzv1.SubjectA
 	}
 
 	return &authzv1.SubjectAccessReviewStatus{Allowed: allowed, Reason: verdict, Denied: denied}, nil
+}
+
+// buildCheckAccessURL constructs the Azure check access URL in string form.
+//
+// The input parameters hold the following invariants:
+//
+// 1. base: the scheme must be https, and the host should be the Azure management API endpoint.
+// 2. azureResourceID: the parent Azure resource ID for the check access request, must not be empty
+//
+// The returned URL holds the following invariants:
+//
+// 3. the host and scheme of the URL are the same as the base URL
+// 4. the path should has the prefix of azureResourceID value
+// 5. the path should have the suffix of the checkAccessPath
+//
+// Any invariant violation will result in an error being returned.
+func buildCheckAccessURL(
+	base url.URL,
+	azureResourceID string,
+	hasNamespace bool,
+	namespacePath string,
+) (string, error) {
+	rv := base // shallow copy of the base URL to allow checking before returning
+
+	rv.Path = path.Join(rv.Path, azureResourceID)
+	azureResourceIDPrefix := rv.Path
+	if hasNamespace {
+		rv.Path = path.Join(rv.Path, namespacePath)
+	}
+	rv.Path = path.Join(rv.Path, checkAccessPath)
+
+	params := url.Values{}
+	params.Add(queryParamAPIVersion, checkAccessAPIVersion)
+	rv.RawQuery = params.Encode()
+
+	// invariant checks
+
+	// invariant 1
+	if !strings.EqualFold(rv.Scheme, "https") {
+		return "", fmt.Errorf("invalid scheme %q, expected https", rv.Scheme)
+	}
+	// invariant 2
+	if azureResourceID == "" {
+		return "", fmt.Errorf("azureResourceID must not be empty")
+	}
+	// invariant 3
+	if rv.Host != base.Host || rv.Scheme != base.Scheme {
+		err := fmt.Errorf(
+			"invalid URL, expected host %q and scheme %q, got host %q and scheme %q",
+			base.Host, base.Scheme, rv.Host, rv.Scheme,
+		)
+		return "", err
+	}
+	// invariant 4
+	if !strings.HasPrefix(strings.TrimPrefix(rv.Path, "/"), strings.TrimPrefix(azureResourceIDPrefix, "/")) {
+		err := fmt.Errorf(
+			"invalid URL path %q, expected to start with %q",
+			rv.Path, azureResourceIDPrefix,
+		)
+		return "", err
+	}
+	// invariant 5
+	if !strings.HasSuffix(rv.Path, checkAccessPath) {
+		err := fmt.Errorf(
+			"invalid URL path %q, expected to end with %q",
+			rv.Path, checkAccessPath,
+		)
+		return "", err
+	}
+
+	return rv.String(), nil
 }

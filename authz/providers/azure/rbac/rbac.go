@@ -53,6 +53,7 @@ const (
 	fleets                    = "Microsoft.ContainerService/fleets"
 	connectedClusters         = "Microsoft.Kubernetes/connectedClusters"
 	checkAccessPath           = "/providers/Microsoft.Authorization/checkaccess"
+	queryParamAPIVersion      = "api-version"
 	checkAccessAPIVersion     = "2018-09-01-preview"
 	remainingSubReadARMHeader = "x-ms-ratelimit-remaining-subscription-reads"
 	// Time delta to refresh token before expiry
@@ -90,6 +91,8 @@ type AccessInfo struct {
 	useNamespaceResourceScopeFormat        bool
 	httpClientRetryCount                   int
 	lock                                   sync.RWMutex
+
+	auditSAR bool
 }
 
 var (
@@ -174,6 +177,7 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 		useManagedNamespaceResourceScopeFormat: opts.UseManagedNamespaceResourceScopeFormat,
 		useNamespaceResourceScopeFormat:        opts.UseNamespaceResourceScopeFormat,
 		httpClientRetryCount:                   authopts.HttpClientRetryCount,
+		auditSAR:                               opts.AuditSAR,
 	}
 
 	u.skipCheck = make(map[string]void, len(opts.SkipAuthzCheck))
@@ -300,7 +304,7 @@ func (a *AccessInfo) setReqHeaders(req *http.Request) {
 }
 
 func (a *AccessInfo) performCheckAccess(
-	checkAccessURL url.URL,
+	checkAccessURL string,
 	checkAccessBodies []*CheckAccessRequest,
 	checkAccessUsername string,
 ) (*authzv1.SubjectAccessReviewStatus, error) {
@@ -364,7 +368,55 @@ func (a *AccessInfo) performCheckAccess(
 	return finalStatus, nil
 }
 
+// auditSARIfNeeded logs the SubjectAccessReview request if auditing is enabled.
+func (a *AccessInfo) auditSARIfNeeded(request *authzv1.SubjectAccessReviewSpec) {
+	if !a.auditSAR {
+		return
+	}
+
+	// NOTE: aligning with the same log level used in the sendCheckAccessRequest.
+	// so we will only add at most one more log per request
+	logger := klog.V(5)
+
+	if request == nil {
+		logger.Info("SubjectAccessReview request is nil")
+		return
+	}
+
+	mb := new(strings.Builder)
+
+	if request.ResourceAttributes == nil {
+		mb.WriteString("ResourceAttributes: <nil>\n")
+	} else {
+		fmt.Fprintf(
+			mb,
+			"ResourceAttributes: Namespace=%s, Name=%s, Group=%s, Resource=%s, Subresource=%s, Verb=%s\n",
+			request.ResourceAttributes.Namespace,
+			request.ResourceAttributes.Name,
+			request.ResourceAttributes.Group,
+			request.ResourceAttributes.Resource,
+			request.ResourceAttributes.Subresource,
+			request.ResourceAttributes.Verb,
+		)
+	}
+
+	if request.NonResourceAttributes == nil {
+		mb.WriteString("NonResourceAttributes: <nil>\n")
+	} else {
+		fmt.Fprintf(
+			mb,
+			"NonResourceAttributes: Path=%s, Verb=%s\n",
+			request.NonResourceAttributes.Path,
+			request.NonResourceAttributes.Verb,
+		)
+	}
+
+	logger.Info(mb.String())
+}
+
 func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
+	a.auditSARIfNeeded(request)
+
 	checkAccessBodies, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in preparing check access request")
@@ -374,7 +426,10 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 
 	// Build primary check access URL
 	exist, nameSpaceString := getNameSpaceScope(request, a.useNamespaceResourceScopeFormat)
-	checkAccessURL := buildCheckAccessURL(*a.apiURL, a.azureResourceId, exist, nameSpaceString)
+	checkAccessURL, err := buildCheckAccessURL(*a.apiURL, a.azureResourceId, exist, nameSpaceString)
+	if err != nil {
+		return nil, errors.Wrap(err, "error in building check access URL")
+	}
 
 	status, err := a.performCheckAccess(checkAccessURL, checkAccessBodies, checkAccessUsername)
 	if err != nil {
@@ -402,7 +457,10 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	}
 
 	// Build managed namespace URL
-	managedNamespaceURL := buildCheckAccessURL(*a.apiURL, a.azureResourceId, true, managedNamespacePath)
+	managedNamespaceURL, err := buildCheckAccessURL(*a.apiURL, a.azureResourceId, true, managedNamespacePath)
+	if err != nil {
+		return nil, errors.Wrap(err, "error in building managed namespace check access URL")
+	}
 
 	// Update resource IDs for managed namespace
 	for _, b := range checkAccessBodies {
@@ -412,22 +470,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	return a.performCheckAccess(managedNamespaceURL, checkAccessBodies, checkAccessUsername)
 }
 
-// Helper to build the check access URL
-func buildCheckAccessURL(base url.URL, resourceID string, hasNamespace bool, namespacePath string) url.URL {
-	base.Path = path.Join(base.Path, resourceID)
-	if hasNamespace {
-		base.Path = path.Join(base.Path, namespacePath)
-	}
-	base.Path = path.Join(base.Path, checkAccessPath)
-
-	params := url.Values{}
-	params.Add("api-version", checkAccessAPIVersion)
-	base.RawQuery = params.Encode()
-
-	return base
-}
-
-func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUsername string, checkAccessURL url.URL, checkAccessBody *CheckAccessRequest, ch chan *authzv1.SubjectAccessReviewStatus) error {
+func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUsername string, checkAccessURL string, checkAccessBody *CheckAccessRequest, ch chan *authzv1.SubjectAccessReviewStatus) error {
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(checkAccessBody); err != nil {
 		return errutils.WithCode(errors.Wrap(err, "error encoding check access request"), http.StatusInternalServerError)
@@ -435,11 +478,11 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 
 	if klog.V(10).Enabled() {
 		binaryData, _ := json.MarshalIndent(checkAccessBody, "", "    ")
-		klog.V(10).Infof("checkAccessURI:%s", checkAccessURL.String())
+		klog.V(10).Infof("checkAccessURI:%s", checkAccessURL)
 		klog.V(10).Infof("binary data:%s", binaryData)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, checkAccessURL.String(), buf)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, checkAccessURL, buf)
 	if err != nil {
 		return errutils.WithCode(errors.Wrap(err, "error creating check access request"), http.StatusInternalServerError)
 	}

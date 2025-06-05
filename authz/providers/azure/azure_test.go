@@ -19,7 +19,6 @@ package azure
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -31,6 +30,7 @@ import (
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 	"go.kubeguard.dev/guard/authz/providers/azure/rbac"
 	errutils "go.kubeguard.dev/guard/util/error"
+	"go.kubeguard.dev/guard/util/httpclient/httpclienttesting"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
@@ -41,6 +41,10 @@ const (
 	loginResp            = `{ "token_type": "Bearer", "expires_on": 1732881796, "access_token": "%v"}`
 	httpClientRetryCount = 2
 )
+
+func init() {
+	httpclienttesting.HijackDefaultHTTPClientTransportWithSelfSignedTLS()
+}
 
 func clientSetup(serverUrl, mode string) (*Authorizer, error) {
 	c := &Authorizer{}
@@ -73,12 +77,7 @@ func clientSetup(serverUrl, mode string) (*Authorizer, error) {
 	return c, nil
 }
 
-func serverSetup(loginResp, checkaccessResp string, loginStatus, checkaccessStatus int, sleepFor time.Duration) (*httptest.Server, error) {
-	listener, err := net.Listen("tcp", "127.0.0.1:")
-	if err != nil {
-		return nil, err
-	}
-
+func serverSetup(loginResp, checkaccessResp string, loginStatus, checkaccessStatus int, sleepFor time.Duration) *httptest.Server {
 	m := chi.NewRouter()
 
 	m.Post("/login/*", func(w http.ResponseWriter, r *http.Request) {
@@ -92,20 +91,13 @@ func serverSetup(loginResp, checkaccessResp string, loginStatus, checkaccessStat
 		_, _ = w.Write([]byte(checkaccessResp))
 	})
 
-	srv := &httptest.Server{
-		Listener: listener,
-		Config:   &http.Server{Handler: m},
-	}
-	srv.Start()
+	srv := httptest.NewTLSServer(m)
 
-	return srv, nil
+	return srv
 }
 
 func getServerAndClient(t *testing.T, loginResp, checkaccessResp string, checkaccessStatus int, sleepFor time.Duration) (*httptest.Server, *Authorizer, authz.Store) {
-	srv, err := serverSetup(loginResp, checkaccessResp, http.StatusOK, checkaccessStatus, sleepFor)
-	if err != nil {
-		t.Fatalf("Error when creating server, reason: %v", err)
-	}
+	srv := serverSetup(loginResp, checkaccessResp, http.StatusOK, checkaccessStatus, sleepFor)
 
 	client, err := clientSetup(srv.URL, "arc")
 	if err != nil {
