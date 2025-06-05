@@ -457,12 +457,12 @@ func setAuthInfoResourceAttributes(action *azureutils.AuthorizationActionInfo, s
 		return errors.New("Group is empty")
 	}
 	action.Attributes = make(map[string]string)
-	action.Attributes["body/group"] = subRevReq.ResourceAttributes.Group
+	action.Attributes["Microsoft.ContainerService/managedClusters/customResources:group"] = subRevReq.ResourceAttributes.Group
 	if subRevReq.ResourceAttributes.Version != "" {
-		action.Attributes["body/version"] = subRevReq.ResourceAttributes.Version
+		action.Attributes["Microsoft.ContainerService/managedClusters/customResources:version"] = subRevReq.ResourceAttributes.Version
 	}
 	if subRevReq.ResourceAttributes.Resource != "" {
-		action.Attributes["body/kind"] = subRevReq.ResourceAttributes.Resource
+		action.Attributes["Microsoft.ContainerService/managedClusters/customResources:kind"] = subRevReq.ResourceAttributes.Resource
 	}
 	return nil
 }
@@ -597,9 +597,9 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 					"Id": "Microsoft.Kubernetes/connectedClusters/extensions/deployments/read",
 					"IsDataAction": true
 					"Attributes": {
-						"body/kind": "SecretProviderClass",
-						"body/group": "extensions",
-						"body/version": "v1beta1",
+						"Microsoft.ContainerService/managedClusters/customResources:kind": "SecretProviderClass",
+						"Microsoft.ContainerService/managedClusters/customResources:group": "extensions",
+						"Microsoft.ContainerService/managedClusters/customResources:version": "v1beta1",
 					}
 				}
 			],

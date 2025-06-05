@@ -735,16 +735,16 @@ func Test_prepareCheckAccessRequestBodyWithCustomResource(t *testing.T) {
 		t.Errorf("Want:%v, got:%v", "aks/customresources/read", got[0].Actions[0].AuthorizationEntity.Id)
 	}
 
-	if _, found := got[0].Actions[0].Attributes["body/kind"]; !found {
-		t.Errorf("body/kind Attribute is not present")
+	if _, found := got[0].Actions[0].Attributes["Microsoft.ContainerService/managedClusters/customResources:kind"]; !found {
+		t.Errorf("Microsoft.ContainerService/managedClusters/customResources:kind Attribute is not present")
 	}
 
-	if _, found := got[0].Actions[0].Attributes["body/group"]; !found {
-		t.Errorf("body/group Attribute is not present")
+	if _, found := got[0].Actions[0].Attributes["Microsoft.ContainerService/managedClusters/customResources:group"]; !found {
+		t.Errorf("Microsoft.ContainerService/managedClusters/customResources:kind Attribute is not present")
 	}
 
-	if _, found := got[0].Actions[0].Attributes["body/version"]; !found {
-		t.Errorf("body/version Attribute is not present")
+	if _, found := got[0].Actions[0].Attributes["Microsoft.ContainerService/managedClusters/customResources:version"]; !found {
+		t.Errorf("Microsoft.ContainerService/managedClusters/customResources:kind Attribute is not present")
 	}
 }
 
@@ -845,9 +845,21 @@ func Test_prepareCheckAccessRequestBodyWithCustomResourceAndStars(t *testing.T) 
 	}
 
 	customResourceActions := []azureutils.AuthorizationActionInfo{
-		{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true, Attributes: map[string]string{"body/kind": "*", "body/group": "customresources.contoso.io", "body/version": "v1"}},
-		{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/write"}, IsDataAction: true, Attributes: map[string]string{"body/kind": "*", "body/group": "customresources.contoso.io", "body/version": "v1"}},
-		{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/delete"}, IsDataAction: true, Attributes: map[string]string{"body/kind": "*", "body/group": "customresources.contoso.io", "body/version": "v1"}},
+		{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true, Attributes: map[string]string{
+			"Microsoft.ContainerService/managedClusters/customResources:kind":    "*",
+			"Microsoft.ContainerService/managedClusters/customResources:group":   "customresources.contoso.io",
+			"Microsoft.ContainerService/managedClusters/customResources:version": "v1",
+		}},
+		{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/write"}, IsDataAction: true, Attributes: map[string]string{
+			"Microsoft.ContainerService/managedClusters/customResources:kind":    "*",
+			"Microsoft.ContainerService/managedClusters/customResources:group":   "customresources.contoso.io",
+			"Microsoft.ContainerService/managedClusters/customResources:version": "v1",
+		}},
+		{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/delete"}, IsDataAction: true, Attributes: map[string]string{
+			"Microsoft.ContainerService/managedClusters/customResources:kind":    "*",
+			"Microsoft.ContainerService/managedClusters/customResources:group":   "customresources.contoso.io",
+			"Microsoft.ContainerService/managedClusters/customResources:version": "v1",
+		}},
 	}
 
 	if len(got[0].Actions) != len(customResourceActions) {
