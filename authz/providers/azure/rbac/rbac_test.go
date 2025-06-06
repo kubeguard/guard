@@ -345,6 +345,33 @@ func TestCheckAccess(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("Denied if ARM returns 404 for tracked managed namespace resource", func(t *testing.T) {
+		emptyBody := `""`
+
+		ts, u := getAPIServerAndAccessInfoWithPaths(
+			http.StatusInternalServerError, emptyBody, "aks", "resourceid",
+			http.StatusNotFound, emptyBody,
+			http.StatusOK, `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+		)
+		u.useManagedNamespaceResourceScopeFormat = true
+		u.clusterType = managedClusters
+		defer ts.Close()
+		request := &authzv1.SubjectAccessReviewSpec{
+			User: "test@bing.com",
+			ResourceAttributes: &authzv1.ResourceAttributes{
+				Namespace: "dev", Group: "", Resource: "pods",
+				Subresource: "status", Version: "v1", Name: "test", Verb: "delete",
+			},
+			Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
+		}
+		response, err := u.CheckAccess(request)
+		assert.NoError(t, err, "CheckAccess should not return error")
+		assert.NotNil(t, response, "response should always be non-nil")
+		assert.False(t, response.Allowed, "Allowed should be false")
+		assert.True(t, response.Denied, "Denied should be true")
+		assert.Equal(t, AccessNotAllowedVerdict, response.Reason, "Reason should indicate denial by Azure RBAC")
+	})
 }
 
 func TestCheckAccess_ClusterScoped(t *testing.T) {

@@ -517,7 +517,8 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 	}
 
 	klog.V(7).Infof("checkaccess response: %s, Configured ARM call limit: %d", string(data), a.armCallLimit)
-	if resp.StatusCode != http.StatusOK {
+	// We can expect the response to be a 200 OK for ARM proxy resources or 404 Not Found for ARM tracked resources due to resource deletion
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
 		klog.Errorf("error in check access response. error code: %d, response: %s, correlationID: %s", resp.StatusCode, string(data), correlationID[0])
 		// metrics for calls with StatusCode >= 300
 		if resp.StatusCode >= http.StatusMultipleChoices {
@@ -531,26 +532,32 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 		}
 
 		return errutils.WithCode(errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data)), resp.StatusCode)
-	} else {
-		remaining := resp.Header.Get(remainingSubReadARMHeader)
-		klog.Infof("Checkaccess Request has succeeded, CorrelationID is %s. Remaining request count in ARM instance:%s", correlationID[0], remaining)
-		count, _ := strconv.Atoi(remaining)
-		if count < a.armCallLimit {
-			if klog.V(10).Enabled() {
-				klog.V(10).Infoln("Closing idle TCP connections.")
-			}
-			// Usually ARM connections are cached by destination ip and port
-			// By closing the idle connection, a new request will use different port which
-			// will connect to different ARM instance of the region to ensure there is no ARM throttling
-			a.client.CloseIdleConnections()
-		}
-		checkAccessSucceeded.Inc()
 	}
 
-	// Decode response and prepare k8s response
-	status, err := ConvertCheckAccessResponse(checkAccessUsername, data)
-	if err != nil {
-		return err
+	remaining := resp.Header.Get(remainingSubReadARMHeader)
+	klog.Infof("Checkaccess Request has succeeded, CorrelationID is %s. Remaining request count in ARM instance:%s", correlationID[0], remaining)
+	count, _ := strconv.Atoi(remaining)
+	if count < a.armCallLimit {
+		if klog.V(10).Enabled() {
+			klog.V(10).Infoln("Closing idle TCP connections.")
+		}
+		// Usually ARM connections are cached by destination ip and port
+		// By closing the idle connection, a new request will use different port which
+		// will connect to different ARM instance of the region to ensure there is no ARM throttling
+		a.client.CloseIdleConnections()
+	}
+	checkAccessSucceeded.Inc()
+
+	var status *authzv1.SubjectAccessReviewStatus
+	if resp.StatusCode == http.StatusNotFound {
+		klog.V(10).Infof("CheckAccess returned 404 which means tracked resource is already deleted, returning default not found decision")
+		status = defaultNotFoundDecision()
+	} else {
+		// Decode response and prepare k8s response
+		status, err = ConvertCheckAccessResponse(checkAccessUsername, data)
+		if err != nil {
+			return err
+		}
 	}
 
 	ch <- status
