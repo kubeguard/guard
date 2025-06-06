@@ -38,30 +38,33 @@ const (
 )
 
 type Options struct {
-	AuthzMode                           string
-	ResourceId                          string
-	AKSAuthzTokenURL                    string
-	ARMCallLimit                        int
-	SkipAuthzCheck                      []string
-	SkipAuthzForNonAADUsers             bool
-	AllowNonResDiscoveryPathAccess      bool
-	AllowCustomResourceTypeCheck        bool
-	UseNamespaceResourceScopeFormat     bool
-	DiscoverResources                   bool
-	ReconcileDiscoverResourcesFrequency time.Duration
-	KubeConfigFile                      string
+	AuthzMode                              string
+	ResourceId                             string
+	AKSAuthzTokenURL                       string
+	ARMCallLimit                           int
+	SkipAuthzCheck                         []string
+	SkipAuthzForNonAADUsers                bool
+	AllowNonResDiscoveryPathAccess         bool
+	AllowCustomResourceTypeCheck           bool
+	UseNamespaceResourceScopeFormat        bool
+	DiscoverResources                      bool
+	UseManagedNamespaceResourceScopeFormat bool
+	ReconcileDiscoverResourcesFrequency    time.Duration
+	KubeConfigFile                         string
+	AuditSAR                               bool
 }
 
 func NewOptions() Options {
 	return Options{
-		ARMCallLimit:                        defaultArmCallLimit,
-		SkipAuthzCheck:                      []string{""},
-		SkipAuthzForNonAADUsers:             true,
-		AllowNonResDiscoveryPathAccess:      true,
-		AllowCustomResourceTypeCheck:        false,
-		UseNamespaceResourceScopeFormat:     false,
-		DiscoverResources:                   false,
-		ReconcileDiscoverResourcesFrequency: 5 * time.Minute,
+		ARMCallLimit:                           defaultArmCallLimit,
+		SkipAuthzCheck:                         []string{""},
+		SkipAuthzForNonAADUsers:                true,
+		AllowNonResDiscoveryPathAccess:         true,
+		AllowCustomResourceTypeCheck:           false,
+		UseNamespaceResourceScopeFormat:        false,
+		DiscoverResources:                      false,
+		ReconcileDiscoverResourcesFrequency:    5 * time.Minute,
+		UseManagedNamespaceResourceScopeFormat: false,
 	}
 }
 
@@ -76,8 +79,10 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.AllowCustomResourceTypeCheck, "azure.allow-custom-resource-type-check", o.AllowCustomResourceTypeCheck, "allow custom resource type checks for authorization")
 	fs.BoolVar(&o.UseNamespaceResourceScopeFormat, "azure.use-ns-resource-scope-format", o.UseNamespaceResourceScopeFormat, "use namespace as resource scope format for making rbac checkaccess calls at namespace scope")
 	fs.StringVar(&o.KubeConfigFile, "azure.kubeconfig-file", "", "path to the kubeconfig of cluster.")
+	fs.BoolVar(&o.UseManagedNamespaceResourceScopeFormat, "azure.use-managed-namespace-resource-scope-format", o.UseManagedNamespaceResourceScopeFormat, "enable managed namespace RBAC for azure authz mode")
 	fs.BoolVar(&o.DiscoverResources, "azure.discover-resources", o.DiscoverResources, "fetch list of resources and operations from apiserver and azure. Default: false")
 	fs.DurationVar(&o.ReconcileDiscoverResourcesFrequency, "azure.discover-resources-frequency", o.ReconcileDiscoverResourcesFrequency, "Frequency at which discover resources should be reconciled. Default: 5m")
+	fs.BoolVar(&o.AuditSAR, "azure.audit-sar", o.AuditSAR, "enable audit of SAR requests in azure authz mode. Default: false")
 }
 
 func (o *Options) Validate(azure azure.Options) []error {
