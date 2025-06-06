@@ -532,21 +532,21 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 		}
 
 		return errutils.WithCode(errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data)), resp.StatusCode)
-	} else {
-		remaining := resp.Header.Get(remainingSubReadARMHeader)
-		klog.Infof("Checkaccess Request has succeeded, CorrelationID is %s. Remaining request count in ARM instance:%s", correlationID[0], remaining)
-		count, _ := strconv.Atoi(remaining)
-		if count < a.armCallLimit {
-			if klog.V(10).Enabled() {
-				klog.V(10).Infoln("Closing idle TCP connections.")
-			}
-			// Usually ARM connections are cached by destination ip and port
-			// By closing the idle connection, a new request will use different port which
-			// will connect to different ARM instance of the region to ensure there is no ARM throttling
-			a.client.CloseIdleConnections()
-		}
-		checkAccessSucceeded.Inc()
 	}
+
+	remaining := resp.Header.Get(remainingSubReadARMHeader)
+	klog.Infof("Checkaccess Request has succeeded, CorrelationID is %s. Remaining request count in ARM instance:%s", correlationID[0], remaining)
+	count, _ := strconv.Atoi(remaining)
+	if count < a.armCallLimit {
+		if klog.V(10).Enabled() {
+			klog.V(10).Infoln("Closing idle TCP connections.")
+		}
+		// Usually ARM connections are cached by destination ip and port
+		// By closing the idle connection, a new request will use different port which
+		// will connect to different ARM instance of the region to ensure there is no ARM throttling
+		a.client.CloseIdleConnections()
+	}
+	checkAccessSucceeded.Inc()
 
 	var status *authzv1.SubjectAccessReviewStatus
 	if resp.StatusCode == http.StatusNotFound {
