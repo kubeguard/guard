@@ -27,11 +27,11 @@ import (
 
 func TestHTTPClientInitialization(t *testing.T) {
 	tests := []struct {
-		name                           string
-		envVars                        map[string]string
-		expectedHTTP2ClientPingEnabled bool
-		expectedReadIdleTimeout        time.Duration
-		expectedPingTimeout            time.Duration
+		name                    string
+		envVars                 map[string]string
+		expectedPingEnabled     bool
+		expectedReadIdleTimeout time.Duration
+		expectedPingTimeout     time.Duration
 	}{
 		{
 			name: "HTTP2 client ping enabled with custom timeouts",
@@ -40,27 +40,27 @@ func TestHTTPClientInitialization(t *testing.T) {
 				"HTTP2_TRANSPORT_READ_IDLE_TIMEOUT": "45s",
 				"HTTP2_TRANSPORT_PING_TIMEOUT":      "10s",
 			},
-			expectedHTTP2ClientPingEnabled: true,
-			expectedReadIdleTimeout:        45 * time.Second,
-			expectedPingTimeout:            10 * time.Second,
+			expectedPingEnabled:     true,
+			expectedReadIdleTimeout: 45 * time.Second,
+			expectedPingTimeout:     10 * time.Second,
 		},
 		{
 			name: "HTTP2 client ping disabled",
 			envVars: map[string]string{
 				"HTTP2_TRANSPORT_PING_ENABLED": "false",
 			},
-			expectedHTTP2ClientPingEnabled: false,
-			expectedReadIdleTimeout:        30 * time.Second,
-			expectedPingTimeout:            5 * time.Second,
+			expectedPingEnabled:     false,
+			expectedReadIdleTimeout: 30 * time.Second,
+			expectedPingTimeout:     5 * time.Second,
 		},
 		{
 			name: "HTTP2 client ping enabled with default timeouts",
 			envVars: map[string]string{
 				"HTTP2_TRANSPORT_PING_ENABLED": "true",
 			},
-			expectedHTTP2ClientPingEnabled: true,
-			expectedReadIdleTimeout:        30 * time.Second,
-			expectedPingTimeout:            5 * time.Second,
+			expectedPingEnabled:     true,
+			expectedReadIdleTimeout: 30 * time.Second,
+			expectedPingTimeout:     5 * time.Second,
 		},
 		{
 			name: "HTTP2 client ping enabled with defaults values when using invalid timeouts",
@@ -69,9 +69,9 @@ func TestHTTPClientInitialization(t *testing.T) {
 				"HTTP2_TRANSPORT_READ_IDLE_TIMEOUT": "whatever",
 				"HTTP2_TRANSPORT_PING_TIMEOUT":      "whatever",
 			},
-			expectedHTTP2ClientPingEnabled: true,
-			expectedReadIdleTimeout:        30 * time.Second,
-			expectedPingTimeout:            5 * time.Second,
+			expectedPingEnabled:     true,
+			expectedReadIdleTimeout: 30 * time.Second,
+			expectedPingTimeout:     5 * time.Second,
 		},
 	}
 
@@ -85,8 +85,8 @@ func TestHTTPClientInitialization(t *testing.T) {
 			// Reinitialize the HTTP client
 			initOsEnv()
 
-			// Check if the HTTP2 client ping is enabled
-			assert.Equal(t, tt.expectedHTTP2ClientPingEnabled, IsHTTP2ClientPingEnabled())
+			// Check if the ping is enabled
+			assert.Equal(t, tt.expectedPingEnabled, IsHTTP2TransportPingEnabled())
 
 			// Check the read idle timeout
 			assert.Equal(t, tt.expectedReadIdleTimeout, GetHTTP2TransportReadIdleTimeout())

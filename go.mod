@@ -7,7 +7,7 @@ require (
 	github.com/allegro/bigcache v1.2.1
 	github.com/aws/aws-sdk-go v1.44.216
 	github.com/coreos/go-oidc v2.2.1+incompatible
-	github.com/go-chi/chi/v5 v5.0.8
+	github.com/go-chi/chi/v5 v5.2.2
 	github.com/go-ldap/ldap/v3 v3.4.4
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang-jwt/jwt/v4 v4.5.2
