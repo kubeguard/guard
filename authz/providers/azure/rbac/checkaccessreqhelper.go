@@ -266,7 +266,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 				IsDataAction: true,
 			}
 
-			if isCustomerResourceTypeCheckAvailable && isCustomResourceAccessRequest(subRevReq, &storedOperationsMap) {
+			if isCustomerResourceTypeCheckAvailable && isCustomResourceAccessRequest(subRevReq, storedOperationsMap) {
 				/*
 					In this case both Res and Group are not *, but there is no matching DataAction present on the storedOperationsMap.
 					The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
@@ -329,7 +329,7 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 		if subRevReq.ResourceAttributes.Group == "*" {
 			// all resources under all apigroups
 			filteredOperations = storedOperationsMap
-		} else if isCustomerResourceTypeCheckAvailable && isCustomResourceAccessRequest(subRevReq, &storedOperationsMap) {
+		} else if isCustomerResourceTypeCheckAvailable && isCustomResourceAccessRequest(subRevReq, storedOperationsMap) {
 			/*
 				In this case Group is not *, but there are no matching DataActions present on the storedOperationsMap.
 				The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
@@ -391,7 +391,7 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 					finalFilteredOperations[group][subRevReq.ResourceAttributes.Resource] = verbMap
 				}
 			}
-		} else if isCustomerResourceTypeCheckAvailable && isCustomResourceAccessRequest(subRevReq, &storedOperationsMap) {
+		} else if isCustomerResourceTypeCheckAvailable && isCustomResourceAccessRequest(subRevReq, storedOperationsMap) {
 			/*
 				In this case both Res and Group are not *, but there are no matching DataActions present on the storedOperationsMap.
 				The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
@@ -466,7 +466,7 @@ func setAuthInfoResourceAttributes(action *azureutils.AuthorizationActionInfo, s
 	return nil
 }
 
-func isCustomResourceAccessRequest(subRevReq *authzv1.SubjectAccessReviewSpec, operationsMap *azureutils.OperationsMap) bool {
+func isCustomResourceAccessRequest(subRevReq *authzv1.SubjectAccessReviewSpec, operationsMap azureutils.OperationsMap) bool {
 	if subRevReq.ResourceAttributes == nil {
 		return false
 	}
@@ -474,11 +474,11 @@ func isCustomResourceAccessRequest(subRevReq *authzv1.SubjectAccessReviewSpec, o
 		return false
 	}
 	if subRevReq.ResourceAttributes.Resource == "" || subRevReq.ResourceAttributes.Resource == "*" {
-		_, found := (*operationsMap)[subRevReq.ResourceAttributes.Group]
+		_, found := operationsMap[subRevReq.ResourceAttributes.Group]
 		return !found
 	}
 
-	_, found := (*operationsMap)[subRevReq.ResourceAttributes.Group][subRevReq.ResourceAttributes.Resource]
+	_, found := operationsMap[subRevReq.ResourceAttributes.Group][subRevReq.ResourceAttributes.Resource]
 	return !found
 }
 
