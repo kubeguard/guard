@@ -158,7 +158,7 @@ type AuthorizationEntity struct {
 type AuthorizationActionInfo struct {
 	AuthorizationEntity
 	IsDataAction bool `json:"IsDataAction"`
-	Attributes   map[string]string
+	Attributes   map[string]string `json:"Attributes"`
 }
 
 type DataAction struct {

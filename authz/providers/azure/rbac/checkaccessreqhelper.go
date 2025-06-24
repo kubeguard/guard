@@ -460,9 +460,6 @@ func setAuthInfoResourceAttributes(action *azureutils.AuthorizationActionInfo, s
 	}
 	action.Attributes = make(map[string]string)
 	action.Attributes["Microsoft.ContainerService/managedClusters/customResources:group"] = subRevReq.ResourceAttributes.Group
-	if subRevReq.ResourceAttributes.Version != "" {
-		action.Attributes["Microsoft.ContainerService/managedClusters/customResources:version"] = subRevReq.ResourceAttributes.Version
-	}
 	if subRevReq.ResourceAttributes.Resource != "" {
 		action.Attributes["Microsoft.ContainerService/managedClusters/customResources:kind"] = subRevReq.ResourceAttributes.Resource
 	}
@@ -479,10 +476,10 @@ func isCustomResourceAccessRequest(subRevReq *authzv1.SubjectAccessReviewSpec, o
 	if subRevReq.ResourceAttributes.Resource == "" || subRevReq.ResourceAttributes.Resource == "*" {
 		_, found := (*operationsMap)[subRevReq.ResourceAttributes.Group]
 		return !found
-	} else {
-		_, found := (*operationsMap)[subRevReq.ResourceAttributes.Group][subRevReq.ResourceAttributes.Resource]
-		return !found
 	}
+
+	_, found := (*operationsMap)[subRevReq.ResourceAttributes.Group][subRevReq.ResourceAttributes.Resource]
+	return !found
 }
 
 func initializeMapForGroupAndResource(filteredOperations azureutils.OperationsMap, group string, resourceName string) azureutils.OperationsMap {
@@ -601,7 +598,6 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 					"Attributes": {
 						"Microsoft.ContainerService/managedClusters/customResources:kind": "SecretProviderClass",
 						"Microsoft.ContainerService/managedClusters/customResources:group": "extensions",
-						"Microsoft.ContainerService/managedClusters/customResources:version": "v1beta1",
 					}
 				}
 			],
