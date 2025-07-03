@@ -884,16 +884,16 @@ func Test_prepareCheckAccessRequestBodyWithCustomResourceAndStars(t *testing.T) 
 
 	customResourceActions := []azureutils.AuthorizationActionInfo{
 		{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true, Attributes: map[string]string{
-			"Microsoft.ContainerService/managedClusters/customResources:kind":    "*",
-			"Microsoft.ContainerService/managedClusters/customResources:group":   "customresources.contoso.io",
+			"Microsoft.ContainerService/managedClusters/customResources:kind":  "*",
+			"Microsoft.ContainerService/managedClusters/customResources:group": "customresources.contoso.io",
 		}},
 		{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/write"}, IsDataAction: true, Attributes: map[string]string{
-			"Microsoft.ContainerService/managedClusters/customResources:kind":    "*",
-			"Microsoft.ContainerService/managedClusters/customResources:group":   "customresources.contoso.io",
+			"Microsoft.ContainerService/managedClusters/customResources:kind":  "*",
+			"Microsoft.ContainerService/managedClusters/customResources:group": "customresources.contoso.io",
 		}},
 		{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/delete"}, IsDataAction: true, Attributes: map[string]string{
-			"Microsoft.ContainerService/managedClusters/customResources:kind":    "*",
-			"Microsoft.ContainerService/managedClusters/customResources:group":   "customresources.contoso.io",
+			"Microsoft.ContainerService/managedClusters/customResources:kind":  "*",
+			"Microsoft.ContainerService/managedClusters/customResources:group": "customresources.contoso.io",
 		}},
 	}
 
