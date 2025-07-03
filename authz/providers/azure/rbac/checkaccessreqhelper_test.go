@@ -32,12 +32,7 @@ import (
 )
 
 const resourceId = "resourceId"
-
-var customResourceDataActions = []azureutils.AuthorizationActionInfo{
-	{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
-	{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/write"}, IsDataAction: true},
-	{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/delete"}, IsDataAction: true},
-}
+const aksClusterType = "aks"
 
 func createOperationsMap(clusterType string) azureutils.OperationsMap {
 	return azureutils.OperationsMap{
@@ -174,12 +169,12 @@ func Test_getDataActions(t *testing.T) {
 		want []azureutils.AuthorizationActionInfo
 	}{
 		{
-			"aks",
+			aksClusterType,
 			args{
 				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					NonResourceAttributes: &authzv1.NonResourceAttributes{Path: "/apis", Verb: "list"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/apis/read"}, IsDataAction: true}},
 		},
@@ -190,7 +185,7 @@ func Test_getDataActions(t *testing.T) {
 				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					NonResourceAttributes: &authzv1.NonResourceAttributes{Path: "/logs", Verb: "get"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/logs/read"}, IsDataAction: true}},
 		},
@@ -256,7 +251,7 @@ func Test_getDataActions(t *testing.T) {
 				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "authentication.k8s.io", Resource: "userextras", Subresource: "scopes", Version: "v1", Name: "test", Verb: "impersonate"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/authentication.k8s.io/userextras/impersonate/action"}, IsDataAction: true}},
 		},
@@ -289,7 +284,7 @@ func Test_getDataActions(t *testing.T) {
 				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "rbac.authorization.k8s.io", Resource: "clusterroles", Subresource: "status", Version: "v1", Name: "test", Verb: "escalate"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/rbac.authorization.k8s.io/clusterroles/escalate/action"}, IsDataAction: true}},
 		},
@@ -322,7 +317,7 @@ func Test_getDataActions(t *testing.T) {
 				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "events.k8s.io", Resource: "events", Subresource: "status", Version: "v1", Name: "test", Verb: "watch"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/events.k8s.io/events/read"}, IsDataAction: true}},
 		},
@@ -355,7 +350,7 @@ func Test_getDataActions(t *testing.T) {
 				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "certificates.k8s.io", Resource: "certificatesigningrequests", Subresource: "approvals", Version: "v1", Name: "test", Verb: "deletecollection"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/certificates.k8s.io/certificatesigningrequests/delete"}, IsDataAction: true}},
 		},
@@ -372,12 +367,12 @@ func Test_getDataActions(t *testing.T) {
 		},
 
 		{
-			"aks",
+			aksClusterType,
 			args{
 				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "pods", Subresource: "exec", Version: "v1", Name: "test", Verb: "create"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/exec/action"}, IsDataAction: true}},
 		},
@@ -399,7 +394,7 @@ func Test_getDataActions(t *testing.T) {
 				isWildcardTest: true,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "*", Resource: "*", Subresource: "*", Version: "*", Name: "test", Verb: "*"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/apps/deployments/delete"}, IsDataAction: true},
@@ -421,7 +416,7 @@ func Test_getDataActions(t *testing.T) {
 				isWildcardTest: true,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "*", Resource: "*", Subresource: "*", Version: "*", Name: "test", Verb: "*", Namespace: "kube-system"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/apps/deployments/delete"}, IsDataAction: true},
@@ -440,7 +435,7 @@ func Test_getDataActions(t *testing.T) {
 				isWildcardTest: true,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "*", Resource: "*", Subresource: "*", Version: "*", Name: "test", Verb: "get", Namespace: "kube-system"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/apps/deployments/read"}, IsDataAction: true},
@@ -454,7 +449,7 @@ func Test_getDataActions(t *testing.T) {
 				isWildcardTest: true,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "*", Resource: "pods", Subresource: "*", Version: "*", Name: "test", Verb: "*", Namespace: "kube-system"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/read"}, IsDataAction: true},
@@ -470,7 +465,7 @@ func Test_getDataActions(t *testing.T) {
 				isWildcardTest: true,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "*", Subresource: "*", Version: "*", Name: "test", Verb: "*", Namespace: "kube-system"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/write"}, IsDataAction: true},
@@ -486,7 +481,7 @@ func Test_getDataActions(t *testing.T) {
 				isWildcardTest: true,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "persistentvolumes", Subresource: "*", Version: "*", Name: "test", Verb: "*"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/persistentvolumes/read"}, IsDataAction: true},
@@ -501,7 +496,7 @@ func Test_getDataActions(t *testing.T) {
 				isWildcardTest: true,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "*", Subresource: "*", Version: "*", Name: "test", Verb: "delete"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/persistentvolumes/delete"}, IsDataAction: true},
@@ -515,7 +510,7 @@ func Test_getDataActions(t *testing.T) {
 				isWildcardTest: true,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "*", Resource: "deployments", Subresource: "*", Version: "*", Name: "test", Verb: "*", Namespace: "kube-system"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/apps/deployments/delete"}, IsDataAction: true},
@@ -531,7 +526,7 @@ func Test_getDataActions(t *testing.T) {
 				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "customresources.contoso.io", Resource: "contosoCustomResource", Subresource: "*", Version: "*", Name: "test", Verb: "list"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
@@ -545,7 +540,7 @@ func Test_getDataActions(t *testing.T) {
 				isWildcardTest: true,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "customresources.contoso.io", Resource: "*", Subresource: "*", Version: "*", Name: "test", Verb: "get"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
@@ -559,7 +554,7 @@ func Test_getDataActions(t *testing.T) {
 				isWildcardTest: true,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "customresources.contoso.io", Resource: "contosoCustomResource", Subresource: "*", Version: "*", Name: "test", Verb: "*"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
@@ -575,7 +570,7 @@ func Test_getDataActions(t *testing.T) {
 				isWildcardTest: true,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "customresources.contoso.io", Resource: "*", Subresource: "*", Version: "*", Name: "test", Verb: "*"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
@@ -591,7 +586,7 @@ func Test_getDataActions(t *testing.T) {
 				isWildcardTest: false,
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					ResourceAttributes: &authzv1.ResourceAttributes{Group: "apps", Resource: "aCustomResource", Subresource: "status", Version: "v1", Name: "test", Verb: "get"},
-				}, clusterType: "aks",
+				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
@@ -695,7 +690,7 @@ func Test_getNameSpaceScopeUsingNewNsFormat(t *testing.T) {
 
 func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	req := &authzv1.SubjectAccessReviewSpec{Extra: nil}
-	clusterType := "aks"
+	clusterType := aksClusterType
 	createOperationsMap(clusterType)
 	wantErr := errors.New("oid info not sent from authenticatoin module")
 
@@ -719,7 +714,7 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
 	dummyUuid := uuid.New()
 	req := &authzv1.SubjectAccessReviewSpec{ResourceAttributes: &authzv1.ResourceAttributes{Namespace: "dev"}, Extra: map[string]authzv1.ExtraValue{"oid": {dummyUuid.String()}}}
-	clusterType := "aks"
+	clusterType := aksClusterType
 	createOperationsMap(clusterType)
 
 	// testing with new ns scope format
@@ -764,7 +759,7 @@ func Test_prepareCheckAccessRequestBodyWithCustomResource(t *testing.T) {
 			},
 		},
 	}
-	clusterType := "aks"
+	clusterType := aksClusterType
 	createOperationsMap(clusterType)
 
 	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
@@ -802,7 +797,7 @@ func Test_prepareCheckAccessRequestBodyWithCustomResourceOperationsMapEmpty(t *t
 			},
 		},
 	}
-	clusterType := "aks"
+	clusterType := aksClusterType
 
 	getStoredOperationsMap = func() azureutils.OperationsMap {
 		return azureutils.OperationsMap{}
@@ -835,7 +830,7 @@ func Test_prepareCheckAccessRequestBodyWithCustomResourceTypeCheckDisabled(t *te
 			},
 		},
 	}
-	clusterType := "aks"
+	clusterType := aksClusterType
 	operationsMap := createOperationsMap(clusterType)
 
 	getStoredOperationsMap = func() azureutils.OperationsMap {
@@ -869,7 +864,7 @@ func Test_prepareCheckAccessRequestBodyWithCustomResourceAndStars(t *testing.T) 
 			},
 		},
 	}
-	clusterType := "aks"
+	clusterType := aksClusterType
 	operationsMap := createOperationsMap(clusterType)
 
 	getStoredOperationsMap = func() azureutils.OperationsMap {
@@ -918,7 +913,7 @@ func Test_getResultCacheKey(t *testing.T) {
 		want string
 	}{
 		{
-			"aks",
+			aksClusterType,
 			args{
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					User:                  "charlie@yahoo.com",
@@ -929,7 +924,7 @@ func Test_getResultCacheKey(t *testing.T) {
 		},
 
 		{
-			"aks",
+			aksClusterType,
 			args{
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					User:                  "echo@outlook.com",
@@ -940,7 +935,7 @@ func Test_getResultCacheKey(t *testing.T) {
 		},
 
 		{
-			"aks",
+			aksClusterType,
 			args{
 				subRevReq: &authzv1.SubjectAccessReviewSpec{
 					User: "alpha@bing.com",
