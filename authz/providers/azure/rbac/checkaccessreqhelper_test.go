@@ -31,8 +31,10 @@ import (
 	authzv1 "k8s.io/api/authorization/v1"
 )
 
-const resourceId = "resourceId"
-const aksClusterType = "aks"
+const (
+	resourceId     = "resourceId"
+	aksClusterType = "aks"
+)
 
 func createOperationsMap(clusterType string) azureutils.OperationsMap {
 	return azureutils.OperationsMap{
