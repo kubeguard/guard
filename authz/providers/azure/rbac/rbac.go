@@ -87,6 +87,7 @@ type AccessInfo struct {
 	skipCheck                              map[string]void
 	skipAuthzForNonAADUsers                bool
 	allowNonResDiscoveryPathAccess         bool
+	allowCustomResourceTypeCheck           bool
 	useManagedNamespaceResourceScopeFormat bool
 	useNamespaceResourceScopeFormat        bool
 	httpClientRetryCount                   int
@@ -174,6 +175,7 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 		armCallLimit:                           opts.ARMCallLimit,
 		skipAuthzForNonAADUsers:                opts.SkipAuthzForNonAADUsers,
 		allowNonResDiscoveryPathAccess:         opts.AllowNonResDiscoveryPathAccess,
+		allowCustomResourceTypeCheck:           opts.AllowCustomResourceTypeCheck,
 		useManagedNamespaceResourceScopeFormat: opts.UseManagedNamespaceResourceScopeFormat,
 		useNamespaceResourceScopeFormat:        opts.UseNamespaceResourceScopeFormat,
 		httpClientRetryCount:                   authopts.HttpClientRetryCount,
@@ -417,7 +419,7 @@ func (a *AccessInfo) auditSARIfNeeded(request *authzv1.SubjectAccessReviewSpec) 
 func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
 	a.auditSARIfNeeded(request)
 
-	checkAccessBodies, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat)
+	checkAccessBodies, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat, a.allowCustomResourceTypeCheck)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in preparing check access request")
 	}
