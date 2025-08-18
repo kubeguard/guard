@@ -52,6 +52,7 @@ type Options struct {
 	ReconcileDiscoverResourcesFrequency    time.Duration
 	KubeConfigFile                         string
 	AuditSAR                               bool
+	RunTimeConfigPath                      string
 }
 
 func NewOptions() Options {
@@ -65,6 +66,7 @@ func NewOptions() Options {
 		DiscoverResources:                      false,
 		ReconcileDiscoverResourcesFrequency:    5 * time.Minute,
 		UseManagedNamespaceResourceScopeFormat: false,
+		RunTimeConfigPath:                      "",
 	}
 }
 
@@ -83,6 +85,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.DiscoverResources, "azure.discover-resources", o.DiscoverResources, "fetch list of resources and operations from apiserver and azure. Default: false")
 	fs.DurationVar(&o.ReconcileDiscoverResourcesFrequency, "azure.discover-resources-frequency", o.ReconcileDiscoverResourcesFrequency, "Frequency at which discover resources should be reconciled. Default: 5m")
 	fs.BoolVar(&o.AuditSAR, "azure.audit-sar", o.AuditSAR, "enable audit of SAR requests in azure authz mode. Default: false")
+	fs.StringVar(&o.RunTimeConfigPath, "azure.runtime-config-path", "", "path to azure auth runtime config file.")
 }
 
 func (o *Options) Validate(azure azure.Options) []error {

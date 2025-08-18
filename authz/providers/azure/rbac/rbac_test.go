@@ -22,6 +22,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path"
 	"strings"
 	"sync"
 	"testing"
@@ -92,6 +94,57 @@ func getAPIServerAndAccessInfoWithPaths(
 		auditSAR:        true,
 	}
 	return ts, u
+}
+
+// Helper struct for fleet test scenarios
+type fleetTestServer struct {
+	server *httptest.Server
+	u      *AccessInfo
+}
+
+// getAPIServerAndAccessInfoWithFleetPaths allows custom status and body for fleet, managed namespaces, and regular namespaces
+func getAPIServerAndAccessInfoWithFleetPaths(
+	defaultStatus int, defaultBody, clusterType, resourceId string,
+	managedNamespacesStatus int, managedNamespacesBody string,
+	namespacesStatus int, namespacesBody string,
+	fleetStatus int, fleetBody string,
+) *fleetTestServer {
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check for fleet requests (containing fleet resource ID pattern)
+		if strings.Contains(r.URL.Path, "/fleets/") {
+			w.WriteHeader(fleetStatus)
+			_, _ = w.Write([]byte(fleetBody))
+			return
+		} else if strings.Contains(r.URL.Path, "/managedNamespaces/") {
+			w.WriteHeader(managedNamespacesStatus)
+			_, _ = w.Write([]byte(managedNamespacesBody))
+			return
+		} else if strings.Contains(r.URL.Path, "/namespaces/") {
+			w.WriteHeader(namespacesStatus)
+			_, _ = w.Write([]byte(namespacesBody))
+			return
+		}
+		w.WriteHeader(defaultStatus)
+		_, _ = w.Write([]byte(defaultBody))
+	}))
+
+	apiURL, _ := url.Parse(ts.URL)
+	u := &AccessInfo{
+		client:          httpclient.DefaultHTTPClient,
+		apiURL:          apiURL,
+		headers:         http.Header{},
+		expiresAt:       time.Now().Add(time.Hour),
+		clusterType:     clusterType,
+		azureResourceId: resourceId,
+		armCallLimit:    0,
+		lock:            sync.RWMutex{},
+		auditSAR:        true,
+	}
+
+	return &fleetTestServer{
+		server: ts,
+		u:      u,
+	}
 }
 
 func TestCheckAccess(t *testing.T) {
@@ -513,6 +566,210 @@ func TestLogin(t *testing.T) {
 		err := u.RefreshToken(ctx)
 		assert.NotNilf(t, err, "Should have gotten error")
 	})
+}
+
+func TestCheckAccess_FleetScopeFallback(t *testing.T) {
+	t.Parallel()
+	type testCase struct {
+		name                           string
+		namespaceStatus                int
+		namespaceBody                  string
+		managedNamespacesStatus        int
+		managedNamespacesBody          string
+		fleetStatus                    int
+		fleetBody                      string
+		expectedAllowed                bool
+		expectedDenied                 bool
+		enabledManagedNamespaceRBAC    bool
+		clusterType                    string
+		fleetResourceId                string
+		runtimeConfigPath              string
+	}
+
+	tests := []testCase{
+		{
+			name:                        "fleet fallback success after primary and managed fail",
+			namespaceStatus:             http.StatusOK,
+			namespaceBody:               `[{"accessDecision":"Denied","actionId":"Microsoft.ContainerService/managedClusters/pods/delete","isDataAction":true}]`,
+			managedNamespacesStatus:     http.StatusOK,
+			managedNamespacesBody:       `[{"accessDecision":"Denied","actionId":"Microsoft.ContainerService/managedClusters/pods/delete","isDataAction":true}]`,
+			fleetStatus:                 http.StatusOK,
+			fleetBody:                   `[{"accessDecision":"Allowed","actionId":"Microsoft.ContainerService/fleets/pods/delete","isDataAction":true}]`,
+			expectedAllowed:             true,
+			expectedDenied:              false,
+			enabledManagedNamespaceRBAC: true,
+			clusterType:                 managedClusters,
+			fleetResourceId:             "/subscriptions/sub-id/resourceGroups/rg/providers/Microsoft.ContainerService/fleets/fleet-id",
+			runtimeConfigPath:           "/tmp/test-runtime-config",
+		},
+		{
+			name:                        "fleet fallback denied after primary and managed fail",
+			namespaceStatus:             http.StatusOK,
+			namespaceBody:               `[{"accessDecision":"Denied","actionId":"Microsoft.ContainerService/managedClusters/pods/delete","isDataAction":true}]`,
+			managedNamespacesStatus:     http.StatusOK,
+			managedNamespacesBody:       `[{"accessDecision":"Denied","actionId":"Microsoft.ContainerService/managedClusters/pods/delete","isDataAction":true}]`,
+			fleetStatus:                 http.StatusOK,
+			fleetBody:                   `[{"accessDecision":"Denied","actionId":"Microsoft.ContainerService/fleets/pods/delete","isDataAction":true}]`,
+			expectedAllowed:             false,
+			expectedDenied:              true,
+			enabledManagedNamespaceRBAC: true,
+			clusterType:                 managedClusters,
+			fleetResourceId:             "/subscriptions/sub-id/resourceGroups/rg/providers/Microsoft.ContainerService/fleets/fleet-id",
+			runtimeConfigPath:           "/tmp/test-runtime-config",
+		},
+		{
+			name:                        "no fleet fallback when primary succeeds",
+			namespaceStatus:             http.StatusOK,
+			namespaceBody:               `[{"accessDecision":"Allowed","actionId":"Microsoft.ContainerService/managedClusters/pods/delete","isDataAction":true}]`,
+			managedNamespacesStatus:     http.StatusOK,
+			managedNamespacesBody:       `[{"accessDecision":"Denied","actionId":"Microsoft.ContainerService/managedClusters/pods/delete","isDataAction":true}]`,
+			fleetStatus:                 http.StatusOK,
+			fleetBody:                   `[{"accessDecision":"Denied","actionId":"Microsoft.ContainerService/fleets/pods/delete","isDataAction":true}]`,
+			expectedAllowed:             true,
+			expectedDenied:              false,
+			enabledManagedNamespaceRBAC: true,
+			clusterType:                 managedClusters,
+			fleetResourceId:             "/subscriptions/sub-id/resourceGroups/rg/providers/Microsoft.ContainerService/fleets/fleet-id",
+			runtimeConfigPath:           "/tmp/test-runtime-config",
+		},
+		{
+			name:                        "no fleet fallback when managed namespace succeeds",
+			namespaceStatus:             http.StatusOK,
+			namespaceBody:               `[{"accessDecision":"Denied","actionId":"Microsoft.ContainerService/managedClusters/pods/delete","isDataAction":true}]`,
+			managedNamespacesStatus:     http.StatusOK,
+			managedNamespacesBody:       `[{"accessDecision":"Allowed","actionId":"Microsoft.ContainerService/managedClusters/pods/delete","isDataAction":true}]`,
+			fleetStatus:                 http.StatusOK,
+			fleetBody:                   `[{"accessDecision":"Denied","actionId":"Microsoft.ContainerService/fleets/pods/delete","isDataAction":true}]`,
+			expectedAllowed:             true,
+			expectedDenied:              false,
+			enabledManagedNamespaceRBAC: true,
+			clusterType:                 managedClusters,
+			fleetResourceId:             "/subscriptions/sub-id/resourceGroups/rg/providers/Microsoft.ContainerService/fleets/fleet-id",
+			runtimeConfigPath:           "/tmp/test-runtime-config",
+		},
+		{
+			name:                        "no fleet fallback without runtime config path",
+			namespaceStatus:             http.StatusOK,
+			namespaceBody:               `[{"accessDecision":"Denied","actionId":"Microsoft.ContainerService/managedClusters/pods/delete","isDataAction":true}]`,
+			managedNamespacesStatus:     http.StatusOK,
+			managedNamespacesBody:       `[{"accessDecision":"Denied","actionId":"Microsoft.ContainerService/managedClusters/pods/delete","isDataAction":true}]`,
+			fleetStatus:                 http.StatusOK,
+			fleetBody:                   `[{"accessDecision":"Allowed","actionId":"Microsoft.ContainerService/fleets/pods/delete","isDataAction":true}]`,
+			expectedAllowed:             false,
+			expectedDenied:              true,
+			enabledManagedNamespaceRBAC: true,
+			clusterType:                 managedClusters,
+			fleetResourceId:             "/subscriptions/sub-id/resourceGroups/rg/providers/Microsoft.ContainerService/fleets/fleet-id",
+			runtimeConfigPath:           "",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Create a temporary directory for runtime config if needed
+			var tempDir string
+			if tc.runtimeConfigPath != "" {
+				tempDir = t.TempDir()
+				fleetIdFile := path.Join(tempDir, "fleet-resource-id")
+				err := os.WriteFile(fleetIdFile, []byte(tc.fleetResourceId), 0644)
+				assert.NoError(t, err)
+			}
+
+			ts := getAPIServerAndAccessInfoWithFleetPaths(
+				http.StatusOK, tc.namespaceBody, "aks", "resourceid",
+				tc.managedNamespacesStatus, tc.managedNamespacesBody,
+				tc.namespaceStatus, tc.namespaceBody,
+				tc.fleetStatus, tc.fleetBody,
+			)
+			u := ts.u
+			u.useManagedNamespaceResourceScopeFormat = tc.enabledManagedNamespaceRBAC
+			u.clusterType = tc.clusterType
+			if tempDir != "" {
+				u.runtimeConfigPath = tempDir
+			}
+			defer ts.server.Close()
+
+			request := &authzv1.SubjectAccessReviewSpec{
+				User: "test@bing.com",
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "dev", Group: "", Resource: "pods",
+					Subresource: "status", Version: "v1", Name: "test", Verb: "delete",
+				},
+				Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
+			}
+
+			response, err := u.CheckAccess(request)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, tc.expectedAllowed, response.Allowed)
+			assert.Equal(t, tc.expectedDenied, response.Denied)
+		})
+	}
+}
+
+func Test_getFleetManagerResourceId(t *testing.T) {
+	cases := []struct {
+		name              string
+		runtimeConfigPath string
+		fleetIdExists     bool
+		fleetIdContent    string
+		expectedExists    bool
+		expectedId        string
+		expectedError     bool
+	}{
+		{
+			name:              "no runtime config path",
+			runtimeConfigPath: "",
+			expectedExists:    false,
+			expectedId:        "",
+			expectedError:     false,
+		},
+		{
+			name:              "fleet resource id file exists",
+			runtimeConfigPath: "/tmp/test-config",
+			fleetIdExists:     true,
+			fleetIdContent:    "/subscriptions/sub-id/resourceGroups/rg/providers/Microsoft.ContainerService/fleets/fleet-id",
+			expectedExists:    true,
+			expectedId:        "/subscriptions/sub-id/resourceGroups/rg/providers/Microsoft.ContainerService/fleets/fleet-id",
+			expectedError:     false,
+		},
+		{
+			name:              "fleet resource id file does not exist",
+			runtimeConfigPath: "/tmp/test-config",
+			fleetIdExists:     false,
+			expectedExists:    false,
+			expectedId:        "",
+			expectedError:     true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			accessInfo := &AccessInfo{
+				runtimeConfigPath: tc.runtimeConfigPath,
+			}
+
+			if tc.runtimeConfigPath != "" && tc.fleetIdExists {
+				tempDir := t.TempDir()
+				accessInfo.runtimeConfigPath = tempDir
+				fleetIdFile := path.Join(tempDir, "fleet-resource-id")
+				err := os.WriteFile(fleetIdFile, []byte(tc.fleetIdContent), 0644)
+				assert.NoError(t, err)
+			}
+
+			exists, id, err := accessInfo.getFleetManagerResourceId()
+
+			assert.Equal(t, tc.expectedExists, exists)
+			assert.Equal(t, tc.expectedId, id)
+			if tc.expectedError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func Test_auditSARIfNeeded(t *testing.T) {

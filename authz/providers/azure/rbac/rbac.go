@@ -24,7 +24,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -93,7 +95,8 @@ type AccessInfo struct {
 	httpClientRetryCount                   int
 	lock                                   sync.RWMutex
 
-	auditSAR bool
+	auditSAR          bool
+	runtimeConfigPath string
 }
 
 var (
@@ -180,6 +183,7 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 		useNamespaceResourceScopeFormat:        opts.UseNamespaceResourceScopeFormat,
 		httpClientRetryCount:                   authopts.HttpClientRetryCount,
 		auditSAR:                               opts.AuditSAR,
+		runtimeConfigPath:                      opts.RunTimeConfigPath,
 	}
 
 	u.skipCheck = make(map[string]void, len(opts.SkipAuthzCheck))
@@ -465,11 +469,37 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	}
 
 	// Update resource IDs for managed namespace
-	for _, b := range checkAccessBodies {
+	managednsBodies := slices.Clone(checkAccessBodies)
+	for _, b := range managednsBodies {
 		b.Resource.Id = path.Join(a.azureResourceId, managedNamespacePath)
 	}
 
-	return a.performCheckAccess(managedNamespaceURL, checkAccessBodies, checkAccessUsername)
+	status, err = a.performCheckAccess(managedNamespaceURL, managednsBodies, checkAccessUsername)
+	if err != nil {
+		return nil, err
+	}
+	if status != nil && status.Allowed {
+		klog.V(7).Infof("Managed namespace checkaccess request is allowed for user %s", checkAccessUsername)
+		return status, nil
+	}
+
+	// Fallback to fleet scope check when the managedCluster has joined a fleet
+	exists, fleetMgrId, err := a.getFleetManagerResourceId()
+	if !exists {
+		if err != nil {
+			klog.V(7).Infof("Error in getting fleet manager resource id for user %s: %s", checkAccessUsername, err)
+		}
+		return status, nil
+	}
+	fleetURL, err := buildCheckAccessURL(*a.apiURL, fleetMgrId, exist, nameSpaceString)
+	if err != nil {
+		return nil, errors.Wrap(err, "error in building fleet manager check access URL")
+	}
+	fleetBodies := slices.Clone(checkAccessBodies)
+	for _, b := range fleetBodies {
+		b.Resource.Id = path.Join(fleetMgrId, nameSpaceString)
+	}
+	return a.performCheckAccess(fleetURL, fleetBodies, checkAccessUsername)
 }
 
 func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUsername string, checkAccessURL string, checkAccessBody *CheckAccessRequest, ch chan *authzv1.SubjectAccessReviewStatus) error {
@@ -564,4 +594,20 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 
 	ch <- status
 	return nil
+}
+
+const (
+	fleetResourceIdFile = "fleet-resource-id"
+)
+
+func (a *AccessInfo) getFleetManagerResourceId() (bool, string, error) {
+	if a.runtimeConfigPath == "" {
+		return false, "", nil
+	}
+	fleetIdFilePath := path.Join(a.runtimeConfigPath, fleetResourceIdFile)
+	id, err := os.ReadFile(fleetIdFilePath)
+	if err != nil {
+		return false, "", err
+	}
+	return true, string(id), nil
 }
