@@ -905,6 +905,111 @@ func Test_prepareCheckAccessRequestBodyWithCustomResourceAndStars(t *testing.T) 
 	}
 }
 
+func Test_prepareCheckAccessRequestBodyWithFleetMembers(t *testing.T) {
+	id := uuid.New()
+	fleetResourceID := "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.ContainerService/fleets/my-fleet"
+
+	tests := []struct {
+		name         string
+		req          *authzv1.SubjectAccessReviewSpec
+		clusterType  string
+		resourceID   string
+		wantResource string
+		wantActions  []string
+	}{
+		{
+			name: "fleet members without namespace",
+			req: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group:    "",
+					Resource: "pods",
+					Verb:     "get",
+				},
+				Extra: map[string]authzv1.ExtraValue{"oid": {id.String()}},
+			},
+			clusterType:  fleetmembers,
+			resourceID:   fleetResourceID,
+			wantResource: fleetResourceID,
+			wantActions:  []string{"Microsoft.ContainerService/fleets/members/pods/read"},
+		},
+		{
+			name: "fleet members with namespace",
+			req: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "dev",
+					Group:     "",
+					Resource:  "pods",
+					Verb:      "create",
+				},
+				Extra: map[string]authzv1.ExtraValue{"oid": {id.String()}},
+			},
+			clusterType:  fleetmembers,
+			resourceID:   fleetResourceID,
+			wantResource: fleetResourceID + "/namespaces/dev",
+			wantActions:  []string{"Microsoft.ContainerService/fleets/members/pods/write"},
+		},
+		{
+			name: "fleet members with delete verb",
+			req: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "prod",
+					Group:     "",
+					Resource:  "deployments",
+					Verb:      "delete",
+				},
+				Extra: map[string]authzv1.ExtraValue{"oid": {id.String()}},
+			},
+			clusterType:  fleetmembers,
+			resourceID:   fleetResourceID,
+			wantResource: fleetResourceID + "/namespaces/prod",
+			wantActions:  []string{"Microsoft.ContainerService/fleets/members/deployments/delete"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, gotErr := prepareCheckAccessRequestBody(tt.req, tt.clusterType, tt.resourceID, false, false)
+
+			if gotErr != nil {
+				t.Errorf("Unexpected error: %v", gotErr)
+				return
+			}
+
+			if got == nil || len(got) == 0 {
+				t.Error("Expected non-empty result")
+				return
+			}
+
+			// Verify Resource.Id
+			if got[0].Resource.Id != tt.wantResource {
+				t.Errorf("Resource.Id: want %q, got %q", tt.wantResource, got[0].Resource.Id)
+			}
+
+			// Verify Actions
+			if len(got[0].Actions) != len(tt.wantActions) {
+				t.Errorf("Actions count: want %d, got %d", len(tt.wantActions), len(got[0].Actions))
+				return
+			}
+
+			for i, wantAction := range tt.wantActions {
+				if got[0].Actions[i].AuthorizationEntity.Id != wantAction {
+					t.Errorf("Action[%d]: want %q, got %q", i, wantAction, got[0].Actions[i].AuthorizationEntity.Id)
+				}
+
+				// Verify IsDataAction is true for fleet members
+				if !got[0].Actions[i].IsDataAction {
+					t.Errorf("Action[%d].IsDataAction: want true, got false", i)
+				}
+			}
+
+			// Verify Subject.Attributes.ObjectId is set
+			if got[0].Subject.Attributes.ObjectId != id.String() {
+				t.Errorf("Subject.Attributes.ObjectId: want %q, got %q", id.String(), got[0].Subject.Attributes.ObjectId)
+			}
+		})
+	}
+}
+
 func Test_getResultCacheKey(t *testing.T) {
 	type args struct {
 		subRevReq *authzv1.SubjectAccessReviewSpec
@@ -1027,7 +1132,7 @@ func Test_buildCheckAccessURL(t *testing.T) {
 		return *parsedURL
 	}
 
-	const testAzureResourceID = "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName"
+	const testAzureResourceID = "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName"
 	testResourceIDSegCount := len(strings.Split(testAzureResourceID, "/"))
 
 	tests := []struct {
@@ -1046,7 +1151,7 @@ func Test_buildCheckAccessURL(t *testing.T) {
 			resourceID:    testAzureResourceID,
 			hasNamespace:  false,
 			namespacePath: "",
-			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
+			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
 		},
 		{
 			name:          "valid with namespace",
@@ -1054,7 +1159,7 @@ func Test_buildCheckAccessURL(t *testing.T) {
 			resourceID:    testAzureResourceID,
 			hasNamespace:  true,
 			namespacePath: namespaces + "/dev",
-			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/namespaces/dev/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
+			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/namespaces/dev/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
 		},
 		{
 			name:          "valid with managed namespace",
@@ -1062,23 +1167,47 @@ func Test_buildCheckAccessURL(t *testing.T) {
 			resourceID:    testAzureResourceID,
 			hasNamespace:  true,
 			namespacePath: managedNamespaces + "/dev",
-			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/managedNamespaces/dev/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
+			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/managedNamespaces/dev/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
+		},
+		{
+			name:          "valid with fleet resource ID without namespace",
+			baseURL:       mustCreateURL("https://management.azure.com"),
+			resourceID:    "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.ContainerService/fleets/my-fleet",
+			hasNamespace:  false,
+			namespacePath: "",
+			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.ContainerService/fleets/my-fleet/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
+		},
+		{
+			name:          "valid with fleet resource ID with namespace",
+			baseURL:       mustCreateURL("https://management.azure.com"),
+			resourceID:    "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.ContainerService/fleets/my-fleet",
+			hasNamespace:  true,
+			namespacePath: namespaces + "/dev",
+			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.ContainerService/fleets/my-fleet/namespaces/dev/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
+		},
+		{
+			name:          "valid with fleet resource ID with managed namespace",
+			baseURL:       mustCreateURL("https://management.azure.com"),
+			resourceID:    "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.ContainerService/fleets/my-fleet",
+			hasNamespace:  true,
+			namespacePath: managedNamespaces + "/dev",
+			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.ContainerService/fleets/my-fleet/managedNamespaces/dev/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
 		},
 		{
 			name:          "valid with sub resource",
 			baseURL:       mustCreateURL("https://management.azure.com"),
-			resourceID:    "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/subResource",
+			resourceID:    "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/subResource",
 			hasNamespace:  false,
 			namespacePath: namespaces + "/dev/pods",
-			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/subResource/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
+			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/subResource/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
 		},
 		{
 			name:          "valid with previous set sub path",
 			baseURL:       mustCreateURL("https://management.azure.com/test-sub-path"),
-			resourceID:    "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/subResource",
+			resourceID:    "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/subResource",
 			hasNamespace:  false,
 			namespacePath: namespaces + "/dev/pods",
-			want:          "https://management.azure.com/test-sub-path/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/subResource/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
+			want:          "https://management.azure.com/test-sub-path/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/subResource/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
 		},
 		// invalid test cases
 		// invariant 1
@@ -1140,7 +1269,7 @@ func Test_buildCheckAccessURL(t *testing.T) {
 			hasNamespace:  true,
 			namespacePath: namespaces + "%2E%2E%2F%2E%2E%2Fdev",
 			wantErr:       false,
-			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/namespaces%252E%252E%252F%252E%252E%252Fdev/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
+			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/namespaces%252E%252E%252F%252E%252E%252Fdev/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
 		},
 		{
 			name:          "url encoded data",
@@ -1149,7 +1278,7 @@ func Test_buildCheckAccessURL(t *testing.T) {
 			hasNamespace:  true,
 			namespacePath: namespaces + "%2Fdev",
 			wantErr:       false,
-			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/namespaces%252Fdev/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
+			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.Provider/resourceTypes/resourceName/namespaces%252Fdev/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
 		},
 	}
 

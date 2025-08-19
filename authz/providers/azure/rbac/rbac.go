@@ -485,6 +485,11 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		if err != nil {
 			return nil, errors.Wrap(err, "error in preparing check access request for fleet manager RBAC")
 		}
+		if managedNamespaceExists {
+			for _, b := range bodiesForFleetRBAC {
+				b.Resource.Id = path.Join(fleetMgrID, managedNamespacePath)
+			}
+		}
 		return a.performCheckAccess(fleetURL, bodiesForFleetRBAC, checkAccessUsername)
 	}
 	return status, nil

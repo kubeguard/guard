@@ -18,7 +18,9 @@ package rbac
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -28,6 +30,7 @@ import (
 	"time"
 
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
+	azureutils "go.kubeguard.dev/guard/util/azure"
 	"go.kubeguard.dev/guard/util/httpclient"
 	"go.kubeguard.dev/guard/util/httpclient/httpclienttesting"
 
@@ -38,6 +41,8 @@ import (
 func init() {
 	httpclienttesting.HijackDefaultHTTPClientTransportWithSelfSignedTLS()
 }
+
+const emptyBody = `""`
 
 func getAPIServerAndAccessInfo(returnCode int, body, clusterType, resourceId string) (*httptest.Server, *AccessInfo) {
 	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -60,24 +65,34 @@ func getAPIServerAndAccessInfo(returnCode int, body, clusterType, resourceId str
 	return ts, u
 }
 
-// getAPIServerAndAccessInfoWithPaths allows custom status and body for /managedNamespaces/ and /namespaces/ paths
+// getAPIServerAndAccessInfoWithPaths allows custom status and body for /managedNamespaces/, /namespaces/, and /fleets/members paths
 func getAPIServerAndAccessInfoWithPaths(
 	defaultStatus int, defaultBody, clusterType, resourceId string,
 	managedNamespacesStatus int, managedNamespacesBody string,
 	namespacesStatus int, namespacesBody string,
+	fleetsStatus int, fleetsBody string, additionalRequestAssertions ...func(r *http.Request),
 ) (*httptest.Server, *AccessInfo) {
 	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.URL.Path, "/managedNamespaces/") {
+		for _, a := range additionalRequestAssertions {
+			a(r)
+		}
+		switch {
+		case strings.Contains(r.URL.Path, "/fleets/"):
+			w.WriteHeader(fleetsStatus)
+			_, _ = w.Write([]byte(fleetsBody))
+			return
+		case strings.Contains(r.URL.Path, "/managedNamespaces/"):
 			w.WriteHeader(managedNamespacesStatus)
 			_, _ = w.Write([]byte(managedNamespacesBody))
 			return
-		} else if strings.Contains(r.URL.Path, "/namespaces/") {
+		case strings.Contains(r.URL.Path, "/namespaces/"):
 			w.WriteHeader(namespacesStatus)
 			_, _ = w.Write([]byte(namespacesBody))
 			return
+		default:
+			w.WriteHeader(defaultStatus)
+			_, _ = w.Write([]byte(defaultBody))
 		}
-		w.WriteHeader(defaultStatus)
-		_, _ = w.Write([]byte(defaultBody))
 	}))
 	apiURL, _ := url.Parse(ts.URL)
 	u := &AccessInfo{
@@ -323,6 +338,7 @@ func TestCheckAccess(t *testing.T) {
 					http.StatusOK, tc.namespaceBody, "aks", "resourceid",
 					tc.managedStatus, tc.managedBody,
 					tc.namespaceStatus, tc.namespaceBody,
+					http.StatusOK, emptyBody,
 				)
 				u.useManagedNamespaceResourceScopeFormat = tc.enableManagedNamespaceRBAC
 				u.clusterType = tc.clusterType
@@ -347,12 +363,11 @@ func TestCheckAccess(t *testing.T) {
 	})
 
 	t.Run("Denied if ARM returns 404 for tracked managed namespace resource", func(t *testing.T) {
-		emptyBody := `""`
-
 		ts, u := getAPIServerAndAccessInfoWithPaths(
 			http.StatusInternalServerError, emptyBody, "aks", "resourceid",
 			http.StatusNotFound, emptyBody,
 			http.StatusOK, `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+			http.StatusOK, emptyBody,
 		)
 		u.useManagedNamespaceResourceScopeFormat = true
 		u.clusterType = managedClusters
@@ -371,6 +386,226 @@ func TestCheckAccess(t *testing.T) {
 		assert.False(t, response.Allowed, "Allowed should be false")
 		assert.True(t, response.Denied, "Denied should be true")
 		assert.Equal(t, AccessNotAllowedVerdict, response.Reason, "Reason should indicate denial by Azure RBAC")
+	})
+
+	t.Run("fleet member fallback scenarios", func(t *testing.T) {
+		t.Parallel()
+		type testCase struct {
+			name                               string
+			managedStatus                      int
+			managedBody                        string
+			namespaceStatus                    int
+			namespaceBody                      string
+			fleetMembersStatus                 int
+			fleetMembersBody                   string
+			expectedAllowed                    bool
+			expectedDenied                     bool
+			runtimeConfigReader                func(string) ([]byte, error)
+			runtimeConfigPath                  string
+			enableManagedNamespaceRBAC         bool
+			clusterType                        string
+			expectedFleetCheckAccessRequest    bool
+			expectedFleetCheckAccessURL        string
+			expectedFleetCheckAccessResourceID string
+			expectedFleetCheckAccessActions    []string
+		}
+
+		tests := []testCase{
+			{
+				name:               "managedNamespaces denied, fleet members allowed",
+				managedStatus:      http.StatusOK,
+				managedBody:        `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				namespaceStatus:    http.StatusOK,
+				namespaceBody:      `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				fleetMembersStatus: http.StatusOK,
+				fleetMembersBody:   `[{"accessDecision":"Allowed","actionId":"Microsoft.ContainerService/fleets/members/pods/delete","isDataAction":true}]`,
+				expectedAllowed:    true,
+				expectedDenied:     false,
+				runtimeConfigReader: func(path string) ([]byte, error) {
+					return []byte("/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet"), nil
+				},
+				runtimeConfigPath:                  "/test/config",
+				enableManagedNamespaceRBAC:         true,
+				clusterType:                        managedClusters,
+				expectedFleetCheckAccessRequest:    true,
+				expectedFleetCheckAccessURL:        "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet/managedNamespaces/dev/providers/Microsoft.Authorization/checkaccess",
+				expectedFleetCheckAccessResourceID: "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet/managedNamespaces/dev",
+				expectedFleetCheckAccessActions: []string{
+					"Microsoft.ContainerService/fleets/members/pods/delete",
+				},
+			},
+			{
+				name:               "managedNamespaces 404, fleet members allowed",
+				managedStatus:      http.StatusNotFound,
+				managedBody:        `""`,
+				namespaceStatus:    http.StatusOK,
+				namespaceBody:      `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				fleetMembersStatus: http.StatusOK,
+				fleetMembersBody:   `[{"accessDecision":"Allowed","actionId":"Microsoft.ContainerService/fleets/members/pods/delete","isDataAction":true}]`,
+				expectedAllowed:    true,
+				expectedDenied:     false,
+				runtimeConfigReader: func(path string) ([]byte, error) {
+					return []byte("/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet"), nil
+				},
+				runtimeConfigPath:                  "/test/config",
+				enableManagedNamespaceRBAC:         true,
+				clusterType:                        managedClusters,
+				expectedFleetCheckAccessRequest:    true,
+				expectedFleetCheckAccessURL:        "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet/managedNamespaces/dev/providers/Microsoft.Authorization/checkaccess",
+				expectedFleetCheckAccessResourceID: "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet/managedNamespaces/dev",
+				expectedFleetCheckAccessActions: []string{
+					"Microsoft.ContainerService/fleets/members/pods/delete",
+				},
+			},
+			{
+				name:               "managedNamespaces denied, fleet members denied",
+				managedStatus:      http.StatusOK,
+				managedBody:        `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				namespaceStatus:    http.StatusOK,
+				namespaceBody:      `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				fleetMembersStatus: http.StatusOK,
+				fleetMembersBody:   `[{"accessDecision":"Denied","actionId":"Microsoft.ContainerService/fleets/members/pods/delete","isDataAction":true}]`,
+				expectedAllowed:    false,
+				expectedDenied:     true,
+				runtimeConfigReader: func(path string) ([]byte, error) {
+					return []byte("/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet"), nil
+				},
+				runtimeConfigPath:                  "/test/config",
+				enableManagedNamespaceRBAC:         true,
+				clusterType:                        managedClusters,
+				expectedFleetCheckAccessRequest:    true,
+				expectedFleetCheckAccessURL:        "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet/managedNamespaces/dev/providers/Microsoft.Authorization/checkaccess",
+				expectedFleetCheckAccessResourceID: "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet/managedNamespaces/dev",
+				expectedFleetCheckAccessActions: []string{
+					"Microsoft.ContainerService/fleets/members/pods/delete",
+				},
+			},
+			{
+				name:                       "no fleet resource ID available",
+				managedStatus:              http.StatusOK,
+				managedBody:                `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				namespaceStatus:            http.StatusOK,
+				namespaceBody:              `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				fleetMembersStatus:         http.StatusOK,
+				fleetMembersBody:           `[{"accessDecision":"Allowed","actionId":"Microsoft.ContainerService/fleets/members/pods/delete","isDataAction":true}]`,
+				expectedAllowed:            false,
+				expectedDenied:             true,
+				runtimeConfigReader:        nil,
+				runtimeConfigPath:          "",
+				enableManagedNamespaceRBAC: true,
+				clusterType:                managedClusters,
+			},
+			{
+				name:               "fleet member fallback without managed namespace RBAC enabled",
+				managedStatus:      http.StatusOK,
+				managedBody:        `[{"accessDecision":"Allowed","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				namespaceStatus:    http.StatusOK,
+				namespaceBody:      `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				fleetMembersStatus: http.StatusOK,
+				fleetMembersBody:   `[{"accessDecision":"Allowed","actionId":"Microsoft.ContainerService/fleets/members/pods/delete","isDataAction":true}]`,
+				expectedAllowed:    true,
+				expectedDenied:     false,
+				runtimeConfigReader: func(path string) ([]byte, error) {
+					return []byte("/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet"), nil
+				},
+				runtimeConfigPath:                  "/test/config",
+				enableManagedNamespaceRBAC:         false,
+				clusterType:                        managedClusters,
+				expectedFleetCheckAccessRequest:    true,
+				expectedFleetCheckAccessURL:        "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet/managedNamespaces/dev/providers/Microsoft.Authorization/checkaccess",
+				expectedFleetCheckAccessResourceID: "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet/managedNamespaces/dev",
+				expectedFleetCheckAccessActions: []string{
+					"Microsoft.ContainerService/fleets/members/pods/delete",
+				},
+			},
+			{
+				name:               "connected cluster is supported",
+				managedStatus:      http.StatusOK,
+				managedBody:        `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				namespaceStatus:    http.StatusOK,
+				namespaceBody:      `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/delete","isDataAction":true}]`,
+				fleetMembersStatus: http.StatusOK,
+				fleetMembersBody:   `[{"accessDecision":"Allowed","actionId":"Microsoft.ContainerService/fleets/members/pods/delete","isDataAction":true}]`,
+				expectedAllowed:    true,
+				expectedDenied:     false,
+				runtimeConfigReader: func(path string) ([]byte, error) {
+					return []byte("/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet"), nil
+				},
+				runtimeConfigPath:                  "/test/config",
+				enableManagedNamespaceRBAC:         true,
+				clusterType:                        connectedClusters,
+				expectedFleetCheckAccessRequest:    true,
+				expectedFleetCheckAccessURL:        "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet/managedNamespaces/dev/providers/Microsoft.Authorization/checkaccess",
+				expectedFleetCheckAccessResourceID: "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet/managedNamespaces/dev",
+				expectedFleetCheckAccessActions: []string{
+					"Microsoft.ContainerService/fleets/members/pods/delete",
+				},
+			},
+		}
+
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+				clusterType := tc.clusterType
+				if clusterType == "" {
+					clusterType = managedClusters
+				}
+				var req *capturedCheckAccess
+				ts, u := getAPIServerAndAccessInfoWithPaths(
+					http.StatusOK, tc.namespaceBody, clusterType, "resourceid",
+					tc.managedStatus, tc.managedBody,
+					tc.namespaceStatus, tc.namespaceBody,
+					tc.fleetMembersStatus, tc.fleetMembersBody,
+					func(r *http.Request) {
+						if strings.Contains(r.URL.Path, "/fleets/") {
+							b, err := io.ReadAll(r.Body)
+							assert.NoError(t, err, "Failed to read request body")
+							var caReq CheckAccessRequest
+							err = json.Unmarshal(b, &caReq)
+							assert.NoError(t, err, "Failed to unmarshal request body")
+							req = &capturedCheckAccess{
+								url:        r.URL.Path,
+								resourceID: caReq.Resource.Id,
+								actions:    caReq.Actions,
+							}
+						}
+					},
+				)
+				u.useManagedNamespaceResourceScopeFormat = tc.enableManagedNamespaceRBAC
+				u.clusterType = clusterType
+				u.runtimeConfigPath = tc.runtimeConfigPath
+				u.runtimeConfigReader = tc.runtimeConfigReader
+				defer ts.Close()
+
+				request := &authzv1.SubjectAccessReviewSpec{
+					User: "test@bing.com",
+					ResourceAttributes: &authzv1.ResourceAttributes{
+						Namespace: "dev", Group: "", Resource: "pods",
+						Subresource: "status", Version: "v1", Name: "test", Verb: "delete",
+					},
+					Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
+				}
+
+				response, err := u.CheckAccess(request)
+				assert.NoError(t, err)
+				assert.NotNil(t, response)
+				assert.Equal(t, tc.expectedAllowed, response.Allowed)
+				assert.Equal(t, tc.expectedDenied, response.Denied)
+
+				// Validate checkaccess requests
+				assert.Equal(t, tc.expectedFleetCheckAccessRequest, req != nil, "Expected fleet check access but received none")
+				if tc.expectedFleetCheckAccessRequest {
+					assert.Equal(t, tc.expectedFleetCheckAccessURL, req.url, "Unexpected fleet check access URL")
+					assert.Equal(t, tc.expectedFleetCheckAccessResourceID, req.resourceID, "Unexpected fleet check access resource ID")
+
+					actualActionIDs := make([]string, len(req.actions))
+					for i, action := range req.actions {
+						actualActionIDs[i] = action.AuthorizationEntity.Id
+					}
+					assert.Equal(t, tc.expectedFleetCheckAccessActions, actualActionIDs, "Unexpected fleet check access actions")
+				}
+			})
+		}
 	})
 }
 
@@ -434,6 +669,156 @@ func TestCheckAccess_ClusterScoped(t *testing.T) {
 			assert.Equal(t, tc.expectedDeny, resp.Denied, "Denied mismatch")
 		})
 	}
+
+	// Fleet fallback tests for cluster-scoped requests
+	t.Run("fleet fallback for cluster-scoped requests", func(t *testing.T) {
+		t.Parallel()
+		type fleetTestCase struct {
+			name                               string
+			managedStatus                      int
+			managedBody                        string
+			namespacesStatus                   int
+			namespacesBody                     string
+			fleetsStatus                       int
+			fleetsBody                         string
+			expectedAllow                      bool
+			expectedDeny                       bool
+			runtimeConfigReader                func(string) ([]byte, error)
+			runtimeConfigPath                  string
+			expectedFleetCheckAccessRequest    bool
+			expectedFleetCheckAccessURL        string
+			expectedFleetCheckAccessResourceID string
+			expectedFleetCheckAccessActions    []string
+		}
+
+		fleetTests := []fleetTestCase{
+			{
+				name:             "cluster-scoped denied but fleet allowed",
+				managedStatus:    http.StatusOK,
+				managedBody:      `[{"accessDecision":"Allowed","actionId":"Microsoft.Kubernetes/connectedClusters/pods/read","isDataAction":true}]`,
+				namespacesStatus: http.StatusOK,
+				namespacesBody:   `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/read","isDataAction":true}]`,
+				fleetsStatus:     http.StatusOK,
+				fleetsBody:       `[{"accessDecision":"Allowed","actionId":"Microsoft.ContainerService/fleets/members/pods/read","isDataAction":true}]`,
+				expectedAllow:    true,
+				expectedDeny:     false,
+				runtimeConfigReader: func(path string) ([]byte, error) {
+					return []byte("/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet"), nil
+				},
+				runtimeConfigPath:                  "/test/config",
+				expectedFleetCheckAccessRequest:    true,
+				expectedFleetCheckAccessURL:        "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet/providers/Microsoft.Authorization/checkaccess",
+				expectedFleetCheckAccessResourceID: "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet",
+				expectedFleetCheckAccessActions: []string{
+					"Microsoft.ContainerService/fleets/members/pods/read",
+				},
+			},
+			{
+				name:             "cluster-scoped denied and fleet denied",
+				managedStatus:    http.StatusOK,
+				managedBody:      `[{"accessDecision":"Allowed","actionId":"Microsoft.Kubernetes/connectedClusters/pods/read","isDataAction":true}]`,
+				namespacesStatus: http.StatusOK,
+				namespacesBody:   `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/read","isDataAction":true}]`,
+				fleetsStatus:     http.StatusOK,
+				fleetsBody:       `[{"accessDecision":"Denied","actionId":"Microsoft.ContainerService/fleets/members/pods/read","isDataAction":true}]`,
+				expectedAllow:    false,
+				expectedDeny:     true,
+				runtimeConfigReader: func(path string) ([]byte, error) {
+					return []byte("/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet"), nil
+				},
+				runtimeConfigPath:                  "/test/config",
+				expectedFleetCheckAccessRequest:    true,
+				expectedFleetCheckAccessURL:        "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet/providers/Microsoft.Authorization/checkaccess",
+				expectedFleetCheckAccessResourceID: "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my-fleet",
+				expectedFleetCheckAccessActions: []string{
+					"Microsoft.ContainerService/fleets/members/pods/read",
+				},
+			},
+			{
+				name:                               "cluster-scoped denied and no fleet config",
+				managedStatus:                      http.StatusOK,
+				managedBody:                        `[{"accessDecision":"Allowed","actionId":"Microsoft.Kubernetes/connectedClusters/pods/read","isDataAction":true}]`,
+				namespacesStatus:                   http.StatusOK,
+				namespacesBody:                     `[{"accessDecision":"Denied","actionId":"Microsoft.Kubernetes/connectedClusters/pods/read","isDataAction":true}]`,
+				fleetsStatus:                       http.StatusOK,
+				fleetsBody:                         `[{"accessDecision":"Allowed","actionId":"Microsoft.ContainerService/fleets/members/pods/read","isDataAction":true}]`,
+				expectedAllow:                      false,
+				expectedDeny:                       true,
+				runtimeConfigReader:                nil,
+				runtimeConfigPath:                  "",
+				expectedFleetCheckAccessRequest:    false,
+				expectedFleetCheckAccessURL:        "",
+				expectedFleetCheckAccessResourceID: "",
+				expectedFleetCheckAccessActions:    nil,
+			},
+		}
+
+		for _, tc := range fleetTests {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+				var req *capturedCheckAccess
+				ts, u := getAPIServerAndAccessInfoWithPaths(
+					http.StatusOK, tc.namespacesBody, managedClusters, "resourceid",
+					tc.managedStatus, tc.managedBody,
+					tc.namespacesStatus, tc.namespacesBody,
+					tc.fleetsStatus, tc.fleetsBody,
+					func(r *http.Request) {
+						if strings.Contains(r.URL.Path, "/fleets/") {
+							b, err := io.ReadAll(r.Body)
+							assert.NoError(t, err, "Failed to read request body")
+							var caReq CheckAccessRequest
+							err = json.Unmarshal(b, &caReq)
+							assert.NoError(t, err, "Failed to unmarshal request body")
+							req = &capturedCheckAccess{
+								url:        r.URL.Path,
+								resourceID: caReq.Resource.Id,
+								actions:    caReq.Actions,
+							}
+						}
+					},
+				)
+				u.useManagedNamespaceResourceScopeFormat = true
+				u.runtimeConfigPath = tc.runtimeConfigPath
+				u.runtimeConfigReader = tc.runtimeConfigReader
+				defer ts.Close()
+
+				// build a SAR with Namespace = "" for cluster-scoped
+				request := &authzv1.SubjectAccessReviewSpec{
+					User: "cluster-admin@company.com",
+					ResourceAttributes: &authzv1.ResourceAttributes{
+						Namespace:   "", // empty = cluster-scoped
+						Group:       "",
+						Resource:    "pods",
+						Version:     "v1",
+						Verb:        "get",
+						Name:        "my-pod",
+						Subresource: "",
+					},
+					Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
+				}
+
+				resp, err := u.CheckAccess(request)
+
+				assert.NoError(t, err, "CheckAccess should not return error")
+				assert.NotNil(t, resp, "response should always be non-nil")
+				assert.Equal(t, tc.expectedAllow, resp.Allowed, "Allowed mismatch")
+				assert.Equal(t, tc.expectedDeny, resp.Denied, "Denied mismatch")
+
+				// Validate checkaccess requests
+				assert.Equal(t, tc.expectedFleetCheckAccessRequest, req != nil, "Expected fleet check access but received none")
+				if tc.expectedFleetCheckAccessRequest {
+					assert.Equal(t, tc.expectedFleetCheckAccessURL, req.url, "Unexpected fleet check access URL")
+					assert.Equal(t, tc.expectedFleetCheckAccessResourceID, req.resourceID, "Unexpected fleet check access resource ID")
+
+					actualActionIDs := make([]string, len(req.actions))
+					for i, action := range req.actions {
+						actualActionIDs[i] = action.AuthorizationEntity.Id
+					}
+					assert.Equal(t, tc.expectedFleetCheckAccessActions, actualActionIDs, "Unexpected fleet check access actions")
+				}
+			})
+		}
+	})
 }
 
 func getAuthServerAndAccessInfo(returnCode int, body, clientID, clientSecret string) (*httptest.Server, *AccessInfo) {
@@ -576,4 +961,10 @@ func Test_auditSARIfNeeded(t *testing.T) {
 			c.accessInfo.auditSARIfNeeded(c.request)
 		})
 	}
+}
+
+type capturedCheckAccess struct {
+	url        string
+	resourceID string
+	actions    []azureutils.AuthorizationActionInfo
 }

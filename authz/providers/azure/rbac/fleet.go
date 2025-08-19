@@ -26,7 +26,7 @@ import (
 
 const (
 	fleetResourceIDFile    = "fleet-resource-id"
-	fleetResourceIDPattern = `(?i)^/subscriptions/[0-9][-0-9]*/resourceGroups/[-\w\._\(\)]+/providers/Microsoft\.ContainerService/fleets/[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
+	fleetResourceIDPattern = `(?i)^/subscriptions/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/resourceGroups/[-\w.()]{1,90}/providers/Microsoft\.ContainerService/fleets/[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$`
 )
 
 var fleetResrcExp = regexp.MustCompile(fleetResourceIDPattern)
@@ -43,7 +43,7 @@ func (a *AccessInfo) getFleetManagerResourceID() (bool, string) {
 	}
 	id := strings.TrimSpace(string(configuredID))
 	if ok := fleetResrcExp.MatchString(id); !ok {
-		klog.Errorf("the retrieved data (%s) is not a fleet resource Id.", id)
+		klog.Errorf("%s did not contain a fleet resource Id.", fleetResourceIDFile)
 		return false, ""
 	}
 	return true, id
