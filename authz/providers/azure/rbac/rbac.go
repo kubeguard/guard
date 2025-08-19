@@ -450,15 +450,10 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 
 	// Fallback to managed namespace check
 	managedNamespaceExists, managedNamespacePath := getManagedNameSpaceScope(request)
-	if a.useManagedNamespaceResourceScopeFormat && a.clusterType == managedClusters {
+	if a.useManagedNamespaceResourceScopeFormat &&
+		a.clusterType == managedClusters &&
+		managedNamespaceExists {
 		klog.V(7).Infof("Falling back to checking managed namespace scope for user %s", checkAccessUsername)
-		if !managedNamespaceExists {
-			klog.V(7).Infof(
-				"Skipping managed namespace check for user %s because subject access review is cluster scoped",
-				checkAccessUsername,
-			)
-			return status, nil
-		}
 		// Build managed namespace URL
 		managedNamespaceURL, err := buildCheckAccessURL(*a.apiURL, a.azureResourceId, true, managedNamespacePath)
 		if err != nil {
