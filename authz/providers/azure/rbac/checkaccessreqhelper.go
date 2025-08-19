@@ -43,7 +43,6 @@ const (
 	NamespaceResourceFormat     = "/providers/Microsoft.KubernetesConfiguration/namespaces"
 	namespaces                  = "namespaces"
 	managedNamespaces           = "managedNamespaces"
-	fleetmembers                = "fleets/members"
 	NoOpinionVerdict            = "Azure does not have opinion for this user."
 	NonAADUserNoOpVerdict       = "Azure does not have opinion for this non AAD user. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig"
 	NonAADUserNotAllowedVerdict = "Access denied by Azure RBAC for non AAD users. Configure --azure.skip-authz-for-non-aad-users to enable access. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig."
@@ -657,16 +656,7 @@ func getNameSpaceScope(req *authzv1.SubjectAccessReviewSpec, useNamespaceResourc
 func getManagedNameSpaceScope(req *authzv1.SubjectAccessReviewSpec) (bool, string) {
 	var namespace string = ""
 	if req.ResourceAttributes != nil && req.ResourceAttributes.Namespace != "" {
-		namespace = path.Join(fleetmembers, req.ResourceAttributes.Namespace)
-		return true, namespace
-	}
-	return false, namespace
-}
-
-func getFleetScope(req *authzv1.SubjectAccessReviewSpec) (bool, string) {
-	var namespace string = ""
-	if req.ResourceAttributes != nil {
-		namespace = path.Join("fleets", req.ResourceAttributes.Namespace)
+		namespace = path.Join(managedNamespaces, req.ResourceAttributes.Namespace)
 		return true, namespace
 	}
 	return false, namespace
