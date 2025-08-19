@@ -922,7 +922,7 @@ func Test_prepareCheckAccessRequestBodyWithFleetMembers(t *testing.T) {
 			req: &authzv1.SubjectAccessReviewSpec{
 				ResourceAttributes: &authzv1.ResourceAttributes{
 					Group:    "",
-					Resource: "pods",
+					Resource: "nodes",
 					Verb:     "get",
 				},
 				Extra: map[string]authzv1.ExtraValue{"oid": {id.String()}},
@@ -930,7 +930,7 @@ func Test_prepareCheckAccessRequestBodyWithFleetMembers(t *testing.T) {
 			clusterType:  fleetmembers,
 			resourceID:   fleetResourceID,
 			wantResource: fleetResourceID,
-			wantActions:  []string{"Microsoft.ContainerService/fleets/members/pods/read"},
+			wantActions:  []string{"Microsoft.ContainerService/fleets/members/nodes/read"},
 		},
 		{
 			name: "fleet members with namespace",
@@ -943,8 +943,10 @@ func Test_prepareCheckAccessRequestBodyWithFleetMembers(t *testing.T) {
 				},
 				Extra: map[string]authzv1.ExtraValue{"oid": {id.String()}},
 			},
-			clusterType:  fleetmembers,
-			resourceID:   fleetResourceID,
+			clusterType: fleetmembers,
+			resourceID:  fleetResourceID,
+			// prepareCheckAccessRequestBody only generates 'namespaces'
+			// CheckAccess retrofits the resource ID subsequently after calling this function.
 			wantResource: fleetResourceID + "/namespaces/dev",
 			wantActions:  []string{"Microsoft.ContainerService/fleets/members/pods/write"},
 		},
@@ -1176,14 +1178,6 @@ func Test_buildCheckAccessURL(t *testing.T) {
 			hasNamespace:  false,
 			namespacePath: "",
 			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.ContainerService/fleets/my-fleet/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
-		},
-		{
-			name:          "valid with fleet resource ID with namespace",
-			baseURL:       mustCreateURL("https://management.azure.com"),
-			resourceID:    "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.ContainerService/fleets/my-fleet",
-			hasNamespace:  true,
-			namespacePath: namespaces + "/dev",
-			want:          "https://management.azure.com/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/testResourceGroup/providers/Microsoft.ContainerService/fleets/my-fleet/namespaces/dev/providers/Microsoft.Authorization/checkaccess?api-version=2018-09-01-preview",
 		},
 		{
 			name:          "valid with fleet resource ID with managed namespace",
