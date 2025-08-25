@@ -977,7 +977,7 @@ func Test_prepareCheckAccessRequestBodyWithFleetMembers(t *testing.T) {
 				return
 			}
 
-			if got == nil || len(got) == 0 {
+			if len(got) == 0 {
 				t.Error("Expected non-empty result")
 				return
 			}

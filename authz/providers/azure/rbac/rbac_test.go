@@ -732,7 +732,7 @@ func TestCheckAccess_ClusterScoped(t *testing.T) {
 				t.Parallel()
 				var req *capturedCheckAccess
 				ts, u := getAPIServerAndAccessInfoWithPaths(
-					http.StatusOK, tc.namespacesBody, managedClusters, "resourceid",
+					http.StatusOK, tc.namespacesBody, managedClusters, "managedClusterResourceId",
 					tc.managedStatus, tc.managedBody,
 					tc.namespacesStatus, tc.namespacesBody,
 					tc.fleetsStatus, tc.fleetsBody,
