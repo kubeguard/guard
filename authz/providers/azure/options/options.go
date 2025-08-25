@@ -52,6 +52,7 @@ type Options struct {
 	ReconcileDiscoverResourcesFrequency    time.Duration
 	KubeConfigFile                         string
 	AuditSAR                               bool
+	FleetManagerResourceId                 string
 }
 
 func NewOptions() Options {
@@ -65,12 +66,13 @@ func NewOptions() Options {
 		DiscoverResources:                      false,
 		ReconcileDiscoverResourcesFrequency:    5 * time.Minute,
 		UseManagedNamespaceResourceScopeFormat: false,
+		FleetManagerResourceId:                 "",
 	}
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.AuthzMode, "azure.authz-mode", "", "authz mode to call RBAC api, valid values are either aks, arc, or fleet")
-	fs.StringVar(&o.ResourceId, "azure.resource-id", "", "azure cluster resource id (//subscription/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/managedClusters/<clustername> for AKS, //subscription/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/fleets/<clustername> for Azure Kubernetes Fleet Manager, or //subscription/<subName>/resourcegroups/<RGname>/providers/Microsoft.Kubernetes/connectedClusters/<clustername> for arc) to be used as scope for RBAC check")
+	fs.StringVar(&o.ResourceId, "azure.resource-id", "", "azure cluster resource id (//subscriptions/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/managedClusters/<clustername> for AKS, //subscriptions/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/fleets/<clustername> for Azure Kubernetes Fleet Manager, or //subscriptions/<subName>/resourcegroups/<RGname>/providers/Microsoft.Kubernetes/connectedClusters/<clustername> for arc) to be used as scope for RBAC check")
 	fs.StringVar(&o.AKSAuthzTokenURL, "azure.aks-authz-token-url", "", "url to call for AKS Authz flow")
 	fs.IntVar(&o.ARMCallLimit, "azure.arm-call-limit", o.ARMCallLimit, "No of calls before which webhook switch to new ARM instance to avoid throttling")
 	fs.StringSliceVar(&o.SkipAuthzCheck, "azure.skip-authz-check", o.SkipAuthzCheck, "name of usernames/email for which authz check will be skipped")
@@ -83,6 +85,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.DiscoverResources, "azure.discover-resources", o.DiscoverResources, "fetch list of resources and operations from apiserver and azure. Default: false")
 	fs.DurationVar(&o.ReconcileDiscoverResourcesFrequency, "azure.discover-resources-frequency", o.ReconcileDiscoverResourcesFrequency, "Frequency at which discover resources should be reconciled. Default: 5m")
 	fs.BoolVar(&o.AuditSAR, "azure.audit-sar", o.AuditSAR, "enable audit of SAR requests in azure authz mode. Default: false")
+	fs.StringVar(&o.FleetManagerResourceId, "azure.fleet-resource-id", "", "azure kubernetes fleet manager resource id that the cluster has joined to (//subscriptions/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/fleets/<fleetname>)")
 }
 
 func (o *Options) Validate(azure azure.Options) []error {
@@ -120,6 +123,12 @@ func (o *Options) Validate(azure azure.Options) []error {
 
 	if !o.DiscoverResources && o.AllowCustomResourceTypeCheck {
 		errs = append(errs, errors.New("azure.discover-resources must also be enabled when azure.allow-custom-resource-type-check is enabled"))
+	}
+
+	if o.FleetManagerResourceId != "" {
+		if err := ValidateFleetID(o.FleetManagerResourceId); err != nil {
+			errs = append(errs, err)
+		}
 	}
 
 	return errs

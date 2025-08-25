@@ -51,6 +51,7 @@ import (
 const (
 	managedClusters           = "Microsoft.ContainerService/managedClusters"
 	fleets                    = "Microsoft.ContainerService/fleets"
+	fleetMembers              = "Microsoft.ContainerService/fleets/members"
 	connectedClusters         = "Microsoft.Kubernetes/connectedClusters"
 	checkAccessPath           = "/providers/Microsoft.Authorization/checkaccess"
 	queryParamAPIVersion      = "api-version"
@@ -93,7 +94,8 @@ type AccessInfo struct {
 	httpClientRetryCount                   int
 	lock                                   sync.RWMutex
 
-	auditSAR bool
+	auditSAR               bool
+	fleetManagerResourceId string
 }
 
 var (
@@ -180,6 +182,7 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 		useNamespaceResourceScopeFormat:        opts.UseNamespaceResourceScopeFormat,
 		httpClientRetryCount:                   authopts.HttpClientRetryCount,
 		auditSAR:                               opts.AuditSAR,
+		fleetManagerResourceId:                 opts.FleetManagerResourceId,
 	}
 
 	u.skipCheck = make(map[string]void, len(opts.SkipAuthzCheck))
@@ -443,33 +446,50 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	}
 
 	// Fallback to managed namespace check
-	if !a.useManagedNamespaceResourceScopeFormat || a.clusterType != managedClusters {
-		klog.V(7).Infof("Checkaccess request is denied for user %s", checkAccessUsername)
-		return status, nil
+	managedNamespaceExists, managedNamespacePath := getManagedNameSpaceScope(request)
+	if a.useManagedNamespaceResourceScopeFormat &&
+		a.clusterType == managedClusters &&
+		managedNamespaceExists {
+		klog.V(7).Infof("Falling back to checking managed namespace scope for user %s", checkAccessUsername)
+		// Build managed namespace URL
+		managedNamespaceURL, err := buildCheckAccessURL(*a.apiURL, a.azureResourceId, true, managedNamespacePath)
+		if err != nil {
+			return nil, errors.Wrap(err, "error in building managed namespace check access URL")
+		}
+
+		// Update resource IDs for managed namespace
+		for _, b := range checkAccessBodies {
+			b.Resource.Id = path.Join(a.azureResourceId, managedNamespacePath)
+		}
+
+		status, err = a.performCheckAccess(managedNamespaceURL, checkAccessBodies, checkAccessUsername)
+		if err != nil {
+			return nil, err
+		}
+		if status != nil && status.Allowed {
+			klog.V(7).Infof("Managed namespace checkaccess request is allowed for user %s", checkAccessUsername)
+			return status, nil
+		}
 	}
 
-	klog.V(7).Infof("Falling back to checking managed namespace scope for user %s", checkAccessUsername)
-	exists, managedNamespacePath := getManagedNameSpaceScope(request)
-	if !exists {
-		klog.V(7).Infof(
-			"Skipping managed namespace check for user %s because subject access review is cluster scoped",
-			checkAccessUsername,
-		)
-		return status, nil
+	// Fallback to fleet scope check when the managedCluster has joined a fleet
+	if a.fleetManagerResourceId != "" {
+		fleetURL, err := buildCheckAccessURL(*a.apiURL, a.fleetManagerResourceId, managedNamespaceExists, managedNamespacePath)
+		if err != nil {
+			return nil, errors.Wrap(err, "error in building fleet manager check access URL")
+		}
+		bodiesForFleetRBAC, err := prepareCheckAccessRequestBody(request, fleetMembers, a.fleetManagerResourceId, false, a.allowCustomResourceTypeCheck)
+		if err != nil {
+			return nil, errors.Wrap(err, "error in preparing check access request for fleet manager RBAC")
+		}
+		if managedNamespaceExists {
+			for _, b := range bodiesForFleetRBAC {
+				b.Resource.Id = path.Join(a.fleetManagerResourceId, managedNamespacePath)
+			}
+		}
+		return a.performCheckAccess(fleetURL, bodiesForFleetRBAC, checkAccessUsername)
 	}
-
-	// Build managed namespace URL
-	managedNamespaceURL, err := buildCheckAccessURL(*a.apiURL, a.azureResourceId, true, managedNamespacePath)
-	if err != nil {
-		return nil, errors.Wrap(err, "error in building managed namespace check access URL")
-	}
-
-	// Update resource IDs for managed namespace
-	for _, b := range checkAccessBodies {
-		b.Resource.Id = path.Join(a.azureResourceId, managedNamespacePath)
-	}
-
-	return a.performCheckAccess(managedNamespaceURL, checkAccessBodies, checkAccessUsername)
+	return status, nil
 }
 
 func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUsername string, checkAccessURL string, checkAccessBody *CheckAccessRequest, ch chan *authzv1.SubjectAccessReviewStatus) error {
