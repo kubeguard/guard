@@ -24,7 +24,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -95,9 +94,8 @@ type AccessInfo struct {
 	httpClientRetryCount                   int
 	lock                                   sync.RWMutex
 
-	auditSAR            bool
-	runtimeConfigPath   string
-	runtimeConfigReader func(string) ([]byte, error)
+	auditSAR           bool
+	fleetMgrResourceId string
 }
 
 var (
@@ -184,8 +182,7 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 		useNamespaceResourceScopeFormat:        opts.UseNamespaceResourceScopeFormat,
 		httpClientRetryCount:                   authopts.HttpClientRetryCount,
 		auditSAR:                               opts.AuditSAR,
-		runtimeConfigPath:                      opts.RunTimeConfigPath,
-		runtimeConfigReader:                    os.ReadFile,
+		fleetMgrResourceId:                     opts.FleetManagerResourceId,
 	}
 
 	u.skipCheck = make(map[string]void, len(opts.SkipAuthzCheck))
@@ -476,18 +473,18 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	}
 
 	// Fallback to fleet scope check when the managedCluster has joined a fleet
-	if found, fleetMgrID := a.getFleetManagerResourceID(); found {
-		fleetURL, err := buildCheckAccessURL(*a.apiURL, fleetMgrID, managedNamespaceExists, managedNamespacePath)
+	if a.fleetMgrResourceId != "" {
+		fleetURL, err := buildCheckAccessURL(*a.apiURL, a.fleetMgrResourceId, managedNamespaceExists, managedNamespacePath)
 		if err != nil {
 			return nil, errors.Wrap(err, "error in building fleet manager check access URL")
 		}
-		bodiesForFleetRBAC, err := prepareCheckAccessRequestBody(request, fleetmembers, fleetMgrID, false, a.allowCustomResourceTypeCheck)
+		bodiesForFleetRBAC, err := prepareCheckAccessRequestBody(request, fleetmembers, a.fleetMgrResourceId, false, a.allowCustomResourceTypeCheck)
 		if err != nil {
 			return nil, errors.Wrap(err, "error in preparing check access request for fleet manager RBAC")
 		}
 		if managedNamespaceExists {
 			for _, b := range bodiesForFleetRBAC {
-				b.Resource.Id = path.Join(fleetMgrID, managedNamespacePath)
+				b.Resource.Id = path.Join(a.fleetMgrResourceId, managedNamespacePath)
 			}
 		}
 		return a.performCheckAccess(fleetURL, bodiesForFleetRBAC, checkAccessUsername)

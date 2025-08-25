@@ -52,7 +52,7 @@ type Options struct {
 	ReconcileDiscoverResourcesFrequency    time.Duration
 	KubeConfigFile                         string
 	AuditSAR                               bool
-	RunTimeConfigPath                      string
+	FleetManagerResourceId                 string
 }
 
 func NewOptions() Options {
@@ -66,7 +66,7 @@ func NewOptions() Options {
 		DiscoverResources:                      false,
 		ReconcileDiscoverResourcesFrequency:    5 * time.Minute,
 		UseManagedNamespaceResourceScopeFormat: false,
-		RunTimeConfigPath:                      "",
+		FleetManagerResourceId:                 "",
 	}
 }
 
@@ -85,7 +85,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.DiscoverResources, "azure.discover-resources", o.DiscoverResources, "fetch list of resources and operations from apiserver and azure. Default: false")
 	fs.DurationVar(&o.ReconcileDiscoverResourcesFrequency, "azure.discover-resources-frequency", o.ReconcileDiscoverResourcesFrequency, "Frequency at which discover resources should be reconciled. Default: 5m")
 	fs.BoolVar(&o.AuditSAR, "azure.audit-sar", o.AuditSAR, "enable audit of SAR requests in azure authz mode. Default: false")
-	fs.StringVar(&o.RunTimeConfigPath, "azure.runtime-config-path", "", "path to azure auth runtime config file.")
+	fs.StringVar(&o.FleetManagerResourceId, "azure.fleet-resource-id", "", "azure kubernetes fleet manager resource id that the cluster has joined to (//subscription/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/fleet/<fleetname>)")
 }
 
 func (o *Options) Validate(azure azure.Options) []error {
@@ -123,6 +123,12 @@ func (o *Options) Validate(azure azure.Options) []error {
 
 	if !o.DiscoverResources && o.AllowCustomResourceTypeCheck {
 		errs = append(errs, errors.New("azure.discover-resources must also be enabled when azure.allow-custom-resource-type-check is enabled"))
+	}
+
+	if o.FleetManagerResourceId != "" {
+		if err := ValidateFleetID(o.FleetManagerResourceId); err != nil {
+			errs = append(errs, err)
+		}
 	}
 
 	return errs
