@@ -927,7 +927,7 @@ func Test_prepareCheckAccessRequestBodyWithFleetMembers(t *testing.T) {
 				},
 				Extra: map[string]authzv1.ExtraValue{"oid": {id.String()}},
 			},
-			clusterType:  fleetmembers,
+			clusterType:  fleetMembers,
 			resourceID:   fleetResourceID,
 			wantResource: fleetResourceID,
 			wantActions:  []string{"Microsoft.ContainerService/fleets/members/nodes/read"},
@@ -943,7 +943,7 @@ func Test_prepareCheckAccessRequestBodyWithFleetMembers(t *testing.T) {
 				},
 				Extra: map[string]authzv1.ExtraValue{"oid": {id.String()}},
 			},
-			clusterType: fleetmembers,
+			clusterType: fleetMembers,
 			resourceID:  fleetResourceID,
 			// prepareCheckAccessRequestBody only generates 'namespaces'
 			// CheckAccess retrofits the resource ID subsequently after calling this function.
@@ -961,7 +961,7 @@ func Test_prepareCheckAccessRequestBodyWithFleetMembers(t *testing.T) {
 				},
 				Extra: map[string]authzv1.ExtraValue{"oid": {id.String()}},
 			},
-			clusterType:  fleetmembers,
+			clusterType:  fleetMembers,
 			resourceID:   fleetResourceID,
 			wantResource: fleetResourceID + "/namespaces/prod",
 			wantActions:  []string{"Microsoft.ContainerService/fleets/members/deployments/delete"},

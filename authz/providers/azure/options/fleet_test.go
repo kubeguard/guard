@@ -76,49 +76,6 @@ func TestValidateFleetID(t *testing.T) {
 			errMsg:  "is not a fleet resource",
 		},
 
-		// Invalid fleet names (regex validation)
-		{
-			name:    "fleet name with uppercase letters",
-			id:      "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/MyFleet",
-			wantErr: true,
-			errMsg:  "does not have a valid fleet manager name",
-		},
-		{
-			name:    "fleet name starting with hyphen",
-			id:      "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/-fleet",
-			wantErr: true,
-			errMsg:  "does not have a valid fleet manager name",
-		},
-		{
-			name:    "fleet name ending with hyphen",
-			id:      "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/fleet-",
-			wantErr: true,
-			errMsg:  "does not have a valid fleet manager name",
-		},
-		{
-			name:    "fleet name with underscore",
-			id:      "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my_fleet",
-			wantErr: true,
-			errMsg:  "does not have a valid fleet manager name",
-		},
-		{
-			name:    "fleet name with special characters",
-			id:      "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/my.fleet",
-			wantErr: true,
-			errMsg:  "does not have a valid fleet manager name",
-		},
-		{
-			name:    "fleet name too long (64 chars)",
-			id:      "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz012",
-			wantErr: true,
-			errMsg:  "does not have a valid fleet manager name",
-		},
-		{
-			name:    "empty fleet name",
-			id:      "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/fleets/",
-			wantErr: true,
-		},
-
 		// Malformed resource IDs
 		{
 			name:    "malformed resource ID - missing subscription",

@@ -18,7 +18,6 @@ package options
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -26,10 +25,7 @@ import (
 
 const (
 	fleetResoureType = "Microsoft.ContainerService/fleets"
-	fleetNamePattern = `^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$`
 )
-
-var regex = regexp.MustCompile(fleetNamePattern)
 
 func ValidateFleetID(id string) error {
 	r, err := arm.ParseResourceID(id)
@@ -38,9 +34,6 @@ func ValidateFleetID(id string) error {
 	}
 	if !strings.EqualFold(r.ResourceType.String(), fleetResoureType) {
 		return fmt.Errorf("%s is not a fleet resource", id)
-	}
-	if !regex.MatchString(r.Name) {
-		return fmt.Errorf("%s does not have a valid fleet manager name", id)
 	}
 	return nil
 }

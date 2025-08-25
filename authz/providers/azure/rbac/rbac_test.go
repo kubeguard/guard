@@ -556,7 +556,7 @@ func TestCheckAccess(t *testing.T) {
 				)
 				u.useManagedNamespaceResourceScopeFormat = tc.enableManagedNamespaceRBAC
 				u.clusterType = clusterType
-				u.fleetMgrResourceId = tc.fleetMgrResourceId
+				u.fleetManagerResourceId = tc.fleetMgrResourceId
 				defer ts.Close()
 
 				request := &authzv1.SubjectAccessReviewSpec{
@@ -752,7 +752,7 @@ func TestCheckAccess_ClusterScoped(t *testing.T) {
 					},
 				)
 				u.useManagedNamespaceResourceScopeFormat = true
-				u.fleetMgrResourceId = tc.fleetMgrResourceId
+				u.fleetManagerResourceId = tc.fleetMgrResourceId
 				defer ts.Close()
 
 				// build a SAR with Namespace = "" for cluster-scoped
