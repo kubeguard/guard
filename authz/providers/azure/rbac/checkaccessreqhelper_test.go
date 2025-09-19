@@ -34,6 +34,7 @@ import (
 const (
 	resourceId     = "resourceId"
 	aksClusterType = "aks"
+	subresourceAttr = "Microsoft.ContainerService/managedClusters/resources:subresource"
 )
 
 func createOperationsMap(clusterType string) azureutils.OperationsMap {
@@ -161,6 +162,7 @@ func Test_getValidSecurityGroups(t *testing.T) {
 func Test_getDataActions(t *testing.T) {
 	type args struct {
 		isCrTest       bool
+		isSubresTest   bool
 		isWildcardTest bool
 		subRevReq      *authzv1.SubjectAccessReviewSpec
 		clusterType    string
@@ -594,6 +596,51 @@ func Test_getDataActions(t *testing.T) {
 				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/customresources/read"}, IsDataAction: true},
 			},
 		},
+
+		{
+			"subresourceLogs",
+			args{
+				isSubresTest:   true,
+				isWildcardTest: false,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "pods", Subresource: "logs", Version: "*", Name: "test", Verb: "get"},
+				}, clusterType: aksClusterType,
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/read"}, IsDataAction: true, Attributes: map[string]string{ subresourceAttr: "logs" } },
+			},
+		},
+
+		{
+			"subresourceScale",
+			args{
+				isSubresTest:   true,
+				isWildcardTest: false,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "deployments", Subresource: "scale", Version: "*", Name: "test", Verb: "update"},
+				}, clusterType: aksClusterType,
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/deployments/write"}, IsDataAction: true, Attributes: map[string]string{ subresourceAttr: "scale" } },
+			},
+		},
+
+		{
+			"subresourceVerbIsStar",
+			args{
+				isSubresTest:   true,
+				isWildcardTest: true,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "pods", Subresource: "logs", Version: "*", Name: "test", Verb: "*"},
+				}, clusterType: aksClusterType,
+			},
+			[]azureutils.AuthorizationActionInfo{
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/read"}, IsDataAction: true,  Attributes: map[string]string{ subresourceAttr: "logs" }},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/write"}, IsDataAction: true,  Attributes: map[string]string{ subresourceAttr: "logs" }},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/delete"}, IsDataAction: true,  Attributes: map[string]string{ subresourceAttr: "logs" }},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/exec/action"}, IsDataAction: true,  Attributes: map[string]string{ subresourceAttr: "logs" }},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -603,12 +650,19 @@ func Test_getDataActions(t *testing.T) {
 				return operationsMap
 			}
 
-			got, _ := getDataActions(tt.args.subRevReq, tt.args.clusterType, tt.args.isCrTest)
-			if !tt.args.isWildcardTest && !reflect.DeepEqual(got[0].AuthorizationEntity, tt.want[0].AuthorizationEntity) {
-				t.Errorf("getDataActions() = %v, want %v", got, tt.want)
-			}
+			got, _ := getDataActions(tt.args.subRevReq, tt.args.clusterType, tt.args.isCrTest, tt.args.isSubresTest)
+			if !tt.args.isWildcardTest {
+				if !reflect.DeepEqual(got[0].AuthorizationEntity, tt.want[0].AuthorizationEntity) {
+					t.Errorf("getDataActions() = %v, want %v", got, tt.want)
+				}
 
-			if tt.args.isWildcardTest {
+				for key, value := range tt.want[0].Attributes {
+					if got[0].Attributes[key] != value {
+						t.Errorf("getDataActions() Attributes [%v]: got \"%v\", want \"%v\"", key, got[0].Attributes[key], value)
+						break
+					}
+				}
+			} else {
 				gotSet := createSet(got)
 				wantSet := createSet(tt.want)
 				if len(gotSet) != len(wantSet) {
@@ -619,6 +673,14 @@ func Test_getDataActions(t *testing.T) {
 					if _, ok := wantSet[authinfo]; !ok {
 						t.Errorf("getDataActions() = %v, want %v", got, tt.want)
 						break
+					}
+					gotAttr := gotSet[authinfo].Attributes
+					wantAttr := wantSet[authinfo].Attributes
+					for key, value := range wantAttr {
+						if gotAttr[key] != value {
+							t.Errorf("getDataActions() Attributes [%v]: got \"%v\", want \"%v\"", key, gotAttr[key], value)
+							break
+						}
 					}
 				}
 			}
@@ -696,7 +758,7 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	createOperationsMap(clusterType)
 	wantErr := errors.New("oid info not sent from authenticatoin module")
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
+	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true, false)
 
 	if got != nil && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", nil, wantErr, got, gotErr)
@@ -706,7 +768,7 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	clusterType = "arc"
 	wantErr = errors.New("oid info sent from authenticatoin module is not valid")
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true, false)
 
 	if got != nil && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", nil, wantErr, got, gotErr)
@@ -722,7 +784,7 @@ func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
 	// testing with new ns scope format
 	var want string = "resourceId/providers/Microsoft.KubernetesConfiguration/namespaces/dev"
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, true, true)
+	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, true, true, false)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
@@ -735,7 +797,7 @@ func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
 	// testing with the old namespace format
 	want = "resourceId/namespaces/dev"
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
+	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true, false)
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
 	}
@@ -764,7 +826,7 @@ func Test_prepareCheckAccessRequestBodyWithCustomResource(t *testing.T) {
 	clusterType := aksClusterType
 	createOperationsMap(clusterType)
 
-	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
+	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true, false)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil")
@@ -805,7 +867,7 @@ func Test_prepareCheckAccessRequestBodyWithCustomResourceOperationsMapEmpty(t *t
 		return azureutils.OperationsMap{}
 	}
 
-	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
+	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true, false)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil")
@@ -839,7 +901,7 @@ func Test_prepareCheckAccessRequestBodyWithCustomResourceTypeCheckDisabled(t *te
 		return operationsMap
 	}
 
-	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, false)
+	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, false, false)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil")
@@ -873,7 +935,7 @@ func Test_prepareCheckAccessRequestBodyWithCustomResourceAndStars(t *testing.T) 
 		return operationsMap
 	}
 
-	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true)
+	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true, false)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil")
@@ -970,7 +1032,7 @@ func Test_prepareCheckAccessRequestBodyWithFleetMembers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, gotErr := prepareCheckAccessRequestBody(tt.req, tt.clusterType, tt.resourceID, false, false)
+			got, gotErr := prepareCheckAccessRequestBody(tt.req, tt.clusterType, tt.resourceID, false, false, false)
 
 			if gotErr != nil {
 				t.Errorf("Unexpected error: %v", gotErr)
@@ -1012,9 +1074,85 @@ func Test_prepareCheckAccessRequestBodyWithFleetMembers(t *testing.T) {
 	}
 }
 
+func Test_prepareCheckAccessRequestBodyWithSubresource(t *testing.T) {
+	req := &authzv1.SubjectAccessReviewSpec{
+		ResourceAttributes: &authzv1.ResourceAttributes{
+			Namespace:   "dev",
+			Group:       "",
+			Resource:    "pods",
+			Subresource: "logs",
+			Version:     "v1",
+			Name:        "test",
+			Verb:        "get",
+		},
+		Extra: map[string]authzv1.ExtraValue{
+			"oid": {
+				uuid.NewString(),
+			},
+		},
+	}
+	clusterType := aksClusterType
+	createOperationsMap(clusterType)
+
+	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, false, true)
+
+	if got == nil {
+		t.Errorf("Want: not nil Got: nil")
+	}
+
+	if got[0].Actions[0].AuthorizationEntity.Id != "aks/pods/read" {
+		t.Errorf("Want:%v, got:%v", "aks/pods/read", got[0].Actions[0].AuthorizationEntity.Id)
+	}
+
+	value, found := got[0].Actions[0].Attributes[subresourceAttr]
+	wantSubres := "logs"
+
+	if !found {
+		t.Errorf("%v attribute is not present", subresourceAttr)
+	} else if value != wantSubres {
+		t.Errorf("Subresource attribute - want: %v, got: %v", wantSubres, value)
+	}
+}
+
+func Test_prepareCheckAccessRequestBodyWithSubresourceDisabled(t *testing.T) {
+	req := &authzv1.SubjectAccessReviewSpec{
+		ResourceAttributes: &authzv1.ResourceAttributes{
+			Namespace:   "dev",
+			Group:       "",
+			Resource:    "pods",
+			Subresource: "logs",
+			Version:     "v1",
+			Name:        "test",
+			Verb:        "get",
+		},
+		Extra: map[string]authzv1.ExtraValue{
+			"oid": {
+				uuid.NewString(),
+			},
+		},
+	}
+	clusterType := aksClusterType
+	createOperationsMap(clusterType)
+
+	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, false, false)
+
+	if got == nil {
+		t.Errorf("Want: not nil Got: nil")
+	}
+
+	if got[0].Actions[0].AuthorizationEntity.Id != "aks/pods/read" {
+		t.Errorf("Want:%v, got:%v", "aks/pods/read", got[0].Actions[0].AuthorizationEntity.Id)
+	}
+
+	if _, found := got[0].Actions[0].Attributes[subresourceAttr]; found {
+		t.Errorf("%v attribute is present when it should not", subresourceAttr)
+	}
+}
+
 func Test_getResultCacheKey(t *testing.T) {
 	type args struct {
 		subRevReq *authzv1.SubjectAccessReviewSpec
+		allowSubresourceTypeCheck bool
 	}
 	tests := []struct {
 		name string
@@ -1028,6 +1166,7 @@ func Test_getResultCacheKey(t *testing.T) {
 					User:                  "charlie@yahoo.com",
 					NonResourceAttributes: &authzv1.NonResourceAttributes{Path: "/apis/v1", Verb: "list"},
 				},
+				allowSubresourceTypeCheck: false,
 			},
 			"charlie@yahoo.com/apis/v1/read",
 		},
@@ -1039,6 +1178,7 @@ func Test_getResultCacheKey(t *testing.T) {
 					User:                  "echo@outlook.com",
 					NonResourceAttributes: &authzv1.NonResourceAttributes{Path: "/logs", Verb: "get"},
 				},
+				allowSubresourceTypeCheck: false,
 			},
 			"echo@outlook.com/logs/read",
 		},
@@ -1053,8 +1193,54 @@ func Test_getResultCacheKey(t *testing.T) {
 						Subresource: "status", Version: "v1", Name: "test", Verb: "delete",
 					},
 				},
+				allowSubresourceTypeCheck: false,
 			},
 			"alpha@bing.com/dev/-/pods/delete",
+		},
+
+		{
+			aksClusterType,
+			args{
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					User: "alpha@bing.com",
+					ResourceAttributes: &authzv1.ResourceAttributes{
+						Namespace: "dev", Group: "", Resource: "pods",
+						Subresource: "status", Version: "v1", Name: "test", Verb: "delete",
+					},
+				},
+				allowSubresourceTypeCheck: true,
+			},
+			"alpha@bing.com/dev/-/pods/delete",
+		},
+
+		{
+			aksClusterType,
+			args{
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					User: "alpha@bing.com",
+					ResourceAttributes: &authzv1.ResourceAttributes{
+						Namespace: "dev", Group: "", Resource: "pods",
+						Subresource: "logs", Version: "v1", Name: "test", Verb: "get",
+					},
+				},
+				allowSubresourceTypeCheck: false,
+			},
+			"alpha@bing.com/dev/-/pods/read",
+		},
+
+		{
+			aksClusterType,
+			args{
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					User: "alpha@bing.com",
+					ResourceAttributes: &authzv1.ResourceAttributes{
+						Namespace: "dev", Group: "", Resource: "pods",
+						Subresource: "logs", Version: "v1", Name: "test", Verb: "get",
+					},
+				},
+				allowSubresourceTypeCheck: true,
+			},
+			"alpha@bing.com/dev/-/pods/read/logs",
 		},
 
 		{
@@ -1068,6 +1254,7 @@ func Test_getResultCacheKey(t *testing.T) {
 						Name: "test", Verb: "impersonate",
 					},
 				},
+				allowSubresourceTypeCheck: false,
 			},
 			"beta@msn.com/azure-arc/authentication.k8s.io/userextras/impersonate/action",
 		},
@@ -1082,6 +1269,7 @@ func Test_getResultCacheKey(t *testing.T) {
 						Subresource: "scopes", Version: "v1", Name: "", Verb: "list",
 					},
 				},
+				allowSubresourceTypeCheck: false,
 			},
 			"beta@msn.com/-/-/nodes/read",
 		},
@@ -1096,6 +1284,7 @@ func Test_getResultCacheKey(t *testing.T) {
 						Subresource: "scopes", Version: "v1", Name: "", Verb: "*",
 					},
 				},
+				allowSubresourceTypeCheck: false,
 			},
 			"beta@msn.com/-/*/*/*",
 		},
@@ -1110,13 +1299,14 @@ func Test_getResultCacheKey(t *testing.T) {
 						Subresource: "scopes", Version: "v1", Name: "", Verb: "*",
 					},
 				},
+				allowSubresourceTypeCheck: false,
 			},
 			"beta@msn.com/dev/*/*/*",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := getResultCacheKey(tt.args.subRevReq); got != tt.want {
+			if got := getResultCacheKey(tt.args.subRevReq, tt.args.allowSubresourceTypeCheck); got != tt.want {
 				t.Errorf("getResultCacheKey() = %v, want %v", got, tt.want)
 			}
 		})

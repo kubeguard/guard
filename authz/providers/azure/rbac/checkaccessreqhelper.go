@@ -133,6 +133,21 @@ type AuthorizationDecision struct {
 	TimeToLiveInMs      int                 `json:"timeToLiveInMs"`
 }
 
+const SubresourceAttrName = "Microsoft.ContainerService/managedClusters/resources:subresource"
+
+// Allow list for subresources to include as attributes.
+var subresourceAttributeAllowlist = map[string]struct{}{
+	"pods/logs":                {},
+	"pods/exec":                {},
+	"pods/portforward":         {},
+	"pods/proxy":               {},
+	"pods/ephemeralcontainers": {},
+	"pods/attach":              {},
+	"deployments/scale":        {},
+	"statefulsets/scale":       {},
+	"replicasets/scale":        {},
+}
+
 func getCustomResourceOperationsMap(clusterType string) map[string]azureutils.AuthorizationActionInfo {
 	return map[string]azureutils.AuthorizationActionInfo{
 		ReadVerb: {
@@ -241,7 +256,7 @@ func getResourceAndAction(resource string, subResource string, verb string) stri
 	return action
 }
 
-func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string, allowCustomResourceTypeCheck bool) ([]azureutils.AuthorizationActionInfo, error) {
+func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string, allowCustomResourceTypeCheck bool, allowSubresourceTypeCheck bool) ([]azureutils.AuthorizationActionInfo, error) {
 	var authInfoList []azureutils.AuthorizationActionInfo
 	var err error
 
@@ -282,6 +297,9 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 
 			action := getResourceAndAction(subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Subresource, subRevReq.ResourceAttributes.Verb)
 			authInfoSingle.AuthorizationEntity.Id = path.Join(authInfoSingle.AuthorizationEntity.Id, action)
+			if allowSubresourceTypeCheck {
+				setAuthInfoSubresourceAttributes(&authInfoSingle, subRevReq)
+			}
 			authInfoList = append(authInfoList, authInfoSingle)
 
 		} else {
@@ -289,7 +307,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 				return nil, errors.Errorf("Wildcard support for Resource/Verb/Group is not enabled for request Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb)
 			}
 
-			authInfoList, err = getAuthInfoListForWildcard(subRevReq, storedOperationsMap, clusterType, isCustomerResourceTypeCheckAvailable)
+			authInfoList, err = getAuthInfoListForWildcard(subRevReq, storedOperationsMap, clusterType, isCustomerResourceTypeCheckAvailable, allowSubresourceTypeCheck)
 			if err != nil {
 				return nil, errors.Wrap(err, fmt.Sprintf("Error which creating actions for checkaccess for Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb))
 			}
@@ -305,7 +323,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 	return authInfoList, nil
 }
 
-func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, storedOperationsMap azureutils.OperationsMap, clusterType string, isCustomerResourceTypeCheckAvailable bool) ([]azureutils.AuthorizationActionInfo, error) {
+func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, storedOperationsMap azureutils.OperationsMap, clusterType string, isCustomerResourceTypeCheckAvailable bool, allowSubresourceTypeCheck bool) ([]azureutils.AuthorizationActionInfo, error) {
 	var authInfoList []azureutils.AuthorizationActionInfo
 	var err error
 	finalFilteredOperations := azureutils.NewOperationsMap()
@@ -423,6 +441,11 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 		return nil, err
 	}
 
+	if allowSubresourceTypeCheck {
+		for i := range authInfoList {
+			setAuthInfoSubresourceAttributes(&authInfoList[i], subRevReq)
+		}
+	}
 	return authInfoList, nil
 }
 
@@ -462,6 +485,26 @@ func setAuthInfoResourceAttributes(action *azureutils.AuthorizationActionInfo, s
 	action.Attributes["Microsoft.ContainerService/managedClusters/customResources:group"] = subRevReq.ResourceAttributes.Group
 	if subRevReq.ResourceAttributes.Resource != "" {
 		action.Attributes["Microsoft.ContainerService/managedClusters/customResources:kind"] = subRevReq.ResourceAttributes.Resource
+	}
+	return nil
+}
+
+func shouldHandleSubresource(resource string, subresource string) bool {
+	_, shouldHandle := subresourceAttributeAllowlist[resource + "/" + subresource]
+	return shouldHandle
+}
+
+func setAuthInfoSubresourceAttributes(action *azureutils.AuthorizationActionInfo, subRevReq *authzv1.SubjectAccessReviewSpec) error {
+
+	if subRevReq.ResourceAttributes == nil {
+		return errors.New("Resource attributes are empty")
+	}
+
+	if shouldHandleSubresource(subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Subresource) {
+		if action.Attributes == nil {
+			action.Attributes = make(map[string]string)
+		}
+		action.Attributes[SubresourceAttrName] = subRevReq.ResourceAttributes.Subresource
 	}
 	return nil
 }
@@ -540,7 +583,7 @@ func defaultDir(s string) string {
 	return "-" // invalid for a namespace
 }
 
-func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
+func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec, allowSubresourceTypeCheck bool) string {
 	cacheKey := subRevReq.User
 
 	if subRevReq.ResourceAttributes != nil {
@@ -548,6 +591,13 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 		cacheKey = path.Join(cacheKey, defaultDir(subRevReq.ResourceAttributes.Group))
 		action := getResourceAndAction(subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Subresource, subRevReq.ResourceAttributes.Verb)
 		cacheKey = path.Join(cacheKey, action)
+
+		// Cache results for subresources of interest separately
+		if allowSubresourceTypeCheck {
+			if shouldHandleSubresource(subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Subresource) {
+				cacheKey = path.Join(cacheKey, subRevReq.ResourceAttributes.Subresource)
+			}
+		}
 	} else if subRevReq.NonResourceAttributes != nil {
 		cacheKey = path.Join(cacheKey, subRevReq.NonResourceAttributes.Path, getActionName(subRevReq.NonResourceAttributes.Verb))
 	}
@@ -555,7 +605,7 @@ func getResultCacheKey(subRevReq *authzv1.SubjectAccessReviewSpec) string {
 	return cacheKey
 }
 
-func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, resourceId string, useNamespaceResourceScopeFormat bool, allowCustomResourceTypeCheck bool) ([]*CheckAccessRequest, error) {
+func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, clusterType string, resourceId string, useNamespaceResourceScopeFormat bool, allowCustomResourceTypeCheck bool, allowSubresourceTypeCheck bool) ([]*CheckAccessRequest, error) {
 	/* This is how sample SubjectAccessReview request will look like
 		{
 			"kind": "SubjectAccessReview",
@@ -618,7 +668,7 @@ func prepareCheckAccessRequestBody(req *authzv1.SubjectAccessReviewSpec, cluster
 		return nil, errutils.WithCode(errors.New("oid info not sent from authentication module"), http.StatusBadRequest)
 	}
 	groups := getValidSecurityGroups(req.Groups)
-	actions, err := getDataActions(req, clusterType, allowCustomResourceTypeCheck)
+	actions, err := getDataActions(req, clusterType, allowCustomResourceTypeCheck, allowSubresourceTypeCheck)
 	if err != nil {
 		return nil, errutils.WithCode(errors.Wrap(err, "Error while creating list of dataactions for check access call"), http.StatusInternalServerError)
 	}
