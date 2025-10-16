@@ -265,7 +265,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 
 		isCustomerResourceTypeCheckAvailable := allowCustomResourceTypeCheck && storedOperationsMap != nil && len(storedOperationsMap) != 0
 		if !isCustomerResourceTypeCheckAvailable {
-			klog.V(5).Info("CustomResource type verification is not available for this request")
+			klog.V(5).Info("CustomResourceTypeCheck feature is not available for this request", "allowCustomResourceTypeCheck", allowCustomResourceTypeCheck, "operationsMapAvailable", storedOperationsMap != nil && len(storedOperationsMap) != 0)
 		}
 
 		if subRevReq.ResourceAttributes.Resource != "*" && subRevReq.ResourceAttributes.Group != "*" && subRevReq.ResourceAttributes.Verb != "*" {
@@ -286,6 +286,7 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 					In this case both Res and Group are not *, but there is no matching DataAction present on the storedOperationsMap.
 					The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
 				*/
+				klog.V(5).InfoS("CustomResourceTypeCheck: Resource identified as custom resource", "group", subRevReq.ResourceAttributes.Group, "resource", subRevReq.ResourceAttributes.Resource, "verb", subRevReq.ResourceAttributes.Verb)
 				return getAuthInfoListForCustomResource(subRevReq, clusterType)
 			}
 
@@ -355,6 +356,7 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 				In this case Group is not *, but there are no matching DataActions present on the storedOperationsMap.
 				The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
 			*/
+			klog.V(5).InfoS("CustomResourceTypeCheck: Resource identified as custom resource (wildcard resource)", "group", subRevReq.ResourceAttributes.Group, "resource", subRevReq.ResourceAttributes.Resource, "verb", subRevReq.ResourceAttributes.Verb)
 			return getAuthInfoListForCustomResource(subRevReq, clusterType)
 		} else if subRevReq.ResourceAttributes.Group != "" {
 			// all resources under specified apigroup
@@ -417,6 +419,7 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 				In this case both Res and Group are not *, but there are no matching DataActions present on the storedOperationsMap.
 				The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
 			*/
+			klog.V(5).InfoS("CustomResourceTypeCheck: Resource identified as custom resource (wildcard verb)", "group", subRevReq.ResourceAttributes.Group, "resource", subRevReq.ResourceAttributes.Resource, "verb", subRevReq.ResourceAttributes.Verb)
 			return getAuthInfoListForCustomResource(subRevReq, clusterType)
 		} else { // #2
 			group := "v1" // core api group key
@@ -458,6 +461,7 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 func getAuthInfoListForCustomResource(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string) ([]azureutils.AuthorizationActionInfo, error) {
 	var authInfoList []azureutils.AuthorizationActionInfo
 	if subRevReq.ResourceAttributes.Verb == "*" {
+		klog.V(7).InfoS("CustomResourceTypeCheck: Creating actions for all custom resource verbs", "group", subRevReq.ResourceAttributes.Group, "resource", subRevReq.ResourceAttributes.Resource)
 		for _, action := range getCustomResourceOperationsMap(clusterType) {
 			authInfoList = append(authInfoList, action)
 		}
@@ -465,18 +469,22 @@ func getAuthInfoListForCustomResource(subRevReq *authzv1.SubjectAccessReviewSpec
 		action := getActionName(subRevReq.ResourceAttributes.Verb)
 		authInfoSingle, found := getCustomResourceOperationsMap(clusterType)[action]
 		if !found {
+			klog.ErrorS(errors.New("action not found"), "CustomResourceTypeCheck: No actions found for custom resource verb", "verb", subRevReq.ResourceAttributes.Verb, "group", subRevReq.ResourceAttributes.Group, "resource", subRevReq.ResourceAttributes.Resource)
 			return nil, errors.Errorf("No actions found for verb %s", subRevReq.ResourceAttributes.Verb)
 		}
+		klog.V(7).InfoS("CustomResourceTypeCheck: Creating action for custom resource", "group", subRevReq.ResourceAttributes.Group, "resource", subRevReq.ResourceAttributes.Resource, "verb", subRevReq.ResourceAttributes.Verb, "action", action)
 		authInfoList = append(authInfoList, authInfoSingle)
 	}
 
 	for i := range authInfoList {
 		err := setAuthInfoResourceAttributes(&authInfoList[i], subRevReq)
 		if err != nil {
+			klog.ErrorS(err, "CustomResourceTypeCheck: Error while setting resource attributes", "group", subRevReq.ResourceAttributes.Group, "resource", subRevReq.ResourceAttributes.Resource)
 			return nil, errors.Errorf("Error while setting resource attributes: %s", err.Error())
 		}
 	}
 
+	klog.V(5).InfoS("CustomResourceTypeCheck: Successfully created authorization actions for custom resource", "group", subRevReq.ResourceAttributes.Group, "resource", subRevReq.ResourceAttributes.Resource, "actionsCount", len(authInfoList))
 	return authInfoList, nil
 }
 

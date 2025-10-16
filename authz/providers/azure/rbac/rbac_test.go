@@ -126,7 +126,7 @@ func TestCheckAccess(t *testing.T) {
 			}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
 		}
 
-		response, err := u.CheckAccess(request)
+		response, err := u.CheckAccess(context.Background(), request)
 
 		assert.Nilf(t, err, "Should not have got error")
 		assert.NotNil(t, response)
@@ -148,7 +148,7 @@ func TestCheckAccess(t *testing.T) {
 			}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
 		}
 
-		response, err := u.CheckAccess(request)
+		response, err := u.CheckAccess(context.Background(), request)
 
 		assert.Nilf(t, response, "response should be nil")
 		assert.NotNilf(t, err, "should get error")
@@ -169,7 +169,7 @@ func TestCheckAccess(t *testing.T) {
 			}, Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
 		}
 
-		response, err := u.CheckAccess(request)
+		response, err := u.CheckAccess(context.Background(), request)
 
 		assert.Nilf(t, response, "response should be nil")
 		assert.NotNilf(t, err, "should get error")
@@ -203,7 +203,7 @@ func TestCheckAccess(t *testing.T) {
 			wg.Add(1)
 			go func(request *authzv1.SubjectAccessReviewSpec) {
 				defer wg.Done()
-				response, err := u.CheckAccess(request)
+				response, err := u.CheckAccess(context.Background(), request)
 				assert.NoError(t, err)
 				assert.NotNil(t, response)
 				assert.True(t, response.Allowed)
@@ -353,7 +353,7 @@ func TestCheckAccess(t *testing.T) {
 					Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
 				}
 
-				response, err := u.CheckAccess(request)
+				response, err := u.CheckAccess(context.Background(), request)
 				assert.NoError(t, err)
 				assert.NotNil(t, response)
 				assert.Equal(t, tc.expectedAllowed, response.Allowed)
@@ -380,7 +380,7 @@ func TestCheckAccess(t *testing.T) {
 			},
 			Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
 		}
-		response, err := u.CheckAccess(request)
+		response, err := u.CheckAccess(context.Background(), request)
 		assert.NoError(t, err, "CheckAccess should not return error")
 		assert.NotNil(t, response, "response should always be non-nil")
 		assert.False(t, response.Allowed, "Allowed should be false")
@@ -568,7 +568,7 @@ func TestCheckAccess(t *testing.T) {
 					Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
 				}
 
-				response, err := u.CheckAccess(request)
+				response, err := u.CheckAccess(context.Background(), request)
 				assert.NoError(t, err)
 				assert.NotNil(t, response)
 				assert.Equal(t, tc.expectedAllowed, response.Allowed)
@@ -643,7 +643,7 @@ func TestCheckAccess_ClusterScoped(t *testing.T) {
 
 			u.useManagedNamespaceResourceScopeFormat = true
 
-			resp, err := u.CheckAccess(request)
+			resp, err := u.CheckAccess(context.Background(), request)
 
 			assert.NoError(t, err, "CheckAccess should not return error")
 			assert.NotNil(t, resp, "response should always be non-nil")
@@ -770,7 +770,7 @@ func TestCheckAccess_ClusterScoped(t *testing.T) {
 					Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
 				}
 
-				resp, err := u.CheckAccess(request)
+				resp, err := u.CheckAccess(context.Background(), request)
 
 				assert.NoError(t, err, "CheckAccess should not return error")
 				assert.NotNil(t, resp, "response should always be non-nil")
@@ -821,7 +821,7 @@ func TestLogin(t *testing.T) {
 		defer ts.Close()
 
 		ctx := context.Background()
-		err := u.RefreshToken(ctx)
+		err := u.RefreshToken(ctx, "test-request-id")
 		if err != nil {
 			t.Errorf("Error when trying to log in: %s", err)
 		}
@@ -845,7 +845,7 @@ func TestLogin(t *testing.T) {
 		defer ts.Close()
 
 		ctx := context.Background()
-		err := u.RefreshToken(ctx)
+		err := u.RefreshToken(ctx, "test-request-id")
 		assert.NotNilf(t, err, "Should have gotten error")
 	})
 
@@ -859,7 +859,7 @@ func TestLogin(t *testing.T) {
 		u.tokenProvider = graph.NewClientCredentialTokenProvider("CIA", "outcome", badURL, "")
 
 		ctx := context.Background()
-		err := u.RefreshToken(ctx)
+		err := u.RefreshToken(ctx, "test-request-id")
 		assert.NotNilf(t, err, "Should have gotten error")
 	})
 
@@ -868,7 +868,7 @@ func TestLogin(t *testing.T) {
 		defer ts.Close()
 
 		ctx := context.Background()
-		err := u.RefreshToken(ctx)
+		err := u.RefreshToken(ctx, "test-request-id")
 		assert.NotNilf(t, err, "Should have gotten error")
 	})
 }
@@ -931,7 +931,7 @@ func Test_auditSARIfNeeded(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			c.accessInfo.auditSARIfNeeded(c.request)
+			c.accessInfo.auditSARIfNeeded(c.request, "test-request-id")
 		})
 	}
 }
