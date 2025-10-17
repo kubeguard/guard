@@ -89,6 +89,7 @@ type AccessInfo struct {
 	skipAuthzForNonAADUsers                bool
 	allowNonResDiscoveryPathAccess         bool
 	allowCustomResourceTypeCheck           bool
+	allowSubresourceTypeCheck              bool
 	useManagedNamespaceResourceScopeFormat bool
 	useNamespaceResourceScopeFormat        bool
 	httpClientRetryCount                   int
@@ -178,6 +179,7 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 		skipAuthzForNonAADUsers:                opts.SkipAuthzForNonAADUsers,
 		allowNonResDiscoveryPathAccess:         opts.AllowNonResDiscoveryPathAccess,
 		allowCustomResourceTypeCheck:           opts.AllowCustomResourceTypeCheck,
+		allowSubresourceTypeCheck:              opts.AllowSubresourceTypeCheck,
 		useManagedNamespaceResourceScopeFormat: opts.UseManagedNamespaceResourceScopeFormat,
 		useNamespaceResourceScopeFormat:        opts.UseNamespaceResourceScopeFormat,
 		httpClientRetryCount:                   authopts.HttpClientRetryCount,
@@ -256,7 +258,7 @@ func (a *AccessInfo) ShouldSkipAuthzCheckForNonAADUsers() bool {
 
 func (a *AccessInfo) GetResultFromCache(request *authzv1.SubjectAccessReviewSpec, store authz.Store) (bool, bool) {
 	var result bool
-	key := getResultCacheKey(request)
+	key := getResultCacheKey(request, a.allowSubresourceTypeCheck)
 	klog.V(10).Infof("Cache search for key: %s", key)
 	found, _ := store.Get(key, &result)
 
@@ -280,7 +282,7 @@ func (a *AccessInfo) SkipAuthzCheck(request *authzv1.SubjectAccessReviewSpec) bo
 }
 
 func (a *AccessInfo) SetResultInCache(request *authzv1.SubjectAccessReviewSpec, result bool, store authz.Store) error {
-	key := getResultCacheKey(request)
+	key := getResultCacheKey(request, a.allowSubresourceTypeCheck)
 	klog.V(5).Infof("Cache set for key: %s, value: %t", key, result)
 	return store.Set(key, result)
 }
@@ -422,7 +424,7 @@ func (a *AccessInfo) auditSARIfNeeded(request *authzv1.SubjectAccessReviewSpec) 
 func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
 	a.auditSARIfNeeded(request)
 
-	checkAccessBodies, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat, a.allowCustomResourceTypeCheck)
+	checkAccessBodies, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in preparing check access request")
 	}
@@ -478,7 +480,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 		if err != nil {
 			return nil, errors.Wrap(err, "error in building fleet manager check access URL")
 		}
-		bodiesForFleetRBAC, err := prepareCheckAccessRequestBody(request, fleetMembers, a.fleetManagerResourceId, false, a.allowCustomResourceTypeCheck)
+		bodiesForFleetRBAC, err := prepareCheckAccessRequestBody(request, fleetMembers, a.fleetManagerResourceId, false, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
 		if err != nil {
 			return nil, errors.Wrap(err, "error in preparing check access request for fleet manager RBAC")
 		}

@@ -46,6 +46,7 @@ type Options struct {
 	SkipAuthzForNonAADUsers                bool
 	AllowNonResDiscoveryPathAccess         bool
 	AllowCustomResourceTypeCheck           bool
+	AllowSubresourceTypeCheck              bool
 	UseNamespaceResourceScopeFormat        bool
 	DiscoverResources                      bool
 	UseManagedNamespaceResourceScopeFormat bool
@@ -62,6 +63,7 @@ func NewOptions() Options {
 		SkipAuthzForNonAADUsers:                true,
 		AllowNonResDiscoveryPathAccess:         true,
 		AllowCustomResourceTypeCheck:           false,
+		AllowSubresourceTypeCheck:              false,
 		UseNamespaceResourceScopeFormat:        false,
 		DiscoverResources:                      false,
 		ReconcileDiscoverResourcesFrequency:    5 * time.Minute,
@@ -79,6 +81,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.SkipAuthzForNonAADUsers, "azure.skip-authz-for-non-aad-users", o.SkipAuthzForNonAADUsers, "skip authz for non AAD users")
 	fs.BoolVar(&o.AllowNonResDiscoveryPathAccess, "azure.allow-nonres-discovery-path-access", o.AllowNonResDiscoveryPathAccess, "allow access on Non Resource paths required for discovery, setting it false will require explicit non resource path role assignment for all users in Azure RBAC")
 	fs.BoolVar(&o.AllowCustomResourceTypeCheck, "azure.allow-custom-resource-type-check", o.AllowCustomResourceTypeCheck, "allow custom resource type checks for authorization")
+	fs.BoolVar(&o.AllowSubresourceTypeCheck, "azure.allow-subresource-type-check", o.AllowSubresourceTypeCheck, "allow subresource type checks for authorization")
 	fs.BoolVar(&o.UseNamespaceResourceScopeFormat, "azure.use-ns-resource-scope-format", o.UseNamespaceResourceScopeFormat, "use namespace as resource scope format for making rbac checkaccess calls at namespace scope")
 	fs.StringVar(&o.KubeConfigFile, "azure.kubeconfig-file", "", "path to the kubeconfig of cluster.")
 	fs.BoolVar(&o.UseManagedNamespaceResourceScopeFormat, "azure.use-managed-namespace-resource-scope-format", o.UseManagedNamespaceResourceScopeFormat, "enable managed namespace RBAC for azure authz mode")
@@ -125,6 +128,10 @@ func (o *Options) Validate(azure azure.Options) []error {
 		errs = append(errs, errors.New("azure.discover-resources must also be enabled when azure.allow-custom-resource-type-check is enabled"))
 	}
 
+	if !o.DiscoverResources && o.AllowSubresourceTypeCheck {
+		errs = append(errs, errors.New("azure.discover-resources must also be enabled when azure.allow-subresource-type-check is enabled"))
+	}
+
 	if o.FleetManagerResourceId != "" {
 		if err := ValidateFleetID(o.FleetManagerResourceId); err != nil {
 			errs = append(errs, err)
@@ -158,6 +165,8 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 	args = append(args, fmt.Sprintf("--azure.allow-nonres-discovery-path-access=%t", o.AllowNonResDiscoveryPathAccess))
 
 	args = append(args, fmt.Sprintf("--azure.allow-custom-resource-type-check=%t", o.AllowCustomResourceTypeCheck))
+
+	args = append(args, fmt.Sprintf("--azure.allow-subresource-type-check=%t", o.AllowSubresourceTypeCheck))
 
 	d.Spec.Template.Spec.Containers[0].Args = args
 	return extraObjs, nil
