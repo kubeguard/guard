@@ -298,7 +298,10 @@ func getDataActions(subRevReq *authzv1.SubjectAccessReviewSpec, clusterType stri
 			action := getResourceAndAction(subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Subresource, subRevReq.ResourceAttributes.Verb)
 			authInfoSingle.AuthorizationEntity.Id = path.Join(authInfoSingle.AuthorizationEntity.Id, action)
 			if allowSubresourceTypeCheck {
-				setAuthInfoSubresourceAttributes(&authInfoSingle, subRevReq)
+				err = setAuthInfoSubresourceAttributes(&authInfoSingle, subRevReq)
+				if err != nil {
+					return nil, errors.Errorf("Error while setting subresource attributes: %s", err.Error())
+				}
 			}
 			authInfoList = append(authInfoList, authInfoSingle)
 
@@ -443,7 +446,10 @@ func getAuthInfoListForWildcard(subRevReq *authzv1.SubjectAccessReviewSpec, stor
 
 	if allowSubresourceTypeCheck {
 		for i := range authInfoList {
-			setAuthInfoSubresourceAttributes(&authInfoList[i], subRevReq)
+			err = setAuthInfoSubresourceAttributes(&authInfoList[i], subRevReq)
+			if err != nil {
+				return nil, errors.Errorf("Error while setting subresource attributes: %s", err.Error())
+			}
 		}
 	}
 	return authInfoList, nil
@@ -490,12 +496,11 @@ func setAuthInfoResourceAttributes(action *azureutils.AuthorizationActionInfo, s
 }
 
 func shouldHandleSubresource(resource string, subresource string) bool {
-	_, shouldHandle := subresourceAttributeAllowlist[resource + "/" + subresource]
+	_, shouldHandle := subresourceAttributeAllowlist[resource+"/"+subresource]
 	return shouldHandle
 }
 
 func setAuthInfoSubresourceAttributes(action *azureutils.AuthorizationActionInfo, subRevReq *authzv1.SubjectAccessReviewSpec) error {
-
 	if subRevReq.ResourceAttributes == nil {
 		return errors.New("Resource attributes are empty")
 	}

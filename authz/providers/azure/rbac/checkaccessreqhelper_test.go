@@ -32,8 +32,8 @@ import (
 )
 
 const (
-	resourceId     = "resourceId"
-	aksClusterType = "aks"
+	resourceId      = "resourceId"
+	aksClusterType  = "aks"
 	subresourceAttr = "Microsoft.ContainerService/managedClusters/resources:subresource"
 )
 
@@ -607,7 +607,7 @@ func Test_getDataActions(t *testing.T) {
 				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{
-				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/read"}, IsDataAction: true, Attributes: map[string]string{ subresourceAttr: "logs" } },
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/read"}, IsDataAction: true, Attributes: map[string]string{subresourceAttr: "logs"}},
 			},
 		},
 
@@ -621,7 +621,7 @@ func Test_getDataActions(t *testing.T) {
 				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{
-				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/deployments/write"}, IsDataAction: true, Attributes: map[string]string{ subresourceAttr: "scale" } },
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/deployments/write"}, IsDataAction: true, Attributes: map[string]string{subresourceAttr: "scale"}},
 			},
 		},
 
@@ -635,10 +635,10 @@ func Test_getDataActions(t *testing.T) {
 				}, clusterType: aksClusterType,
 			},
 			[]azureutils.AuthorizationActionInfo{
-				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/read"}, IsDataAction: true,  Attributes: map[string]string{ subresourceAttr: "logs" }},
-				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/write"}, IsDataAction: true,  Attributes: map[string]string{ subresourceAttr: "logs" }},
-				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/delete"}, IsDataAction: true,  Attributes: map[string]string{ subresourceAttr: "logs" }},
-				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/exec/action"}, IsDataAction: true,  Attributes: map[string]string{ subresourceAttr: "logs" }},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/read"}, IsDataAction: true, Attributes: map[string]string{subresourceAttr: "logs"}},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/write"}, IsDataAction: true, Attributes: map[string]string{subresourceAttr: "logs"}},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/delete"}, IsDataAction: true, Attributes: map[string]string{subresourceAttr: "logs"}},
+				{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "aks/pods/exec/action"}, IsDataAction: true, Attributes: map[string]string{subresourceAttr: "logs"}},
 			},
 		},
 	}
@@ -1151,7 +1151,7 @@ func Test_prepareCheckAccessRequestBodyWithSubresourceDisabled(t *testing.T) {
 
 func Test_getResultCacheKey(t *testing.T) {
 	type args struct {
-		subRevReq *authzv1.SubjectAccessReviewSpec
+		subRevReq                 *authzv1.SubjectAccessReviewSpec
 		allowSubresourceTypeCheck bool
 	}
 	tests := []struct {
