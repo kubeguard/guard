@@ -87,7 +87,7 @@ func newAuthzClient(opts authzOpts.Options, authopts auth.Options) (authz.Interf
 func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, store authz.Store) (*authzv1.SubjectAccessReviewStatus, error) {
 	requestID := uuid.New().String()
 
-	log := klog.FromContext(ctx).WithValues("requestID", requestID)
+	log := klog.FromContext(ctx).WithValues("requestID", requestID, "resourceAttributes", request.ResourceAttributes)
 	ctx = klog.NewContext(ctx, log)
 
 	if request == nil {

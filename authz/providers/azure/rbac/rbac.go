@@ -397,14 +397,7 @@ func (a *AccessInfo) auditSARIfNeeded(ctx context.Context, request *authzv1.Subj
 	if request.ResourceAttributes == nil {
 		logger.Info("SubjectAccessReview details", "ResourceAttributes", "<nil>")
 	} else {
-		logger.Info("SubjectAccessReview details",
-			"namespace", request.ResourceAttributes.Namespace,
-			"name", request.ResourceAttributes.Name,
-			"group", request.ResourceAttributes.Group,
-			"resource", request.ResourceAttributes.Resource,
-			"subresource", request.ResourceAttributes.Subresource,
-			"verb", request.ResourceAttributes.Verb,
-		)
+		logger.Info("SubjectAccessReview details")
 	}
 
 	if request.NonResourceAttributes != nil {
@@ -418,7 +411,7 @@ func (a *AccessInfo) auditSARIfNeeded(ctx context.Context, request *authzv1.Subj
 func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
 	a.auditSARIfNeeded(ctx, request)
 
-	checkAccessBodies, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
+	checkAccessBodies, err := prepareCheckAccessRequestBody(ctx, request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in preparing check access request")
 	}
@@ -476,7 +469,7 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 		if err != nil {
 			return nil, errors.Wrap(err, "Failed to build fleet manager check access URL")
 		}
-		bodiesForFleetRBAC, err := prepareCheckAccessRequestBody(request, fleetMembers, a.fleetManagerResourceId, false, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
+		bodiesForFleetRBAC, err := prepareCheckAccessRequestBody(ctx, request, fleetMembers, a.fleetManagerResourceId, false, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
 		if err != nil {
 			return nil, errors.Wrap(err, "Failed to prepare check access request for fleet manager")
 		}
