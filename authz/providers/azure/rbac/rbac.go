@@ -237,8 +237,7 @@ func (a *AccessInfo) RefreshToken(ctx context.Context, requestID string) error {
 	if a.IsTokenExpired() {
 		resp, err := a.tokenProvider.Acquire(ctx, "")
 		if err != nil {
-			klog.ErrorS(err, "Failed to refresh token", "requestID", requestID, "provider", a.tokenProvider.Name())
-			return errors.Wrap(err, "failed to refresh rbac token")
+			return errors.Wrapf(err, "Failed to refresh token (requestID: %s, provider: %s)", requestID, a.tokenProvider.Name())
 		}
 
 		// Set the authorization headers for future requests
@@ -356,8 +355,7 @@ func (a *AccessInfo) performCheckAccess(
 				if v, ok := err.(errutils.HttpStatusCode); ok {
 					code = v.Code()
 				}
-				klog.ErrorS(err, "Checkaccess batch failed", "requestID", requestID, "correlationID", correlationID, "batchIndex", index, "statusCode", code)
-				err = errutils.WithCode(errors.Errorf("Error: %s. Correlation ID: %s", err, correlationID), code)
+				err = errutils.WithCode(errors.Errorf("Checkaccess batch failed (requestID: %s, correlationID: %s, batchIndex: %d, statusCode: %d): %s", requestID, correlationID, index, code, err), code)
 				return err
 			}
 			klog.V(7).InfoS("Checkaccess batch completed successfully", "requestID", requestID, "correlationID", correlationID, "batchIndex", index)
@@ -371,10 +369,9 @@ func (a *AccessInfo) performCheckAccess(
 			for i := 0; i < len(checkAccessBodies); i += 1 {
 				actionsCount = actionsCount + len(checkAccessBodies[i].Actions)
 			}
-			klog.ErrorS(ctx.Err(), "Checkaccess requests timed out", "requestID", requestID, "batchCount", len(checkAccessBodies), "totalActionsCount", actionsCount, "timeoutSeconds", checkaccessContextTimeout.Seconds())
 			checkAccessContextTimedOutCount.WithLabelValues(azureutils.ConvertIntToString(len(checkAccessBodies)), azureutils.ConvertIntToString(actionsCount)).Inc()
 			close(ch)
-			return nil, errutils.WithCode(errors.Wrap(ctx.Err(), "Checkaccess requests have timed out."), http.StatusInternalServerError)
+			return nil, errutils.WithCode(errors.Wrapf(ctx.Err(), "Checkaccess requests timed out (requestID: %s, batchCount: %d, totalActionsCount: %d, timeoutSeconds: %.0f)", requestID, len(checkAccessBodies), actionsCount, checkaccessContextTimeout.Seconds()), http.StatusInternalServerError)
 		} else {
 			close(ch)
 			// error already logged in the goroutine
@@ -486,8 +483,7 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 
 		status, err = a.performCheckAccess(ctx, managedNamespaceURL, checkAccessBodies, checkAccessUsername)
 		if err != nil {
-			klog.ErrorS(err, "Managed namespace check access failed", "requestID", requestID)
-			return nil, err
+			return nil, errors.Wrapf(err, "Managed namespace check access failed (requestID: %s)", requestID)
 		}
 		if status != nil && status.Allowed {
 			klog.V(7).InfoS("Managed namespace check access allowed", "requestID", requestID)
@@ -500,13 +496,11 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 		klog.V(7).InfoS("Falling back to fleet manager scope check", "requestID", requestID, "fleetResourceId", a.fleetManagerResourceId)
 		fleetURL, err := buildCheckAccessURL(*a.apiURL, a.fleetManagerResourceId, managedNamespaceExists, managedNamespacePath)
 		if err != nil {
-			klog.ErrorS(err, "Failed to build fleet manager check access URL", "requestID", requestID)
-			return nil, errors.Wrap(err, "error in building fleet manager check access URL")
+			return nil, errors.Wrapf(err, "Failed to build fleet manager check access URL (requestID: %s)", requestID)
 		}
 		bodiesForFleetRBAC, err := prepareCheckAccessRequestBody(request, fleetMembers, a.fleetManagerResourceId, false, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
 		if err != nil {
-			klog.ErrorS(err, "Failed to prepare check access request for fleet manager", "requestID", requestID)
-			return nil, errors.Wrap(err, "error in preparing check access request for fleet manager RBAC")
+			return nil, errors.Wrapf(err, "Failed to prepare check access request for fleet manager (requestID: %s)", requestID)
 		}
 		if managedNamespaceExists {
 			for _, b := range bodiesForFleetRBAC {
@@ -515,7 +509,7 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 		}
 		status, err = a.performCheckAccess(ctx, fleetURL, bodiesForFleetRBAC, checkAccessUsername)
 		if err != nil {
-			klog.ErrorS(err, "Fleet manager check access failed", "requestID", requestID)
+			err = errors.Wrapf(err, "Fleet manager check access failed (requestID: %s)", requestID)
 		} else if status != nil && status.Allowed {
 			klog.V(7).InfoS("Fleet manager check access allowed", "requestID", requestID)
 		}
@@ -535,8 +529,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(checkAccessBody); err != nil {
-		klog.ErrorS(err, "Failed to encode check access request", "requestID", requestID)
-		return errutils.WithCode(errors.Wrap(err, "error encoding check access request"), http.StatusInternalServerError)
+		return errutils.WithCode(errors.Wrapf(err, "Failed to encode check access request (requestID: %s)", requestID), http.StatusInternalServerError)
 	}
 
 	if klog.V(10).Enabled() {
@@ -546,8 +539,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, checkAccessURL, buf)
 	if err != nil {
-		klog.ErrorS(err, "Failed to create check access request", "requestID", requestID)
-		return errutils.WithCode(errors.Wrap(err, "error creating check access request"), http.StatusInternalServerError)
+		return errutils.WithCode(errors.Wrapf(err, "Failed to create check access request (requestID: %s)", requestID), http.StatusInternalServerError)
 	}
 
 	a.setReqHeaders(req)
@@ -564,11 +556,12 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 	if err != nil {
 		checkAccessTotal.WithLabelValues(internalServerCode).Inc()
 		checkAccessDuration.WithLabelValues(internalServerCode).Observe(duration)
-		klog.ErrorS(err, "CheckAccess request execution failed", "requestID", requestID, "correlationID", correlationID, "durationSeconds", duration)
-		return errutils.WithCode(errors.Wrap(err, "error in check access request execution."), http.StatusInternalServerError)
+		return errutils.WithCode(errors.Wrapf(err, "CheckAccess request execution failed (requestID: %s, correlationID: %s, durationSeconds: %.2f)", requestID, correlationID, duration), http.StatusInternalServerError)
 	}
 
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	respStatusCode := azureutils.ConvertIntToString(resp.StatusCode)
 	checkAccessTotal.WithLabelValues(respStatusCode).Inc()
 	checkAccessDuration.WithLabelValues(respStatusCode).Observe(duration)
@@ -577,15 +570,13 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 	if err != nil {
 		checkAccessTotal.WithLabelValues(internalServerCode).Inc()
 		checkAccessDuration.WithLabelValues(internalServerCode).Observe(duration)
-		klog.ErrorS(err, "Failed to read response body", "requestID", requestID, "correlationID", correlationID)
-		return errutils.WithCode(errors.Wrap(err, "error in reading response body"), http.StatusInternalServerError)
+		return errutils.WithCode(errors.Wrapf(err, "Failed to read response body (requestID: %s, correlationID: %s)", requestID, correlationID), http.StatusInternalServerError)
 	}
 
 	klog.V(7).InfoS("CheckAccess response received", "requestID", requestID, "correlationID", correlationID, "statusCode", resp.StatusCode, "durationSeconds", duration, "responseBody", string(data), "armCallLimit", a.armCallLimit)
 
 	// We can expect the response to be a 200 OK for ARM proxy resources or 404 Not Found for ARM tracked resources due to resource deletion
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
-		klog.ErrorS(errors.New("check access response error"), "CheckAccess request failed", "requestID", requestID, "correlationID", correlationID, "statusCode", resp.StatusCode, "response", string(data), "durationSeconds", duration)
 		// metrics for calls with StatusCode >= 300
 		if resp.StatusCode >= http.StatusMultipleChoices {
 			if resp.StatusCode == http.StatusTooManyRequests {
@@ -597,7 +588,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 			checkAccessFailed.WithLabelValues(respStatusCode).Inc()
 		}
 
-		return errutils.WithCode(errors.Errorf("request %s failed with status code: %d and response: %s", req.URL.Path, resp.StatusCode, string(data)), resp.StatusCode)
+		return errutils.WithCode(errors.Errorf("CheckAccess request failed (requestID: %s, correlationID: %s, statusCode: %d, durationSeconds: %.2f): request %s failed with response: %s", requestID, correlationID, resp.StatusCode, duration, req.URL.Path, string(data)), resp.StatusCode)
 	}
 
 	remaining := resp.Header.Get(remainingSubReadARMHeader)
@@ -620,8 +611,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 		// Decode response and prepare k8s response
 		status, err = ConvertCheckAccessResponse(checkAccessUsername, data)
 		if err != nil {
-			klog.ErrorS(err, "Failed to convert check access response", "requestID", requestID, "correlationID", correlationID)
-			return err
+			return errors.Wrapf(err, "Failed to convert check access response (requestID: %s, correlationID: %s)", requestID, correlationID)
 		}
 	}
 

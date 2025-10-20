@@ -95,8 +95,7 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 	ctx = context.WithValue(ctx, requestIDContextKey, requestID)
 
 	if request == nil {
-		klog.ErrorS(errors.New("subject access review is nil"), "Authorization request failed", "requestID", requestID)
-		return nil, errutils.WithCode(errors.New("subject access review is nil"), http.StatusBadRequest)
+		return nil, errutils.WithCode(errors.Errorf("Authorization request failed (requestID: %s): subject access review is nil", requestID), http.StatusBadRequest)
 	}
 
 	klog.InfoS("Authorization check started", "requestID", requestID)
@@ -145,8 +144,7 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 	if s.rbacClient.IsTokenExpired() {
 		klog.V(5).InfoS("Token expired, refreshing", "requestID", requestID)
 		if err := s.rbacClient.RefreshToken(ctx, requestID); err != nil {
-			klog.ErrorS(err, "Token refresh failed", "requestID", requestID)
-			return nil, errutils.WithCode(err, http.StatusInternalServerError)
+			return nil, errutils.WithCode(errors.Wrapf(err, "Token refresh failed (requestID: %s)", requestID), http.StatusInternalServerError)
 		}
 		klog.V(5).InfoS("Token refreshed successfully", "requestID", requestID)
 	}
@@ -160,8 +158,7 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 		if v, ok := err.(errutils.HttpStatusCode); ok {
 			code = v.Code()
 		}
-		klog.ErrorS(err, "Authorization check failed", "requestID", requestID, "statusCode", code)
-		err = errutils.WithCode(errors.Errorf(rbac.CheckAccessErrorFormat, err), code)
+		err = errutils.WithCode(errors.Errorf("Authorization check failed (requestID: %s, statusCode: %d): %s", requestID, code, err), code)
 	}
 
 	return response, err
