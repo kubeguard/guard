@@ -475,8 +475,7 @@ func getAuthInfoListForCustomResource(ctx context.Context, subRevReq *authzv1.Su
 		action := getActionName(subRevReq.ResourceAttributes.Verb)
 		authInfoSingle, found := getCustomResourceOperationsMap(clusterType)[action]
 		if !found {
-			log.Error(errors.New("action not found"), "No actions found for custom resource verb")
-			return nil, errors.Errorf("No actions found for verb %s", subRevReq.ResourceAttributes.Verb)
+			return nil, errors.Errorf("No actions found for verb: %s, action: %s", subRevReq.ResourceAttributes.Verb, action)
 		}
 		log.V(7).Info("Creating action for custom resource", "action", action)
 		authInfoList = append(authInfoList, authInfoSingle)
@@ -485,12 +484,10 @@ func getAuthInfoListForCustomResource(ctx context.Context, subRevReq *authzv1.Su
 	for i := range authInfoList {
 		err := setAuthInfoResourceAttributes(&authInfoList[i], subRevReq)
 		if err != nil {
-			log.Error(err, "Error while setting resource attributes")
 			return nil, errors.Errorf("Error while setting resource attributes: %s", err.Error())
 		}
 	}
 
-	log.V(5).Info("Successfully created authorization actions for custom resource", "actionsCount", len(authInfoList))
 	return authInfoList, nil
 }
 
@@ -741,7 +738,6 @@ func ConvertCheckAccessResponse(username string, body []byte) (*authzv1.SubjectA
 
 	err := json.Unmarshal(body, &response)
 	if err != nil {
-		klog.V(10).Infof("Failed to parse checkacccess response. Error:%s", err.Error())
 		return nil, errutils.WithCode(errors.Wrap(err, "Error in unmarshalling check access response."), http.StatusInternalServerError)
 	}
 
