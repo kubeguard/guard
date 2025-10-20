@@ -36,6 +36,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	authzv1 "k8s.io/api/authorization/v1"
+	"k8s.io/klog/v2"
 )
 
 func init() {
@@ -821,7 +822,7 @@ func TestLogin(t *testing.T) {
 		defer ts.Close()
 
 		ctx := context.Background()
-		err := u.RefreshToken(ctx, "test-request-id")
+		err := u.RefreshToken(ctx)
 		if err != nil {
 			t.Errorf("Error when trying to log in: %s", err)
 		}
@@ -845,7 +846,7 @@ func TestLogin(t *testing.T) {
 		defer ts.Close()
 
 		ctx := context.Background()
-		err := u.RefreshToken(ctx, "test-request-id")
+		err := u.RefreshToken(ctx)
 		assert.NotNilf(t, err, "Should have gotten error")
 	})
 
@@ -859,7 +860,7 @@ func TestLogin(t *testing.T) {
 		u.tokenProvider = graph.NewClientCredentialTokenProvider("CIA", "outcome", badURL, "")
 
 		ctx := context.Background()
-		err := u.RefreshToken(ctx, "test-request-id")
+		err := u.RefreshToken(ctx)
 		assert.NotNilf(t, err, "Should have gotten error")
 	})
 
@@ -868,7 +869,7 @@ func TestLogin(t *testing.T) {
 		defer ts.Close()
 
 		ctx := context.Background()
-		err := u.RefreshToken(ctx, "test-request-id")
+		err := u.RefreshToken(ctx)
 		assert.NotNilf(t, err, "Should have gotten error")
 	})
 }
@@ -931,7 +932,8 @@ func Test_auditSARIfNeeded(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			c.accessInfo.auditSARIfNeeded(c.request, "test-request-id")
+			ctx := klog.NewContext(context.Background(), klog.Background().WithValues("requestID", "test-request-id"))
+			c.accessInfo.auditSARIfNeeded(ctx, c.request)
 		})
 	}
 }

@@ -505,41 +505,14 @@ func fetchDataActionsList(ctx context.Context) ([]Operation, error) {
 	return finalOperations, nil
 }
 
-type contextKey string
-
-const (
-	requestIDContextKey     contextKey = "request-id"
-	correlationIDContextKey contextKey = "x-ms-correlation-request-id"
-)
-
-// contextAwareLogger is a custom logger that extracts request ID from context and includes it in logs
+// contextAwareLogger is a custom logger that uses klog's context-aware logging
 type contextAwareLogger struct {
 	ctx context.Context
 }
 
 func (l *contextAwareLogger) Printf(format string, v ...interface{}) {
-	requestID := ""
-	correlationID := ""
-
-	if l.ctx != nil {
-		if val := l.ctx.Value(requestIDContextKey); val != nil {
-			if id, ok := val.(string); ok {
-				requestID = id
-			}
-		}
-		if val := l.ctx.Value(correlationIDContextKey); val != nil {
-			if id, ok := val.(string); ok {
-				correlationID = id
-			}
-		}
-	}
-
-	// Log with structured logging including request context
-	if requestID != "" || correlationID != "" {
-		klog.InfoS(fmt.Sprintf(format, v...), "requestID", requestID, "correlationID", correlationID, "source", "http-retry")
-	} else {
-		klog.InfoS(fmt.Sprintf(format, v...), "source", "http-retry")
-	}
+	// Use klog's context-aware logging which automatically includes request ID and correlation ID
+	klog.FromContext(l.ctx).Info(fmt.Sprintf(format, v...))
 }
 
 // MakeRetryableHttpClient creates an HTTP client which attempts the request

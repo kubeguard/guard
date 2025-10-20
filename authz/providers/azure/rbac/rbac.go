@@ -69,13 +69,7 @@ type AuthzInfo struct {
 }
 
 type (
-	void                    struct{}
-	contextKey              string
-	correlationRequestIDKey string
-)
-
-const (
-	requestIDContextKey contextKey = "request-id"
+	void struct{}
 )
 
 // AccessInfo allows you to check user access from MS RBAC
@@ -231,13 +225,13 @@ func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo) (*
 	return newAccessInfo(tokenProvider, rbacURL, opts, authopts)
 }
 
-func (a *AccessInfo) RefreshToken(ctx context.Context, requestID string) error {
+func (a *AccessInfo) RefreshToken(ctx context.Context) error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 	if a.IsTokenExpired() {
 		resp, err := a.tokenProvider.Acquire(ctx, "")
 		if err != nil {
-			return errors.Wrapf(err, "Failed to refresh token (requestID: %s, provider: %s)", requestID, a.tokenProvider.Name())
+			return errors.Wrapf(err, "Failed to refresh token (provider: %s)", a.tokenProvider.Name())
 		}
 
 		// Set the authorization headers for future requests
@@ -246,7 +240,7 @@ func (a *AccessInfo) RefreshToken(ctx context.Context, requestID string) error {
 		// Use ExpiresOn to set the expiration time
 		expOn := time.Unix(int64(resp.ExpiresOn), 0)
 		a.expiresAt = expOn.Add(-tokenExpiryDelta)
-		klog.InfoS("Token refreshed successfully", "requestID", requestID, "refreshedAt", time.Now(), "expiresAt", a.expiresAt)
+		klog.FromContext(ctx).Info("Token refreshed successfully", "refreshedAt", time.Now(), "expiresAt", a.expiresAt)
 	}
 
 	return nil
@@ -320,21 +314,13 @@ func (a *AccessInfo) performCheckAccess(
 	checkAccessBodies []*CheckAccessRequest,
 	checkAccessUsername string,
 ) (*authzv1.SubjectAccessReviewStatus, error) {
-	// Extract parent request ID
-	requestID := ""
-	if val := parentCtx.Value(requestIDContextKey); val != nil {
-		if id, ok := val.(string); ok {
-			requestID = id
-		}
-	}
-
 	ctx, cancel := context.WithTimeout(parentCtx, checkaccessContextTimeout)
 	defer cancel()
 	eg, egCtx := errgroup.WithContext(ctx)
 
 	ch := make(chan *authzv1.SubjectAccessReviewStatus, len(checkAccessBodies))
 	if len(checkAccessBodies) > 1 {
-		klog.V(5).InfoS("Multiple checkaccess requests to execute", "requestID", requestID, "batchCount", len(checkAccessBodies))
+		klog.FromContext(parentCtx).V(5).Info("Multiple checkaccess requests to execute", "batchCount", len(checkAccessBodies))
 	}
 	eg.SetLimit(len(checkAccessBodies))
 	for batchIndex, checkAccessBody := range checkAccessBodies {
@@ -343,22 +329,23 @@ func (a *AccessInfo) performCheckAccess(
 		eg.Go(func() error {
 			// create a correlation ID for every checkaccess request
 			correlationID := uuid.New().String()
-			reqContext := context.WithValue(egCtx, correlationRequestIDKey(correlationRequestIDHeader), correlationID)
-			// Pass parent request ID through context as well
-			reqContext = context.WithValue(reqContext, requestIDContextKey, requestID)
+
+			// Create logger with correlation ID and batch context
+			log := klog.FromContext(parentCtx).WithValues("correlationID", correlationID, "batchIndex", index)
+			reqContext := klog.NewContext(egCtx, log)
 			reqContext = azureutils.WithRetryableHttpClient(reqContext, a.httpClientRetryCount)
 
-			klog.V(7).InfoS("Starting checkaccess batch", "requestID", requestID, "correlationID", correlationID, "batchIndex", index, "actionsCount", len(body.Actions))
+			log.V(7).Info("Starting checkaccess batch", "actionsCount", len(body.Actions))
 			err := a.sendCheckAccessRequest(reqContext, checkAccessUsername, checkAccessURL, body, ch)
 			if err != nil {
 				code := http.StatusInternalServerError
 				if v, ok := err.(errutils.HttpStatusCode); ok {
 					code = v.Code()
 				}
-				err = errutils.WithCode(errors.Errorf("Checkaccess batch failed (requestID: %s, correlationID: %s, batchIndex: %d, statusCode: %d): %s", requestID, correlationID, index, code, err), code)
+				err = errutils.WithCode(errors.Wrapf(err, "Checkaccess batch failed (batchIndex: %d, statusCode: %d)", index, code), code)
 				return err
 			}
-			klog.V(7).InfoS("Checkaccess batch completed successfully", "requestID", requestID, "correlationID", correlationID, "batchIndex", index)
+			log.V(7).Info("Checkaccess batch completed successfully")
 			return nil
 		})
 	}
@@ -371,10 +358,10 @@ func (a *AccessInfo) performCheckAccess(
 			}
 			checkAccessContextTimedOutCount.WithLabelValues(azureutils.ConvertIntToString(len(checkAccessBodies)), azureutils.ConvertIntToString(actionsCount)).Inc()
 			close(ch)
-			return nil, errutils.WithCode(errors.Wrapf(ctx.Err(), "Checkaccess requests timed out (requestID: %s, batchCount: %d, totalActionsCount: %d, timeoutSeconds: %.0f)", requestID, len(checkAccessBodies), actionsCount, checkaccessContextTimeout.Seconds()), http.StatusInternalServerError)
+			return nil, errutils.WithCode(errors.Wrapf(ctx.Err(), "Checkaccess requests timed out (batchCount: %d, totalActionsCount: %d, timeoutSeconds: %.0f)", len(checkAccessBodies), actionsCount, checkaccessContextTimeout.Seconds()), http.StatusInternalServerError)
 		} else {
 			close(ch)
-			// error already logged in the goroutine
+			// error already contains context from child goroutines
 			return nil, err
 		}
 	}
@@ -393,25 +380,24 @@ func (a *AccessInfo) performCheckAccess(
 }
 
 // auditSARIfNeeded logs the SubjectAccessReview request if auditing is enabled.
-func (a *AccessInfo) auditSARIfNeeded(request *authzv1.SubjectAccessReviewSpec, requestID string) {
+func (a *AccessInfo) auditSARIfNeeded(ctx context.Context, request *authzv1.SubjectAccessReviewSpec) {
 	if !a.auditSAR {
 		return
 	}
 
 	// NOTE: aligning with the same log level used in the sendCheckAccessRequest.
 	// so we will only add at most one more log per request
-	logger := klog.V(5)
+	logger := klog.FromContext(ctx).V(5)
 
 	if request == nil {
-		logger.InfoS("SubjectAccessReview request is nil", "requestID", requestID)
+		logger.Info("SubjectAccessReview request is nil")
 		return
 	}
 
 	if request.ResourceAttributes == nil {
-		logger.InfoS("SubjectAccessReview details", "requestID", requestID, "ResourceAttributes", "<nil>")
+		logger.Info("SubjectAccessReview details", "ResourceAttributes", "<nil>")
 	} else {
-		logger.InfoS("SubjectAccessReview details",
-			"requestID", requestID,
+		logger.Info("SubjectAccessReview details",
 			"namespace", request.ResourceAttributes.Namespace,
 			"name", request.ResourceAttributes.Name,
 			"group", request.ResourceAttributes.Group,
@@ -422,8 +408,7 @@ func (a *AccessInfo) auditSARIfNeeded(request *authzv1.SubjectAccessReviewSpec, 
 	}
 
 	if request.NonResourceAttributes != nil {
-		logger.InfoS("SubjectAccessReview non-resource attributes",
-			"requestID", requestID,
+		logger.Info("SubjectAccessReview non-resource attributes",
 			"path", request.NonResourceAttributes.Path,
 			"verb", request.NonResourceAttributes.Verb,
 		)
@@ -431,15 +416,7 @@ func (a *AccessInfo) auditSARIfNeeded(request *authzv1.SubjectAccessReviewSpec, 
 }
 
 func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
-	// Extract request ID from context
-	requestID := ""
-	if val := ctx.Value(requestIDContextKey); val != nil {
-		if id, ok := val.(string); ok {
-			requestID = id
-		}
-	}
-
-	a.auditSARIfNeeded(request, requestID)
+	a.auditSARIfNeeded(ctx, request)
 
 	checkAccessBodies, err := prepareCheckAccessRequestBody(request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
 	if err != nil {
@@ -455,7 +432,8 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 		return nil, errors.Wrap(err, "error in building check access URL")
 	}
 
-	klog.V(5).InfoS("Performing primary check access", "requestID", requestID, "batchCount", len(checkAccessBodies))
+	log := klog.FromContext(ctx)
+	log.V(5).Info("Performing primary check access", "batchCount", len(checkAccessBodies))
 	status, err := a.performCheckAccess(ctx, checkAccessURL, checkAccessBodies, checkAccessUsername)
 	if err != nil {
 		return nil, err
@@ -469,7 +447,7 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 	if a.useManagedNamespaceResourceScopeFormat &&
 		a.clusterType == managedClusters &&
 		managedNamespaceExists {
-		klog.V(7).InfoS("Falling back to managed namespace scope check", "requestID", requestID, "namespacePath", managedNamespacePath)
+		log.V(7).Info("Falling back to managed namespace scope check", "namespacePath", managedNamespacePath)
 		// Build managed namespace URL
 		managedNamespaceURL, err := buildCheckAccessURL(*a.apiURL, a.azureResourceId, true, managedNamespacePath)
 		if err != nil {
@@ -483,24 +461,24 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 
 		status, err = a.performCheckAccess(ctx, managedNamespaceURL, checkAccessBodies, checkAccessUsername)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Managed namespace check access failed (requestID: %s)", requestID)
+			return nil, errors.Wrap(err, "Managed namespace check access failed")
 		}
 		if status != nil && status.Allowed {
-			klog.V(7).InfoS("Managed namespace check access allowed", "requestID", requestID)
+			log.V(7).Info("Managed namespace check access allowed")
 			return status, nil
 		}
 	}
 
 	// Fallback to fleet scope check when the managedCluster has joined a fleet
 	if a.fleetManagerResourceId != "" {
-		klog.V(7).InfoS("Falling back to fleet manager scope check", "requestID", requestID, "fleetResourceId", a.fleetManagerResourceId)
+		log.V(7).Info("Falling back to fleet manager scope check", "fleetResourceId", a.fleetManagerResourceId)
 		fleetURL, err := buildCheckAccessURL(*a.apiURL, a.fleetManagerResourceId, managedNamespaceExists, managedNamespacePath)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Failed to build fleet manager check access URL (requestID: %s)", requestID)
+			return nil, errors.Wrap(err, "Failed to build fleet manager check access URL")
 		}
 		bodiesForFleetRBAC, err := prepareCheckAccessRequestBody(request, fleetMembers, a.fleetManagerResourceId, false, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Failed to prepare check access request for fleet manager (requestID: %s)", requestID)
+			return nil, errors.Wrap(err, "Failed to prepare check access request for fleet manager")
 		}
 		if managedNamespaceExists {
 			for _, b := range bodiesForFleetRBAC {
@@ -509,9 +487,9 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 		}
 		status, err = a.performCheckAccess(ctx, fleetURL, bodiesForFleetRBAC, checkAccessUsername)
 		if err != nil {
-			err = errors.Wrapf(err, "Fleet manager check access failed (requestID: %s)", requestID)
+			err = errors.Wrap(err, "Fleet manager check access failed")
 		} else if status != nil && status.Allowed {
-			klog.V(7).InfoS("Fleet manager check access allowed", "requestID", requestID)
+			log.V(7).Info("Fleet manager check access allowed")
 		}
 		return status, err
 	}
@@ -519,44 +497,38 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 }
 
 func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUsername string, checkAccessURL string, checkAccessBody *CheckAccessRequest, ch chan *authzv1.SubjectAccessReviewStatus) error {
-	// Extract request ID and correlation ID from context
-	requestID := ""
-	if val := ctx.Value(requestIDContextKey); val != nil {
-		if id, ok := val.(string); ok {
-			requestID = id
-		}
-	}
-
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(checkAccessBody); err != nil {
-		return errutils.WithCode(errors.Wrapf(err, "Failed to encode check access request (requestID: %s)", requestID), http.StatusInternalServerError)
+		return errutils.WithCode(errors.Wrap(err, "Failed to encode check access request"), http.StatusInternalServerError)
 	}
 
-	if klog.V(10).Enabled() {
+	log := klog.FromContext(ctx)
+	if log.V(10).Enabled() {
 		binaryData, _ := json.MarshalIndent(checkAccessBody, "", "    ")
-		klog.V(10).InfoS("CheckAccess request details", "requestID", requestID, "url", checkAccessURL, "body", string(binaryData))
+		log.V(10).Info("CheckAccess request details", "url", checkAccessURL, "body", string(binaryData))
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, checkAccessURL, buf)
 	if err != nil {
-		return errutils.WithCode(errors.Wrapf(err, "Failed to create check access request (requestID: %s)", requestID), http.StatusInternalServerError)
+		return errutils.WithCode(errors.Wrap(err, "Failed to create check access request"), http.StatusInternalServerError)
 	}
 
 	a.setReqHeaders(req)
-	// set x-ms-correlation-request-id for the checkaccess request
-	correlationID := ctx.Value(correlationRequestIDKey(correlationRequestIDHeader)).(string)
-	req.Header[correlationRequestIDHeader] = []string{correlationID}
+
+	// Get logger from context (already has correlationID and batchIndex from parent)
+	log = klog.FromContext(ctx)
+
 	internalServerCode := azureutils.ConvertIntToString(http.StatusInternalServerError)
 	// start time to calculate checkaccess duration
 	start := time.Now()
-	klog.V(5).InfoS("Sending checkAccess request to Azure", "requestID", requestID, "correlationID", correlationID)
+	log.V(5).Info("Sending checkAccess request to Azure")
 	client := azureutils.LoadClientWithContext(ctx, a.client)
 	resp, err := client.Do(req)
 	duration := time.Since(start).Seconds()
 	if err != nil {
 		checkAccessTotal.WithLabelValues(internalServerCode).Inc()
 		checkAccessDuration.WithLabelValues(internalServerCode).Observe(duration)
-		return errutils.WithCode(errors.Wrapf(err, "CheckAccess request execution failed (requestID: %s, correlationID: %s, durationSeconds: %.2f)", requestID, correlationID, duration), http.StatusInternalServerError)
+		return errutils.WithCode(errors.Wrapf(err, "CheckAccess request execution failed (durationSeconds: %.2f)", duration), http.StatusInternalServerError)
 	}
 
 	defer func() {
@@ -570,17 +542,17 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 	if err != nil {
 		checkAccessTotal.WithLabelValues(internalServerCode).Inc()
 		checkAccessDuration.WithLabelValues(internalServerCode).Observe(duration)
-		return errutils.WithCode(errors.Wrapf(err, "Failed to read response body (requestID: %s, correlationID: %s)", requestID, correlationID), http.StatusInternalServerError)
+		return errutils.WithCode(errors.Wrap(err, "Failed to read response body"), http.StatusInternalServerError)
 	}
 
-	klog.V(7).InfoS("CheckAccess response received", "requestID", requestID, "correlationID", correlationID, "statusCode", resp.StatusCode, "durationSeconds", duration, "responseBody", string(data), "armCallLimit", a.armCallLimit)
+	log.V(7).Info("CheckAccess response received", "statusCode", resp.StatusCode, "durationSeconds", duration, "responseBody", string(data), "armCallLimit", a.armCallLimit)
 
 	// We can expect the response to be a 200 OK for ARM proxy resources or 404 Not Found for ARM tracked resources due to resource deletion
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
 		// metrics for calls with StatusCode >= 300
 		if resp.StatusCode >= http.StatusMultipleChoices {
 			if resp.StatusCode == http.StatusTooManyRequests {
-				klog.InfoS("Azure throttling detected (HTTP 429), closing idle TCP connections to switch ARM instance", "requestID", requestID, "correlationID", correlationID)
+				log.Info("Azure throttling detected (HTTP 429), closing idle TCP connections to switch ARM instance")
 				a.client.CloseIdleConnections()
 				checkAccessThrottled.Inc()
 			}
@@ -588,14 +560,14 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 			checkAccessFailed.WithLabelValues(respStatusCode).Inc()
 		}
 
-		return errutils.WithCode(errors.Errorf("CheckAccess request failed (requestID: %s, correlationID: %s, statusCode: %d, durationSeconds: %.2f): request %s failed with response: %s", requestID, correlationID, resp.StatusCode, duration, req.URL.Path, string(data)), resp.StatusCode)
+		return errutils.WithCode(errors.Errorf("CheckAccess request failed (statusCode: %d, durationSeconds: %.2f): request %s failed with response: %s", resp.StatusCode, duration, req.URL.Path, string(data)), resp.StatusCode)
 	}
 
 	remaining := resp.Header.Get(remainingSubReadARMHeader)
-	klog.InfoS("CheckAccess request succeeded", "requestID", requestID, "correlationID", correlationID, "remainingARMCalls", remaining, "durationSeconds", duration)
+	log.Info("CheckAccess request succeeded", "remainingARMCalls", remaining, "durationSeconds", duration)
 	count, _ := strconv.Atoi(remaining)
 	if count < a.armCallLimit {
-		klog.InfoS("ARM call limit threshold reached, closing idle TCP connections to switch ARM instance", "requestID", requestID, "correlationID", correlationID, "remainingCalls", count, "threshold", a.armCallLimit)
+		log.Info("ARM call limit threshold reached, closing idle TCP connections to switch ARM instance", "remainingCalls", count, "threshold", a.armCallLimit)
 		// Usually ARM connections are cached by destination ip and port
 		// By closing the idle connection, a new request will use different port which
 		// will connect to different ARM instance of the region to ensure there is no ARM throttling
@@ -605,13 +577,13 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 
 	var status *authzv1.SubjectAccessReviewStatus
 	if resp.StatusCode == http.StatusNotFound {
-		klog.V(10).InfoS("CheckAccess returned 404, tracked resource deleted, returning default not found decision", "requestID", requestID, "correlationID", correlationID)
+		log.V(10).Info("CheckAccess returned 404, tracked resource deleted, returning default not found decision")
 		status = defaultNotFoundDecision()
 	} else {
 		// Decode response and prepare k8s response
 		status, err = ConvertCheckAccessResponse(checkAccessUsername, data)
 		if err != nil {
-			return errors.Wrapf(err, "Failed to convert check access response (requestID: %s, correlationID: %s)", requestID, correlationID)
+			return errors.Wrap(err, "Failed to convert check access response")
 		}
 	}
 

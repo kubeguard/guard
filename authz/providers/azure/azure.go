@@ -40,12 +40,6 @@ const (
 	OrgType = "azure"
 )
 
-type contextKey string
-
-const (
-	requestIDContextKey contextKey = "request-id"
-)
-
 var (
 	once   sync.Once
 	client authz.Interface
@@ -92,31 +86,33 @@ func newAuthzClient(opts authzOpts.Options, authopts auth.Options) (authz.Interf
 
 func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, store authz.Store) (*authzv1.SubjectAccessReviewStatus, error) {
 	requestID := uuid.New().String()
-	ctx = context.WithValue(ctx, requestIDContextKey, requestID)
+
+	log := klog.FromContext(ctx).WithValues("requestID", requestID)
+	ctx = klog.NewContext(ctx, log)
 
 	if request == nil {
 		return nil, errutils.WithCode(errors.Errorf("Authorization request failed (requestID: %s): subject access review is nil", requestID), http.StatusBadRequest)
 	}
 
-	klog.InfoS("Authorization check started", "requestID", requestID)
+	log.Info("Authorization check started")
 
 	// check if user is system accounts
 	if strings.HasPrefix(strings.ToLower(request.User), "system:") {
-		klog.V(10).InfoS("Returning no op to system accounts", "requestID", requestID)
+		log.V(10).Info("Returning no op to system accounts")
 		return &authzv1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
 	}
 
 	if s.rbacClient.SkipAuthzCheck(request) {
-		klog.V(3).InfoS("User is part of skip authz list, returning no op", "requestID", requestID)
+		log.V(3).Info("User is part of skip authz list, returning no op")
 		return &authzv1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
 	}
 
 	if _, ok := request.Extra["oid"]; !ok {
 		if s.rbacClient.ShouldSkipAuthzCheckForNonAADUsers() {
-			klog.V(5).InfoS("Non-AAD user, returning no op", "requestID", requestID)
+			log.V(5).Info("Non-AAD user, returning no op")
 			return &authzv1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NonAADUserNoOpVerdict}, nil
 		} else {
-			klog.InfoS("Non-AAD user denied", "requestID", requestID)
+			log.Info("Non-AAD user denied")
 			return &authzv1.SubjectAccessReviewStatus{Allowed: false, Denied: true, Reason: rbac.NonAADUserNotAllowedVerdict}, nil
 		}
 	}
@@ -124,7 +120,7 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 	exist, result := s.rbacClient.GetResultFromCache(request, store)
 
 	if exist {
-		klog.V(5).InfoS("Cache hit", "requestID", requestID, "allowed", result)
+		log.V(5).Info("Cache hit", "allowed", result)
 		if result {
 			return &authzv1.SubjectAccessReviewStatus{Allowed: result, Reason: rbac.AccessAllowedVerdict}, nil
 		} else {
@@ -134,7 +130,7 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 
 	// if set true, webhook will allow access to discovery APIs for authenticated users. If false, access check will be performed on Azure.
 	if s.rbacClient.AllowNonResPathDiscoveryAccess(request) {
-		klog.V(10).InfoS("Allowing user access for discovery check", "requestID", requestID)
+		log.V(10).Info("Allowing user access for discovery check")
 		_ = s.rbacClient.SetResultInCache(request, true, store)
 		return &authzv1.SubjectAccessReviewStatus{Allowed: true, Reason: rbac.AccessAllowedVerdict}, nil
 	}
@@ -142,23 +138,24 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 	ctx = azureutils.WithRetryableHttpClient(ctx, s.httpClientRetryCount)
 
 	if s.rbacClient.IsTokenExpired() {
-		klog.V(5).InfoS("Token expired, refreshing", "requestID", requestID)
-		if err := s.rbacClient.RefreshToken(ctx, requestID); err != nil {
-			return nil, errutils.WithCode(errors.Wrapf(err, "Token refresh failed (requestID: %s)", requestID), http.StatusInternalServerError)
+		log.V(5).Info("Token expired, refreshing")
+		if err := s.rbacClient.RefreshToken(ctx); err != nil {
+			return nil, errutils.WithCode(err, http.StatusInternalServerError)
 		}
-		klog.V(5).InfoS("Token refreshed successfully", "requestID", requestID)
+		log.V(5).Info("Token refreshed successfully")
 	}
 
 	response, err := s.rbacClient.CheckAccess(ctx, request)
 	if err == nil {
-		klog.InfoS("Authorization check completed", "requestID", requestID, "allowed", response.Allowed, "reason", response.Reason)
+		log.Info("Authorization check completed", "allowed", response.Allowed, "reason", response.Reason)
 		_ = s.rbacClient.SetResultInCache(request, response.Allowed, store)
 	} else {
 		code := http.StatusInternalServerError
 		if v, ok := err.(errutils.HttpStatusCode); ok {
 			code = v.Code()
 		}
-		err = errutils.WithCode(errors.Errorf("Authorization check failed (requestID: %s, statusCode: %d): %s", requestID, code, err), code)
+		// Error already contains requestID from context, just add status code
+		err = errutils.WithCode(errors.Wrapf(err, "Authorization check failed (statusCode: %d)", code), code)
 	}
 
 	return response, err
