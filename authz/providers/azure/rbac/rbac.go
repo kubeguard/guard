@@ -450,7 +450,7 @@ func (a *AccessInfo) CheckAccess(request *authzv1.SubjectAccessReviewSpec) (*aut
 	// Fallback to managed namespace check
 	managedNamespaceExists, managedNamespacePath := getManagedNameSpaceScope(request)
 	if a.useManagedNamespaceResourceScopeFormat &&
-		a.clusterType == managedClusters &&
+		(a.clusterType == managedClusters || a.clusterType == fleets) &&
 		managedNamespaceExists {
 		klog.V(7).Infof("Falling back to checking managed namespace scope for user %s", checkAccessUsername)
 		// Build managed namespace URL
