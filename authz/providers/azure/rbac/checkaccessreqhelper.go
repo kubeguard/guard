@@ -264,14 +264,14 @@ func getDataActions(ctx context.Context, subRevReq *authzv1.SubjectAccessReviewS
 	if subRevReq.ResourceAttributes != nil {
 		storedOperationsMap := getStoredOperationsMap()
 
-		isCustomerResourceTypeCheckAvailable := allowCustomResourceTypeCheck && storedOperationsMap != nil && len(storedOperationsMap) != 0
-		if !isCustomerResourceTypeCheckAvailable {
-			klog.FromContext(ctx).V(5).Info("Feature is not available for this request", "allowCustomResourceTypeCheck", allowCustomResourceTypeCheck, "operationsMapAvailable", storedOperationsMap != nil && len(storedOperationsMap) != 0)
-		}
-
 		// Create logger with feature context for custom resource type check
 		featureLog := klog.FromContext(ctx).WithValues("feature", "CustomResourceTypeCheck")
 		featureCtx := klog.NewContext(ctx, featureLog)
+
+		isCustomerResourceTypeCheckAvailable := allowCustomResourceTypeCheck && storedOperationsMap != nil && len(storedOperationsMap) != 0
+		if !isCustomerResourceTypeCheckAvailable {
+			featureLog.V(5).Info("Feature is not available", "allowCustomResourceTypeCheck", allowCustomResourceTypeCheck, "operationsMapAvailable", storedOperationsMap != nil && len(storedOperationsMap) != 0)
+		}
 
 		if subRevReq.ResourceAttributes.Resource != "*" && subRevReq.ResourceAttributes.Group != "*" && subRevReq.ResourceAttributes.Verb != "*" {
 			/*

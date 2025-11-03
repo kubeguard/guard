@@ -17,6 +17,7 @@ limitations under the License.
 package data
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"time"
@@ -24,6 +25,7 @@ import (
 	"go.kubeguard.dev/guard/authz"
 
 	"github.com/allegro/bigcache"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -41,53 +43,97 @@ type DataStore struct {
 
 // Set stores the given value for the given key.
 // The key must not be "" and the value must not be nil.
-func (s *DataStore) Set(key string, value interface{}) error {
+func (s *DataStore) Set(ctx context.Context, key string, value interface{}) error {
+	log := klog.FromContext(ctx)
+
 	if key == "" || value == nil {
 		return errors.New("invalid key value pair")
 	}
 
 	data, err := json.Marshal(value)
 	if err != nil {
+		log.V(8).InfoS("Cache set failed: marshal error", "key", key, "error", err)
 		return err
 	}
-	return s.cache.Set(key, data)
+
+	err = s.cache.Set(key, data)
+	if err != nil {
+		log.V(8).InfoS("Cache set failed", "key", key, "error", err)
+		return err
+	}
+
+	log.V(10).InfoS("Cache set successful", "key", key, "entries", s.cache.Len(), "capacity", s.cache.Capacity())
+	return nil
 }
 
 // Get retrieves the Stored value for the given key.
 // If no value is found it returns (false, nil).
 // The key must not be "" and the pointer must not be nil.
-func (s *DataStore) Get(key string, value interface{}) (found bool, err error) {
+func (s *DataStore) Get(ctx context.Context, key string, value interface{}) (found bool, err error) {
+	log := klog.FromContext(ctx)
+
 	if key == "" || value == nil {
 		return false, errors.New("invalid key value pair")
 	}
 
 	data, err := s.cache.Get(key)
 	if err != nil {
+		if err == bigcache.ErrEntryNotFound {
+			log.V(10).InfoS("Cache miss", "key", key, "entries", s.cache.Len())
+			return false, nil
+		}
+		log.V(8).InfoS("Cache get error", "key", key, "error", err)
 		return false, err
 	}
 
-	return true, json.Unmarshal(data, value)
+	err = json.Unmarshal(data, value)
+	if err != nil {
+		log.V(8).InfoS("Cache get failed: unmarshal error", "key", key, "error", err)
+		return false, err
+	}
+
+	log.V(10).InfoS("Cache hit", "key", key, "entries", s.cache.Len())
+	return true, nil
 }
 
 // Delete deletes the stored value for the given key.
 // The key must not be "".
-func (s *DataStore) Delete(key string) error {
+func (s *DataStore) Delete(ctx context.Context, key string) error {
+	log := klog.FromContext(ctx)
+
 	if key == "" {
 		return errors.New("invalid key")
 	}
 
 	err := s.cache.Delete(key)
 	if err != nil {
+		log.V(8).InfoS("Cache delete failed", "key", key, "error", err)
 		return err
 	}
 
+	log.V(10).InfoS("Cache delete successful", "key", key, "entries", s.cache.Len())
 	return nil
 }
 
 // Close closes the DataStore.
 // When called, the cache is left for removal by the garbage collector.
 func (s *DataStore) Close() error {
+	s.logCacheStats()
 	return s.cache.Close()
+}
+
+// logCacheStats logs cache statistics for debugging and insights.
+func (s *DataStore) logCacheStats() {
+	stats := s.cache.Stats()
+	klog.InfoS("Cache statistics on close",
+		"entries", s.cache.Len(),
+		"capacity", s.cache.Capacity(),
+		"hits", stats.Hits,
+		"misses", stats.Misses,
+		"deleteHits", stats.DelHits,
+		"deleteMisses", stats.DelMisses,
+		"collisions", stats.Collisions,
+	)
 }
 
 // Options are the options for the BigCache store.
@@ -151,6 +197,15 @@ func NewDataStore(options Options) (authz.Store, error) {
 	if err != nil || cache == nil {
 		return nil, err
 	}
+
+	klog.InfoS("Cache initialized",
+		"shards", options.Shards,
+		"lifeWindow", options.LifeWindow,
+		"cleanWindow", options.CleanWindow,
+		"maxCacheSizeMB", options.HardMaxCacheSize,
+		"maxEntriesInWindow", options.MaxEntriesInWindow,
+		"maxEntrySize", options.MaxEntrySize,
+	)
 
 	return &DataStore{cache: cache}, nil
 }

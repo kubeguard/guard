@@ -517,7 +517,7 @@ func (l *contextAwareLogger) Printf(format string, v ...interface{}) {
 
 // MakeRetryableHttpClient creates an HTTP client which attempts the request
 // (1 + retryCount) times and has a 3 second timeout per attempt.
-func MakeRetryableHttpClient(retryCount int, ctx context.Context) retryablehttp.Client {
+func MakeRetryableHttpClient(ctx context.Context, retryCount int) retryablehttp.Client {
 	// Copy the default HTTP client so we can set a timeout.
 	// (It uses the same transport since the pointer gets copied)
 	httpClient := *httpclient.DefaultHTTPClient
@@ -540,7 +540,7 @@ func MakeRetryableHttpClient(retryCount int, ctx context.Context) retryablehttp.
 // Some of the libraries we use will take the client out of the context via
 // oauth2.HTTPClient and use it, so this way we can add retries to external code.
 func WithRetryableHttpClient(ctx context.Context, retryCount int) context.Context {
-	retryClient := MakeRetryableHttpClient(retryCount, ctx)
+	retryClient := MakeRetryableHttpClient(ctx, retryCount)
 	return context.WithValue(ctx, oauth2.HTTPClient, retryClient.StandardClient())
 }
 

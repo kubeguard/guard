@@ -101,21 +101,21 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 	}
 
 	if s.rbacClient.SkipAuthzCheck(request) {
-		log.V(3).Info("User is part of skip authz list, returning no op")
+		log.V(3).Info("User is part of skip authz list, returning no op", "user", request.User)
 		return &authzv1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
 	}
 
 	if _, ok := request.Extra["oid"]; !ok {
 		if s.rbacClient.ShouldSkipAuthzCheckForNonAADUsers() {
-			log.V(5).Info("Non-AAD user, returning no op")
+			log.V(5).Info("Non-AAD user, returning no op", "user", request.User)
 			return &authzv1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NonAADUserNoOpVerdict}, nil
 		} else {
-			log.Info("Non-AAD user denied")
+			log.Info("Non-AAD user denied", "user", request.User)
 			return &authzv1.SubjectAccessReviewStatus{Allowed: false, Denied: true, Reason: rbac.NonAADUserNotAllowedVerdict}, nil
 		}
 	}
 
-	exist, result := s.rbacClient.GetResultFromCache(request, store)
+	exist, result := s.rbacClient.GetResultFromCache(ctx, request, store)
 
 	if exist {
 		log.V(5).InfoS("Cache hit", "allowed", result, "resourceAttributes", request.ResourceAttributes)
@@ -129,7 +129,7 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 	// if set true, webhook will allow access to discovery APIs for authenticated users. If false, access check will be performed on Azure.
 	if s.rbacClient.AllowNonResPathDiscoveryAccess(request) {
 		log.V(10).Info("Allowing user access for discovery check")
-		_ = s.rbacClient.SetResultInCache(request, true, store)
+		_ = s.rbacClient.SetResultInCache(ctx, request, true, store)
 		return &authzv1.SubjectAccessReviewStatus{Allowed: true, Reason: rbac.AccessAllowedVerdict}, nil
 	}
 
@@ -145,7 +145,7 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 	response, err := s.rbacClient.CheckAccess(ctx, request)
 	if err == nil {
 		log.InfoS("Authorization check completed", "allowed", response.Allowed, "reason", response.Reason, "resourceAttributes", request.ResourceAttributes)
-		_ = s.rbacClient.SetResultInCache(request, response.Allowed, store)
+		_ = s.rbacClient.SetResultInCache(ctx, request, response.Allowed, store)
 	} else {
 		code := http.StatusInternalServerError
 		if v, ok := err.(errutils.HttpStatusCode); ok {
