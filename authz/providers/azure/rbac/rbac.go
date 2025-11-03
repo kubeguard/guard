@@ -576,7 +576,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 		status = defaultNotFoundDecision()
 	} else {
 		// Decode response and prepare k8s response
-		status, err = ConvertCheckAccessResponse(checkAccessUsername, data)
+		status, err = ConvertCheckAccessResponse(ctx, checkAccessUsername, data)
 		if err != nil {
 			return errors.Wrap(err, "Failed to convert check access response")
 		}

@@ -728,7 +728,8 @@ func getManagedNameSpaceScope(req *authzv1.SubjectAccessReviewSpec) (bool, strin
 	return false, namespace
 }
 
-func ConvertCheckAccessResponse(username string, body []byte) (*authzv1.SubjectAccessReviewStatus, error) {
+func ConvertCheckAccessResponse(ctx context.Context, username string, body []byte) (*authzv1.SubjectAccessReviewStatus, error) {
+	log := klog.FromContext(ctx)
 	var (
 		response []AuthorizationDecision
 		allowed  bool
@@ -746,6 +747,13 @@ func ConvertCheckAccessResponse(username string, body []byte) (*authzv1.SubjectA
 	if deniedResultFound == -1 { // no denied result found
 		allowed = true
 		verdict = fmt.Sprintf(AccessAllowedVerboseVerdict, response[0].AzureRoleAssignment.Id, response[0].AzureRoleAssignment.RoleDefinitionId, username)
+
+		// Log role definition ID to help identify if exec/other actions are authorized via built-in or custom roles
+		log.V(7).InfoS("Access allowed via role assignment",
+			"roleAssignmentId", response[0].AzureRoleAssignment.Id,
+			"roleDefinitionId", response[0].AzureRoleAssignment.RoleDefinitionId,
+			"user", username,
+		)
 	} else {
 		allowed = false
 		denied = true
