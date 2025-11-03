@@ -87,14 +87,12 @@ func newAuthzClient(opts authzOpts.Options, authopts auth.Options) (authz.Interf
 func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, store authz.Store) (*authzv1.SubjectAccessReviewStatus, error) {
 	requestID := uuid.New().String()
 
-	log := klog.FromContext(ctx).WithValues("requestID", requestID, "resourceAttributes", request.ResourceAttributes)
+	log := klog.FromContext(ctx).WithValues("requestID", requestID)
 	ctx = klog.NewContext(ctx, log)
 
 	if request == nil {
 		return nil, errutils.WithCode(errors.Errorf("Authorization request failed (requestID: %s): subject access review is nil", requestID), http.StatusBadRequest)
 	}
-
-	log.Info("Authorization check started")
 
 	// check if user is system accounts
 	if strings.HasPrefix(strings.ToLower(request.User), "system:") {
@@ -120,7 +118,7 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 	exist, result := s.rbacClient.GetResultFromCache(request, store)
 
 	if exist {
-		log.V(5).Info("Cache hit", "allowed", result)
+		log.V(5).InfoS("Cache hit", "allowed", result, "resourceAttributes", request.ResourceAttributes)
 		if result {
 			return &authzv1.SubjectAccessReviewStatus{Allowed: result, Reason: rbac.AccessAllowedVerdict}, nil
 		} else {
@@ -138,16 +136,15 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 	ctx = azureutils.WithRetryableHttpClient(ctx, s.httpClientRetryCount)
 
 	if s.rbacClient.IsTokenExpired() {
-		log.V(5).Info("Token expired, refreshing")
 		if err := s.rbacClient.RefreshToken(ctx); err != nil {
+			log.Error(err, "Failed to refresh token")
 			return nil, errutils.WithCode(err, http.StatusInternalServerError)
 		}
-		log.V(5).Info("Token refreshed successfully")
 	}
 
 	response, err := s.rbacClient.CheckAccess(ctx, request)
 	if err == nil {
-		log.Info("Authorization check completed", "allowed", response.Allowed, "reason", response.Reason)
+		log.InfoS("Authorization check completed", "allowed", response.Allowed, "reason", response.Reason, "resourceAttributes", request.ResourceAttributes)
 		_ = s.rbacClient.SetResultInCache(request, response.Allowed, store)
 	} else {
 		code := http.StatusInternalServerError

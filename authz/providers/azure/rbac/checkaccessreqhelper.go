@@ -361,8 +361,8 @@ func getAuthInfoListForWildcard(ctx context.Context, subRevReq *authzv1.SubjectA
 				In this case Group is not *, but there are no matching DataActions present on the storedOperationsMap.
 				The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
 			*/
-			klog.FromContext(ctx).V(5).Info("Resource identified as custom resource (wildcard resource)")
-			return getAuthInfoListForCustomResource(ctx, subRevReq, clusterType)
+			featureLog.V(5).Info("Resource identified as custom resource (wildcard resource)")
+			return getAuthInfoListForCustomResource(featureCtx, subRevReq, clusterType)
 		} else if subRevReq.ResourceAttributes.Group != "" {
 			// all resources under specified apigroup
 			if value, found := storedOperationsMap[subRevReq.ResourceAttributes.Group]; found {
@@ -424,8 +424,8 @@ func getAuthInfoListForWildcard(ctx context.Context, subRevReq *authzv1.SubjectA
 				In this case both Res and Group are not *, but there are no matching DataActions present on the storedOperationsMap.
 				The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
 			*/
-			klog.FromContext(ctx).V(5).Info("Resource identified as custom resource (wildcard verb)")
-			return getAuthInfoListForCustomResource(ctx, subRevReq, clusterType)
+			featureLog.V(5).Info("Resource identified as custom resource (wildcard verb)")
+			return getAuthInfoListForCustomResource(featureCtx, subRevReq, clusterType)
 		} else { // #2
 			group := "v1" // core api group key
 			if subRevReq.ResourceAttributes.Group != "" {

@@ -395,13 +395,13 @@ func (a *AccessInfo) auditSARIfNeeded(ctx context.Context, request *authzv1.Subj
 	}
 
 	if request.ResourceAttributes == nil {
-		logger.Info("SubjectAccessReview details", "ResourceAttributes", "<nil>")
+		logger.InfoS("SubjectAccessReview details", "ResourceAttributes", "<nil>")
 	} else {
-		logger.Info("SubjectAccessReview details")
+		logger.InfoS("SubjectAccessReview details", "ResourceAttributes", request.ResourceAttributes)
 	}
 
 	if request.NonResourceAttributes != nil {
-		logger.Info("SubjectAccessReview non-resource attributes",
+		logger.InfoS("SubjectAccessReview non-resource attributes",
 			"path", request.NonResourceAttributes.Path,
 			"verb", request.NonResourceAttributes.Verb,
 		)
