@@ -226,7 +226,7 @@ func TestCheckAccess(t *testing.T) {
 			expectedAllowed            bool
 			expectedDenied             bool
 			enableManagedNamespaceRBAC bool
-			clusterType                string
+			clusterTypes               []string
 		}
 
 		tests := []testCase{
@@ -239,7 +239,7 @@ func TestCheckAccess(t *testing.T) {
 				expectedAllowed:            true,
 				expectedDenied:             false,
 				enableManagedNamespaceRBAC: true,
-				clusterType:                managedClusters,
+				clusterTypes:               []string{managedClusters, fleets},
 			},
 			{
 				name:                       "denied for managedNamespaces, allowed for namespaces",
@@ -250,7 +250,7 @@ func TestCheckAccess(t *testing.T) {
 				expectedAllowed:            true,
 				expectedDenied:             false,
 				enableManagedNamespaceRBAC: true,
-				clusterType:                managedClusters,
+				clusterTypes:               []string{managedClusters, fleets},
 			},
 			{
 				name:                       "denied for both",
@@ -261,7 +261,7 @@ func TestCheckAccess(t *testing.T) {
 				expectedAllowed:            false,
 				expectedDenied:             true,
 				enableManagedNamespaceRBAC: true,
-				clusterType:                managedClusters,
+				clusterTypes:               []string{managedClusters, fleets},
 			},
 			{
 				name:                       "allowed for both",
@@ -272,7 +272,7 @@ func TestCheckAccess(t *testing.T) {
 				expectedAllowed:            true,
 				expectedDenied:             false,
 				enableManagedNamespaceRBAC: true,
-				clusterType:                managedClusters,
+				clusterTypes:               []string{managedClusters, fleets},
 			},
 			{
 				name:                       "allowed for both flag off",
@@ -283,7 +283,7 @@ func TestCheckAccess(t *testing.T) {
 				expectedAllowed:            true,
 				expectedDenied:             false,
 				enableManagedNamespaceRBAC: false,
-				clusterType:                managedClusters,
+				clusterTypes:               []string{managedClusters, fleets},
 			},
 			{
 				name:                       "denied for both flag off",
@@ -294,7 +294,7 @@ func TestCheckAccess(t *testing.T) {
 				expectedAllowed:            false,
 				expectedDenied:             true,
 				enableManagedNamespaceRBAC: false,
-				clusterType:                managedClusters,
+				clusterTypes:               []string{managedClusters, fleets},
 			},
 			{
 				name:            "allowed for managedNamespaces, denied for namespaces flag off",
@@ -306,7 +306,7 @@ func TestCheckAccess(t *testing.T) {
 				expectedAllowed:            false,
 				expectedDenied:             true,
 				enableManagedNamespaceRBAC: false,
-				clusterType:                managedClusters,
+				clusterTypes:               []string{managedClusters, fleets},
 			},
 			{
 				name:                       "denied for managedNamespaces, allowed for namespaces flag off",
@@ -317,7 +317,7 @@ func TestCheckAccess(t *testing.T) {
 				expectedAllowed:            true,
 				expectedDenied:             false,
 				enableManagedNamespaceRBAC: false,
-				clusterType:                managedClusters,
+				clusterTypes:               []string{managedClusters, fleets},
 			},
 			{
 				name:                       "allowed for managedNamespaces, denied for namespaces non-mc",
@@ -328,37 +328,39 @@ func TestCheckAccess(t *testing.T) {
 				expectedAllowed:            false,
 				expectedDenied:             true,
 				enableManagedNamespaceRBAC: true,
-				clusterType:                connectedClusters,
+				clusterTypes:               []string{connectedClusters},
 			},
 		}
 
 		for _, tc := range tests {
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
-				ts, u := getAPIServerAndAccessInfoWithPaths(
-					http.StatusOK, tc.namespaceBody, "aks", "resourceid",
-					tc.managedStatus, tc.managedBody,
-					tc.namespaceStatus, tc.namespaceBody,
-					http.StatusOK, emptyBody,
-				)
-				u.useManagedNamespaceResourceScopeFormat = tc.enableManagedNamespaceRBAC
-				u.clusterType = tc.clusterType
-				defer ts.Close()
+				for _, clusterType := range tc.clusterTypes {
+					ts, u := getAPIServerAndAccessInfoWithPaths(
+						http.StatusOK, tc.namespaceBody, "aks", "resourceid",
+						tc.managedStatus, tc.managedBody,
+						tc.namespaceStatus, tc.namespaceBody,
+						http.StatusOK, emptyBody,
+					)
+					u.useManagedNamespaceResourceScopeFormat = tc.enableManagedNamespaceRBAC
+					u.clusterType = clusterType
+					defer ts.Close()
 
-				request := &authzv1.SubjectAccessReviewSpec{
-					User: "test@bing.com",
-					ResourceAttributes: &authzv1.ResourceAttributes{
-						Namespace: "dev", Group: "", Resource: "pods",
-						Subresource: "status", Version: "v1", Name: "test", Verb: "delete",
-					},
-					Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
+					request := &authzv1.SubjectAccessReviewSpec{
+						User: "test@bing.com",
+						ResourceAttributes: &authzv1.ResourceAttributes{
+							Namespace: "dev", Group: "", Resource: "pods",
+							Subresource: "status", Version: "v1", Name: "test", Verb: "delete",
+						},
+						Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
+					}
+
+					response, err := u.CheckAccess(context.Background(), request)
+					assert.NoError(t, err)
+					assert.NotNil(t, response)
+					assert.Equal(t, tc.expectedAllowed, response.Allowed)
+					assert.Equal(t, tc.expectedDenied, response.Denied)
 				}
-
-				response, err := u.CheckAccess(context.Background(), request)
-				assert.NoError(t, err)
-				assert.NotNil(t, response)
-				assert.Equal(t, tc.expectedAllowed, response.Allowed)
-				assert.Equal(t, tc.expectedDenied, response.Denied)
 			})
 		}
 	})
