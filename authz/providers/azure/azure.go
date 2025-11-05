@@ -151,7 +151,7 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 
 	if s.rbacClient.IsTokenExpired() {
 		if err := s.rbacClient.RefreshToken(ctx); err != nil {
-			return nil, errutils.WithCode(err, http.StatusInternalServerError)
+			return nil, errutils.WithCode(errors.Wrapf(err, "Failed to refresh token (requestID: %s)", requestID), http.StatusInternalServerError)
 		}
 	}
 
@@ -164,7 +164,7 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 		if v, ok := err.(errutils.HttpStatusCode); ok {
 			code = v.Code()
 		}
-		err = errutils.WithCode(errors.Wrapf(err, "Authorization check failed (statusCode: %d)", code), code)
+		err = errutils.WithCode(errors.Wrapf(err, "Authorization check failed (requestID: %s, statusCode: %d)", requestID, code), code)
 	}
 
 	return response, err
