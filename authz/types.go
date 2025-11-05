@@ -54,8 +54,8 @@ type Interface interface {
 }
 
 type Store interface {
-	Set(ctx context.Context, key string, value interface{}) error
-	Get(ctx context.Context, key string, value interface{}) (bool, error)
-	Delete(ctx context.Context, key string) error
+	Set(key string, value interface{}) error
+	Get(key string, value interface{}) (bool, error)
+	Delete(key string) error
 	Close() error
 }

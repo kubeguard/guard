@@ -35,6 +35,17 @@ import (
 	"k8s.io/klog/v2"
 )
 
+type contextKey string
+
+const requestIDKey contextKey = "requestID"
+
+func getRequestID(ctx context.Context) string {
+	if requestID, ok := ctx.Value(requestIDKey).(string); ok {
+		return requestID
+	}
+	return "unknown"
+}
+
 const (
 	ActionBatchCount            = 200
 	AccessAllowedVerdict        = "Access allowed by Azure RBAC"
@@ -263,14 +274,11 @@ func getDataActions(ctx context.Context, subRevReq *authzv1.SubjectAccessReviewS
 
 	if subRevReq.ResourceAttributes != nil {
 		storedOperationsMap := getStoredOperationsMap()
-
-		// Create logger with feature context for custom resource type check
-		featureLog := klog.FromContext(ctx).WithValues("feature", "CustomResourceTypeCheck")
-		featureCtx := klog.NewContext(ctx, featureLog)
+		log := klog.FromContext(ctx)
 
 		isCustomerResourceTypeCheckAvailable := allowCustomResourceTypeCheck && storedOperationsMap != nil && len(storedOperationsMap) != 0
 		if !isCustomerResourceTypeCheckAvailable {
-			featureLog.V(5).Info("Feature is not available", "allowCustomResourceTypeCheck", allowCustomResourceTypeCheck, "operationsMapAvailable", storedOperationsMap != nil && len(storedOperationsMap) != 0)
+			log.V(5).Info("CustomResourceTypeCheck feature is not available", "allowCustomResourceTypeCheck", allowCustomResourceTypeCheck, "operationsMapAvailable", storedOperationsMap != nil && len(storedOperationsMap) != 0)
 		}
 
 		if subRevReq.ResourceAttributes.Resource != "*" && subRevReq.ResourceAttributes.Group != "*" && subRevReq.ResourceAttributes.Verb != "*" {
@@ -291,8 +299,8 @@ func getDataActions(ctx context.Context, subRevReq *authzv1.SubjectAccessReviewS
 					In this case both Res and Group are not *, but there is no matching DataAction present on the storedOperationsMap.
 					The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
 				*/
-				featureLog.V(5).Info("Resource identified as custom resource")
-				return getAuthInfoListForCustomResource(featureCtx, subRevReq, clusterType)
+				log.V(5).Info("Resource identified as custom resource")
+				return getAuthInfoListForCustomResource(ctx, subRevReq, clusterType)
 			}
 
 			authInfoSingle.AuthorizationEntity.Id = clusterType
@@ -316,7 +324,7 @@ func getDataActions(ctx context.Context, subRevReq *authzv1.SubjectAccessReviewS
 				return nil, errors.Errorf("Wildcard support for Resource/Verb/Group is not enabled for request Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb)
 			}
 
-			authInfoList, err = getAuthInfoListForWildcard(featureCtx, subRevReq, storedOperationsMap, clusterType, isCustomerResourceTypeCheckAvailable, allowSubresourceTypeCheck)
+			authInfoList, err = getAuthInfoListForWildcard(ctx, subRevReq, storedOperationsMap, clusterType, isCustomerResourceTypeCheckAvailable, allowSubresourceTypeCheck)
 			if err != nil {
 				return nil, errors.Wrap(err, fmt.Sprintf("Error which creating actions for checkaccess for Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb))
 			}
@@ -361,8 +369,8 @@ func getAuthInfoListForWildcard(ctx context.Context, subRevReq *authzv1.SubjectA
 				In this case Group is not *, but there are no matching DataActions present on the storedOperationsMap.
 				The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
 			*/
-			featureLog.V(5).Info("Resource identified as custom resource (wildcard resource)")
-			return getAuthInfoListForCustomResource(featureCtx, subRevReq, clusterType)
+			log.V(5).Info("Resource identified as custom resource (wildcard resource)")
+			return getAuthInfoListForCustomResource(ctx, subRevReq, clusterType)
 		} else if subRevReq.ResourceAttributes.Group != "" {
 			// all resources under specified apigroup
 			if value, found := storedOperationsMap[subRevReq.ResourceAttributes.Group]; found {
@@ -424,8 +432,8 @@ func getAuthInfoListForWildcard(ctx context.Context, subRevReq *authzv1.SubjectA
 				In this case both Res and Group are not *, but there are no matching DataActions present on the storedOperationsMap.
 				The resource is presumed to be a CR and <clusterType>/customresources/<action> DataAction will be used for check access.
 			*/
-			featureLog.V(5).Info("Resource identified as custom resource (wildcard verb)")
-			return getAuthInfoListForCustomResource(featureCtx, subRevReq, clusterType)
+			log.V(5).Info("Resource identified as custom resource (wildcard verb)")
+			return getAuthInfoListForCustomResource(ctx, subRevReq, clusterType)
 		} else { // #2
 			group := "v1" // core api group key
 			if subRevReq.ResourceAttributes.Group != "" {
@@ -678,10 +686,10 @@ func prepareCheckAccessRequestBody(ctx context.Context, req *authzv1.SubjectAcce
 		val := oid.String()
 		userOid = val[1 : len(val)-1]
 		if !isValidUUID(userOid) {
-			return nil, errutils.WithCode(errors.New("oid info sent from authentication module is not valid"), http.StatusBadRequest)
+			return nil, errutils.WithCode(fmt.Errorf("oid info sent from authentication module is not valid (requestID: %s, oid: %s)", getRequestID(ctx), userOid), http.StatusBadRequest)
 		}
 	} else {
-		return nil, errutils.WithCode(errors.New("oid info not sent from authentication module"), http.StatusBadRequest)
+		return nil, errutils.WithCode(fmt.Errorf("oid info not sent from authentication module (requestID: %s)", getRequestID(ctx)), http.StatusBadRequest)
 	}
 	groups := getValidSecurityGroups(req.Groups)
 	actions, err := getDataActions(ctx, req, clusterType, allowCustomResourceTypeCheck, allowSubresourceTypeCheck)

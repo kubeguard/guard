@@ -84,11 +84,23 @@ func newAuthzClient(opts authzOpts.Options, authopts auth.Options) (authz.Interf
 	return c, nil
 }
 
+type contextKey string
+
+const requestIDKey contextKey = "requestID"
+
+func getRequestID(ctx context.Context) string {
+	if requestID, ok := ctx.Value(requestIDKey).(string); ok {
+		return requestID
+	}
+	return "unknown"
+}
+
 func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, store authz.Store) (*authzv1.SubjectAccessReviewStatus, error) {
 	requestID := uuid.New().String()
 
 	log := klog.FromContext(ctx).WithValues("requestID", requestID)
 	ctx = klog.NewContext(ctx, log)
+	ctx = context.WithValue(ctx, requestIDKey, requestID)
 
 	if request == nil {
 		return nil, errutils.WithCode(errors.Errorf("Authorization request failed (requestID: %s): subject access review is nil", requestID), http.StatusBadRequest)
@@ -129,7 +141,9 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 	// if set true, webhook will allow access to discovery APIs for authenticated users. If false, access check will be performed on Azure.
 	if s.rbacClient.AllowNonResPathDiscoveryAccess(request) {
 		log.V(10).Info("Allowing user access for discovery check")
-		_ = s.rbacClient.SetResultInCache(ctx, request, true, store)
+		if err := s.rbacClient.SetResultInCache(ctx, request, true, store); err != nil {
+			log.Error(err, "Failed to cache discovery access result")
+		}
 		return &authzv1.SubjectAccessReviewStatus{Allowed: true, Reason: rbac.AccessAllowedVerdict}, nil
 	}
 
@@ -137,7 +151,6 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 
 	if s.rbacClient.IsTokenExpired() {
 		if err := s.rbacClient.RefreshToken(ctx); err != nil {
-			log.Error(err, "Failed to refresh token")
 			return nil, errutils.WithCode(err, http.StatusInternalServerError)
 		}
 	}
@@ -151,7 +164,6 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 		if v, ok := err.(errutils.HttpStatusCode); ok {
 			code = v.Code()
 		}
-		// Error already contains requestID from context, just add status code
 		err = errutils.WithCode(errors.Wrapf(err, "Authorization check failed (statusCode: %d)", code), code)
 	}
 

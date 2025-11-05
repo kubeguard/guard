@@ -255,19 +255,27 @@ func (a *AccessInfo) ShouldSkipAuthzCheckForNonAADUsers() bool {
 }
 
 func (a *AccessInfo) GetResultFromCache(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, store authz.Store) (bool, bool) {
+	log := klog.FromContext(ctx)
 	var result bool
 	key := getResultCacheKey(request, a.allowSubresourceTypeCheck)
-	klog.V(10).Infof("Cache search for key: %s", key)
-	found, _ := store.Get(ctx, key, &result)
+	log.V(10).InfoS("Cache search", "key", key)
+	found, err := store.Get(key, &result)
+
+	if err != nil {
+		// Error contains cache statistics for troubleshooting
+		log.V(8).InfoS("Cache get error", "key", key, "error", err)
+		return false, false
+	}
 
 	if found {
 		if result {
-			klog.V(5).Infof("cache hit: returning allowed for key %s", key)
+			log.V(5).InfoS("Cache hit: allowed", "key", key)
 		} else {
-			klog.V(5).Infof("cache hit: returning denied for key %s", key)
+			log.V(5).InfoS("Cache hit: denied", "key", key)
 		}
 	} else {
-		klog.V(10).Infof("cache miss for key %s", key)
+		// Cache miss - log for observability
+		log.V(10).InfoS("Cache miss", "key", key)
 	}
 
 	return found, result
@@ -282,9 +290,10 @@ func (a *AccessInfo) SkipAuthzCheck(request *authzv1.SubjectAccessReviewSpec) bo
 }
 
 func (a *AccessInfo) SetResultInCache(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, result bool, store authz.Store) error {
+	log := klog.FromContext(ctx)
 	key := getResultCacheKey(request, a.allowSubresourceTypeCheck)
-	klog.V(5).Infof("Cache set for key: %s, value: %t", key, result)
-	return store.Set(ctx, key, result)
+	log.V(10).InfoS("Cache set", "key", key, "value", result)
+	return store.Set(key, result)
 }
 
 func (a *AccessInfo) AllowNonResPathDiscoveryAccess(request *authzv1.SubjectAccessReviewSpec) bool {
