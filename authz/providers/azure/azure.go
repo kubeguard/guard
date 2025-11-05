@@ -130,7 +130,7 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 	exist, result := s.rbacClient.GetResultFromCache(ctx, request, store)
 
 	if exist {
-		log.V(5).InfoS("Cache hit", "allowed", result, "resourceAttributes", request.ResourceAttributes)
+		log.V(5).Info("Cache hit", "allowed", result, "resourceAttributes", request.ResourceAttributes)
 		if result {
 			return &authzv1.SubjectAccessReviewStatus{Allowed: result, Reason: rbac.AccessAllowedVerdict}, nil
 		} else {
@@ -157,7 +157,7 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 
 	response, err := s.rbacClient.CheckAccess(ctx, request)
 	if err == nil {
-		log.InfoS("Authorization check completed", "allowed", response.Allowed, "reason", response.Reason, "resourceAttributes", request.ResourceAttributes)
+		log.Info("Authorization check completed", "allowed", response.Allowed, "reason", response.Reason, "resourceAttributes", request.ResourceAttributes)
 		_ = s.rbacClient.SetResultInCache(ctx, request, response.Allowed, store)
 	} else {
 		code := http.StatusInternalServerError

@@ -341,6 +341,7 @@ func getDataActions(ctx context.Context, subRevReq *authzv1.SubjectAccessReviewS
 }
 
 func getAuthInfoListForWildcard(ctx context.Context, subRevReq *authzv1.SubjectAccessReviewSpec, storedOperationsMap azureutils.OperationsMap, clusterType string, isCustomerResourceTypeCheckAvailable bool, allowSubresourceTypeCheck bool) ([]azureutils.AuthorizationActionInfo, error) {
+	log := klog.FromContext(ctx)
 	var authInfoList []azureutils.AuthorizationActionInfo
 	var err error
 	finalFilteredOperations := azureutils.NewOperationsMap()
@@ -757,7 +758,7 @@ func ConvertCheckAccessResponse(ctx context.Context, username string, body []byt
 		verdict = fmt.Sprintf(AccessAllowedVerboseVerdict, response[0].AzureRoleAssignment.Id, response[0].AzureRoleAssignment.RoleDefinitionId, username)
 
 		// Log role definition ID to help identify if exec/other actions are authorized via built-in or custom roles
-		log.V(7).InfoS("Access allowed via role assignment",
+		log.V(7).Info("Access allowed via role assignment",
 			"roleAssignmentId", response[0].AzureRoleAssignment.Id,
 			"roleDefinitionId", response[0].AzureRoleAssignment.RoleDefinitionId,
 			"user", username,

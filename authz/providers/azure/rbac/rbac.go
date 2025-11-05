@@ -258,24 +258,24 @@ func (a *AccessInfo) GetResultFromCache(ctx context.Context, request *authzv1.Su
 	log := klog.FromContext(ctx)
 	var result bool
 	key := getResultCacheKey(request, a.allowSubresourceTypeCheck)
-	log.V(10).InfoS("Cache search", "key", key)
+	log.V(10).Info("Cache search", "key", key)
 	found, err := store.Get(key, &result)
 
 	if err != nil {
 		// Error contains cache statistics for troubleshooting
-		log.V(8).InfoS("Cache get error", "key", key, "error", err)
+		log.V(8).Info("Cache get error", "key", key, "error", err)
 		return false, false
 	}
 
 	if found {
 		if result {
-			log.V(5).InfoS("Cache hit: allowed", "key", key)
+			log.V(5).Info("Cache hit: allowed", "key", key)
 		} else {
-			log.V(5).InfoS("Cache hit: denied", "key", key)
+			log.V(5).Info("Cache hit: denied", "key", key)
 		}
 	} else {
 		// Cache miss - log for observability
-		log.V(10).InfoS("Cache miss", "key", key)
+		log.V(10).Info("Cache miss", "key", key)
 	}
 
 	return found, result
@@ -292,7 +292,7 @@ func (a *AccessInfo) SkipAuthzCheck(request *authzv1.SubjectAccessReviewSpec) bo
 func (a *AccessInfo) SetResultInCache(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, result bool, store authz.Store) error {
 	log := klog.FromContext(ctx)
 	key := getResultCacheKey(request, a.allowSubresourceTypeCheck)
-	log.V(10).InfoS("Cache set", "key", key, "value", result)
+	log.V(10).Info("Cache set", "key", key, "value", result)
 	return store.Set(key, result)
 }
 
@@ -406,13 +406,13 @@ func (a *AccessInfo) auditSARIfNeeded(ctx context.Context, request *authzv1.Subj
 	}
 
 	if request.ResourceAttributes == nil {
-		logger.InfoS("SubjectAccessReview details", "ResourceAttributes", "<nil>")
+		logger.Info("SubjectAccessReview details", "ResourceAttributes", "<nil>")
 	} else {
-		logger.InfoS("SubjectAccessReview details", "ResourceAttributes", request.ResourceAttributes)
+		logger.Info("SubjectAccessReview details", "ResourceAttributes", request.ResourceAttributes)
 	}
 
 	if request.NonResourceAttributes != nil {
-		logger.InfoS("SubjectAccessReview non-resource attributes",
+		logger.Info("SubjectAccessReview non-resource attributes",
 			"path", request.NonResourceAttributes.Path,
 			"verb", request.NonResourceAttributes.Verb,
 		)

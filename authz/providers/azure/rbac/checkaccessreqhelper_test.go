@@ -653,9 +653,10 @@ func Test_getDataActions(t *testing.T) {
 
 			ctx := context.Background()
 			got, _ := getDataActions(ctx, tt.args.subRevReq, tt.args.clusterType, tt.args.isCrTest, tt.args.isSubresTest)
-			if !tt.args.isWildcardTest && !reflect.DeepEqual(got[0].AuthorizationEntity, tt.want[0].AuthorizationEntity) {
-				t.Errorf("getDataActions() = %v, want %v", got, tt.want)
-			}
+			if !tt.args.isWildcardTest {
+				if !reflect.DeepEqual(got[0].AuthorizationEntity, tt.want[0].AuthorizationEntity) {
+					t.Errorf("getDataActions() = %v, want %v", got, tt.want)
+				}
 
 				for key, value := range tt.want[0].Attributes {
 					if got[0].Attributes[key] != value {
@@ -1102,7 +1103,7 @@ func Test_prepareCheckAccessRequestBodyWithSubresource(t *testing.T) {
 	clusterType := aksClusterType
 	createOperationsMap(clusterType)
 
-	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, false, true)
+	got, _ := prepareCheckAccessRequestBody(context.Background(), req, clusterType, resourceId, false, false, true)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil")
@@ -1142,7 +1143,7 @@ func Test_prepareCheckAccessRequestBodyWithSubresourceDisabled(t *testing.T) {
 	clusterType := aksClusterType
 	createOperationsMap(clusterType)
 
-	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, false, false)
+	got, _ := prepareCheckAccessRequestBody(context.Background(), req, clusterType, resourceId, false, false, false)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil")
