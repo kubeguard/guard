@@ -262,7 +262,7 @@ func (a *AccessInfo) GetResultFromCache(ctx context.Context, request *authzv1.Su
 
 	if err != nil {
 		// Error contains cache statistics for troubleshooting
-		log.V(8).Info("Cache get error", "key", key, "error", err)
+		log.V(5).Info("Cache get error", "key", key, "error", err)
 		return false, false
 	}
 
@@ -274,7 +274,7 @@ func (a *AccessInfo) GetResultFromCache(ctx context.Context, request *authzv1.Su
 		}
 	} else {
 		// Cache miss - log for observability
-		log.V(10).Info("Cache miss", "key", key)
+		log.V(5).Info("Cache miss", "key", key)
 	}
 
 	return found, result
@@ -467,7 +467,7 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 			return nil, fmt.Errorf("Managed namespace check access failed: %w", err)
 		}
 		if status != nil && status.Allowed {
-			log.V(7).Info("Managed namespace check access allowed")
+			log.V(5).Info("Managed namespace check access allowed")
 			return status, nil
 		}
 	}
@@ -492,7 +492,7 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 		if err != nil {
 			err = fmt.Errorf("Fleet manager check access failed: %w", err)
 		} else if status != nil && status.Allowed {
-			log.V(7).Info("Fleet manager check access allowed")
+			log.V(5).Info("Fleet manager check access allowed")
 		}
 		return status, err
 	}
@@ -580,7 +580,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 
 	var status *authzv1.SubjectAccessReviewStatus
 	if resp.StatusCode == http.StatusNotFound {
-		log.V(10).Info("CheckAccess returned 404, tracked resource deleted, returning default not found decision")
+		log.V(5).Info("CheckAccess returned 404, tracked resource deleted, returning default not found decision")
 		status = defaultNotFoundDecision()
 	} else {
 		// Decode response and prepare k8s response

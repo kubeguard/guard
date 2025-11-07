@@ -129,7 +129,7 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 
 	// if set true, webhook will allow access to discovery APIs for authenticated users. If false, access check will be performed on Azure.
 	if s.rbacClient.AllowNonResPathDiscoveryAccess(request) {
-		log.V(10).Info("Allowing user access for discovery check")
+		log.V(5).Info("Allowing user access for discovery check")
 		if err := s.rbacClient.SetResultInCache(ctx, request, true, store); err != nil {
 			log.Error(err, "Failed to cache discovery access result")
 		}
