@@ -260,10 +260,10 @@ func getResourceAndAction(resource string, subResource string, verb string) stri
 func getDataActions(ctx context.Context, subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string, allowCustomResourceTypeCheck bool, allowSubresourceTypeCheck bool) ([]azureutils.AuthorizationActionInfo, error) {
 	var authInfoList []azureutils.AuthorizationActionInfo
 	var err error
+	log := klog.FromContext(ctx)
 
 	if subRevReq.ResourceAttributes != nil {
 		storedOperationsMap := getStoredOperationsMap()
-		log := klog.FromContext(ctx)
 
 		isCustomerResourceTypeCheckAvailable := allowCustomResourceTypeCheck && storedOperationsMap != nil && len(storedOperationsMap) != 0
 		if !isCustomerResourceTypeCheckAvailable {
