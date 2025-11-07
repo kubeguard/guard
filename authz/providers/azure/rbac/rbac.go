@@ -259,7 +259,6 @@ func (a *AccessInfo) GetResultFromCache(ctx context.Context, request *authzv1.Su
 	key := getResultCacheKey(request, a.allowSubresourceTypeCheck)
 	log.V(10).Info("Cache search", "key", key)
 	found, err := store.Get(key, &result)
-
 	if err != nil {
 		// Error contains cache statistics for troubleshooting
 		log.V(5).Info("Cache get error", "key", key, "error", err)
