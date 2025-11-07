@@ -265,9 +265,9 @@ func getDataActions(ctx context.Context, subRevReq *authzv1.SubjectAccessReviewS
 	if subRevReq.ResourceAttributes != nil {
 		storedOperationsMap := getStoredOperationsMap()
 
-		isCustomerResourceTypeCheckAvailable := allowCustomResourceTypeCheck && storedOperationsMap != nil && len(storedOperationsMap) != 0
+		isCustomerResourceTypeCheckAvailable := allowCustomResourceTypeCheck && len(storedOperationsMap) != 0
 		if !isCustomerResourceTypeCheckAvailable {
-			log.V(5).Info("CustomResourceTypeCheck feature is not available", "allowCustomResourceTypeCheck", allowCustomResourceTypeCheck, "operationsMapAvailable", storedOperationsMap != nil && len(storedOperationsMap) != 0)
+			log.V(5).Info("CustomResourceTypeCheck feature is not available", "allowCustomResourceTypeCheck", allowCustomResourceTypeCheck, "operationsMapAvailable", len(storedOperationsMap) != 0)
 		}
 
 		if subRevReq.ResourceAttributes.Resource != "*" && subRevReq.ResourceAttributes.Group != "*" && subRevReq.ResourceAttributes.Verb != "*" {
@@ -309,7 +309,7 @@ func getDataActions(ctx context.Context, subRevReq *authzv1.SubjectAccessReviewS
 			authInfoList = append(authInfoList, authInfoSingle)
 
 		} else {
-			if storedOperationsMap == nil || (storedOperationsMap != nil && len(storedOperationsMap) == 0) {
+			if len(storedOperationsMap) == 0 {
 				return nil, fmt.Errorf("Wildcard support for Resource/Verb/Group is not enabled for request Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb)
 			}
 
