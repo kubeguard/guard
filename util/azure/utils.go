@@ -34,7 +34,6 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/hashicorp/go-retryablehttp"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/oauth2"
 	v "gomodules.xyz/x/version"
@@ -241,7 +240,7 @@ func SetDiscoverResourcesSettings(clusterType string, environment string, loginU
 		if environment != "" {
 			env, err = azure.EnvironmentFromName(environment)
 			if err != nil {
-				return errors.Wrap(err, "Failed to parse environment for Azure.")
+				return fmt.Errorf("Failed to parse environment for Azure.: %w", err)
 			}
 		}
 
@@ -255,7 +254,7 @@ func SetDiscoverResourcesSettings(clusterType string, environment string, loginU
 		case Fleets:
 			settings.operationsEndpoint = fmt.Sprintf(OperationsEndpointFormatAKS, settings.environment.ResourceManagerEndpoint)
 		default:
-			return errors.Errorf("Failed to create endpoint for Get Operations call. Cluster type %s is not supported.", clusterType)
+			return fmt.Errorf("Failed to create endpoint for Get Operations call. Cluster type %s is not supported.", clusterType)
 		}
 
 		return nil
@@ -303,7 +302,7 @@ func DiscoverResources(ctx context.Context) error {
 	apiResourcesListDuration := time.Since(apiResourcesListStart).Seconds()
 
 	if err != nil {
-		return errors.Wrap(err, "Failed to fetch list of api-resources from apiserver.")
+		return fmt.Errorf("Failed to fetch list of api-resources from apiserver.: %w", err)
 	}
 
 	discoverResourcesApiServerCallDuration.Observe(apiResourcesListDuration)
@@ -313,7 +312,7 @@ func DiscoverResources(ctx context.Context) error {
 	getOperationsDuration := time.Since(getOperationsStart).Seconds()
 
 	if err != nil {
-		return errors.Wrap(err, "Failed to fetch operations from Azure.")
+		return fmt.Errorf("Failed to fetch operations from Azure.: %w", err)
 	}
 
 	discoverResourcesAzureCallDuration.Observe(getOperationsDuration)
@@ -419,12 +418,12 @@ func fetchApiResources() ([]*metav1.APIResourceList, error) {
 	}
 
 	if err != nil {
-		return nil, errors.Wrap(err, "Error building kubeconfig")
+		return nil, fmt.Errorf("Error building kubeconfig: %w", err)
 	}
 
 	kubeclientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error building kubernetes clientset")
+		return nil, fmt.Errorf("Error building kubernetes clientset: %w", err)
 	}
 
 	apiresourcesList, err := kubeclientset.Discovery().ServerPreferredResources()
@@ -450,7 +449,7 @@ func fetchApiResources() ([]*metav1.APIResourceList, error) {
 func fetchDataActionsList(ctx context.Context) ([]Operation, error) {
 	req, err := http.NewRequest(http.MethodGet, settings.operationsEndpoint, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to create request for Get Operations call.")
+		return nil, fmt.Errorf("Failed to create request for Get Operations call.: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -464,7 +463,7 @@ func fetchDataActionsList(ctx context.Context) ([]Operation, error) {
 
 		authResp, erro := tokenProvider.Acquire(ctx, "")
 		if erro != nil {
-			return nil, errors.Wrap(erro, "Error getting authorization headers for Get Operations call.")
+			return nil, fmt.Errorf("Error getting authorization headers for Get Operations call.: %w", erro)
 		}
 
 		token = authResp.Token
@@ -473,7 +472,7 @@ func fetchDataActionsList(ctx context.Context) ([]Operation, error) {
 
 		authResp, err := tokenProvider.Acquire(ctx, "")
 		if err != nil {
-			return nil, errors.Wrap(err, "Error getting authorization headers for Get Operations call.")
+			return nil, fmt.Errorf("Error getting authorization headers for Get Operations call.: %w", err)
 		}
 
 		token = authResp.Token
@@ -486,25 +485,25 @@ func fetchDataActionsList(ctx context.Context) ([]Operation, error) {
 	resp, err := client.Do(req)
 	if err != nil {
 		counterGetOperationsResources.WithLabelValues(ConvertIntToString(http.StatusInternalServerError)).Inc()
-		return nil, errors.Wrap(err, "Failed to send request for Get Operations call.")
+		return nil, fmt.Errorf("Failed to send request for Get Operations call.: %w", err)
 	}
 	defer resp.Body.Close()
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		counterGetOperationsResources.WithLabelValues(ConvertIntToString(http.StatusInternalServerError)).Inc()
-		return nil, errors.Wrap(err, "Error in reading response body")
+		return nil, fmt.Errorf("Error in reading response body: %w", err)
 	}
 
 	counterGetOperationsResources.WithLabelValues(ConvertIntToString(resp.StatusCode)).Inc()
 	if resp.StatusCode != http.StatusOK {
-		return nil, errutils.WithCode(errors.Errorf("Request failed with status code: %d and response: %s", resp.StatusCode, string(data)), resp.StatusCode)
+		return nil, errutils.WithCode(fmt.Errorf("Request failed with status code: %d and response: %s", resp.StatusCode, string(data)), resp.StatusCode)
 	}
 
 	operationsList := OperationList{}
 	err = json.Unmarshal(data, &operationsList)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to decode response")
+		return nil, fmt.Errorf("Failed to decode response: %w", err)
 	}
 
 	var finalOperations []Operation

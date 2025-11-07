@@ -18,6 +18,7 @@ package rbac
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -27,7 +28,6 @@ import (
 	azureutils "go.kubeguard.dev/guard/util/azure"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	authzv1 "k8s.io/api/authorization/v1"
 )

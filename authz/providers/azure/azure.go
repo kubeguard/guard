@@ -18,6 +18,7 @@ package azure
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -31,7 +32,6 @@ import (
 
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	authzv1 "k8s.io/api/authorization/v1"
 	"k8s.io/klog/v2"
 )
@@ -73,12 +73,12 @@ func newAuthzClient(opts authzOpts.Options, authopts auth.Options) (authz.Interf
 
 	authzInfoVal, err := getAuthzInfo(authopts.Environment)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error in getAuthzInfo %s")
+		return nil, fmt.Errorf("Error in getAuthzInfo: %w", err)
 	}
 
 	c.rbacClient, err = rbac.New(opts, authopts, authzInfoVal)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create ms rbac client")
+		return nil, fmt.Errorf("failed to create ms rbac client: %w", err)
 	}
 
 	return c, nil
@@ -92,7 +92,7 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 	ctx = azureutils.WithRequestID(ctx, requestID)
 
 	if request == nil {
-		return nil, errutils.WithCode(errors.Errorf("Authorization request failed (requestID: %s): subject access review is nil", requestID), http.StatusBadRequest)
+		return nil, errutils.WithCode(fmt.Errorf("Authorization request failed (requestID: %s): subject access review is nil", requestID), http.StatusBadRequest)
 	}
 
 	// check if user is system accounts
@@ -140,7 +140,7 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 
 	if s.rbacClient.IsTokenExpired() {
 		if err := s.rbacClient.RefreshToken(ctx); err != nil {
-			return nil, errutils.WithCode(errors.Wrapf(err, "Failed to refresh token (requestID: %s)", requestID), http.StatusInternalServerError)
+			return nil, errutils.WithCode(fmt.Errorf("Failed to refresh token (requestID: %s): %w", requestID, err), http.StatusInternalServerError)
 		}
 	}
 
@@ -155,7 +155,7 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 		if v, ok := err.(errutils.HttpStatusCode); ok {
 			code = v.Code()
 		}
-		err = errutils.WithCode(errors.Wrapf(err, "Authorization check failed (requestID: %s, statusCode: %d)", requestID, code), code)
+		err = errutils.WithCode(fmt.Errorf("Authorization check failed (requestID: %s, statusCode: %d): %w", requestID, code, err), code)
 	}
 
 	return response, err
@@ -167,7 +167,7 @@ func getAuthzInfo(environment string) (*rbac.AuthzInfo, error) {
 	if environment != "" {
 		env, err = azure.EnvironmentFromName(environment)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to parse environment for azure")
+			return nil, fmt.Errorf("failed to parse environment for azure: %w", err)
 		}
 	}
 

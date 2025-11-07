@@ -18,13 +18,13 @@ package data
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	"go.kubeguard.dev/guard/authz"
 
 	"github.com/allegro/bigcache"
-	"github.com/pkg/errors"
 )
 
 const (

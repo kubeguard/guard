@@ -19,6 +19,7 @@ package rbac
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -29,7 +30,6 @@ import (
 	errutils "go.kubeguard.dev/guard/util/error"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"golang.org/x/exp/slices"
 	authzv1 "k8s.io/api/authorization/v1"
 	"k8s.io/klog/v2"
@@ -303,19 +303,19 @@ func getDataActions(ctx context.Context, subRevReq *authzv1.SubjectAccessReviewS
 			if allowSubresourceTypeCheck {
 				err = setAuthInfoSubresourceAttributes(&authInfoSingle, subRevReq)
 				if err != nil {
-					return nil, errors.Errorf("Error while setting subresource attributes: %s", err.Error())
+					return nil, fmt.Errorf("Error while setting subresource attributes: %s", err.Error())
 				}
 			}
 			authInfoList = append(authInfoList, authInfoSingle)
 
 		} else {
 			if storedOperationsMap == nil || (storedOperationsMap != nil && len(storedOperationsMap) == 0) {
-				return nil, errors.Errorf("Wildcard support for Resource/Verb/Group is not enabled for request Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb)
+				return nil, fmt.Errorf("Wildcard support for Resource/Verb/Group is not enabled for request Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb)
 			}
 
 			authInfoList, err = getAuthInfoListForWildcard(ctx, subRevReq, storedOperationsMap, clusterType, isCustomerResourceTypeCheckAvailable, allowSubresourceTypeCheck)
 			if err != nil {
-				return nil, errors.Wrap(err, fmt.Sprintf("Error which creating actions for checkaccess for Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb))
+				return nil, fmt.Errorf("Error which creating actions for checkaccess for Group: %s, Resource: %s, Verb: %s: %w", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb, err)
 			}
 
 		}
@@ -366,7 +366,7 @@ func getAuthInfoListForWildcard(ctx context.Context, subRevReq *authzv1.SubjectA
 			if value, found := storedOperationsMap[subRevReq.ResourceAttributes.Group]; found {
 				filteredOperations[subRevReq.ResourceAttributes.Group] = value
 			} else {
-				return nil, errors.Errorf("No resources found for group %s", subRevReq.ResourceAttributes.Group)
+				return nil, fmt.Errorf("No resources found for group %s", subRevReq.ResourceAttributes.Group)
 			}
 		} else {
 			// if Group is not there that means it is the core apigroup
@@ -436,7 +436,7 @@ func getAuthInfoListForWildcard(ctx context.Context, subRevReq *authzv1.SubjectA
 					finalFilteredOperations[group][subRevReq.ResourceAttributes.Resource] = verbMap
 				}
 			} else {
-				return nil, errors.Errorf("No resources found for group %s and resource %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource)
+				return nil, fmt.Errorf("No resources found for group %s and resource %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource)
 			}
 
 		}
@@ -454,7 +454,7 @@ func getAuthInfoListForWildcard(ctx context.Context, subRevReq *authzv1.SubjectA
 		for i := range authInfoList {
 			err = setAuthInfoSubresourceAttributes(&authInfoList[i], subRevReq)
 			if err != nil {
-				return nil, errors.Errorf("Error while setting subresource attributes: %s", err.Error())
+				return nil, fmt.Errorf("Error while setting subresource attributes: %s", err.Error())
 			}
 		}
 	}
@@ -473,7 +473,7 @@ func getAuthInfoListForCustomResource(ctx context.Context, subRevReq *authzv1.Su
 		action := getActionName(subRevReq.ResourceAttributes.Verb)
 		authInfoSingle, found := getCustomResourceOperationsMap(clusterType)[action]
 		if !found {
-			return nil, errors.Errorf("No actions found for verb: %s, action: %s", subRevReq.ResourceAttributes.Verb, action)
+			return nil, fmt.Errorf("No actions found for verb: %s, action: %s", subRevReq.ResourceAttributes.Verb, action)
 		}
 		log.V(7).Info("Creating action for custom resource", "action", action)
 		authInfoList = append(authInfoList, authInfoSingle)
@@ -482,7 +482,7 @@ func getAuthInfoListForCustomResource(ctx context.Context, subRevReq *authzv1.Su
 	for i := range authInfoList {
 		err := setAuthInfoResourceAttributes(&authInfoList[i], subRevReq)
 		if err != nil {
-			return nil, errors.Errorf("Error while setting resource attributes: %s", err.Error())
+			return nil, fmt.Errorf("Error while setting resource attributes: %s", err.Error())
 		}
 	}
 
@@ -569,7 +569,7 @@ func createAuthorizationActionInfoList(filteredOperations azureutils.OperationsM
 		}
 
 		if len(authInfos) == 0 {
-			return nil, errors.Errorf("No operations were found for the verb: %s.", filterVerb)
+			return nil, fmt.Errorf("No operations were found for the verb: %s.", filterVerb)
 		}
 	} else {
 		for _, resMap := range filteredOperations {
@@ -684,7 +684,7 @@ func prepareCheckAccessRequestBody(ctx context.Context, req *authzv1.SubjectAcce
 	groups := getValidSecurityGroups(req.Groups)
 	actions, err := getDataActions(ctx, req, clusterType, allowCustomResourceTypeCheck, allowSubresourceTypeCheck)
 	if err != nil {
-		return nil, errutils.WithCode(errors.Wrap(err, "Error while creating list of dataactions for check access call"), http.StatusInternalServerError)
+		return nil, errutils.WithCode(fmt.Errorf("Error while creating list of dataactions for check access call: %w", err), http.StatusInternalServerError)
 	}
 	var checkAccessReqs []*CheckAccessRequest
 	for i := 0; i < len(actions); i += ActionBatchCount {
@@ -737,7 +737,7 @@ func ConvertCheckAccessResponse(ctx context.Context, username string, body []byt
 
 	err := json.Unmarshal(body, &response)
 	if err != nil {
-		return nil, errutils.WithCode(errors.Wrap(err, "Error in unmarshalling check access response."), http.StatusInternalServerError)
+		return nil, errutils.WithCode(fmt.Errorf("Error in unmarshalling check access response: %w", err), http.StatusInternalServerError)
 	}
 
 	deniedResultFound := slices.IndexFunc(response, func(a AuthorizationDecision) bool { return strings.ToLower(a.Decision) != Allowed })

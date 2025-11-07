@@ -39,7 +39,6 @@ import (
 	"go.kubeguard.dev/guard/util/httpclient"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"golang.org/x/sync/errgroup"
@@ -231,7 +230,7 @@ func (a *AccessInfo) RefreshToken(ctx context.Context) error {
 	if a.IsTokenExpired() {
 		resp, err := a.tokenProvider.Acquire(ctx, "")
 		if err != nil {
-			return errors.Wrapf(err, "Failed to refresh token (provider: %s)", a.tokenProvider.Name())
+			return fmt.Errorf("Failed to refresh token (provider: %s): %w", a.tokenProvider.Name(), err)
 		}
 
 		// Set the authorization headers for future requests
@@ -353,7 +352,7 @@ func (a *AccessInfo) performCheckAccess(
 				if v, ok := err.(errutils.HttpStatusCode); ok {
 					code = v.Code()
 				}
-				err = errutils.WithCode(errors.Wrapf(err, "Checkaccess batch failed (batchIndex: %d, statusCode: %d)", index, code), code)
+				err = errutils.WithCode(fmt.Errorf("Checkaccess batch failed (batchIndex: %d, statusCode: %d): %w", index, code, err), code)
 				return err
 			}
 			log.V(7).Info("Checkaccess batch completed successfully")
@@ -369,7 +368,7 @@ func (a *AccessInfo) performCheckAccess(
 			}
 			checkAccessContextTimedOutCount.WithLabelValues(azureutils.ConvertIntToString(len(checkAccessBodies)), azureutils.ConvertIntToString(actionsCount)).Inc()
 			close(ch)
-			return nil, errutils.WithCode(errors.Wrapf(ctx.Err(), "Checkaccess requests timed out (batchCount: %d, totalActionsCount: %d, timeoutSeconds: %.0f)", len(checkAccessBodies), actionsCount, checkaccessContextTimeout.Seconds()), http.StatusInternalServerError)
+			return nil, errutils.WithCode(fmt.Errorf("Checkaccess requests timed out (batchCount: %d, totalActionsCount: %d, timeoutSeconds: %.0f): %w", len(checkAccessBodies), actionsCount, checkaccessContextTimeout.Seconds(), ctx.Err()), http.StatusInternalServerError)
 		} else {
 			close(ch)
 			// error already contains context from child goroutines
@@ -424,7 +423,7 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 
 	checkAccessBodies, err := prepareCheckAccessRequestBody(ctx, request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
 	if err != nil {
-		return nil, errors.Wrap(err, "error in preparing check access request")
+		return nil, fmt.Errorf("error in preparing check access request: %w", err)
 	}
 
 	checkAccessUsername := request.User
@@ -433,7 +432,7 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 	exist, nameSpaceString := getNameSpaceScope(request, a.useNamespaceResourceScopeFormat)
 	checkAccessURL, err := buildCheckAccessURL(*a.apiURL, a.azureResourceId, exist, nameSpaceString)
 	if err != nil {
-		return nil, errors.Wrap(err, "error in building check access URL")
+		return nil, fmt.Errorf("error in building check access URL: %w", err)
 	}
 
 	log := klog.FromContext(ctx)
@@ -455,7 +454,7 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 		// Build managed namespace URL
 		managedNamespaceURL, err := buildCheckAccessURL(*a.apiURL, a.azureResourceId, true, managedNamespacePath)
 		if err != nil {
-			return nil, errors.Wrap(err, "error in building managed namespace check access URL")
+			return nil, fmt.Errorf("error in building managed namespace check access URL: %w", err)
 		}
 
 		// Update resource IDs for managed namespace
@@ -465,7 +464,7 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 
 		status, err = a.performCheckAccess(ctx, managedNamespaceURL, checkAccessBodies, checkAccessUsername)
 		if err != nil {
-			return nil, errors.Wrap(err, "Managed namespace check access failed")
+			return nil, fmt.Errorf("Managed namespace check access failed: %w", err)
 		}
 		if status != nil && status.Allowed {
 			log.V(7).Info("Managed namespace check access allowed")
@@ -478,11 +477,11 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 		log.V(7).Info("Falling back to fleet manager scope check", "fleetResourceId", a.fleetManagerResourceId)
 		fleetURL, err := buildCheckAccessURL(*a.apiURL, a.fleetManagerResourceId, managedNamespaceExists, managedNamespacePath)
 		if err != nil {
-			return nil, errors.Wrap(err, "Failed to build fleet manager check access URL")
+			return nil, fmt.Errorf("Failed to build fleet manager check access URL: %w", err)
 		}
 		bodiesForFleetRBAC, err := prepareCheckAccessRequestBody(ctx, request, fleetMembers, a.fleetManagerResourceId, false, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
 		if err != nil {
-			return nil, errors.Wrap(err, "Failed to prepare check access request for fleet manager")
+			return nil, fmt.Errorf("Failed to prepare check access request for fleet manager: %w", err)
 		}
 		if managedNamespaceExists {
 			for _, b := range bodiesForFleetRBAC {
@@ -491,7 +490,7 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 		}
 		status, err = a.performCheckAccess(ctx, fleetURL, bodiesForFleetRBAC, checkAccessUsername)
 		if err != nil {
-			err = errors.Wrap(err, "Fleet manager check access failed")
+			err = fmt.Errorf("Fleet manager check access failed: %w", err)
 		} else if status != nil && status.Allowed {
 			log.V(7).Info("Fleet manager check access allowed")
 		}
@@ -503,7 +502,7 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUsername string, checkAccessURL string, checkAccessBody *CheckAccessRequest, ch chan *authzv1.SubjectAccessReviewStatus) error {
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(checkAccessBody); err != nil {
-		return errutils.WithCode(errors.Wrap(err, "Failed to encode check access request"), http.StatusInternalServerError)
+		return errutils.WithCode(fmt.Errorf("Failed to encode check access request: %w", err), http.StatusInternalServerError)
 	}
 
 	log := klog.FromContext(ctx)
@@ -514,7 +513,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, checkAccessURL, buf)
 	if err != nil {
-		return errutils.WithCode(errors.Wrap(err, "Failed to create check access request"), http.StatusInternalServerError)
+		return errutils.WithCode(fmt.Errorf("Failed to create check access request: %w", err), http.StatusInternalServerError)
 	}
 
 	a.setReqHeaders(req)
@@ -532,7 +531,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 	if err != nil {
 		checkAccessTotal.WithLabelValues(internalServerCode).Inc()
 		checkAccessDuration.WithLabelValues(internalServerCode).Observe(duration)
-		return errutils.WithCode(errors.Wrapf(err, "CheckAccess request execution failed (durationSeconds: %.2f)", duration), http.StatusInternalServerError)
+		return errutils.WithCode(fmt.Errorf("CheckAccess request execution failed (durationSeconds: %.2f): %w", duration, err), http.StatusInternalServerError)
 	}
 
 	defer func() {
@@ -546,7 +545,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 	if err != nil {
 		checkAccessTotal.WithLabelValues(internalServerCode).Inc()
 		checkAccessDuration.WithLabelValues(internalServerCode).Observe(duration)
-		return errutils.WithCode(errors.Wrap(err, "Failed to read response body"), http.StatusInternalServerError)
+		return errutils.WithCode(fmt.Errorf("Failed to read response body: %w", err), http.StatusInternalServerError)
 	}
 
 	log.V(7).Info("CheckAccess response received", "statusCode", resp.StatusCode, "durationSeconds", duration, "responseBody", string(data), "armCallLimit", a.armCallLimit)
@@ -564,7 +563,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 			checkAccessFailed.WithLabelValues(respStatusCode).Inc()
 		}
 
-		return errutils.WithCode(errors.Errorf("CheckAccess request failed (statusCode: %d, durationSeconds: %.2f): request %s failed with response: %s", resp.StatusCode, duration, req.URL.Path, string(data)), resp.StatusCode)
+		return errutils.WithCode(fmt.Errorf("CheckAccess request failed (statusCode: %d, durationSeconds: %.2f): request %s failed with response: %s", resp.StatusCode, duration, req.URL.Path, string(data)), resp.StatusCode)
 	}
 
 	remaining := resp.Header.Get(remainingSubReadARMHeader)
@@ -587,7 +586,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 		// Decode response and prepare k8s response
 		status, err = ConvertCheckAccessResponse(ctx, checkAccessUsername, data)
 		if err != nil {
-			return errors.Wrap(err, "Failed to convert check access response")
+			return fmt.Errorf("Failed to convert check access response: %w", err)
 		}
 	}
 
