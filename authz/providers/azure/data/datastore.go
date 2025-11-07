@@ -49,14 +49,16 @@ func (s *DataStore) Set(key string, value interface{}) error {
 
 	data, err := json.Marshal(value)
 	if err != nil {
-		return fmt.Errorf("cache set failed: marshal error (entries=%d, capacity=%d)", s.cache.Len(), s.cache.Capacity())
+		stats := s.cache.Stats()
+		return fmt.Errorf("cache set failed: marshal error (entries=%d, capacity=%d, hits=%d, misses=%d, collisions=%d): %w",
+			s.cache.Len(), s.cache.Capacity(), stats.Hits, stats.Misses, stats.Collisions, err)
 	}
 
 	err = s.cache.Set(key, data)
 	if err != nil {
 		stats := s.cache.Stats()
-		return fmt.Errorf("cache set failed (entries=%d, capacity=%d, hits=%d, misses=%d, collisions=%d)",
-			s.cache.Len(), s.cache.Capacity(), stats.Hits, stats.Misses, stats.Collisions)
+		return fmt.Errorf("cache set failed (entries=%d, capacity=%d, hits=%d, misses=%d, collisions=%d): %w",
+			s.cache.Len(), s.cache.Capacity(), stats.Hits, stats.Misses, stats.Collisions, err)
 	}
 
 	return nil
@@ -76,15 +78,15 @@ func (s *DataStore) Get(key string, value interface{}) (found bool, err error) {
 			return false, nil
 		}
 		stats := s.cache.Stats()
-		return false, fmt.Errorf("cache get error (entries=%d, capacity=%d, hits=%d, misses=%d, collisions=%d)",
-			s.cache.Len(), s.cache.Capacity(), stats.Hits, stats.Misses, stats.Collisions)
+		return false, fmt.Errorf("cache get error (entries=%d, capacity=%d, hits=%d, misses=%d, collisions=%d): %w",
+			s.cache.Len(), s.cache.Capacity(), stats.Hits, stats.Misses, stats.Collisions, err)
 	}
 
 	err = json.Unmarshal(data, value)
 	if err != nil {
 		stats := s.cache.Stats()
-		return false, fmt.Errorf("cache get failed: unmarshal error (entries=%d, capacity=%d, hits=%d, misses=%d)",
-			s.cache.Len(), s.cache.Capacity(), stats.Hits, stats.Misses)
+		return false, fmt.Errorf("cache get failed: unmarshal error (entries=%d, capacity=%d, hits=%d, misses=%d, collisions=%d): %w",
+			s.cache.Len(), s.cache.Capacity(), stats.Hits, stats.Misses, stats.Collisions, err)
 	}
 
 	return true, nil
@@ -100,8 +102,8 @@ func (s *DataStore) Delete(key string) error {
 	err := s.cache.Delete(key)
 	if err != nil {
 		stats := s.cache.Stats()
-		return fmt.Errorf("cache delete failed (entries=%d, capacity=%d, deleteHits=%d, deleteMisses=%d)",
-			s.cache.Len(), s.cache.Capacity(), stats.DelHits, stats.DelMisses)
+		return fmt.Errorf("cache delete failed (entries=%d, capacity=%d, deleteHits=%d, deleteMisses=%d, collisions=%d): %w",
+			s.cache.Len(), s.cache.Capacity(), stats.DelHits, stats.DelMisses, stats.Collisions, err)
 	}
 
 	return nil

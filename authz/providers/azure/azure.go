@@ -84,23 +84,12 @@ func newAuthzClient(opts authzOpts.Options, authopts auth.Options) (authz.Interf
 	return c, nil
 }
 
-type contextKey string
-
-const requestIDKey contextKey = "requestID"
-
-func getRequestID(ctx context.Context) string {
-	if requestID, ok := ctx.Value(requestIDKey).(string); ok {
-		return requestID
-	}
-	return "unknown"
-}
-
 func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, store authz.Store) (*authzv1.SubjectAccessReviewStatus, error) {
 	requestID := uuid.New().String()
 
 	log := klog.FromContext(ctx).WithValues("requestID", requestID)
 	ctx = klog.NewContext(ctx, log)
-	ctx = context.WithValue(ctx, requestIDKey, requestID)
+	ctx = azureutils.WithRequestID(ctx, requestID)
 
 	if request == nil {
 		return nil, errutils.WithCode(errors.Errorf("Authorization request failed (requestID: %s): subject access review is nil", requestID), http.StatusBadRequest)
@@ -158,7 +147,9 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 	response, err := s.rbacClient.CheckAccess(ctx, request)
 	if err == nil {
 		log.Info("Authorization check completed", "allowed", response.Allowed, "reason", response.Reason, "resourceAttributes", request.ResourceAttributes)
-		_ = s.rbacClient.SetResultInCache(ctx, request, response.Allowed, store)
+		if err := s.rbacClient.SetResultInCache(ctx, request, response.Allowed, store); err != nil {
+			log.Error(err, "Failed to cache authorization result")
+		}
 	} else {
 		code := http.StatusInternalServerError
 		if v, ok := err.(errutils.HttpStatusCode); ok {

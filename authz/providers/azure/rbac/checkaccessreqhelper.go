@@ -35,17 +35,6 @@ import (
 	"k8s.io/klog/v2"
 )
 
-type contextKey string
-
-const requestIDKey contextKey = "requestID"
-
-func getRequestID(ctx context.Context) string {
-	if requestID, ok := ctx.Value(requestIDKey).(string); ok {
-		return requestID
-	}
-	return "unknown"
-}
-
 const (
 	ActionBatchCount            = 200
 	AccessAllowedVerdict        = "Access allowed by Azure RBAC"
@@ -687,10 +676,10 @@ func prepareCheckAccessRequestBody(ctx context.Context, req *authzv1.SubjectAcce
 		val := oid.String()
 		userOid = val[1 : len(val)-1]
 		if !isValidUUID(userOid) {
-			return nil, errutils.WithCode(fmt.Errorf("oid info sent from authentication module is not valid (requestID: %s, oid: %s)", getRequestID(ctx), userOid), http.StatusBadRequest)
+			return nil, errutils.WithCode(fmt.Errorf("oid info sent from authentication module is not valid (oid: %s)", userOid), http.StatusBadRequest)
 		}
 	} else {
-		return nil, errutils.WithCode(fmt.Errorf("oid info not sent from authentication module (requestID: %s)", getRequestID(ctx)), http.StatusBadRequest)
+		return nil, errutils.WithCode(fmt.Errorf("oid info not sent from authentication module"), http.StatusBadRequest)
 	}
 	groups := getValidSecurityGroups(req.Groups)
 	actions, err := getDataActions(ctx, req, clusterType, allowCustomResourceTypeCheck, allowSubresourceTypeCheck)
