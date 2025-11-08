@@ -19,6 +19,7 @@ package data
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"go.kubeguard.dev/guard/authz"
@@ -48,9 +49,19 @@ func (s *DataStore) Set(key string, value interface{}) error {
 
 	data, err := json.Marshal(value)
 	if err != nil {
-		return err
+		stats := s.cache.Stats()
+		return fmt.Errorf("cache set failed: marshal error (entries=%d, capacity=%d, hits=%d, misses=%d, collisions=%d): %w",
+			s.cache.Len(), s.cache.Capacity(), stats.Hits, stats.Misses, stats.Collisions, err)
 	}
-	return s.cache.Set(key, data)
+
+	err = s.cache.Set(key, data)
+	if err != nil {
+		stats := s.cache.Stats()
+		return fmt.Errorf("cache set failed (entries=%d, capacity=%d, hits=%d, misses=%d, collisions=%d): %w",
+			s.cache.Len(), s.cache.Capacity(), stats.Hits, stats.Misses, stats.Collisions, err)
+	}
+
+	return nil
 }
 
 // Get retrieves the Stored value for the given key.
@@ -63,10 +74,22 @@ func (s *DataStore) Get(key string, value interface{}) (found bool, err error) {
 
 	data, err := s.cache.Get(key)
 	if err != nil {
-		return false, err
+		if err == bigcache.ErrEntryNotFound {
+			return false, nil
+		}
+		stats := s.cache.Stats()
+		return false, fmt.Errorf("cache get error (entries=%d, capacity=%d, hits=%d, misses=%d, collisions=%d): %w",
+			s.cache.Len(), s.cache.Capacity(), stats.Hits, stats.Misses, stats.Collisions, err)
 	}
 
-	return true, json.Unmarshal(data, value)
+	err = json.Unmarshal(data, value)
+	if err != nil {
+		stats := s.cache.Stats()
+		return false, fmt.Errorf("cache get failed: unmarshal error (entries=%d, capacity=%d, hits=%d, misses=%d, collisions=%d): %w",
+			s.cache.Len(), s.cache.Capacity(), stats.Hits, stats.Misses, stats.Collisions, err)
+	}
+
+	return true, nil
 }
 
 // Delete deletes the stored value for the given key.
@@ -78,7 +101,9 @@ func (s *DataStore) Delete(key string) error {
 
 	err := s.cache.Delete(key)
 	if err != nil {
-		return err
+		stats := s.cache.Stats()
+		return fmt.Errorf("cache delete failed (entries=%d, capacity=%d, deleteHits=%d, deleteMisses=%d, collisions=%d): %w",
+			s.cache.Len(), s.cache.Capacity(), stats.DelHits, stats.DelMisses, stats.Collisions, err)
 	}
 
 	return nil

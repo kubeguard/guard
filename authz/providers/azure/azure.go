@@ -18,6 +18,7 @@ package azure
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -30,7 +31,7 @@ import (
 	errutils "go.kubeguard.dev/guard/util/error"
 
 	"github.com/Azure/go-autorest/autorest/azure"
-	"github.com/pkg/errors"
+	"github.com/google/uuid"
 	authzv1 "k8s.io/api/authorization/v1"
 	"k8s.io/klog/v2"
 )
@@ -72,44 +73,53 @@ func newAuthzClient(opts authzOpts.Options, authopts auth.Options) (authz.Interf
 
 	authzInfoVal, err := getAuthzInfo(authopts.Environment)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error in getAuthzInfo %s")
+		return nil, fmt.Errorf("Error in getAuthzInfo: %w", err)
 	}
 
 	c.rbacClient, err = rbac.New(opts, authopts, authzInfoVal)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create ms rbac client")
+		return nil, fmt.Errorf("failed to create ms rbac client: %w", err)
 	}
 
 	return c, nil
 }
 
 func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, store authz.Store) (*authzv1.SubjectAccessReviewStatus, error) {
+	requestID := uuid.New().String()
+
+	log := klog.FromContext(ctx).WithValues("requestID", requestID)
+	ctx = klog.NewContext(ctx, log)
+	ctx = azureutils.WithRequestID(ctx, requestID)
+
 	if request == nil {
-		return nil, errutils.WithCode(errors.New("subject access review is nil"), http.StatusBadRequest)
+		return nil, errutils.WithCode(fmt.Errorf("Authorization request failed (requestID: %s): subject access review is nil", requestID), http.StatusBadRequest)
 	}
 
 	// check if user is system accounts
 	if strings.HasPrefix(strings.ToLower(request.User), "system:") {
-		klog.V(10).Infof("returning no op to system accounts")
+		log.V(10).Info("Returning no op to system accounts")
 		return &authzv1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
 	}
 
 	if s.rbacClient.SkipAuthzCheck(request) {
-		klog.V(3).Infof("user %s is part of skip authz list. returning no op.", request.User)
+		log.V(3).Info("User is part of skip authz list, returning no op", "user", request.User)
 		return &authzv1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NoOpinionVerdict}, nil
 	}
 
 	if _, ok := request.Extra["oid"]; !ok {
 		if s.rbacClient.ShouldSkipAuthzCheckForNonAADUsers() {
+			log.V(5).Info("Non-AAD user, returning no op", "user", request.User)
 			return &authzv1.SubjectAccessReviewStatus{Allowed: false, Reason: rbac.NonAADUserNoOpVerdict}, nil
 		} else {
+			log.Info("Non-AAD user denied", "user", request.User)
 			return &authzv1.SubjectAccessReviewStatus{Allowed: false, Denied: true, Reason: rbac.NonAADUserNotAllowedVerdict}, nil
 		}
 	}
 
-	exist, result := s.rbacClient.GetResultFromCache(request, store)
+	exist, result := s.rbacClient.GetResultFromCache(ctx, request, store)
 
 	if exist {
+		log.V(5).Info("Cache hit", "allowed", result, "resourceAttributes", request.ResourceAttributes)
 		if result {
 			return &authzv1.SubjectAccessReviewStatus{Allowed: result, Reason: rbac.AccessAllowedVerdict}, nil
 		} else {
@@ -119,8 +129,10 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 
 	// if set true, webhook will allow access to discovery APIs for authenticated users. If false, access check will be performed on Azure.
 	if s.rbacClient.AllowNonResPathDiscoveryAccess(request) {
-		klog.V(10).Infof("Allowing user %s access for discovery check.", request.User)
-		_ = s.rbacClient.SetResultInCache(request, true, store)
+		log.V(5).Info("Allowing user access for discovery check")
+		if err := s.rbacClient.SetResultInCache(ctx, request, true, store); err != nil {
+			log.Error(err, "Failed to cache discovery access result")
+		}
 		return &authzv1.SubjectAccessReviewStatus{Allowed: true, Reason: rbac.AccessAllowedVerdict}, nil
 	}
 
@@ -128,20 +140,22 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 
 	if s.rbacClient.IsTokenExpired() {
 		if err := s.rbacClient.RefreshToken(ctx); err != nil {
-			return nil, errutils.WithCode(err, http.StatusInternalServerError)
+			return nil, errutils.WithCode(fmt.Errorf("Failed to refresh token (requestID: %s): %w", requestID, err), http.StatusInternalServerError)
 		}
 	}
 
-	response, err := s.rbacClient.CheckAccess(request)
+	response, err := s.rbacClient.CheckAccess(ctx, request)
 	if err == nil {
-		klog.V(5).Infof(response.Reason)
-		_ = s.rbacClient.SetResultInCache(request, response.Allowed, store)
+		log.Info("Authorization check completed", "allowed", response.Allowed, "reason", response.Reason, "resourceAttributes", request.ResourceAttributes)
+		if err := s.rbacClient.SetResultInCache(ctx, request, response.Allowed, store); err != nil {
+			log.Error(err, "Failed to cache authorization result")
+		}
 	} else {
 		code := http.StatusInternalServerError
 		if v, ok := err.(errutils.HttpStatusCode); ok {
 			code = v.Code()
 		}
-		err = errutils.WithCode(errors.Errorf(rbac.CheckAccessErrorFormat, err), code)
+		err = errutils.WithCode(fmt.Errorf("Authorization check failed (requestID: %s, statusCode: %d): %w", requestID, code, err), code)
 	}
 
 	return response, err
@@ -153,7 +167,7 @@ func getAuthzInfo(environment string) (*rbac.AuthzInfo, error) {
 	if environment != "" {
 		env, err = azure.EnvironmentFromName(environment)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to parse environment for azure")
+			return nil, fmt.Errorf("failed to parse environment for azure: %w", err)
 		}
 	}
 

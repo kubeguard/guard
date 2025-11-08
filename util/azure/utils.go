@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"path"
 	"strconv"
@@ -35,7 +34,6 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/hashicorp/go-retryablehttp"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/oauth2"
 	v "gomodules.xyz/x/version"
@@ -47,6 +45,10 @@ import (
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
+
+type contextKey string
+
+const requestIDKey contextKey = "requestID"
 
 const (
 	ManagedClusters             = "Microsoft.ContainerService/managedClusters"
@@ -102,6 +104,20 @@ var (
 		[]string{"code"},
 	)
 )
+
+// GetRequestID retrieves the request ID from the context.
+// Returns "unknown" if the request ID is not found in the context.
+func GetRequestID(ctx context.Context) string {
+	if requestID, ok := ctx.Value(requestIDKey).(string); ok {
+		return requestID
+	}
+	return "unknown"
+}
+
+// WithRequestID adds a request ID to the context.
+func WithRequestID(ctx context.Context, requestID string) context.Context {
+	return context.WithValue(ctx, requestIDKey, requestID)
+}
 
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
@@ -224,7 +240,7 @@ func SetDiscoverResourcesSettings(clusterType string, environment string, loginU
 		if environment != "" {
 			env, err = azure.EnvironmentFromName(environment)
 			if err != nil {
-				return errors.Wrap(err, "Failed to parse environment for Azure.")
+				return fmt.Errorf("Failed to parse environment for Azure.: %w", err)
 			}
 		}
 
@@ -238,7 +254,7 @@ func SetDiscoverResourcesSettings(clusterType string, environment string, loginU
 		case Fleets:
 			settings.operationsEndpoint = fmt.Sprintf(OperationsEndpointFormatAKS, settings.environment.ResourceManagerEndpoint)
 		default:
-			return errors.Errorf("Failed to create endpoint for Get Operations call. Cluster type %s is not supported.", clusterType)
+			return fmt.Errorf("Failed to create endpoint for Get Operations call. Cluster type %s is not supported.", clusterType)
 		}
 
 		return nil
@@ -286,7 +302,7 @@ func DiscoverResources(ctx context.Context) error {
 	apiResourcesListDuration := time.Since(apiResourcesListStart).Seconds()
 
 	if err != nil {
-		return errors.Wrap(err, "Failed to fetch list of api-resources from apiserver.")
+		return fmt.Errorf("Failed to fetch list of api-resources from apiserver.: %w", err)
 	}
 
 	discoverResourcesApiServerCallDuration.Observe(apiResourcesListDuration)
@@ -296,7 +312,7 @@ func DiscoverResources(ctx context.Context) error {
 	getOperationsDuration := time.Since(getOperationsStart).Seconds()
 
 	if err != nil {
-		return errors.Wrap(err, "Failed to fetch operations from Azure.")
+		return fmt.Errorf("Failed to fetch operations from Azure.: %w", err)
 	}
 
 	discoverResourcesAzureCallDuration.Observe(getOperationsDuration)
@@ -402,12 +418,12 @@ func fetchApiResources() ([]*metav1.APIResourceList, error) {
 	}
 
 	if err != nil {
-		return nil, errors.Wrap(err, "Error building kubeconfig")
+		return nil, fmt.Errorf("Error building kubeconfig: %w", err)
 	}
 
 	kubeclientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error building kubernetes clientset")
+		return nil, fmt.Errorf("Error building kubernetes clientset: %w", err)
 	}
 
 	apiresourcesList, err := kubeclientset.Discovery().ServerPreferredResources()
@@ -433,7 +449,7 @@ func fetchApiResources() ([]*metav1.APIResourceList, error) {
 func fetchDataActionsList(ctx context.Context) ([]Operation, error) {
 	req, err := http.NewRequest(http.MethodGet, settings.operationsEndpoint, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to create request for Get Operations call.")
+		return nil, fmt.Errorf("Failed to create request for Get Operations call.: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -447,7 +463,7 @@ func fetchDataActionsList(ctx context.Context) ([]Operation, error) {
 
 		authResp, erro := tokenProvider.Acquire(ctx, "")
 		if erro != nil {
-			return nil, errors.Wrap(erro, "Error getting authorization headers for Get Operations call.")
+			return nil, fmt.Errorf("Error getting authorization headers for Get Operations call.: %w", erro)
 		}
 
 		token = authResp.Token
@@ -456,7 +472,7 @@ func fetchDataActionsList(ctx context.Context) ([]Operation, error) {
 
 		authResp, err := tokenProvider.Acquire(ctx, "")
 		if err != nil {
-			return nil, errors.Wrap(err, "Error getting authorization headers for Get Operations call.")
+			return nil, fmt.Errorf("Error getting authorization headers for Get Operations call.: %w", err)
 		}
 
 		token = authResp.Token
@@ -469,25 +485,25 @@ func fetchDataActionsList(ctx context.Context) ([]Operation, error) {
 	resp, err := client.Do(req)
 	if err != nil {
 		counterGetOperationsResources.WithLabelValues(ConvertIntToString(http.StatusInternalServerError)).Inc()
-		return nil, errors.Wrap(err, "Failed to send request for Get Operations call.")
+		return nil, fmt.Errorf("Failed to send request for Get Operations call.: %w", err)
 	}
 	defer resp.Body.Close()
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		counterGetOperationsResources.WithLabelValues(ConvertIntToString(http.StatusInternalServerError)).Inc()
-		return nil, errors.Wrap(err, "Error in reading response body")
+		return nil, fmt.Errorf("Error in reading response body: %w", err)
 	}
 
 	counterGetOperationsResources.WithLabelValues(ConvertIntToString(resp.StatusCode)).Inc()
 	if resp.StatusCode != http.StatusOK {
-		return nil, errutils.WithCode(errors.Errorf("Request failed with status code: %d and response: %s", resp.StatusCode, string(data)), resp.StatusCode)
+		return nil, errutils.WithCode(fmt.Errorf("Request failed with status code: %d and response: %s", resp.StatusCode, string(data)), resp.StatusCode)
 	}
 
 	operationsList := OperationList{}
 	err = json.Unmarshal(data, &operationsList)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to decode response")
+		return nil, fmt.Errorf("Failed to decode response: %w", err)
 	}
 
 	var finalOperations []Operation
@@ -506,9 +522,19 @@ func fetchDataActionsList(ctx context.Context) ([]Operation, error) {
 	return finalOperations, nil
 }
 
+// contextAwareLogger is a custom logger that uses klog's context-aware logging
+type contextAwareLogger struct {
+	ctx context.Context
+}
+
+func (l *contextAwareLogger) Printf(format string, v ...interface{}) {
+	// Use klog's context-aware logging which automatically includes request ID and correlation ID
+	klog.FromContext(l.ctx).Info(fmt.Sprintf(format, v...))
+}
+
 // MakeRetryableHttpClient creates an HTTP client which attempts the request
 // (1 + retryCount) times and has a 3 second timeout per attempt.
-func MakeRetryableHttpClient(retryCount int) retryablehttp.Client {
+func MakeRetryableHttpClient(ctx context.Context, retryCount int) retryablehttp.Client {
 	// Copy the default HTTP client so we can set a timeout.
 	// (It uses the same transport since the pointer gets copied)
 	httpClient := *httpclient.DefaultHTTPClient
@@ -522,7 +548,7 @@ func MakeRetryableHttpClient(retryCount int) retryablehttp.Client {
 		RetryMax:     retryCount, // initial + retryCount retries = (1 + retryCount) attempts
 		CheckRetry:   retryablehttp.DefaultRetryPolicy,
 		Backoff:      retryablehttp.DefaultBackoff,
-		Logger:       log.Default(),
+		Logger:       &contextAwareLogger{ctx: ctx},
 	}
 }
 
@@ -531,7 +557,7 @@ func MakeRetryableHttpClient(retryCount int) retryablehttp.Client {
 // Some of the libraries we use will take the client out of the context via
 // oauth2.HTTPClient and use it, so this way we can add retries to external code.
 func WithRetryableHttpClient(ctx context.Context, retryCount int) context.Context {
-	retryClient := MakeRetryableHttpClient(retryCount)
+	retryClient := MakeRetryableHttpClient(ctx, retryCount)
 	return context.WithValue(ctx, oauth2.HTTPClient, retryClient.StandardClient())
 }
 
