@@ -185,7 +185,7 @@ type metadataJSON struct {
 // https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-convert-app-to-be-multi-tenant
 func getMetadata(ctx context.Context, aadEndpoint, tenantID string, retryCount int) (*metadataJSON, error) {
 	metadataURL := aadEndpoint + tenantID + "/.well-known/openid-configuration"
-	retryClient := azureutils.MakeRetryableHttpClient(retryCount)
+	retryClient := azureutils.MakeRetryableHttpClient(ctx, retryCount)
 
 	request, err := retryablehttp.NewRequest("GET", metadataURL, nil)
 	if err != nil {

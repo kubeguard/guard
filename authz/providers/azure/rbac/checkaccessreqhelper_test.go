@@ -17,6 +17,8 @@ limitations under the License.
 package rbac
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -26,7 +28,6 @@ import (
 	azureutils "go.kubeguard.dev/guard/util/azure"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	authzv1 "k8s.io/api/authorization/v1"
 )
@@ -650,7 +651,8 @@ func Test_getDataActions(t *testing.T) {
 				return operationsMap
 			}
 
-			got, _ := getDataActions(tt.args.subRevReq, tt.args.clusterType, tt.args.isCrTest, tt.args.isSubresTest)
+			ctx := context.Background()
+			got, _ := getDataActions(ctx, tt.args.subRevReq, tt.args.clusterType, tt.args.isCrTest, tt.args.isSubresTest)
 			if !tt.args.isWildcardTest {
 				if !reflect.DeepEqual(got[0].AuthorizationEntity, tt.want[0].AuthorizationEntity) {
 					t.Errorf("getDataActions() = %v, want %v", got, tt.want)
@@ -758,7 +760,8 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	createOperationsMap(clusterType)
 	wantErr := errors.New("oid info not sent from authenticatoin module")
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true, false)
+	ctx := context.Background()
+	got, gotErr := prepareCheckAccessRequestBody(ctx, req, clusterType, resourceId, false, true, false)
 
 	if got != nil && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", nil, wantErr, got, gotErr)
@@ -768,7 +771,7 @@ func Test_prepareCheckAccessRequestBody(t *testing.T) {
 	clusterType = "arc"
 	wantErr = errors.New("oid info sent from authenticatoin module is not valid")
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true, false)
+	got, gotErr = prepareCheckAccessRequestBody(ctx, req, clusterType, resourceId, false, true, false)
 
 	if got != nil && gotErr != wantErr {
 		t.Errorf("Want:%v WantErr:%v, got:%v, gotErr:%v", nil, wantErr, got, gotErr)
@@ -784,7 +787,8 @@ func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
 	// testing with new ns scope format
 	var want string = "resourceId/providers/Microsoft.KubernetesConfiguration/namespaces/dev"
 
-	got, gotErr := prepareCheckAccessRequestBody(req, clusterType, resourceId, true, true, false)
+	ctx := context.Background()
+	got, gotErr := prepareCheckAccessRequestBody(ctx, req, clusterType, resourceId, true, true, false)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
@@ -797,7 +801,7 @@ func Test_prepareCheckAccessRequestBodyWithNamespace(t *testing.T) {
 	// testing with the old namespace format
 	want = "resourceId/namespaces/dev"
 
-	got, gotErr = prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true, false)
+	got, gotErr = prepareCheckAccessRequestBody(ctx, req, clusterType, resourceId, false, true, false)
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil, gotErr:%v", gotErr)
 	}
@@ -826,7 +830,8 @@ func Test_prepareCheckAccessRequestBodyWithCustomResource(t *testing.T) {
 	clusterType := aksClusterType
 	createOperationsMap(clusterType)
 
-	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true, false)
+	ctx := context.Background()
+	got, _ := prepareCheckAccessRequestBody(ctx, req, clusterType, resourceId, false, true, false)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil")
@@ -867,7 +872,8 @@ func Test_prepareCheckAccessRequestBodyWithCustomResourceOperationsMapEmpty(t *t
 		return azureutils.OperationsMap{}
 	}
 
-	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true, false)
+	ctx := context.Background()
+	got, _ := prepareCheckAccessRequestBody(ctx, req, clusterType, resourceId, false, true, false)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil")
@@ -901,7 +907,8 @@ func Test_prepareCheckAccessRequestBodyWithCustomResourceTypeCheckDisabled(t *te
 		return operationsMap
 	}
 
-	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, false, false)
+	ctx := context.Background()
+	got, _ := prepareCheckAccessRequestBody(ctx, req, clusterType, resourceId, false, false, false)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil")
@@ -935,7 +942,8 @@ func Test_prepareCheckAccessRequestBodyWithCustomResourceAndStars(t *testing.T) 
 		return operationsMap
 	}
 
-	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, true, false)
+	ctx := context.Background()
+	got, _ := prepareCheckAccessRequestBody(ctx, req, clusterType, resourceId, false, true, false)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil")
@@ -1032,7 +1040,8 @@ func Test_prepareCheckAccessRequestBodyWithFleetMembers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, gotErr := prepareCheckAccessRequestBody(tt.req, tt.clusterType, tt.resourceID, false, false, false)
+			ctx := context.Background()
+			got, gotErr := prepareCheckAccessRequestBody(ctx, tt.req, tt.clusterType, tt.resourceID, false, false, false)
 
 			if gotErr != nil {
 				t.Errorf("Unexpected error: %v", gotErr)
@@ -1094,7 +1103,7 @@ func Test_prepareCheckAccessRequestBodyWithSubresource(t *testing.T) {
 	clusterType := aksClusterType
 	createOperationsMap(clusterType)
 
-	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, false, true)
+	got, _ := prepareCheckAccessRequestBody(context.Background(), req, clusterType, resourceId, false, false, true)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil")
@@ -1134,7 +1143,7 @@ func Test_prepareCheckAccessRequestBodyWithSubresourceDisabled(t *testing.T) {
 	clusterType := aksClusterType
 	createOperationsMap(clusterType)
 
-	got, _ := prepareCheckAccessRequestBody(req, clusterType, resourceId, false, false, false)
+	got, _ := prepareCheckAccessRequestBody(context.Background(), req, clusterType, resourceId, false, false, false)
 
 	if got == nil {
 		t.Errorf("Want: not nil Got: nil")

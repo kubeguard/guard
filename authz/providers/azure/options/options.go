@@ -17,13 +17,13 @@ limitations under the License.
 package options
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"go.kubeguard.dev/guard/auth/providers/azure"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"

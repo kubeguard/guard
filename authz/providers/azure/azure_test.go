@@ -165,7 +165,7 @@ func TestCheck(t *testing.T) {
 		resp, err := client.Check(ctx, request, store)
 		assert.Nilf(t, resp, "response should be nil")
 		assert.NotNilf(t, err, "should get error")
-		assert.Contains(t, err.Error(), "Error occured during authorization check")
+		assert.Contains(t, err.Error(), "Authorization check failed")
 		assert.Contains(t, err.Error(), fmt.Sprintf("giving up after %d attempt", httpClientRetryCount+1))
 		if v, ok := err.(errutils.HttpStatusCode); ok {
 			assert.Equal(t, v.Code(), http.StatusInternalServerError)
