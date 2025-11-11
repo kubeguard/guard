@@ -14,6 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+/*
+Package rbac implements Azure RBAC authorization using CheckAccess v2 API.
+
+This file contains the CheckAccess v2 API implementation, which uses the official
+Azure checkaccess-v2-go-sdk to perform RBAC authorization checks. The v2 implementation
+provides the following improvements over v1:
+
+- Uses official Azure SDK instead of direct HTTP calls
+- Better error handling and structured responses
+- Improved logging with correlation IDs
+- Consistent Prometheus metrics with v1
+
+The implementation maintains the same batching behavior (200 actions per request) and
+multi-level fallback logic (primary -> managed namespace -> fleet) as the v1 API.
+
+To enable v2 API:
+  --azure.use-checkaccess-v2=true
+  --azure.pdp-endpoint=<PDP endpoint URL>
+
+For more information on CheckAccess v2, see:
+https://github.com/Azure/checkaccess-v2-go-sdk
+*/
+
 package rbac
 
 import (
