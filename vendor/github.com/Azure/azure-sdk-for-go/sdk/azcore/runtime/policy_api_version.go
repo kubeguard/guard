@@ -16,10 +16,9 @@ import (
 
 // APIVersionOptions contains options for API versions
 type APIVersionOptions struct {
-	// Location indicates where to set the version on a request, for example in a header or query param.
+	// Location indicates where to set the version on a request, for example in a header or query param
 	Location APIVersionLocation
-	// Name is the name of the header or query parameter, for example "api-version".
-	// For [APIVersionLocationPath] the value is not used.
+	// Name is the name of the header or query parameter, for example "api-version"
 	Name string
 }
 
@@ -31,8 +30,6 @@ const (
 	APIVersionLocationQueryParam = 0
 	// APIVersionLocationHeader indicates a header
 	APIVersionLocationHeader = 1
-	// APIVersionLocationPath indicates a path segment
-	APIVersionLocationPath = 2
 )
 
 // newAPIVersionPolicy constructs an APIVersionPolicy. If version is "", Do will be a no-op. If version
@@ -58,10 +55,7 @@ type apiVersionPolicy struct {
 
 // Do sets the request's API version, if the policy is configured to do so, replacing any prior value.
 func (a *apiVersionPolicy) Do(req *policy.Request) (*http.Response, error) {
-	// for API versions in the path, the client is responsible for
-	// setting the correct path segment with the version. so, if the
-	// location is path the policy is effectively a no-op.
-	if a.location != APIVersionLocationPath && a.version != "" {
+	if a.version != "" {
 		if a.name == "" {
 			// user set ClientOptions.APIVersion but the client ctor didn't set PipelineOptions.APIVersionOptions
 			return nil, errors.New("this client doesn't support overriding its API version")

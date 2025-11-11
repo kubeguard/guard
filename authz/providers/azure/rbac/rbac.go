@@ -38,6 +38,8 @@ import (
 	errutils "go.kubeguard.dev/guard/util/error"
 	"go.kubeguard.dev/guard/util/httpclient"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	checkaccess "github.com/Azure/checkaccess-v2-go-sdk/client"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -73,11 +75,18 @@ type (
 
 // AccessInfo allows you to check user access from MS RBAC
 type AccessInfo struct {
+	// V1 API fields (legacy)
 	headers   http.Header
 	client    *http.Client
 	expiresAt time.Time
 	// These allow us to mock out the URL for testing
 	apiURL *url.URL
+
+	// V2 API fields
+	useCheckAccessV2     bool
+	pdpClient            checkaccess.RemotePDPClient
+	pdpScope             string
+	checkAccessV2Version string
 
 	tokenProvider                          graph.TokenProvider
 	clusterType                            string
@@ -163,7 +172,7 @@ func getClusterType(clsType string) string {
 	}
 }
 
-func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts authzOpts.Options, authopts auth.Options) (*AccessInfo, error) {
+func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo) (*AccessInfo, error) {
 	u := &AccessInfo{
 		client: httpclient.DefaultHTTPClient,
 		headers: http.Header{
@@ -183,6 +192,8 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 		httpClientRetryCount:                   authopts.HttpClientRetryCount,
 		auditSAR:                               opts.AuditSAR,
 		fleetManagerResourceId:                 opts.FleetManagerResourceId,
+		useCheckAccessV2:                       opts.UseCheckAccessV2,
+		checkAccessV2Version:                   opts.CheckAccessV2APIVersion,
 	}
 
 	u.skipCheck = make(map[string]void, len(opts.SkipAuthzCheck))
@@ -194,6 +205,27 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 	u.clusterType = getClusterType(opts.AuthzMode)
 
 	u.lock = sync.RWMutex{}
+
+	// Initialize CheckAccess V2 client if enabled
+	if opts.UseCheckAccessV2 {
+		// Create token credential adapter from existing token provider
+		scope := fmt.Sprintf("%s.default", authzInfo.ARMEndPoint)
+		tokenCred := newTokenProviderAdapter(tokenProvider, scope)
+
+		// Initialize PDP client
+		pdpClient, err := checkaccess.NewRemotePDPClient(
+			opts.PDPEndpoint,
+			scope,
+			tokenCred,
+			&azcore.ClientOptions{},
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create CheckAccess v2 client: %w", err)
+		}
+
+		u.pdpClient = pdpClient
+		u.pdpScope = scope
+	}
 
 	return u, nil
 }
@@ -221,7 +253,7 @@ func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo) (*
 		tokenProvider = graph.NewAKSTokenProvider(opts.AKSAuthzTokenURL, authopts.TenantID)
 	}
 
-	return newAccessInfo(tokenProvider, rbacURL, opts, authopts)
+	return newAccessInfo(tokenProvider, rbacURL, opts, authopts, authzInfo)
 }
 
 func (a *AccessInfo) RefreshToken(ctx context.Context) error {

@@ -10,7 +10,7 @@ cloud.google.com/go/compute/metadata
 ## explicit; go 1.19
 # cloud.google.com/go/storage v1.30.1
 ## explicit; go 1.19
-# github.com/Azure/azure-sdk-for-go/sdk/azcore v1.19.0
+# github.com/Azure/azure-sdk-for-go/sdk/azcore v1.17.1
 ## explicit; go 1.23.0
 github.com/Azure/azure-sdk-for-go/sdk/azcore
 github.com/Azure/azure-sdk-for-go/sdk/azcore/arm
@@ -32,8 +32,8 @@ github.com/Azure/azure-sdk-for-go/sdk/azcore/policy
 github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime
 github.com/Azure/azure-sdk-for-go/sdk/azcore/streaming
 github.com/Azure/azure-sdk-for-go/sdk/azcore/tracing
-# github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.2
-## explicit; go 1.23.0
+# github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0
+## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/internal/diag
 github.com/Azure/azure-sdk-for-go/sdk/internal/errorinfo
 github.com/Azure/azure-sdk-for-go/sdk/internal/exported
@@ -41,6 +41,11 @@ github.com/Azure/azure-sdk-for-go/sdk/internal/log
 github.com/Azure/azure-sdk-for-go/sdk/internal/poller
 github.com/Azure/azure-sdk-for-go/sdk/internal/temporal
 github.com/Azure/azure-sdk-for-go/sdk/internal/uuid
+# github.com/Azure/checkaccess-v2-go-sdk v0.0.3
+## explicit; go 1.21
+github.com/Azure/checkaccess-v2-go-sdk/client
+github.com/Azure/checkaccess-v2-go-sdk/client/internal
+github.com/Azure/checkaccess-v2-go-sdk/client/internal/token
 # github.com/Azure/go-autorest v14.2.0+incompatible
 ## explicit
 github.com/Azure/go-autorest
@@ -124,7 +129,7 @@ github.com/beevik/ntp
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
-# github.com/cespare/xxhash/v2 v2.2.0
+# github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
 # github.com/coreos/go-oidc v2.2.1+incompatible
@@ -133,7 +138,7 @@ github.com/coreos/go-oidc
 # github.com/cpuguy83/go-md2man/v2 v2.0.2
 ## explicit; go 1.11
 github.com/cpuguy83/go-md2man/v2/md2man
-# github.com/davecgh/go-spew v1.1.1
+# github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 ## explicit
 github.com/davecgh/go-spew/spew
 # github.com/emicklei/go-restful/v3 v3.8.0
@@ -430,7 +435,7 @@ github.com/peterbourgon/diskv
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
-# github.com/pmezard/go-difflib v1.0.0
+# github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 ## explicit
 github.com/pmezard/go-difflib/difflib
 # github.com/pquerna/cachecontrol v0.1.0
