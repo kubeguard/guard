@@ -452,6 +452,17 @@ func (a *AccessInfo) auditSARIfNeeded(ctx context.Context, request *authzv1.Subj
 func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
 	a.auditSARIfNeeded(ctx, request)
 
+	log := klog.FromContext(ctx)
+
+	// Route to v2 API if enabled
+	if a.useCheckAccessV2 {
+		log.V(5).Info("Using CheckAccess v2 API")
+		return a.checkAccessV2(ctx, request)
+	}
+
+	// V1 API path (legacy)
+	log.V(7).Info("Using CheckAccess v1 API")
+
 	checkAccessBodies, err := prepareCheckAccessRequestBody(ctx, request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
 	if err != nil {
 		return nil, fmt.Errorf("error in preparing check access request: %w", err)
@@ -466,7 +477,6 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 		return nil, fmt.Errorf("error in building check access URL: %w", err)
 	}
 
-	log := klog.FromContext(ctx)
 	log.V(5).Info("Performing primary check access", "batchCount", len(checkAccessBodies))
 	status, err := a.performCheckAccess(ctx, checkAccessURL, checkAccessBodies, checkAccessUsername)
 	if err != nil {
