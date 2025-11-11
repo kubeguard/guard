@@ -44,7 +44,7 @@ func Should(cls Event) bool {
 	if log.lst == nil {
 		return false
 	}
-	if len(log.cls) == 0 {
+	if log.cls == nil || len(log.cls) == 0 {
 		return true
 	}
 	for _, c := range log.cls {

@@ -14,8 +14,7 @@ import (
 var RootResourceID = resource.RootResourceID
 
 // ResourceID represents a resource ID such as `/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/myRg`.
-// Don't create this type directly, use [ParseResourceID] instead. Fields are considered immutable and shouldn't be
-// modified after creation.
+// Don't create this type directly, use ParseResourceID instead.
 type ResourceID = resource.ResourceID
 
 // ParseResourceID parses a string to an instance of ResourceID

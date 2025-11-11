@@ -6,8 +6,6 @@
 
 package errorinfo
 
-import "errors"
-
 // NonRetriable represents a non-transient error.  This works in
 // conjunction with the retry policy, indicating that the error condition
 // is idempotent, so no retries will be attempted.
@@ -17,14 +15,10 @@ type NonRetriable interface {
 	NonRetriable()
 }
 
-// NonRetriableError ensures the specified error is [NonRetriable]. If
-// the error is already [NonRetriable], it returns that error unchanged.
-// Otherwise, it returns a new, [NonRetriable] error.
+// NonRetriableError marks the specified error as non-retriable.
+// This function takes an error as input and returns a new error that is marked as non-retriable.
 func NonRetriableError(err error) error {
-	if !errors.As(err, new(NonRetriable)) {
-		err = &nonRetriableError{err}
-	}
-	return err
+	return &nonRetriableError{err}
 }
 
 // nonRetriableError is a struct that embeds the error interface.
