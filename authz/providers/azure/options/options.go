@@ -54,6 +54,11 @@ type Options struct {
 	KubeConfigFile                         string
 	AuditSAR                               bool
 	FleetManagerResourceId                 string
+	// CheckAccess V2 API configuration
+	UseCheckAccessV2 bool
+	PDPEndpoint      string
+	// TODO: define API version for checkaccess v2
+	CheckAccessV2APIVersion string
 }
 
 func NewOptions() Options {
@@ -69,6 +74,9 @@ func NewOptions() Options {
 		ReconcileDiscoverResourcesFrequency:    5 * time.Minute,
 		UseManagedNamespaceResourceScopeFormat: false,
 		FleetManagerResourceId:                 "",
+		UseCheckAccessV2:                       false,
+		PDPEndpoint:                            "",
+		CheckAccessV2APIVersion:                "",
 	}
 }
 
@@ -89,6 +97,9 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&o.ReconcileDiscoverResourcesFrequency, "azure.discover-resources-frequency", o.ReconcileDiscoverResourcesFrequency, "Frequency at which discover resources should be reconciled. Default: 5m")
 	fs.BoolVar(&o.AuditSAR, "azure.audit-sar", o.AuditSAR, "enable audit of SAR requests in azure authz mode. Default: false")
 	fs.StringVar(&o.FleetManagerResourceId, "azure.fleet-resource-id", "", "azure kubernetes fleet manager resource id that the cluster has joined to (//subscriptions/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/fleets/<fleetname>)")
+	fs.BoolVar(&o.UseCheckAccessV2, "azure.use-checkaccess-v2", o.UseCheckAccessV2, "use Azure CheckAccess v2 API for RBAC authorization. Default: false")
+	fs.StringVar(&o.PDPEndpoint, "azure.pdp-endpoint", o.PDPEndpoint, "Azure RBAC PDP endpoint for CheckAccess v2 API (required when azure.use-checkaccess-v2 is enabled)")
+	fs.StringVar(&o.CheckAccessV2APIVersion, "azure.checkaccess-v2-api-version", o.CheckAccessV2APIVersion, "API version for CheckAccess v2 (optional)")
 }
 
 func (o *Options) Validate(azure azure.Options) []error {
@@ -136,6 +147,14 @@ func (o *Options) Validate(azure azure.Options) []error {
 		if err := ValidateFleetID(o.FleetManagerResourceId); err != nil {
 			errs = append(errs, err)
 		}
+	}
+
+	if o.UseCheckAccessV2 && o.PDPEndpoint == "" {
+		errs = append(errs, errors.New("azure.pdp-endpoint must be non-empty when azure.use-checkaccess-v2 is enabled"))
+	}
+
+	if o.PDPEndpoint != "" && !o.UseCheckAccessV2 {
+		errs = append(errs, errors.New("azure.use-checkaccess-v2 must be enabled when azure.pdp-endpoint is specified"))
 	}
 
 	return errs
