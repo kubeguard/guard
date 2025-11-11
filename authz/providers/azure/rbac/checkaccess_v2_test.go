@@ -14,6 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+/*
+This file contains unit tests for CheckAccess v2 API implementation.
+
+Test coverage includes:
+- Response conversion (all allowed, partial denial, complete denial, empty)
+- JWT token extraction from providers
+- Data action conversion from SubjectAccessReviewSpec
+- Batch processing with multiple batches (200 actions per batch)
+- Error handling (request creation errors, PDP server errors)
+- Primary authorization flow
+- Fallback scenarios (managed namespace, fleet)
+
+All tests use mock PDP client to avoid external dependencies.
+*/
+
 package rbac
 
 import (
