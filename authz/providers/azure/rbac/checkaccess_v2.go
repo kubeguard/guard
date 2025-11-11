@@ -69,12 +69,16 @@ func (a *AccessInfo) performCheckAccessV2(
 
 		if err != nil {
 			batchLog.Error(err, "CheckAccess v2 request failed", "durationSeconds", duration)
-			checkAccessFailed.WithLabelValues("v2_error").Inc()
-			checkAccessDuration.WithLabelValues("v2_error").Observe(duration)
+			// Use "500" to represent SDK errors, consistent with v1's internal server error pattern
+			checkAccessTotal.WithLabelValues("500").Inc()
+			checkAccessFailed.WithLabelValues("500").Inc()
+			checkAccessDuration.WithLabelValues("500").Observe(duration)
 			return nil, fmt.Errorf("CheckAccess v2 batch failed (batchIndex: %d, durationSeconds: %.2f): %w", i/batchSize, duration, err)
 		}
 
 		batchLog.V(5).Info("CheckAccess v2 request succeeded", "durationSeconds", duration, "decisionsCount", len(resp.Value))
+		// Use "200" to represent successful SDK calls, consistent with v1's HTTP 200 OK pattern
+		checkAccessTotal.WithLabelValues("200").Inc()
 		checkAccessSucceeded.Inc()
 		checkAccessDuration.WithLabelValues("200").Observe(duration)
 
