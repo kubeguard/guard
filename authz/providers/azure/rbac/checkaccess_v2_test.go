@@ -239,9 +239,10 @@ func TestPerformCheckAccessV2_BatchingMultipleBatches(t *testing.T) {
 	mockClient := &mockPDPClient{
 		createAuthzReqFunc: func(resourceId string, actions []string, jwtToken string) (*checkaccess.AuthorizationRequest, error) {
 			// First batch should have 200, second should have 50
-			if callCount == 0 {
+			switch callCount {
+			case 0:
 				assert.Equal(t, 200, len(actions))
-			} else if callCount == 1 {
+			case 1:
 				assert.Equal(t, 50, len(actions))
 			}
 			callCount++
@@ -337,10 +338,10 @@ func TestCheckAccessV2_PrimaryAllowed(t *testing.T) {
 	}
 
 	accessInfo := &AccessInfo{
-		pdpClient:                      mockClient,
-		tokenProvider:                  mockProvider,
-		clusterType:                    managedClusters,
-		azureResourceId:                "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ContainerService/managedClusters/cluster",
+		pdpClient:                       mockClient,
+		tokenProvider:                   mockProvider,
+		clusterType:                     managedClusters,
+		azureResourceId:                 "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ContainerService/managedClusters/cluster",
 		useNamespaceResourceScopeFormat: false,
 	}
 
