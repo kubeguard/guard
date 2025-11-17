@@ -21,9 +21,10 @@ import (
 	"fmt"
 	"time"
 
+	"go.kubeguard.dev/guard/auth/providers/azure/graph"
+
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 )
 
 // tokenProviderAdapter adapts a graph.TokenProvider to azcore.TokenCredential interface
