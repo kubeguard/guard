@@ -47,9 +47,10 @@ import (
 	"strings"
 	"time"
 
+	azureutils "go.kubeguard.dev/guard/util/azure"
+
 	checkaccess "github.com/Azure/checkaccess-v2-go-sdk/client"
 	"github.com/google/uuid"
-	azureutils "go.kubeguard.dev/guard/util/azure"
 	authzv1 "k8s.io/api/authorization/v1"
 	"k8s.io/klog/v2"
 )
@@ -69,6 +70,7 @@ func (a *AccessInfo) performCheckAccessV2(
 	var allDecisions []checkaccess.AuthorizationDecision
 
 	for i := 0; i < len(actions); i += batchSize {
+		batchIndex := i / batchSize
 		end := i + batchSize
 		if end > len(actions) {
 			end = len(actions)
@@ -76,7 +78,7 @@ func (a *AccessInfo) performCheckAccessV2(
 
 		batchActions := actions[i:end]
 		correlationID := uuid.New().String()
-		batchLog := log.WithValues("correlationID", correlationID, "batchIndex", i/batchSize, "actionsCount", len(batchActions))
+		batchLog := log.WithValues("correlationID", correlationID, "batchIndex", batchIndex, "actionsCount", len(batchActions))
 		batchCtx := klog.NewContext(ctx, batchLog)
 
 		batchLog.V(7).Info("Starting CheckAccess v2 batch")
@@ -85,7 +87,7 @@ func (a *AccessInfo) performCheckAccessV2(
 		// Create authorization request using v2 SDK helper
 		authzReq, err := a.pdpClient.CreateAuthorizationRequest(resourceId, batchActions, jwtToken)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create v2 authorization request (batchIndex: %d, resourceId: %s, actionsCount: %d): %w", i/batchSize, resourceId, len(batchActions), err)
+			return nil, fmt.Errorf("failed to create v2 authorization request (batchIndex: %d, resourceId: %s, actionsCount: %d): %w", batchIndex, resourceId, len(batchActions), err)
 		}
 
 		// Perform checkaccess call
@@ -99,7 +101,7 @@ func (a *AccessInfo) performCheckAccessV2(
 			checkAccessTotal.WithLabelValues(statusCode).Inc()
 			checkAccessFailed.WithLabelValues(statusCode).Inc()
 			checkAccessDuration.WithLabelValues(statusCode).Observe(duration)
-			return nil, fmt.Errorf("CheckAccess v2 batch failed (batchIndex: %d, durationSeconds: %.2f): %w", i/batchSize, duration, err)
+			return nil, fmt.Errorf("CheckAccess v2 batch failed (batchIndex: %d, durationSeconds: %.2f): %w", batchIndex, duration, err)
 		}
 
 		batchLog.V(5).Info("CheckAccess v2 request succeeded", "durationSeconds", duration, "decisionsCount", len(resp.Value))

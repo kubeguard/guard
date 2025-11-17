@@ -22,9 +22,10 @@ import (
 	"testing"
 	"time"
 
+	"go.kubeguard.dev/guard/auth/providers/azure/graph"
+
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/stretchr/testify/assert"
-	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 )
 
 // mockTokenProvider is a mock implementation of graph.TokenProvider for testing
