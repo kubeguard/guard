@@ -36,9 +36,10 @@ import (
 	"errors"
 	"testing"
 
+	"go.kubeguard.dev/guard/auth/providers/azure/graph"
+
 	checkaccess "github.com/Azure/checkaccess-v2-go-sdk/client"
 	"github.com/stretchr/testify/assert"
-	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 	authzv1 "k8s.io/api/authorization/v1"
 )
 
