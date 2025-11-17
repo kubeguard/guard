@@ -42,12 +42,14 @@ package rbac
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"path"
 	"strings"
 	"time"
 
 	checkaccess "github.com/Azure/checkaccess-v2-go-sdk/client"
 	"github.com/google/uuid"
+	azureutils "go.kubeguard.dev/guard/util/azure"
 	authzv1 "k8s.io/api/authorization/v1"
 	"k8s.io/klog/v2"
 )
@@ -83,7 +85,7 @@ func (a *AccessInfo) performCheckAccessV2(
 		// Create authorization request using v2 SDK helper
 		authzReq, err := a.pdpClient.CreateAuthorizationRequest(resourceId, batchActions, jwtToken)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create v2 authorization request (batchIndex: %d): %w", i/batchSize, err)
+			return nil, fmt.Errorf("failed to create v2 authorization request (batchIndex: %d, resourceId: %s, actionsCount: %d): %w", i/batchSize, resourceId, len(batchActions), err)
 		}
 
 		// Perform checkaccess call
@@ -92,18 +94,20 @@ func (a *AccessInfo) performCheckAccessV2(
 
 		if err != nil {
 			batchLog.Error(err, "CheckAccess v2 request failed", "durationSeconds", duration)
-			// Use "500" to represent SDK errors, consistent with v1's internal server error pattern
-			checkAccessTotal.WithLabelValues("500").Inc()
-			checkAccessFailed.WithLabelValues("500").Inc()
-			checkAccessDuration.WithLabelValues("500").Observe(duration)
+			// Use HTTP 500 to represent SDK errors, consistent with v1's internal server error pattern
+			statusCode := azureutils.ConvertIntToString(http.StatusInternalServerError)
+			checkAccessTotal.WithLabelValues(statusCode).Inc()
+			checkAccessFailed.WithLabelValues(statusCode).Inc()
+			checkAccessDuration.WithLabelValues(statusCode).Observe(duration)
 			return nil, fmt.Errorf("CheckAccess v2 batch failed (batchIndex: %d, durationSeconds: %.2f): %w", i/batchSize, duration, err)
 		}
 
 		batchLog.V(5).Info("CheckAccess v2 request succeeded", "durationSeconds", duration, "decisionsCount", len(resp.Value))
-		// Use "200" to represent successful SDK calls, consistent with v1's HTTP 200 OK pattern
-		checkAccessTotal.WithLabelValues("200").Inc()
+		// Use HTTP 200 to represent successful SDK calls, consistent with v1's HTTP 200 OK pattern
+		statusCode := azureutils.ConvertIntToString(http.StatusOK)
+		checkAccessTotal.WithLabelValues(statusCode).Inc()
 		checkAccessSucceeded.Inc()
-		checkAccessDuration.WithLabelValues("200").Observe(duration)
+		checkAccessDuration.WithLabelValues(statusCode).Observe(duration)
 
 		allDecisions = append(allDecisions, resp.Value...)
 	}
@@ -116,6 +120,16 @@ func (a *AccessInfo) performCheckAccessV2(
 // to Kubernetes SubjectAccessReviewStatus format.
 func convertV2ResponseToStatus(ctx context.Context, decisions []checkaccess.AuthorizationDecision) *authzv1.SubjectAccessReviewStatus {
 	log := klog.FromContext(ctx)
+
+	// Handle edge case: empty decisions (should not happen but defensive programming)
+	if len(decisions) == 0 {
+		log.V(5).Info("CheckAccess v2 returned no decisions, denying by default")
+		return &authzv1.SubjectAccessReviewStatus{
+			Allowed: false,
+			Reason:  AccessNotAllowedVerdict,
+			Denied:  true,
+		}
+	}
 
 	// Check if any decision is denied
 	allAllowed := true
