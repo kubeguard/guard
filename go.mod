@@ -32,7 +32,7 @@ require (
 	github.com/xanzy/go-gitlab v0.80.3
 	golang.org/x/exp v0.0.0-20230307190834-24139beb5833
 	golang.org/x/net v0.47.0
-	golang.org/x/oauth2 v0.10.0
+	golang.org/x/oauth2 v0.27.0
 	golang.org/x/sync v0.18.0
 	golang.org/x/text v0.31.0
 	gomodules.xyz/blobfs v0.1.11
@@ -55,8 +55,7 @@ require (
 
 require (
 	cloud.google.com/go v0.110.4 // indirect
-	cloud.google.com/go/compute v1.21.0 // indirect
-	cloud.google.com/go/compute/metadata v0.2.3 // indirect
+	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	cloud.google.com/go/iam v1.1.1 // indirect
 	cloud.google.com/go/storage v1.30.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.2 // indirect
