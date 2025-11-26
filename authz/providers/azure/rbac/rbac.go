@@ -75,14 +75,15 @@ type (
 
 // AccessInfo allows you to check user access from MS RBAC
 type AccessInfo struct {
-	// V1 API fields (legacy)
-	headers   http.Header
-	client    *http.Client
-	expiresAt time.Time
-	// These allow us to mock out the URL for testing
-	apiURL *url.URL
+	// V1 API fields - used only when useCheckAccessV2=false
+	// These fields handle direct HTTP calls to Azure RBAC API
+	headers   http.Header  // HTTP headers for v1 API requests
+	client    *http.Client // HTTP client for v1 API requests
+	expiresAt time.Time    // Token expiry time for v1 API
+	apiURL    *url.URL     // Azure RBAC API URL for v1
 
-	// V2 API fields
+	// V2 API fields - used only when useCheckAccessV2=true
+	// These fields use the official Azure checkaccess-v2-go-sdk
 	useCheckAccessV2     bool
 	pdpClient            checkaccess.RemotePDPClient
 	pdpScope             string
@@ -209,8 +210,10 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 	// Initialize CheckAccess V2 client if enabled
 	if opts.UseCheckAccessV2 {
 		// Create token credential adapter from existing token provider
-		scope := fmt.Sprintf("%s.default", authzInfo.ARMEndPoint)
-		tokenCred := newTokenProviderAdapter(tokenProvider, scope)
+		// Scope format follows Azure convention: endpoint + "/.default"
+		// Reference: https://github.com/Azure/ARO-RP/blob/master/pkg/util/azureclient/environments.go
+		scope := fmt.Sprintf("%s/.default", authzInfo.ARMEndPoint)
+		tokenCred := newTokenProviderAdapter(tokenProvider)
 
 		// Initialize PDP client
 		pdpClient, err := checkaccess.NewRemotePDPClient(

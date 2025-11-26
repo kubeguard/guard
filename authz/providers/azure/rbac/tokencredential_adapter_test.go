@@ -60,7 +60,7 @@ func TestTokenProviderAdapter_GetToken_Success(t *testing.T) {
 		},
 	}
 
-	adapter := newTokenProviderAdapter(mockProvider, "https://management.azure.com/.default")
+	adapter := newTokenProviderAdapter(mockProvider)
 
 	// Act
 	ctx := context.Background()
@@ -80,7 +80,7 @@ func TestTokenProviderAdapter_GetToken_ProviderError(t *testing.T) {
 		err:  expectedError,
 	}
 
-	adapter := newTokenProviderAdapter(mockProvider, "https://management.azure.com/.default")
+	adapter := newTokenProviderAdapter(mockProvider)
 
 	// Act
 	ctx := context.Background()
@@ -107,7 +107,7 @@ func TestTokenProviderAdapter_GetToken_ExpiryConversion(t *testing.T) {
 		},
 	}
 
-	adapter := newTokenProviderAdapter(mockProvider, "test-scope")
+	adapter := newTokenProviderAdapter(mockProvider)
 
 	// Act
 	ctx := context.Background()

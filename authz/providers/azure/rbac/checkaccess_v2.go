@@ -71,10 +71,7 @@ func (a *AccessInfo) performCheckAccessV2(
 
 	for i := 0; i < len(actions); i += batchSize {
 		batchIndex := i / batchSize
-		end := i + batchSize
-		if end > len(actions) {
-			end = len(actions)
-		}
+		end := min(i+batchSize, len(actions))
 
 		batchActions := actions[i:end]
 		correlationID := uuid.New().String()
@@ -209,13 +206,10 @@ func (a *AccessInfo) checkAccessV2(ctx context.Context, request *authzv1.Subject
 	}
 
 	// Determine resource ID (with or without namespace scope)
-	resourceId := a.azureResourceId
-	if request.ResourceAttributes != nil && request.ResourceAttributes.Namespace != "" {
-		if a.useNamespaceResourceScopeFormat {
-			resourceId = path.Join(a.azureResourceId, NamespaceResourceFormat, request.ResourceAttributes.Namespace)
-		} else {
-			resourceId = path.Join(a.azureResourceId, namespaces, request.ResourceAttributes.Namespace)
-		}
+	exist, namespaceString := getNameSpaceScope(request, a.useNamespaceResourceScopeFormat)
+	resourceId, err := buildResourceIDForV2(a.azureResourceId, exist, namespaceString)
+	if err != nil {
+		return nil, fmt.Errorf("error building primary resource ID: %w", err)
 	}
 
 	// Primary check
@@ -235,7 +229,10 @@ func (a *AccessInfo) checkAccessV2(ctx context.Context, request *authzv1.Subject
 		managedNamespaceExists {
 		log.V(7).Info("Falling back to managed namespace scope check (v2)", "namespacePath", managedNamespacePath)
 
-		managedResourceId := path.Join(a.azureResourceId, managedNamespacePath)
+		managedResourceId, err := buildResourceIDForV2(a.azureResourceId, true, managedNamespacePath)
+		if err != nil {
+			return nil, fmt.Errorf("error building managed namespace resource ID: %w", err)
+		}
 		status, err = a.performCheckAccessV2(ctx, managedResourceId, actions, jwtToken)
 		if err != nil {
 			return nil, fmt.Errorf("Managed namespace CheckAccess v2 failed: %w", err)
@@ -250,9 +247,9 @@ func (a *AccessInfo) checkAccessV2(ctx context.Context, request *authzv1.Subject
 	if a.fleetManagerResourceId != "" {
 		log.V(7).Info("Falling back to fleet manager scope check (v2)", "fleetResourceId", a.fleetManagerResourceId)
 
-		fleetResourceId := a.fleetManagerResourceId
-		if managedNamespaceExists {
-			fleetResourceId = path.Join(a.fleetManagerResourceId, managedNamespacePath)
+		fleetResourceId, err := buildResourceIDForV2(a.fleetManagerResourceId, managedNamespaceExists, managedNamespacePath)
+		if err != nil {
+			return nil, fmt.Errorf("error building fleet manager resource ID: %w", err)
 		}
 
 		// For fleet members, we may need different actions - reuse v1 logic if needed
@@ -285,4 +282,38 @@ func getDataActionsV2(ctx context.Context, request *authzv1.SubjectAccessReviewS
 	}
 
 	return actions, nil
+}
+
+// buildResourceIDForV2 constructs and validates a resource ID for CheckAccess v2 API.
+// This function provides defensive validation similar to buildCheckAccessURL for v1.
+//
+// The input parameters hold the following invariants:
+//
+// 1. baseResourceID: the parent Azure resource ID, must not be empty
+// 2. namespacePath: if provided, must not result in path traversal
+//
+// The returned resource ID holds the following invariants:
+//
+// 3. the resource ID must start with baseResourceID
+//
+// Any invariant violation will result in an error being returned.
+func buildResourceIDForV2(baseResourceID string, hasNamespace bool, namespacePath string) (string, error) {
+	// invariant 1
+	if baseResourceID == "" {
+		return "", fmt.Errorf("baseResourceID must not be empty")
+	}
+
+	resourceID := baseResourceID
+	if hasNamespace {
+		resourceID = path.Join(resourceID, namespacePath)
+	}
+
+	// invariant 3: ensure no path traversal occurred
+	normalizedBase := strings.TrimPrefix(baseResourceID, "/")
+	normalizedResult := strings.TrimPrefix(resourceID, "/")
+	if !strings.HasPrefix(normalizedResult, normalizedBase) {
+		return "", fmt.Errorf("invalid resource ID %q, expected to start with %q (possible path traversal)", resourceID, baseResourceID)
+	}
+
+	return resourceID, nil
 }

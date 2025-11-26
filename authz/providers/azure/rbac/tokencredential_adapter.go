@@ -31,15 +31,13 @@ import (
 // for use with the CheckAccess v2 SDK.
 type tokenProviderAdapter struct {
 	provider graph.TokenProvider
-	scope    string
 }
 
 // newTokenProviderAdapter creates a new adapter that wraps a graph.TokenProvider
 // and implements azcore.TokenCredential interface.
-func newTokenProviderAdapter(provider graph.TokenProvider, scope string) azcore.TokenCredential {
+func newTokenProviderAdapter(provider graph.TokenProvider) azcore.TokenCredential {
 	return &tokenProviderAdapter{
 		provider: provider,
-		scope:    scope,
 	}
 }
 
