@@ -17,6 +17,7 @@ limitations under the License.
 package google
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -28,7 +29,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
-	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	goauth "golang.org/x/oauth2/google"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
