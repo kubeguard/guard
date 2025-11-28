@@ -41,6 +41,9 @@ import (
 	authzv1 "k8s.io/api/authorization/v1"
 )
 
+// testUserOid is a valid UUID used consistently across v2 tests
+const testUserOid = "12345678-1234-1234-1234-123456789abc"
+
 // mockPDPClient is a mock implementation of checkaccess.RemotePDPClient for testing
 type mockPDPClient struct {
 	createAuthzReqFunc func(resourceId string, actions []string, jwtToken string) (*checkaccess.AuthorizationRequest, error)
@@ -139,11 +142,11 @@ func TestExtractUserIdentityV2_Success(t *testing.T) {
 	request := &authzv1.SubjectAccessReviewSpec{
 		User: "test@example.com",
 		Extra: map[string]authzv1.ExtraValue{
-			"oid": {"12345678-1234-1234-1234-123456789abc"},
+			"oid": {testUserOid},
 		},
 		Groups: []string{
 			"group-1234-5678-abcd-1234567890ab",    // invalid - not a proper UUID
-			"12345678-1234-1234-1234-123456789abc", // valid UUID
+			testUserOid,                            // valid UUID
 			"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", // valid UUID
 			"not-a-uuid",                           // invalid
 		},
@@ -152,10 +155,10 @@ func TestExtractUserIdentityV2_Success(t *testing.T) {
 	userOid, groups, err := extractUserIdentityV2(request)
 
 	assert.NoError(t, err)
-	assert.Equal(t, "12345678-1234-1234-1234-123456789abc", userOid)
+	assert.Equal(t, testUserOid, userOid)
 	// Only valid UUIDs should be in groups
 	assert.Len(t, groups, 2)
-	assert.Contains(t, groups, "12345678-1234-1234-1234-123456789abc")
+	assert.Contains(t, groups, testUserOid)
 	assert.Contains(t, groups, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
 }
 
@@ -189,7 +192,7 @@ func TestExtractUserIdentityV2_InvalidOid(t *testing.T) {
 func TestBuildAuthorizationRequestV2(t *testing.T) {
 	resourceId := "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ContainerService/managedClusters/cluster"
 	actions := []string{"action1", "action2"}
-	userOid := "12345678-1234-1234-1234-123456789abc"
+	userOid := testUserOid
 	groups := []string{"group1", "group2"}
 
 	authzReq := buildAuthorizationRequestV2(resourceId, actions, userOid, groups)
@@ -230,7 +233,7 @@ func TestPerformCheckAccessV2_Success(t *testing.T) {
 	mockClient := &mockPDPClient{
 		checkAccessFunc: func(ctx context.Context, authzReq checkaccess.AuthorizationRequest) (*checkaccess.AuthorizationDecisionResponse, error) {
 			// Verify the request was built correctly
-			assert.Equal(t, "12345678-1234-1234-1234-123456789abc", authzReq.Subject.Attributes.ObjectId)
+			assert.Equal(t, testUserOid, authzReq.Subject.Attributes.ObjectId)
 			assert.Equal(t, []string{"group1"}, authzReq.Subject.Attributes.Groups)
 
 			return &checkaccess.AuthorizationDecisionResponse{
@@ -254,7 +257,7 @@ func TestPerformCheckAccessV2_Success(t *testing.T) {
 
 	ctx := context.Background()
 	actions := []string{"Microsoft.ContainerService/managedClusters/pods/read"}
-	userOid := "12345678-1234-1234-1234-123456789abc"
+	userOid := testUserOid
 	groups := []string{"group1"}
 	status, err := accessInfo.performCheckAccessV2(ctx, "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ContainerService/managedClusters/cluster", actions, userOid, groups)
 
@@ -298,7 +301,7 @@ func TestPerformCheckAccessV2_BatchingMultipleBatches(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	userOid := "12345678-1234-1234-1234-123456789abc"
+	userOid := testUserOid
 	groups := []string{"group1"}
 	status, err := accessInfo.performCheckAccessV2(ctx, "/resource", actions, userOid, groups)
 
@@ -320,7 +323,7 @@ func TestPerformCheckAccessV2_CheckAccessError(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	userOid := "12345678-1234-1234-1234-123456789abc"
+	userOid := testUserOid
 	groups := []string{"group1"}
 	status, err := accessInfo.performCheckAccessV2(ctx, "/resource", []string{"action"}, userOid, groups)
 
@@ -334,7 +337,7 @@ func TestCheckAccessV2_PrimaryAllowed(t *testing.T) {
 	mockClient := &mockPDPClient{
 		checkAccessFunc: func(ctx context.Context, authzReq checkaccess.AuthorizationRequest) (*checkaccess.AuthorizationDecisionResponse, error) {
 			// Verify oid was extracted from request.Extra
-			assert.Equal(t, "12345678-1234-1234-1234-123456789abc", authzReq.Subject.Attributes.ObjectId)
+			assert.Equal(t, testUserOid, authzReq.Subject.Attributes.ObjectId)
 
 			return &checkaccess.AuthorizationDecisionResponse{
 				Value: []checkaccess.AuthorizationDecision{
@@ -359,7 +362,7 @@ func TestCheckAccessV2_PrimaryAllowed(t *testing.T) {
 	request := &authzv1.SubjectAccessReviewSpec{
 		User: "test@example.com",
 		Extra: map[string]authzv1.ExtraValue{
-			"oid": {"12345678-1234-1234-1234-123456789abc"},
+			"oid": {testUserOid},
 		},
 		Groups: []string{"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"},
 		ResourceAttributes: &authzv1.ResourceAttributes{
@@ -411,7 +414,7 @@ func TestCheckAccessV2_FallbackToManagedNamespace(t *testing.T) {
 	request := &authzv1.SubjectAccessReviewSpec{
 		User: "test@example.com",
 		Extra: map[string]authzv1.ExtraValue{
-			"oid": {"12345678-1234-1234-1234-123456789abc"},
+			"oid": {testUserOid},
 		},
 		Groups: []string{"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"},
 		ResourceAttributes: &authzv1.ResourceAttributes{
@@ -463,7 +466,7 @@ func TestCheckAccessV2_FallbackToFleet(t *testing.T) {
 	request := &authzv1.SubjectAccessReviewSpec{
 		User: "test@example.com",
 		Extra: map[string]authzv1.ExtraValue{
-			"oid": {"12345678-1234-1234-1234-123456789abc"},
+			"oid": {testUserOid},
 		},
 		Groups: []string{"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"},
 		ResourceAttributes: &authzv1.ResourceAttributes{
