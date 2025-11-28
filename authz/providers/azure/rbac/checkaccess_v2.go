@@ -48,6 +48,7 @@ import (
 	"time"
 
 	azureutils "go.kubeguard.dev/guard/util/azure"
+	errutils "go.kubeguard.dev/guard/util/error"
 
 	checkaccess "github.com/Azure/checkaccess-v2-go-sdk/client"
 	"github.com/google/uuid"
@@ -57,11 +58,17 @@ import (
 
 // performCheckAccessV2 performs authorization check using CheckAccess v2 SDK.
 // It handles batching (200 actions per request) and executes requests in parallel.
+//
+// Unlike the SDK's CreateAuthorizationRequest which extracts oid/groups from JWT claims,
+// this function accepts oid and groups directly from the SubjectAccessReviewSpec.
+// This is necessary for AKS scenario where the JWT token doesn't contain user claims.
+// Reference: https://github.com/kubeguard/guard/blob/master/authz/providers/azure/rbac/checkaccessreqhelper.go#L674-L684
 func (a *AccessInfo) performCheckAccessV2(
 	ctx context.Context,
 	resourceId string,
 	actions []string,
-	jwtToken string,
+	userOid string,
+	groups []string,
 ) (*authzv1.SubjectAccessReviewStatus, error) {
 	log := klog.FromContext(ctx)
 
@@ -81,14 +88,13 @@ func (a *AccessInfo) performCheckAccessV2(
 		batchLog.V(7).Info("Starting CheckAccess v2 batch")
 		start := time.Now()
 
-		// Create authorization request using v2 SDK helper
-		authzReq, err := a.pdpClient.CreateAuthorizationRequest(resourceId, batchActions, jwtToken)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create v2 authorization request (batchIndex: %d, resourceId: %s, actionsCount: %d): %w", batchIndex, resourceId, len(batchActions), err)
-		}
+		// Build authorization request manually instead of using SDK's CreateAuthorizationRequest.
+		// The SDK helper extracts oid/groups from JWT claims, but for AKS the user identity
+		// comes from SubjectAccessReviewSpec.Extra["oid"] and SubjectAccessReviewSpec.Groups.
+		authzReq := buildAuthorizationRequestV2(resourceId, batchActions, userOid, groups)
 
 		// Perform checkaccess call
-		resp, err := a.pdpClient.CheckAccess(batchCtx, *authzReq)
+		resp, err := a.pdpClient.CheckAccess(batchCtx, authzReq)
 		duration := time.Since(start).Seconds()
 
 		if err != nil {
@@ -113,6 +119,35 @@ func (a *AccessInfo) performCheckAccessV2(
 
 	// Convert v2 response to v1 status
 	return convertV2ResponseToStatus(ctx, allDecisions), nil
+}
+
+// buildAuthorizationRequestV2 constructs a CheckAccess v2 AuthorizationRequest.
+// This replaces the SDK's CreateAuthorizationRequest which expects JWT claims.
+// For AKS/Guard, the user identity (oid, groups) comes from SubjectAccessReviewSpec.
+func buildAuthorizationRequestV2(resourceId string, actions []string, userOid string, groups []string) checkaccess.AuthorizationRequest {
+	// Build action info list
+	actionInfos := make([]checkaccess.ActionInfo, len(actions))
+	for i, action := range actions {
+		actionInfos[i] = checkaccess.ActionInfo{Id: action}
+	}
+
+	// Build subject attributes with oid and groups
+	subjectAttrs := checkaccess.SubjectAttributes{
+		ObjectId: userOid,
+	}
+	if len(groups) > 0 {
+		subjectAttrs.Groups = groups
+	}
+
+	return checkaccess.AuthorizationRequest{
+		Subject: checkaccess.SubjectInfo{
+			Attributes: subjectAttrs,
+		},
+		Actions: actionInfos,
+		Resource: checkaccess.ResourceInfo{
+			Id: resourceId,
+		},
+	}
 }
 
 // convertV2ResponseToStatus converts CheckAccess v2 AuthorizationDecision responses
@@ -176,16 +211,33 @@ func convertV2ResponseToStatus(ctx context.Context, decisions []checkaccess.Auth
 	}
 }
 
-// getJWTTokenFromProvider extracts the JWT token from the token provider.
-// This is needed because v2 SDK's CreateAuthorizationRequest requires the raw JWT.
-func (a *AccessInfo) getJWTTokenFromProvider(ctx context.Context) (string, error) {
-	// Acquire token from provider
-	resp, err := a.tokenProvider.Acquire(ctx, "")
-	if err != nil {
-		return "", fmt.Errorf("failed to acquire JWT token from provider %s: %w", a.tokenProvider.Name(), err)
+// extractUserIdentityV2 extracts user oid and groups from SubjectAccessReviewSpec.
+// This mirrors the v1 logic in prepareCheckAccessRequestBody for AKS scenario where
+// user identity comes from request.Extra["oid"] and request.Groups, not from JWT claims.
+// Reference: https://github.com/kubeguard/guard/blob/master/authz/providers/azure/rbac/checkaccessreqhelper.go#L674-L684
+func extractUserIdentityV2(request *authzv1.SubjectAccessReviewSpec) (userOid string, groups []string, err error) {
+	// Extract oid from request.Extra (same logic as v1)
+	if oid, ok := request.Extra["oid"]; ok {
+		val := oid.String()
+		// Remove surrounding brackets from the string representation
+		userOid = val[1 : len(val)-1]
+		if !isValidUUID(userOid) {
+			return "", nil, errutils.WithCode(
+				fmt.Errorf("oid info sent from authentication module is not valid (oid: %s)", userOid),
+				http.StatusBadRequest,
+			)
+		}
+	} else {
+		return "", nil, errutils.WithCode(
+			fmt.Errorf("oid info not sent from authentication module"),
+			http.StatusBadRequest,
+		)
 	}
 
-	return resp.Token, nil
+	// Extract valid security groups (same logic as v1)
+	groups = getValidSecurityGroups(request.Groups)
+
+	return userOid, groups, nil
 }
 
 // checkAccessV2 is the main entry point for v2 API authorization checks.
@@ -193,11 +245,14 @@ func (a *AccessInfo) getJWTTokenFromProvider(ctx context.Context) (string, error
 func (a *AccessInfo) checkAccessV2(ctx context.Context, request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
 	log := klog.FromContext(ctx)
 
-	// Get JWT token for v2 SDK
-	jwtToken, err := a.getJWTTokenFromProvider(ctx)
+	// Extract user identity from request (oid and groups)
+	// For AKS, user identity comes from SubjectAccessReviewSpec, not JWT claims
+	userOid, groups, err := extractUserIdentityV2(request)
 	if err != nil {
 		return nil, err
 	}
+
+	log.V(7).Info("Extracted user identity for v2", "userOid", userOid, "groupsCount", len(groups))
 
 	// Prepare actions list from request (same logic as v1 but get action IDs)
 	actions, err := getDataActionsV2(ctx, request, a.clusterType, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
@@ -214,7 +269,7 @@ func (a *AccessInfo) checkAccessV2(ctx context.Context, request *authzv1.Subject
 
 	// Primary check
 	log.V(5).Info("Performing primary CheckAccess v2", "resourceId", resourceId, "actionsCount", len(actions))
-	status, err := a.performCheckAccessV2(ctx, resourceId, actions, jwtToken)
+	status, err := a.performCheckAccessV2(ctx, resourceId, actions, userOid, groups)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +288,7 @@ func (a *AccessInfo) checkAccessV2(ctx context.Context, request *authzv1.Subject
 		if err != nil {
 			return nil, fmt.Errorf("error building managed namespace resource ID: %w", err)
 		}
-		status, err = a.performCheckAccessV2(ctx, managedResourceId, actions, jwtToken)
+		status, err = a.performCheckAccessV2(ctx, managedResourceId, actions, userOid, groups)
 		if err != nil {
 			return nil, fmt.Errorf("Managed namespace CheckAccess v2 failed: %w", err)
 		}
@@ -253,7 +308,7 @@ func (a *AccessInfo) checkAccessV2(ctx context.Context, request *authzv1.Subject
 		}
 
 		// For fleet members, we may need different actions - reuse v1 logic if needed
-		status, err = a.performCheckAccessV2(ctx, fleetResourceId, actions, jwtToken)
+		status, err = a.performCheckAccessV2(ctx, fleetResourceId, actions, userOid, groups)
 		if err != nil {
 			return nil, fmt.Errorf("Fleet manager CheckAccess v2 failed: %w", err)
 		}
@@ -287,18 +342,13 @@ func getDataActionsV2(ctx context.Context, request *authzv1.SubjectAccessReviewS
 // buildResourceIDForV2 constructs and validates a resource ID for CheckAccess v2 API.
 // This function provides defensive validation similar to buildCheckAccessURL for v1.
 //
-// The input parameters hold the following invariants:
-//
-// 1. baseResourceID: the parent Azure resource ID, must not be empty
-// 2. namespacePath: if provided, must not result in path traversal
-//
-// The returned resource ID holds the following invariants:
-//
-// 3. the resource ID must start with baseResourceID
+// Invariants:
+//  1. baseResourceID must not be empty
+//  2. the resulting resource ID must start with baseResourceID (prevents path traversal)
 //
 // Any invariant violation will result in an error being returned.
 func buildResourceIDForV2(baseResourceID string, hasNamespace bool, namespacePath string) (string, error) {
-	// invariant 1
+	// invariant 1: baseResourceID must not be empty
 	if baseResourceID == "" {
 		return "", fmt.Errorf("baseResourceID must not be empty")
 	}
@@ -308,7 +358,7 @@ func buildResourceIDForV2(baseResourceID string, hasNamespace bool, namespacePat
 		resourceID = path.Join(resourceID, namespacePath)
 	}
 
-	// invariant 3: ensure no path traversal occurred
+	// invariant 2: ensure no path traversal occurred
 	normalizedBase := strings.TrimPrefix(baseResourceID, "/")
 	normalizedResult := strings.TrimPrefix(resourceID, "/")
 	if !strings.HasPrefix(normalizedResult, normalizedBase) {

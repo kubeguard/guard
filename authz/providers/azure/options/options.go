@@ -57,6 +57,10 @@ type Options struct {
 	// CheckAccess V2 API configuration
 	UseCheckAccessV2 bool
 	PDPEndpoint      string
+	// PDPScope is the OAuth scope for CheckAccess v2 API authentication.
+	// For public cloud: https://authorization.azure.net/.default
+	// For US Government: https://authorization.azure.us/.default
+	PDPScope string
 	// TODO: define API version for checkaccess v2
 	CheckAccessV2APIVersion string
 }
@@ -76,6 +80,7 @@ func NewOptions() Options {
 		FleetManagerResourceId:                 "",
 		UseCheckAccessV2:                       false,
 		PDPEndpoint:                            "",
+		PDPScope:                               "",
 		CheckAccessV2APIVersion:                "",
 	}
 }
@@ -99,6 +104,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.FleetManagerResourceId, "azure.fleet-resource-id", "", "azure kubernetes fleet manager resource id that the cluster has joined to (//subscriptions/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/fleets/<fleetname>)")
 	fs.BoolVar(&o.UseCheckAccessV2, "azure.use-checkaccess-v2", o.UseCheckAccessV2, "use Azure CheckAccess v2 API for RBAC authorization. Default: false")
 	fs.StringVar(&o.PDPEndpoint, "azure.pdp-endpoint", o.PDPEndpoint, "Azure RBAC PDP endpoint for CheckAccess v2 API (required when azure.use-checkaccess-v2 is enabled)")
+	fs.StringVar(&o.PDPScope, "azure.pdp-scope", o.PDPScope, "OAuth scope for CheckAccess v2 API authentication (e.g., https://authorization.azure.net/.default for public cloud)")
 	fs.StringVar(&o.CheckAccessV2APIVersion, "azure.checkaccess-v2-api-version", o.CheckAccessV2APIVersion, "API version for CheckAccess v2 (optional)")
 }
 
@@ -153,8 +159,16 @@ func (o *Options) Validate(azure azure.Options) []error {
 		errs = append(errs, errors.New("azure.pdp-endpoint must be non-empty when azure.use-checkaccess-v2 is enabled"))
 	}
 
+	if o.UseCheckAccessV2 && o.PDPScope == "" {
+		errs = append(errs, errors.New("azure.pdp-scope must be non-empty when azure.use-checkaccess-v2 is enabled (e.g., https://authorization.azure.net/.default)"))
+	}
+
 	if o.PDPEndpoint != "" && !o.UseCheckAccessV2 {
 		errs = append(errs, errors.New("azure.use-checkaccess-v2 must be enabled when azure.pdp-endpoint is specified"))
+	}
+
+	if o.PDPScope != "" && !o.UseCheckAccessV2 {
+		errs = append(errs, errors.New("azure.use-checkaccess-v2 must be enabled when azure.pdp-scope is specified"))
 	}
 
 	return errs

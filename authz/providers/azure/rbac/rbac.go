@@ -210,24 +210,30 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 	// Initialize CheckAccess V2 client if enabled
 	if opts.UseCheckAccessV2 {
 		// Create token credential adapter from existing token provider
-		// Scope format follows Azure convention: endpoint + "/.default"
-		// Reference: https://github.com/Azure/ARO-RP/blob/master/pkg/util/azureclient/environments.go
-		scope := fmt.Sprintf("%s/.default", authzInfo.ARMEndPoint)
 		tokenCred := newTokenProviderAdapter(tokenProvider)
 
-		// Initialize PDP client
+		// Configure azcore.ClientOptions to retain HTTP client customization capability
+		// This allows custom user agent and other HTTP settings similar to v1
+		clientOpts := &azcore.ClientOptions{
+			Transport: httpclient.DefaultHTTPClient,
+		}
+
+		// Initialize PDP client with user-provided scope
+		// Scope must be provided via --azure.pdp-scope flag
+		// Example: https://authorization.azure.net/.default for public cloud
+		// Reference: https://github.com/Azure/ARO-RP/blob/master/pkg/util/azureclient/environments.go
 		pdpClient, err := checkaccess.NewRemotePDPClient(
 			opts.PDPEndpoint,
-			scope,
+			opts.PDPScope,
 			tokenCred,
-			&azcore.ClientOptions{},
+			clientOpts,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create CheckAccess v2 client: %w", err)
 		}
 
 		u.pdpClient = pdpClient
-		u.pdpScope = scope
+		u.pdpScope = opts.PDPScope
 	}
 
 	return u, nil

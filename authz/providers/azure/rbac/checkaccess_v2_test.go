@@ -36,8 +36,6 @@ import (
 	"errors"
 	"testing"
 
-	"go.kubeguard.dev/guard/auth/providers/azure/graph"
-
 	checkaccess "github.com/Azure/checkaccess-v2-go-sdk/client"
 	"github.com/stretchr/testify/assert"
 	authzv1 "k8s.io/api/authorization/v1"
@@ -137,43 +135,77 @@ func TestConvertV2ResponseToStatus_EmptyDecisions(t *testing.T) {
 	assert.Equal(t, AccessNotAllowedVerdict, status.Reason)
 }
 
-func TestGetJWTTokenFromProvider_Success(t *testing.T) {
-	mockProvider := &mockTokenProvider{
-		name: "test-provider",
-		response: graph.AuthResponse{
-			Token:     "test-jwt-token",
-			ExpiresOn: 1234567890,
+func TestExtractUserIdentityV2_Success(t *testing.T) {
+	request := &authzv1.SubjectAccessReviewSpec{
+		User: "test@example.com",
+		Extra: map[string]authzv1.ExtraValue{
+			"oid": {"12345678-1234-1234-1234-123456789abc"},
+		},
+		Groups: []string{
+			"group-1234-5678-abcd-1234567890ab",    // invalid - not a proper UUID
+			"12345678-1234-1234-1234-123456789abc", // valid UUID
+			"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", // valid UUID
+			"not-a-uuid",                           // invalid
 		},
 	}
 
-	accessInfo := &AccessInfo{
-		tokenProvider: mockProvider,
-	}
-
-	ctx := context.Background()
-	token, err := accessInfo.getJWTTokenFromProvider(ctx)
+	userOid, groups, err := extractUserIdentityV2(request)
 
 	assert.NoError(t, err)
-	assert.Equal(t, "test-jwt-token", token)
+	assert.Equal(t, "12345678-1234-1234-1234-123456789abc", userOid)
+	// Only valid UUIDs should be in groups
+	assert.Len(t, groups, 2)
+	assert.Contains(t, groups, "12345678-1234-1234-1234-123456789abc")
+	assert.Contains(t, groups, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
 }
 
-func TestGetJWTTokenFromProvider_Error(t *testing.T) {
-	mockProvider := &mockTokenProvider{
-		name: "test-provider",
-		err:  errors.New("token acquisition failed"),
+func TestExtractUserIdentityV2_MissingOid(t *testing.T) {
+	request := &authzv1.SubjectAccessReviewSpec{
+		User:   "test@example.com",
+		Extra:  map[string]authzv1.ExtraValue{},
+		Groups: []string{},
 	}
 
-	accessInfo := &AccessInfo{
-		tokenProvider: mockProvider,
-	}
-
-	ctx := context.Background()
-	token, err := accessInfo.getJWTTokenFromProvider(ctx)
+	_, _, err := extractUserIdentityV2(request)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to acquire JWT token")
-	assert.Contains(t, err.Error(), "test-provider")
-	assert.Empty(t, token)
+	assert.Contains(t, err.Error(), "oid info not sent from authentication module")
+}
+
+func TestExtractUserIdentityV2_InvalidOid(t *testing.T) {
+	request := &authzv1.SubjectAccessReviewSpec{
+		User: "test@example.com",
+		Extra: map[string]authzv1.ExtraValue{
+			"oid": {"not-a-valid-uuid"},
+		},
+	}
+
+	_, _, err := extractUserIdentityV2(request)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "oid info sent from authentication module is not valid")
+}
+
+func TestBuildAuthorizationRequestV2(t *testing.T) {
+	resourceId := "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ContainerService/managedClusters/cluster"
+	actions := []string{"action1", "action2"}
+	userOid := "12345678-1234-1234-1234-123456789abc"
+	groups := []string{"group1", "group2"}
+
+	authzReq := buildAuthorizationRequestV2(resourceId, actions, userOid, groups)
+
+	assert.Equal(t, resourceId, authzReq.Resource.Id)
+	assert.Equal(t, userOid, authzReq.Subject.Attributes.ObjectId)
+	assert.Equal(t, groups, authzReq.Subject.Attributes.Groups)
+	assert.Len(t, authzReq.Actions, 2)
+	assert.Equal(t, "action1", authzReq.Actions[0].Id)
+	assert.Equal(t, "action2", authzReq.Actions[1].Id)
+}
+
+func TestBuildAuthorizationRequestV2_EmptyGroups(t *testing.T) {
+	authzReq := buildAuthorizationRequestV2("/resource", []string{"action"}, "oid", nil)
+
+	assert.Nil(t, authzReq.Subject.Attributes.Groups)
 }
 
 func TestGetDataActionsV2_Success(t *testing.T) {
@@ -196,10 +228,11 @@ func TestGetDataActionsV2_Success(t *testing.T) {
 
 func TestPerformCheckAccessV2_Success(t *testing.T) {
 	mockClient := &mockPDPClient{
-		createAuthzReqFunc: func(resourceId string, actions []string, jwtToken string) (*checkaccess.AuthorizationRequest, error) {
-			return &checkaccess.AuthorizationRequest{}, nil
-		},
 		checkAccessFunc: func(ctx context.Context, authzReq checkaccess.AuthorizationRequest) (*checkaccess.AuthorizationDecisionResponse, error) {
+			// Verify the request was built correctly
+			assert.Equal(t, "12345678-1234-1234-1234-123456789abc", authzReq.Subject.Attributes.ObjectId)
+			assert.Equal(t, []string{"group1"}, authzReq.Subject.Attributes.Groups)
+
 			return &checkaccess.AuthorizationDecisionResponse{
 				Value: []checkaccess.AuthorizationDecision{
 					{
@@ -221,7 +254,9 @@ func TestPerformCheckAccessV2_Success(t *testing.T) {
 
 	ctx := context.Background()
 	actions := []string{"Microsoft.ContainerService/managedClusters/pods/read"}
-	status, err := accessInfo.performCheckAccessV2(ctx, "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ContainerService/managedClusters/cluster", actions, "jwt-token")
+	userOid := "12345678-1234-1234-1234-123456789abc"
+	groups := []string{"group1"}
+	status, err := accessInfo.performCheckAccessV2(ctx, "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ContainerService/managedClusters/cluster", actions, userOid, groups)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, status)
@@ -238,18 +273,15 @@ func TestPerformCheckAccessV2_BatchingMultipleBatches(t *testing.T) {
 
 	callCount := 0
 	mockClient := &mockPDPClient{
-		createAuthzReqFunc: func(resourceId string, actions []string, jwtToken string) (*checkaccess.AuthorizationRequest, error) {
-			// First batch should have 200, second should have 50
+		checkAccessFunc: func(ctx context.Context, authzReq checkaccess.AuthorizationRequest) (*checkaccess.AuthorizationDecisionResponse, error) {
+			// First batch should have 200 actions, second should have 50
 			switch callCount {
 			case 0:
-				assert.Equal(t, 200, len(actions))
+				assert.Equal(t, 200, len(authzReq.Actions))
 			case 1:
-				assert.Equal(t, 50, len(actions))
+				assert.Equal(t, 50, len(authzReq.Actions))
 			}
 			callCount++
-			return &checkaccess.AuthorizationRequest{}, nil
-		},
-		checkAccessFunc: func(ctx context.Context, authzReq checkaccess.AuthorizationRequest) (*checkaccess.AuthorizationDecisionResponse, error) {
 			// Return allowed for all
 			decisions := make([]checkaccess.AuthorizationDecision, 1)
 			decisions[0] = checkaccess.AuthorizationDecision{
@@ -266,7 +298,9 @@ func TestPerformCheckAccessV2_BatchingMultipleBatches(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	status, err := accessInfo.performCheckAccessV2(ctx, "/resource", actions, "jwt")
+	userOid := "12345678-1234-1234-1234-123456789abc"
+	groups := []string{"group1"}
+	status, err := accessInfo.performCheckAccessV2(ctx, "/resource", actions, userOid, groups)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, status)
@@ -274,30 +308,8 @@ func TestPerformCheckAccessV2_BatchingMultipleBatches(t *testing.T) {
 	assert.True(t, status.Allowed)
 }
 
-func TestPerformCheckAccessV2_CreateRequestError(t *testing.T) {
-	mockClient := &mockPDPClient{
-		createAuthzReqFunc: func(resourceId string, actions []string, jwtToken string) (*checkaccess.AuthorizationRequest, error) {
-			return nil, errors.New("failed to create request")
-		},
-	}
-
-	accessInfo := &AccessInfo{
-		pdpClient: mockClient,
-	}
-
-	ctx := context.Background()
-	status, err := accessInfo.performCheckAccessV2(ctx, "/resource", []string{"action"}, "jwt")
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to create v2 authorization request")
-	assert.Nil(t, status)
-}
-
 func TestPerformCheckAccessV2_CheckAccessError(t *testing.T) {
 	mockClient := &mockPDPClient{
-		createAuthzReqFunc: func(resourceId string, actions []string, jwtToken string) (*checkaccess.AuthorizationRequest, error) {
-			return &checkaccess.AuthorizationRequest{}, nil
-		},
 		checkAccessFunc: func(ctx context.Context, authzReq checkaccess.AuthorizationRequest) (*checkaccess.AuthorizationDecisionResponse, error) {
 			return nil, errors.New("PDP server error")
 		},
@@ -308,7 +320,9 @@ func TestPerformCheckAccessV2_CheckAccessError(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	status, err := accessInfo.performCheckAccessV2(ctx, "/resource", []string{"action"}, "jwt")
+	userOid := "12345678-1234-1234-1234-123456789abc"
+	groups := []string{"group1"}
+	status, err := accessInfo.performCheckAccessV2(ctx, "/resource", []string{"action"}, userOid, groups)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "CheckAccess v2 batch failed")
@@ -318,10 +332,10 @@ func TestPerformCheckAccessV2_CheckAccessError(t *testing.T) {
 
 func TestCheckAccessV2_PrimaryAllowed(t *testing.T) {
 	mockClient := &mockPDPClient{
-		createAuthzReqFunc: func(resourceId string, actions []string, jwtToken string) (*checkaccess.AuthorizationRequest, error) {
-			return &checkaccess.AuthorizationRequest{}, nil
-		},
 		checkAccessFunc: func(ctx context.Context, authzReq checkaccess.AuthorizationRequest) (*checkaccess.AuthorizationDecisionResponse, error) {
+			// Verify oid was extracted from request.Extra
+			assert.Equal(t, "12345678-1234-1234-1234-123456789abc", authzReq.Subject.Attributes.ObjectId)
+
 			return &checkaccess.AuthorizationDecisionResponse{
 				Value: []checkaccess.AuthorizationDecision{
 					{
@@ -334,13 +348,8 @@ func TestCheckAccessV2_PrimaryAllowed(t *testing.T) {
 		},
 	}
 
-	mockProvider := &mockTokenProvider{
-		response: graph.AuthResponse{Token: "jwt-token"},
-	}
-
 	accessInfo := &AccessInfo{
 		pdpClient:                       mockClient,
-		tokenProvider:                   mockProvider,
 		clusterType:                     managedClusters,
 		azureResourceId:                 "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ContainerService/managedClusters/cluster",
 		useNamespaceResourceScopeFormat: false,
@@ -349,6 +358,10 @@ func TestCheckAccessV2_PrimaryAllowed(t *testing.T) {
 	ctx := context.Background()
 	request := &authzv1.SubjectAccessReviewSpec{
 		User: "test@example.com",
+		Extra: map[string]authzv1.ExtraValue{
+			"oid": {"12345678-1234-1234-1234-123456789abc"},
+		},
+		Groups: []string{"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"},
 		ResourceAttributes: &authzv1.ResourceAttributes{
 			Namespace: "default",
 			Verb:      "get",
@@ -367,9 +380,6 @@ func TestCheckAccessV2_PrimaryAllowed(t *testing.T) {
 func TestCheckAccessV2_FallbackToManagedNamespace(t *testing.T) {
 	callCount := 0
 	mockClient := &mockPDPClient{
-		createAuthzReqFunc: func(resourceId string, actions []string, jwtToken string) (*checkaccess.AuthorizationRequest, error) {
-			return &checkaccess.AuthorizationRequest{}, nil
-		},
 		checkAccessFunc: func(ctx context.Context, authzReq checkaccess.AuthorizationRequest) (*checkaccess.AuthorizationDecisionResponse, error) {
 			callCount++
 			decision := checkaccess.NotAllowed
@@ -389,13 +399,8 @@ func TestCheckAccessV2_FallbackToManagedNamespace(t *testing.T) {
 		},
 	}
 
-	mockProvider := &mockTokenProvider{
-		response: graph.AuthResponse{Token: "jwt-token"},
-	}
-
 	accessInfo := &AccessInfo{
 		pdpClient:                              mockClient,
-		tokenProvider:                          mockProvider,
 		clusterType:                            managedClusters,
 		azureResourceId:                        "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ContainerService/managedClusters/cluster",
 		useManagedNamespaceResourceScopeFormat: true,
@@ -405,6 +410,10 @@ func TestCheckAccessV2_FallbackToManagedNamespace(t *testing.T) {
 	ctx := context.Background()
 	request := &authzv1.SubjectAccessReviewSpec{
 		User: "test@example.com",
+		Extra: map[string]authzv1.ExtraValue{
+			"oid": {"12345678-1234-1234-1234-123456789abc"},
+		},
+		Groups: []string{"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"},
 		ResourceAttributes: &authzv1.ResourceAttributes{
 			Namespace: "default",
 			Verb:      "get",
@@ -423,9 +432,6 @@ func TestCheckAccessV2_FallbackToManagedNamespace(t *testing.T) {
 func TestCheckAccessV2_FallbackToFleet(t *testing.T) {
 	callCount := 0
 	mockClient := &mockPDPClient{
-		createAuthzReqFunc: func(resourceId string, actions []string, jwtToken string) (*checkaccess.AuthorizationRequest, error) {
-			return &checkaccess.AuthorizationRequest{}, nil
-		},
 		checkAccessFunc: func(ctx context.Context, authzReq checkaccess.AuthorizationRequest) (*checkaccess.AuthorizationDecisionResponse, error) {
 			callCount++
 			decision := checkaccess.NotAllowed
@@ -445,13 +451,8 @@ func TestCheckAccessV2_FallbackToFleet(t *testing.T) {
 		},
 	}
 
-	mockProvider := &mockTokenProvider{
-		response: graph.AuthResponse{Token: "jwt-token"},
-	}
-
 	accessInfo := &AccessInfo{
 		pdpClient:                              mockClient,
-		tokenProvider:                          mockProvider,
 		clusterType:                            managedClusters,
 		azureResourceId:                        "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ContainerService/managedClusters/cluster",
 		useManagedNamespaceResourceScopeFormat: true,
@@ -461,6 +462,10 @@ func TestCheckAccessV2_FallbackToFleet(t *testing.T) {
 	ctx := context.Background()
 	request := &authzv1.SubjectAccessReviewSpec{
 		User: "test@example.com",
+		Extra: map[string]authzv1.ExtraValue{
+			"oid": {"12345678-1234-1234-1234-123456789abc"},
+		},
+		Groups: []string{"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"},
 		ResourceAttributes: &authzv1.ResourceAttributes{
 			Namespace: "default",
 			Verb:      "get",
