@@ -79,7 +79,7 @@ func TestHTTPClientInitialization(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Set environment variables
 			for key, value := range tt.envVars {
-				os.Setenv(key, value)
+				_ = os.Setenv(key, value)
 			}
 
 			// Reinitialize the HTTP client
@@ -96,7 +96,7 @@ func TestHTTPClientInitialization(t *testing.T) {
 
 			// Unset environment variables
 			for key := range tt.envVars {
-				os.Unsetenv(key)
+				_ = os.Unsetenv(key)
 			}
 		})
 	}

@@ -42,7 +42,9 @@ func IssueToken() error {
 	if err != nil {
 		return err
 	}
-	defer listener.Close()
+	defer func() {
+		_ = listener.Close()
+	}()
 	klog.Infoln("Oauth2 callback receiver listening on", listener.Addr())
 
 	// https://developers.google.com/identity/protocols/OpenIDConnect#validatinganidtoken

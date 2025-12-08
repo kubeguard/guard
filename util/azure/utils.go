@@ -487,7 +487,9 @@ func fetchDataActionsList(ctx context.Context) ([]Operation, error) {
 		counterGetOperationsResources.WithLabelValues(ConvertIntToString(http.StatusInternalServerError)).Inc()
 		return nil, fmt.Errorf("Failed to send request for Get Operations call.: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {

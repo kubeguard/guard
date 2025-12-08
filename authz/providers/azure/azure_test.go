@@ -126,7 +126,9 @@ func TestCheck(t *testing.T) {
 
 		srv, client, store := getServerAndClient(t, loginResp, validBody, http.StatusOK, 1*time.Second)
 		defer srv.Close()
-		defer store.Close()
+		defer func() {
+			_ = store.Close()
+		}()
 
 		request := &authzv1.SubjectAccessReviewSpec{
 			User: "beta@bing.com",
@@ -151,7 +153,9 @@ func TestCheck(t *testing.T) {
 		validBody := `""`
 		srv, client, store := getServerAndClient(t, loginResp, validBody, http.StatusInternalServerError, 1*time.Second)
 		defer srv.Close()
-		defer store.Close()
+		defer func() {
+			_ = store.Close()
+		}()
 
 		request := &authzv1.SubjectAccessReviewSpec{
 			User: "beta@bing.com",
@@ -176,7 +180,9 @@ func TestCheck(t *testing.T) {
 		validBody := `""`
 		srv, client, store := getServerAndClient(t, loginResp, validBody, http.StatusInternalServerError, 25*time.Second)
 		defer srv.Close()
-		defer store.Close()
+		defer func() {
+			_ = store.Close()
+		}()
 
 		request := &authzv1.SubjectAccessReviewSpec{
 			User: "beta@bing.com",
