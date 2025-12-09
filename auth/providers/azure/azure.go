@@ -195,7 +195,9 @@ func getMetadata(ctx context.Context, aadEndpoint, tenantID string, retryCount i
 	if err != nil {
 		return nil, err
 	}
-	defer response.Body.Close()
+	defer func() {
+		_ = response.Body.Close()
+	}()
 
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("get metadata url failed with status code: %d", response.StatusCode)

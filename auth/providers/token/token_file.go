@@ -89,7 +89,9 @@ func LoadTokenFile(file string) (map[string]authv1.UserInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer csvFile.Close()
+	defer func() {
+		_ = csvFile.Close()
+	}()
 
 	reader := csv.NewReader(bufio.NewReader(csvFile))
 	reader.FieldsPerRecord = -1

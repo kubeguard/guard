@@ -38,6 +38,8 @@ import (
 	errutils "go.kubeguard.dev/guard/util/error"
 	"go.kubeguard.dev/guard/util/httpclient"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	checkaccess "github.com/Azure/checkaccess-v2-go-sdk/client"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -73,11 +75,18 @@ type (
 
 // AccessInfo allows you to check user access from MS RBAC
 type AccessInfo struct {
-	headers   http.Header
-	client    *http.Client
-	expiresAt time.Time
-	// These allow us to mock out the URL for testing
-	apiURL *url.URL
+	// V1 API fields - used only when useCheckAccessV2=false
+	// These fields handle direct HTTP calls to Azure RBAC API
+	headers   http.Header  // HTTP headers for v1 API requests
+	client    *http.Client // HTTP client for v1 API requests
+	expiresAt time.Time    // Token expiry time for v1 API
+	apiURL    *url.URL     // Azure RBAC API URL for v1
+
+	// V2 API fields - used only when useCheckAccessV2=true
+	// These fields use the official Azure checkaccess-v2-go-sdk
+	useCheckAccessV2     bool
+	pdpClient            checkaccess.RemotePDPClient
+	checkAccessV2Version string
 
 	tokenProvider                          graph.TokenProvider
 	clusterType                            string
@@ -183,6 +192,8 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 		httpClientRetryCount:                   authopts.HttpClientRetryCount,
 		auditSAR:                               opts.AuditSAR,
 		fleetManagerResourceId:                 opts.FleetManagerResourceId,
+		useCheckAccessV2:                       opts.UseCheckAccessV2,
+		checkAccessV2Version:                   opts.CheckAccessV2APIVersion,
 	}
 
 	u.skipCheck = make(map[string]void, len(opts.SkipAuthzCheck))
@@ -194,6 +205,34 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 	u.clusterType = getClusterType(opts.AuthzMode)
 
 	u.lock = sync.RWMutex{}
+
+	// Initialize CheckAccess V2 client if enabled
+	if opts.UseCheckAccessV2 {
+		// Create token credential adapter from existing token provider
+		tokenCred := newTokenProviderAdapter(tokenProvider)
+
+		// Configure azcore.ClientOptions to retain HTTP client customization capability
+		// This allows custom user agent and other HTTP settings similar to v1
+		clientOpts := &azcore.ClientOptions{
+			Transport: httpclient.DefaultHTTPClient,
+		}
+
+		// Initialize PDP client with user-provided scope
+		// Scope must be provided via --azure.pdp-scope flag
+		// Example: https://authorization.azure.net/.default for public cloud
+		// Reference: https://github.com/Azure/ARO-RP/blob/master/pkg/util/azureclient/environments.go
+		pdpClient, err := checkaccess.NewRemotePDPClient(
+			opts.PDPEndpoint,
+			opts.PDPScope,
+			tokenCred,
+			clientOpts,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create CheckAccess v2 client: %w", err)
+		}
+
+		u.pdpClient = pdpClient
+	}
 
 	return u, nil
 }
@@ -420,6 +459,17 @@ func (a *AccessInfo) auditSARIfNeeded(ctx context.Context, request *authzv1.Subj
 func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAccessReviewSpec) (*authzv1.SubjectAccessReviewStatus, error) {
 	a.auditSARIfNeeded(ctx, request)
 
+	log := klog.FromContext(ctx)
+
+	// Route to v2 API if enabled
+	if a.useCheckAccessV2 {
+		log.V(5).Info("Using CheckAccess v2 API")
+		return a.checkAccessV2(ctx, request)
+	}
+
+	// V1 API path (legacy)
+	log.V(7).Info("Using CheckAccess v1 API")
+
 	checkAccessBodies, err := prepareCheckAccessRequestBody(ctx, request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
 	if err != nil {
 		return nil, fmt.Errorf("error in preparing check access request: %w", err)
@@ -434,7 +484,6 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 		return nil, fmt.Errorf("error in building check access URL: %w", err)
 	}
 
-	log := klog.FromContext(ctx)
 	log.V(5).Info("Performing primary check access", "batchCount", len(checkAccessBodies))
 	status, err := a.performCheckAccess(ctx, checkAccessURL, checkAccessBodies, checkAccessUsername)
 	if err != nil {

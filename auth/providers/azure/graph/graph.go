@@ -119,7 +119,9 @@ func (u *UserInfo) getGroupIDs(ctx context.Context, userPrincipal string) ([]str
 		getMemberGroupsFailed.Inc()
 		return nil, errors.Wrap(err, "error listing users")
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		data, _ := io.ReadAll(resp.Body)
@@ -167,7 +169,9 @@ func (u *UserInfo) getExpandedGroups(ctx context.Context, ids []string) (*GroupL
 	if err != nil {
 		return nil, errors.Wrap(err, "error expanding groups")
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		data, _ := io.ReadAll(resp.Body)
@@ -266,7 +270,9 @@ func (u *UserInfo) getMemberGroupsUsingARCOboService(ctx context.Context, access
 		pushMetricsForArcGetMemberGroups(statusCode, duration)
 	}
 
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		data, err := io.ReadAll(resp.Body)

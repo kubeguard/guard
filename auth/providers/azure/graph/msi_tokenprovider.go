@@ -84,7 +84,9 @@ func (u *msiTokenProvider) Acquire(ctx context.Context, token string) (AuthRespo
 	if err != nil {
 		return authResp, errors.Wrap(err, "Failed to send msi request for getting token.")
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		data, _ := io.ReadAll(resp.Body)

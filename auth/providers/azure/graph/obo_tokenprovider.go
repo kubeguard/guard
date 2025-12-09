@@ -78,7 +78,9 @@ func (u *oboTokenProvider) Acquire(ctx context.Context, token string) (AuthRespo
 	if err != nil {
 		return authResp, errors.Wrap(err, "failed to send request")
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		data, _ := io.ReadAll(resp.Body)

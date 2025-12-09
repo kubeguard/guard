@@ -76,7 +76,9 @@ func (u *clientCredentialTokenProvider) Acquire(ctx context.Context, token strin
 	if err != nil {
 		return authResp, errors.Wrap(err, "fail to send request")
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		data, _ := io.ReadAll(resp.Body)
