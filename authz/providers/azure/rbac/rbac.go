@@ -86,7 +86,6 @@ type AccessInfo struct {
 	// These fields use the official Azure checkaccess-v2-go-sdk
 	useCheckAccessV2     bool
 	pdpClient            checkaccess.RemotePDPClient
-	pdpScope             string
 	checkAccessV2Version string
 
 	tokenProvider                          graph.TokenProvider
@@ -233,7 +232,6 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 		}
 
 		u.pdpClient = pdpClient
-		u.pdpScope = opts.PDPScope
 	}
 
 	return u, nil
