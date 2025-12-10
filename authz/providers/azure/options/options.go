@@ -35,6 +35,12 @@ const (
 	FleetAuthzMode             = "fleet"
 	defaultArmCallLimit        = 2000
 	maxPermissibleArmCallLimit = 4000
+	defaultCacheSizeMB         = 50
+	defaultCacheTTLMinutes     = 10
+	minCacheSizeMB             = 1
+	maxCacheSizeMB             = 500
+	minCacheTTLMinutes         = 1
+	maxCacheTTLMinutes         = 60
 )
 
 type Options struct {
@@ -63,6 +69,11 @@ type Options struct {
 	PDPScope string
 	// TODO: define API version for checkaccess v2
 	CheckAccessV2APIVersion string
+	// Cache configuration
+	// CacheSizeMB is the maximum cache size in MB for authorization results
+	CacheSizeMB int
+	// CacheTTLMinutes is the TTL in minutes for cached authorization results
+	CacheTTLMinutes int
 }
 
 func NewOptions() Options {
@@ -82,6 +93,8 @@ func NewOptions() Options {
 		PDPEndpoint:                            "",
 		PDPScope:                               "",
 		CheckAccessV2APIVersion:                "",
+		CacheSizeMB:                            defaultCacheSizeMB,
+		CacheTTLMinutes:                        defaultCacheTTLMinutes,
 	}
 }
 
@@ -106,6 +119,8 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.PDPEndpoint, "azure.pdp-endpoint", o.PDPEndpoint, "Azure RBAC PDP endpoint for CheckAccess v2 API (required when azure.use-checkaccess-v2 is enabled)")
 	fs.StringVar(&o.PDPScope, "azure.pdp-scope", o.PDPScope, "OAuth scope for CheckAccess v2 API authentication (e.g., https://authorization.azure.net/.default for public cloud)")
 	fs.StringVar(&o.CheckAccessV2APIVersion, "azure.checkaccess-v2-api-version", o.CheckAccessV2APIVersion, "API version for CheckAccess v2 (optional)")
+	fs.IntVar(&o.CacheSizeMB, "azure.cache-size-mb", o.CacheSizeMB, "Maximum cache size in MB for authorization results. Default: 50")
+	fs.IntVar(&o.CacheTTLMinutes, "azure.cache-ttl-minutes", o.CacheTTLMinutes, "TTL in minutes for cached authorization results. Default: 10")
 }
 
 func (o *Options) Validate(azure azure.Options) []error {
@@ -169,6 +184,14 @@ func (o *Options) Validate(azure azure.Options) []error {
 
 	if o.PDPScope != "" && !o.UseCheckAccessV2 {
 		errs = append(errs, errors.New("azure.use-checkaccess-v2 must be enabled when azure.pdp-scope is specified"))
+	}
+
+	if o.CacheSizeMB < minCacheSizeMB || o.CacheSizeMB > maxCacheSizeMB {
+		errs = append(errs, fmt.Errorf("azure.cache-size-mb must be between %d and %d", minCacheSizeMB, maxCacheSizeMB))
+	}
+
+	if o.CacheTTLMinutes < minCacheTTLMinutes || o.CacheTTLMinutes > maxCacheTTLMinutes {
+		errs = append(errs, fmt.Errorf("azure.cache-ttl-minutes must be between %d and %d", minCacheTTLMinutes, maxCacheTTLMinutes))
 	}
 
 	return errs
