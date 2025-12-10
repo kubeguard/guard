@@ -25,12 +25,32 @@ import (
 	"go.kubeguard.dev/guard/authz"
 
 	"github.com/allegro/bigcache"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
+var (
+	cacheHits = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "guard_azure_cache_hits_total",
+		Help: "Total number of cache hits for Azure authorization",
+	})
+	cacheMisses = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "guard_azure_cache_misses_total",
+		Help: "Total number of cache misses for Azure authorization",
+	})
+	cacheEntries = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "guard_azure_cache_entries",
+		Help: "Current number of entries in Azure authorization cache",
+	})
+)
+
+func init() {
+	prometheus.MustRegister(cacheHits, cacheMisses, cacheEntries)
+}
+
 const (
-	maxCacheSizeInMB = 5
+	maxCacheSizeInMB = 50
 	totalShards      = 128
-	ttlInMins        = 3
+	ttlInMins        = 10
 	cleanupInMins    = 1
 	maxEntrySize     = 100
 	maxEntriesInWin  = 10 * 10 * 60
@@ -74,10 +94,12 @@ func (s *DataStore) Get(key string, value interface{}) (found bool, err error) {
 
 	data, err := s.cache.Get(key)
 	if err != nil {
-		if err == bigcache.ErrEntryNotFound {
+		if errors.Is(err, bigcache.ErrEntryNotFound) {
+			cacheMisses.Inc()
 			return false, nil
 		}
 		stats := s.cache.Stats()
+		cacheMisses.Inc()
 		return false, fmt.Errorf("cache get error (entries=%d, capacity=%d, hits=%d, misses=%d, collisions=%d): %w",
 			s.cache.Len(), s.cache.Capacity(), stats.Hits, stats.Misses, stats.Collisions, err)
 	}
@@ -89,6 +111,8 @@ func (s *DataStore) Get(key string, value interface{}) (found bool, err error) {
 			s.cache.Len(), s.cache.Capacity(), stats.Hits, stats.Misses, stats.Collisions, err)
 	}
 
+	cacheHits.Inc()
+	cacheEntries.Set(float64(s.cache.Len()))
 	return true, nil
 }
 
@@ -165,7 +189,7 @@ func NewDataStore(options Options) (authz.Store, error) {
 		LifeWindow:         options.LifeWindow,
 		CleanWindow:        options.CleanWindow,
 		MaxEntriesInWindow: options.MaxEntriesInWindow,
-		MaxEntrySize:       options.MaxEntriesInWindow,
+		MaxEntrySize:       options.MaxEntrySize,
 		Verbose:            options.Verbose,
 		HardMaxCacheSize:   options.HardMaxCacheSize,
 		OnRemove:           nil,
