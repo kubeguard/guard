@@ -94,12 +94,11 @@ func (s *DataStore) Get(key string, value interface{}) (found bool, err error) {
 
 	data, err := s.cache.Get(key)
 	if err != nil {
+		cacheMisses.Inc()
 		if errors.Is(err, bigcache.ErrEntryNotFound) {
-			cacheMisses.Inc()
 			return false, nil
 		}
 		stats := s.cache.Stats()
-		cacheMisses.Inc()
 		return false, fmt.Errorf("cache get error (entries=%d, capacity=%d, hits=%d, misses=%d, collisions=%d): %w",
 			s.cache.Len(), s.cache.Capacity(), stats.Hits, stats.Misses, stats.Collisions, err)
 	}
@@ -164,7 +163,7 @@ type Options struct {
 	HardMaxCacheSize int
 }
 
-// DefaultOptions is an Options object with default values.
+// NewOptions returns an Options object with default values.
 // Bigcache provides option to give hash function however we are going with default it uses
 // FNV 1a: https://en.wikipedia.org/wiki/Fowler–Noll–Vo_hash_function#FNV-1a_hash
 // Key : email address/oid - Max length of email is 264 chars but 95% email length is 31
@@ -172,14 +171,16 @@ type Options struct {
 // true means access allowed
 // false means access denied
 // We will tweak MaxEntrySize and MaxEntriesInWindows as per requirement and testing.
-var DefaultOptions = Options{
-	HardMaxCacheSize:   maxCacheSizeInMB,
-	Shards:             totalShards,
-	LifeWindow:         ttlInMins * time.Minute,
-	CleanWindow:        cleanupInMins * time.Minute,
-	MaxEntriesInWindow: maxEntriesInWin,
-	MaxEntrySize:       maxEntrySize,
-	Verbose:            false,
+func NewOptions() Options {
+	return Options{
+		HardMaxCacheSize:   maxCacheSizeInMB,
+		Shards:             totalShards,
+		LifeWindow:         ttlInMins * time.Minute,
+		CleanWindow:        cleanupInMins * time.Minute,
+		MaxEntriesInWindow: maxEntriesInWin,
+		MaxEntrySize:       maxEntrySize,
+		Verbose:            false,
+	}
 }
 
 // NewDataStore creates a BigCache store.
