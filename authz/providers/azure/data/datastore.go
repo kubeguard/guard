@@ -30,15 +30,15 @@ import (
 
 var (
 	cacheHits = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "guard_azure_cache_hits_total",
+		Name: "guard_azure_authz_cache_hits_total",
 		Help: "Total number of cache hits for Azure authorization",
 	})
 	cacheMisses = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "guard_azure_cache_misses_total",
+		Name: "guard_azure_authz_cache_misses_total",
 		Help: "Total number of cache misses for Azure authorization",
 	})
 	cacheEntries = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "guard_azure_cache_entries",
+		Name: "guard_azure_authz_cache_entries",
 		Help: "Current number of entries in Azure authorization cache",
 	})
 )
