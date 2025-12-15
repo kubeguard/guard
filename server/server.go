@@ -45,6 +45,23 @@ import (
 	"kmodules.xyz/client-go/tools/fsnotify"
 )
 
+// loggerWithSkipPaths returns a logger middleware that skips logging for specified paths.
+func loggerWithSkipPaths(skipPaths ...string) func(http.Handler) http.Handler {
+	skip := make(map[string]struct{}, len(skipPaths))
+	for _, p := range skipPaths {
+		skip[p] = struct{}{}
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if _, ok := skip[r.URL.Path]; ok {
+				next.ServeHTTP(w, r)
+				return
+			}
+			middleware.Logger(next).ServeHTTP(w, r)
+		})
+	}
+}
+
 type Server struct {
 	AuthRecommendedOptions  *AuthRecommendedOptions
 	AuthzRecommendedOptions *AuthzRecommendedOptions
@@ -147,7 +164,7 @@ func (s Server) ListenAndServe() {
 
 	m := chi.NewRouter()
 	m.Use(middleware.RealIP)
-	m.Use(middleware.Logger)
+	m.Use(loggerWithSkipPaths("/healthz", "/metrics", "/readyz"))
 	m.Use(middleware.Recoverer)
 
 	// Instrument the handlers with all the metrics, injecting the "handler" label by currying.
