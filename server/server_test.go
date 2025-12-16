@@ -141,7 +141,7 @@ func TestLoggerWithSkipPathsPreservesHandler(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(expectedHeader, expectedHeaderValue)
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(expectedBody))
+		_, _ = w.Write([]byte(expectedBody))
 	})
 
 	middleware := loggerWithSkipPaths("/healthz")
