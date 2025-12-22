@@ -34,6 +34,31 @@ This will:
 4. Run tests for each cache configuration
 5. Generate a comparison report
 
+## Generating TLS Certificates
+
+The test framework requires mTLS certificates. Generate them using Guard's built-in commands:
+
+```bash
+# Create certs directory
+mkdir -p tests/k6/certs
+cd tests/k6/certs
+
+# Generate CA certificate
+guard init ca
+
+# Generate server certificate for Guard
+guard init server --domains=localhost --ips=127.0.0.1
+
+# Generate client certificate for k6 (must use "azure" organization for authz)
+guard init client azure -o azure
+
+# Verify certificates
+ls -la
+# Expected files: ca.crt, ca.key, server.crt, server.key, client.crt, client.key
+```
+
+**Note**: Private keys (`*.key`) are excluded from git via `.gitignore`. You must generate them locally before running tests.
+
 ## Directory Structure
 
 ```
