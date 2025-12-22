@@ -36,7 +36,7 @@ const (
 	defaultArmCallLimit        = 2000
 	maxPermissibleArmCallLimit = 4000
 	defaultCacheSizeMB         = 50
-	defaultCacheTTLMinutes     = 10
+	defaultCacheTTLMinutes     = 3
 	minCacheSizeMB             = 1
 	maxCacheSizeMB             = 500
 	minCacheTTLMinutes         = 1
@@ -120,7 +120,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.PDPScope, "azure.pdp-scope", o.PDPScope, "OAuth scope for CheckAccess v2 API authentication (e.g., https://authorization.azure.net/.default for public cloud)")
 	fs.StringVar(&o.CheckAccessV2APIVersion, "azure.checkaccess-v2-api-version", o.CheckAccessV2APIVersion, "API version for CheckAccess v2 (optional)")
 	fs.IntVar(&o.CacheSizeMB, "azure.cache-size-mb", o.CacheSizeMB, "Maximum cache size in MB for authorization results. Default: 50")
-	fs.IntVar(&o.CacheTTLMinutes, "azure.cache-ttl-minutes", o.CacheTTLMinutes, "TTL in minutes for cached authorization results. Default: 10")
+	fs.IntVar(&o.CacheTTLMinutes, "azure.cache-ttl-minutes", o.CacheTTLMinutes, "TTL in minutes for cached authorization results. Default: 3")
 }
 
 func (o *Options) Validate(azure azure.Options) []error {
