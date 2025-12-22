@@ -1,0 +1,6 @@
+# Test results (generated files)
+results/
+*.json
+!lib/*.js
+__pycache__/
+*.pyc

@@ -41,16 +41,25 @@ var (
 		Name: "guard_azure_authz_cache_entries",
 		Help: "Current number of entries in Azure authorization cache",
 	})
+	cacheErrorsCached = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "guard_azure_authz_cache_errors_cached_total",
+		Help: "Total number of 4xx errors cached as denied for Azure authorization",
+	})
 )
 
 func init() {
-	prometheus.MustRegister(cacheHits, cacheMisses, cacheEntries)
+	prometheus.MustRegister(cacheHits, cacheMisses, cacheEntries, cacheErrorsCached)
+}
+
+// IncErrorsCached increments the counter for cached errors.
+func IncErrorsCached() {
+	cacheErrorsCached.Inc()
 }
 
 const (
 	maxCacheSizeInMB = 50
 	totalShards      = 128
-	ttlInMins        = 10
+	ttlInMins        = 3
 	cleanupInMins    = 1
 	maxEntrySize     = 100
 	maxEntriesInWin  = 10 * 10 * 60
