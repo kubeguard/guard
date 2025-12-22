@@ -14,6 +14,58 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+/*
+Package azure implements the Azure RBAC authorization provider for Guard.
+
+# Two-Layer Caching Architecture
+
+Authorization decisions are cached at two layers to minimize latency and reduce
+load on the Azure CheckAccess API:
+
+  - Layer 1: Guard's internal cache (BigCache)
+    Configured via --azure.cache-size-mb and --azure.cache-ttl-minutes flags.
+    Default: 50MB cache size, 3 minute TTL.
+
+  - Layer 2: Kubernetes API server webhook cache
+    Configured via kube-apiserver flags:
+      --authorization-webhook-cache-authorized-ttl (default: 5m)
+      --authorization-webhook-cache-unauthorized-ttl (default: 5m)
+
+# How Caching Works
+
+When a SubjectAccessReview request arrives:
+
+ 1. Guard checks its internal cache first
+ 2. On cache miss, Guard calls Azure CheckAccess API
+ 3. The response is cached in Guard's BigCache
+ 4. Guard returns SubjectAccessReviewStatus to the API server
+ 5. The API server caches the response based on the Allowed field
+
+# Error Handling and Caching
+
+The Kubernetes API server only caches HTTP 200 responses. To enable caching of
+error scenarios, Guard handles errors as follows:
+
+  - Deterministic errors (4xx from Azure): Returned as HTTP 200 with
+    {Allowed: false, Denied: true}. This allows both Guard and the API server
+    to cache the denial, preventing repeated failing calls to Azure.
+
+  - Transient errors (5xx, network errors): Returned as HTTP 5xx error.
+    These are NOT cached because they may resolve on retry.
+
+# Metrics
+
+Cache behavior can be monitored via Prometheus metrics:
+  - guard_azure_authz_cache_hits_total
+  - guard_azure_authz_cache_misses_total
+  - guard_azure_authz_cache_entries
+  - guard_azure_authz_cache_errors_cached_total (4xx errors cached as denied)
+
+# References
+
+  - Kubernetes Authorization Webhook: https://kubernetes.io/docs/reference/access-authn-authz/webhook/
+  - Azure RBAC CheckAccess API: https://learn.microsoft.com/en-us/azure/role-based-access-control/
+*/
 package azure
 
 import (
@@ -25,6 +77,7 @@ import (
 
 	auth "go.kubeguard.dev/guard/auth/providers/azure"
 	"go.kubeguard.dev/guard/authz"
+	"go.kubeguard.dev/guard/authz/providers/azure/data"
 	authzOpts "go.kubeguard.dev/guard/authz/providers/azure/options"
 	"go.kubeguard.dev/guard/authz/providers/azure/rbac"
 	azureutils "go.kubeguard.dev/guard/util/azure"
@@ -144,21 +197,40 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 		}
 	}
 
-	response, err := s.rbacClient.CheckAccess(ctx, request)
-	if err == nil {
+	response, checkErr := s.rbacClient.CheckAccess(ctx, request)
+	if checkErr == nil {
 		log.Info("Authorization check completed", "allowed", response.Allowed, "reason", response.Reason, "resourceAttributes", request.ResourceAttributes)
-		if err := s.rbacClient.SetResultInCache(ctx, request, response.Allowed, store); err != nil {
-			log.Error(err, "Failed to cache authorization result")
+		if cacheErr := s.rbacClient.SetResultInCache(ctx, request, response.Allowed, store); cacheErr != nil {
+			log.Error(cacheErr, "Failed to cache authorization result")
 		}
-	} else {
-		code := http.StatusInternalServerError
-		if v, ok := err.(errutils.HttpStatusCode); ok {
-			code = v.Code()
-		}
-		err = errutils.WithCode(fmt.Errorf("Authorization check failed (requestID: %s, statusCode: %d): %w", requestID, code, err), code)
+		return response, nil
 	}
 
-	return response, err
+	code := http.StatusInternalServerError
+	if v, ok := checkErr.(errutils.HttpStatusCode); ok {
+		code = v.Code()
+	}
+
+	// For deterministic errors (4xx), return a denied response instead of an error.
+	// This allows both Guard and API server to cache the result.
+	// Transient errors (5xx, network errors) are returned as errors since they may resolve.
+	if code >= 400 && code < 500 {
+		log.Info("Returning denied for 4xx error", "statusCode", code, "error", checkErr.Error(), "resourceAttributes", request.ResourceAttributes)
+		if cacheErr := s.rbacClient.SetResultInCache(ctx, request, false, store); cacheErr != nil {
+			log.Error(cacheErr, "Failed to cache error result")
+		} else {
+			data.IncErrorsCached()
+		}
+		// Return a denied response (no error) so API server returns HTTP 200 and caches it
+		return &authzv1.SubjectAccessReviewStatus{
+			Allowed: false,
+			Denied:  true,
+			Reason:  fmt.Sprintf("%s (requestID: %s, statusCode: %d): %s", rbac.CheckAccessErrorVerdict, requestID, code, checkErr.Error()),
+		}, nil
+	}
+
+	// For transient errors (5xx), return the error so it's not cached
+	return nil, errutils.WithCode(fmt.Errorf("Authorization check failed (requestID: %s, statusCode: %d): %w", requestID, code, checkErr), code)
 }
 
 func getAuthzInfo(environment string) (*rbac.AuthzInfo, error) {
