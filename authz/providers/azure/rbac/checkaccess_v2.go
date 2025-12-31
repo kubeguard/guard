@@ -261,8 +261,8 @@ func (a *AccessInfo) checkAccessV2(ctx context.Context, request *authzv1.Subject
 	}
 
 	// Determine resource ID (with or without namespace scope)
-	exist, namespaceString := getNameSpaceScope(request, a.useNamespaceResourceScopeFormat)
-	resourceId, err := buildResourceIDForV2(a.azureResourceId, exist, namespaceString)
+	namespaceExist, namespaceString := getNameSpaceScope(request, a.useNamespaceResourceScopeFormat)
+	resourceId, err := buildResourceIDForV2(a.azureResourceId, namespaceExist, namespaceString)
 	if err != nil {
 		return nil, fmt.Errorf("error building primary resource ID: %w", err)
 	}
@@ -302,7 +302,7 @@ func (a *AccessInfo) checkAccessV2(ctx context.Context, request *authzv1.Subject
 	if a.fleetManagerResourceId != "" {
 		log.V(7).Info("Falling back to fleet manager scope check (v2)", "fleetResourceId", a.fleetManagerResourceId)
 
-		fleetResourceId, err := buildResourceIDForV2(a.fleetManagerResourceId, managedNamespaceExists, managedNamespacePath)
+		fleetResourceId, err := buildResourceIDForV2(a.fleetManagerResourceId, namespaceExist, namespaceString)
 		if err != nil {
 			return nil, fmt.Errorf("error building fleet manager resource ID: %w", err)
 		}
@@ -314,8 +314,25 @@ func (a *AccessInfo) checkAccessV2(ctx context.Context, request *authzv1.Subject
 		}
 		if status != nil && status.Allowed {
 			log.V(5).Info("Fleet manager CheckAccess v2 allowed")
+			return status, nil
 		}
-		return status, err
+
+		if managedNamespaceExists {
+			fleetManagedResourceId, err := buildResourceIDForV2(a.fleetManagerResourceId, true, managedNamespacePath)
+			if err != nil {
+				return nil, fmt.Errorf("error building fleet manager managed namespace resource ID: %w", err)
+			}
+
+			// For fleet members, we may need different actions - reuse v1 logic if needed
+			status, err = a.performCheckAccessV2(ctx, fleetManagedResourceId, actions, userOid, groups)
+			if err != nil {
+				return nil, fmt.Errorf("Fleet manager managed namespace CheckAccess v2 failed: %w", err)
+			}
+			if status != nil && status.Allowed {
+				log.V(5).Info("Fleet manager managed namespace CheckAccess v2 allowed")
+				return status, nil
+			}
+		}
 	}
 
 	return status, nil
