@@ -302,13 +302,20 @@ func (a *AccessInfo) checkAccessV2(ctx context.Context, request *authzv1.Subject
 	if a.fleetManagerResourceId != "" {
 		log.V(7).Info("Falling back to fleet manager scope check (v2)", "fleetResourceId", a.fleetManagerResourceId)
 
+		// Generate fleet-specific actions using fleetMembers cluster type
+		// This ensures actions like "Microsoft.ContainerService/fleets/members/pods/read"
+		// are used instead of "Microsoft.ContainerService/managedClusters/pods/read"
+		fleetActions, err := getDataActionsV2(ctx, request, fleetMembers, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
+		if err != nil {
+			return nil, fmt.Errorf("error preparing fleet actions list: %w", err)
+		}
+
 		fleetResourceId, err := buildResourceIDForV2(a.fleetManagerResourceId, namespaceExists, namespaceString)
 		if err != nil {
 			return nil, fmt.Errorf("error building fleet manager resource ID: %w", err)
 		}
 
-		// For fleet members, we may need different actions - reuse v1 logic if needed
-		status, err = a.performCheckAccessV2(ctx, fleetResourceId, actions, userOid, groups)
+		status, err = a.performCheckAccessV2(ctx, fleetResourceId, fleetActions, userOid, groups)
 		if err != nil {
 			return nil, fmt.Errorf("Fleet manager CheckAccess v2 failed: %w", err)
 		}
@@ -323,8 +330,7 @@ func (a *AccessInfo) checkAccessV2(ctx context.Context, request *authzv1.Subject
 				return nil, fmt.Errorf("error building fleet manager managed namespace resource ID: %w", err)
 			}
 
-			// For fleet members, we may need different actions - reuse v1 logic if needed
-			status, err = a.performCheckAccessV2(ctx, fleetManagedResourceId, actions, userOid, groups)
+			status, err = a.performCheckAccessV2(ctx, fleetManagedResourceId, fleetActions, userOid, groups)
 			if err != nil {
 				return nil, fmt.Errorf("Fleet manager managed namespace CheckAccess v2 failed: %w", err)
 			}
