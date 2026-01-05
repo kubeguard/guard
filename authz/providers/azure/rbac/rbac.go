@@ -478,8 +478,8 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 	checkAccessUsername := request.User
 
 	// Build primary check access URL
-	namespaceExist, nameSpaceString := getNameSpaceScope(request, a.useNamespaceResourceScopeFormat)
-	checkAccessURL, err := buildCheckAccessURL(*a.apiURL, a.azureResourceId, namespaceExist, nameSpaceString)
+	namespaceExists, nameSpaceString := getNameSpaceScope(request, a.useNamespaceResourceScopeFormat)
+	checkAccessURL, err := buildCheckAccessURL(*a.apiURL, a.azureResourceId, namespaceExists, nameSpaceString)
 	if err != nil {
 		return nil, fmt.Errorf("error in building check access URL: %w", err)
 	}
@@ -524,7 +524,7 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 	if a.fleetManagerResourceId != "" {
 		log.V(7).Info("Falling back to fleet manager scope check", "fleetResourceId", a.fleetManagerResourceId)
 
-		fleetURL, err := buildCheckAccessURL(*a.apiURL, a.fleetManagerResourceId, namespaceExist, nameSpaceString)
+		fleetURL, err := buildCheckAccessURL(*a.apiURL, a.fleetManagerResourceId, namespaceExists, nameSpaceString)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to build fleet manager check access URL: %w", err)
 		}
@@ -534,7 +534,7 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 			return nil, fmt.Errorf("Failed to prepare check access request for fleet manager: %w", err)
 		}
 
-		if namespaceExist {
+		if namespaceExists {
 			for _, b := range bodiesForFleetRBAC {
 				b.Resource.Id = path.Join(a.fleetManagerResourceId, nameSpaceString)
 			}

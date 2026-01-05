@@ -261,8 +261,8 @@ func (a *AccessInfo) checkAccessV2(ctx context.Context, request *authzv1.Subject
 	}
 
 	// Determine resource ID (with or without namespace scope)
-	namespaceExist, namespaceString := getNameSpaceScope(request, a.useNamespaceResourceScopeFormat)
-	resourceId, err := buildResourceIDForV2(a.azureResourceId, namespaceExist, namespaceString)
+	namespaceExists, namespaceString := getNameSpaceScope(request, a.useNamespaceResourceScopeFormat)
+	resourceId, err := buildResourceIDForV2(a.azureResourceId, namespaceExists, namespaceString)
 	if err != nil {
 		return nil, fmt.Errorf("error building primary resource ID: %w", err)
 	}
@@ -302,7 +302,7 @@ func (a *AccessInfo) checkAccessV2(ctx context.Context, request *authzv1.Subject
 	if a.fleetManagerResourceId != "" {
 		log.V(7).Info("Falling back to fleet manager scope check (v2)", "fleetResourceId", a.fleetManagerResourceId)
 
-		fleetResourceId, err := buildResourceIDForV2(a.fleetManagerResourceId, namespaceExist, namespaceString)
+		fleetResourceId, err := buildResourceIDForV2(a.fleetManagerResourceId, namespaceExists, namespaceString)
 		if err != nil {
 			return nil, fmt.Errorf("error building fleet manager resource ID: %w", err)
 		}
