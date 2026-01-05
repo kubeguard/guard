@@ -483,3 +483,55 @@ func TestCheckAccessV2_FallbackToFleet(t *testing.T) {
 	assert.True(t, status.Allowed)
 	assert.Equal(t, 3, callCount, "Should make 3 calls: primary + managed namespace + fleet")
 }
+
+func TestCheckAccessV2_FallbackToFleetManagedNamespaces(t *testing.T) {
+	callCount := 0
+	mockClient := &mockPDPClient{
+		checkAccessFunc: func(ctx context.Context, authzReq checkaccess.AuthorizationRequest) (*checkaccess.AuthorizationDecisionResponse, error) {
+			callCount++
+			decision := checkaccess.NotAllowed
+			// Fourth call (fleet) returns allowed
+			if callCount == 4 {
+				decision = checkaccess.Allowed
+			}
+			return &checkaccess.AuthorizationDecisionResponse{
+				Value: []checkaccess.AuthorizationDecision{
+					{
+						ActionId:       "action",
+						AccessDecision: decision,
+						RoleAssignment: checkaccess.RoleAssignment{Id: "id"},
+					},
+				},
+			}, nil
+		},
+	}
+
+	accessInfo := &AccessInfo{
+		pdpClient:                              mockClient,
+		clusterType:                            managedClusters,
+		azureResourceId:                        "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ContainerService/managedClusters/cluster",
+		useManagedNamespaceResourceScopeFormat: true,
+		fleetManagerResourceId:                 "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ContainerService/fleets/fleet",
+	}
+
+	ctx := context.Background()
+	request := &authzv1.SubjectAccessReviewSpec{
+		User: "test@example.com",
+		Extra: map[string]authzv1.ExtraValue{
+			"oid": {testUserOid},
+		},
+		Groups: []string{"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"},
+		ResourceAttributes: &authzv1.ResourceAttributes{
+			Namespace: "default",
+			Verb:      "get",
+			Resource:  "pods",
+		},
+	}
+
+	status, err := accessInfo.checkAccessV2(ctx, request)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, status)
+	assert.True(t, status.Allowed)
+	assert.Equal(t, 4, callCount, "Should make 4 calls: primary + managed namespace + fleet + fleet managed namespace")
+}

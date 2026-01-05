@@ -478,8 +478,8 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 	checkAccessUsername := request.User
 
 	// Build primary check access URL
-	exist, nameSpaceString := getNameSpaceScope(request, a.useNamespaceResourceScopeFormat)
-	checkAccessURL, err := buildCheckAccessURL(*a.apiURL, a.azureResourceId, exist, nameSpaceString)
+	namespaceExists, nameSpaceString := getNameSpaceScope(request, a.useNamespaceResourceScopeFormat)
+	checkAccessURL, err := buildCheckAccessURL(*a.apiURL, a.azureResourceId, namespaceExists, nameSpaceString)
 	if err != nil {
 		return nil, fmt.Errorf("error in building check access URL: %w", err)
 	}
@@ -523,26 +523,52 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 	// Fallback to fleet scope check when the managedCluster has joined a fleet
 	if a.fleetManagerResourceId != "" {
 		log.V(7).Info("Falling back to fleet manager scope check", "fleetResourceId", a.fleetManagerResourceId)
-		fleetURL, err := buildCheckAccessURL(*a.apiURL, a.fleetManagerResourceId, managedNamespaceExists, managedNamespacePath)
+
+		fleetURL, err := buildCheckAccessURL(*a.apiURL, a.fleetManagerResourceId, namespaceExists, nameSpaceString)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to build fleet manager check access URL: %w", err)
 		}
+
 		bodiesForFleetRBAC, err := prepareCheckAccessRequestBody(ctx, request, fleetMembers, a.fleetManagerResourceId, false, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to prepare check access request for fleet manager: %w", err)
 		}
+
+		if namespaceExists {
+			for _, b := range bodiesForFleetRBAC {
+				b.Resource.Id = path.Join(a.fleetManagerResourceId, nameSpaceString)
+			}
+		}
+
+		status, err = a.performCheckAccess(ctx, fleetURL, bodiesForFleetRBAC, checkAccessUsername)
+		if err != nil {
+			return nil, fmt.Errorf("Fleet manager check access failed: %w", err)
+		}
+		if status != nil && status.Allowed {
+			log.V(5).Info("Fleet manager check access allowed")
+			return status, nil
+		}
+
 		if managedNamespaceExists {
+			log.V(7).Info("Fleet check not allowed, trying with fleet manager managed namespace scope", "namespacePath", managedNamespacePath)
+			fleetmanagedNamespaceURL, err := buildCheckAccessURL(*a.apiURL, a.fleetManagerResourceId, true, managedNamespacePath)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to build fleet manager check access URL with managed namespace: %w", err)
+			}
+
+			// Update resource IDs for managed namespace
 			for _, b := range bodiesForFleetRBAC {
 				b.Resource.Id = path.Join(a.fleetManagerResourceId, managedNamespacePath)
 			}
+
+			status, err = a.performCheckAccess(ctx, fleetmanagedNamespaceURL, bodiesForFleetRBAC, checkAccessUsername)
+			if err != nil {
+				return nil, fmt.Errorf("Fleet manager managed namespace check access failed: %w", err)
+			}
+			if status != nil && status.Allowed {
+				log.V(5).Info("Fleet manager managed namespace check access allowed")
+			}
 		}
-		status, err = a.performCheckAccess(ctx, fleetURL, bodiesForFleetRBAC, checkAccessUsername)
-		if err != nil {
-			err = fmt.Errorf("Fleet manager check access failed: %w", err)
-		} else if status != nil && status.Allowed {
-			log.V(5).Info("Fleet manager check access allowed")
-		}
-		return status, err
 	}
 	return status, nil
 }
