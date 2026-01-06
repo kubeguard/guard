@@ -108,13 +108,13 @@ type AccessInfo struct {
 
 var (
 	checkAccessThrottled = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "guard_azure_checkaccess_throttling_failure_total",
+		Name: "guard_azure_authz_checkaccess_throttling_failure_total",
 		Help: "No of throttled checkaccess calls.",
 	})
 
 	checkAccessTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "guard_azure_check_access_requests_total",
+			Name: "guard_azure_authz_check_access_requests_total",
 			Help: "Number of checkaccess request calls.",
 		},
 		[]string{"code"},
@@ -122,20 +122,20 @@ var (
 
 	checkAccessFailed = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "guard_azure_checkaccess_failure_total",
+			Name: "guard_azure_authz_checkaccess_failure_total",
 			Help: "No of checkaccess failures",
 		},
 		[]string{"code"},
 	)
 
 	checkAccessSucceeded = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "guard_azure_checkaccess_success_total",
+		Name: "guard_azure_authz_checkaccess_success_total",
 		Help: "Number of successful checkaccess calls.",
 	})
 
 	checkAccessContextTimedOutCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "guard_azure_checkaccess_context_timeout",
+			Name: "guard_azure_authz_checkaccess_context_timeout",
 			Help: "No of checkacces context timeout calls",
 		},
 		[]string{"checkAccessBatchCount", "totalActionsCount"},

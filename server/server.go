@@ -228,8 +228,11 @@ func (s Server) ListenAndServe() {
 		m.Post("/subjectaccessreviews", authzPromHandler.ServeHTTP)
 
 		if s.AuthzRecommendedOptions.AuthzProvider.Has(azure.OrgType) {
-			options := data.DefaultOptions
-			authzhandler.Store, err = data.NewDataStore(options)
+			cacheOptions := data.NewOptions()
+			cacheOptions.HardMaxCacheSize = s.AuthzRecommendedOptions.Azure.CacheSizeMB
+			cacheOptions.LifeWindow = time.Duration(s.AuthzRecommendedOptions.Azure.CacheTTLMinutes) * time.Minute
+			klog.Infof("Initializing authorization cache: size=%dMB, ttl=%dm", cacheOptions.HardMaxCacheSize, s.AuthzRecommendedOptions.Azure.CacheTTLMinutes)
+			authzhandler.Store, err = data.NewDataStore(cacheOptions)
 			if authzhandler.Store == nil || err != nil {
 				klog.Fatalf("Error in initializing cache. Error:%s", err.Error())
 			}
