@@ -535,3 +535,83 @@ func TestCheckAccessV2_FallbackToFleetManagedNamespaces(t *testing.T) {
 	assert.True(t, status.Allowed)
 	assert.Equal(t, 4, callCount, "Should make 4 calls: primary + managed namespace + fleet + fleet managed namespace")
 }
+
+func TestCheckAccessV2_FleetActionsUseCorrectClusterType(t *testing.T) {
+	// This test verifies that fleet scope checks use fleetMembers actions
+	// (e.g., "Microsoft.ContainerService/fleets/members/pods/read")
+	// instead of managedClusters actions
+	// (e.g., "Microsoft.ContainerService/managedClusters/pods/read")
+
+	callCount := 0
+	var capturedActions [][]string
+
+	mockClient := &mockPDPClient{
+		checkAccessFunc: func(ctx context.Context, authzReq checkaccess.AuthorizationRequest) (*checkaccess.AuthorizationDecisionResponse, error) {
+			callCount++
+
+			// Capture action IDs from the request
+			actionIDs := make([]string, len(authzReq.Actions))
+			for i, action := range authzReq.Actions {
+				actionIDs[i] = action.Id
+			}
+			capturedActions = append(capturedActions, actionIDs)
+
+			decision := checkaccess.NotAllowed
+			// Third call (fleet scope) returns allowed
+			if callCount == 3 {
+				decision = checkaccess.Allowed
+			}
+			return &checkaccess.AuthorizationDecisionResponse{
+				Value: []checkaccess.AuthorizationDecision{
+					{
+						ActionId:       "action",
+						AccessDecision: decision,
+						RoleAssignment: checkaccess.RoleAssignment{Id: "id"},
+					},
+				},
+			}, nil
+		},
+	}
+
+	accessInfo := &AccessInfo{
+		pdpClient:                              mockClient,
+		clusterType:                            managedClusters,
+		azureResourceId:                        "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ContainerService/managedClusters/cluster",
+		useManagedNamespaceResourceScopeFormat: true,
+		fleetManagerResourceId:                 "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ContainerService/fleets/fleet",
+	}
+
+	ctx := context.Background()
+	request := &authzv1.SubjectAccessReviewSpec{
+		User: "test@example.com",
+		Extra: map[string]authzv1.ExtraValue{
+			"oid": {testUserOid},
+		},
+		Groups: []string{"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"},
+		ResourceAttributes: &authzv1.ResourceAttributes{
+			Namespace: "default",
+			Verb:      "get",
+			Resource:  "pods",
+		},
+	}
+
+	status, err := accessInfo.checkAccessV2(ctx, request)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, status)
+	assert.True(t, status.Allowed)
+	assert.Equal(t, 3, callCount, "Should make 3 calls: primary + managed namespace + fleet")
+
+	// Verify we captured actions for all 3 calls
+	assert.Len(t, capturedActions, 3, "Should capture actions for 3 calls")
+
+	// First two calls (primary and managed namespace) should use managedClusters actions
+	assert.Contains(t, capturedActions[0][0], "Microsoft.ContainerService/managedClusters/",
+		"Primary check should use managedClusters actions")
+	assert.Contains(t, capturedActions[1][0], "Microsoft.ContainerService/managedClusters/",
+		"Managed namespace check should use managedClusters actions")
+
+	// Third call (fleet) should use fleetMembers actions
+	assert.Contains(t, capturedActions[2][0], "Microsoft.ContainerService/fleets/members/",
+		"Fleet check should use fleetMembers actions, got: %s", capturedActions[2][0])
+}
