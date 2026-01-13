@@ -31,3 +31,6 @@ _testmain.go
 
 /bin
 /.go
+
+# Test binaries
+tests/mock-server/mock-server
