@@ -39,10 +39,10 @@ GUARD_PORT=8443
 
 # Cache configurations to test
 declare -A CACHE_CONFIGS
-CACHE_CONFIGS["master"]="5:3"       # 5MB, 3min TTL (original)
-CACHE_CONFIGS["improved_default"]="50:10"   # 50MB, 10min TTL
-CACHE_CONFIGS["improved_large"]="100:10"    # 100MB, 10min TTL
-CACHE_CONFIGS["improved_long_ttl"]="50:30"  # 50MB, 30min TTL
+CACHE_CONFIGS["master"]="5:3"              # 5MB, 3min TTL (original)
+CACHE_CONFIGS["improved_default"]="50:10"  # 50MB, 10min TTL
+CACHE_CONFIGS["improved_large"]="100:10"   # 100MB, 10min TTL
+CACHE_CONFIGS["improved_long_ttl"]="50:30" # 50MB, 30min TTL
 
 # Process options
 SKIP_BUILD=false
@@ -73,7 +73,7 @@ while [[ $# -gt 0 ]]; do
             MOCK_ONLY=true
             shift
             ;;
-        -h|--help)
+        -h | --help)
             head -25 "$0" | tail -20
             exit 0
             ;;
@@ -106,13 +106,13 @@ check_prerequisites() {
     log_info "Checking prerequisites..."
 
     # Check for k6
-    if ! command -v k6 &> /dev/null; then
+    if ! command -v k6 &>/dev/null; then
         log_error "k6 is not installed. Install it with: brew install k6"
         exit 1
     fi
 
     # Check for Go
-    if ! command -v go &> /dev/null; then
+    if ! command -v go &>/dev/null; then
         log_error "Go is not installed"
         exit 1
     fi
@@ -170,9 +170,9 @@ setup_certificates() {
     mkdir -p "$GUARD_DATA_DIR/pki"
 
     # Check if certs already exist
-    if [[ -f "$GUARD_DATA_DIR/pki/ca.crt" ]] && \
-       [[ -f "$GUARD_DATA_DIR/pki/server.crt" ]] && \
-       [[ -f "$GUARD_DATA_DIR/pki/azure@azure.crt" ]]; then
+    if [[ -f "$GUARD_DATA_DIR/pki/ca.crt" ]] &&
+        [[ -f "$GUARD_DATA_DIR/pki/server.crt" ]] &&
+        [[ -f "$GUARD_DATA_DIR/pki/azure@azure.crt" ]]; then
         log_info "Certificates already exist, skipping generation"
     else
         cd "$PROJECT_ROOT"
@@ -209,12 +209,12 @@ start_mock_server() {
         -throttle-rate 0.01 \
         -verbose &
     MOCK_PID=$!
-    echo "$MOCK_PID" > /tmp/guard-mock-server.pid
+    echo "$MOCK_PID" >/tmp/guard-mock-server.pid
 
     sleep 2
 
     # Verify mock server is running
-    if curl -s "http://localhost:$MOCK_SERVER_PORT/health" > /dev/null; then
+    if curl -s "http://localhost:$MOCK_SERVER_PORT/health" >/dev/null; then
         log_success "Mock server started (PID: $MOCK_PID)"
     else
         log_error "Failed to start mock server"
@@ -259,12 +259,12 @@ start_guard() {
         --azure.cache-ttl-minutes="$cache_ttl_min" \
         --v=2 &
     GUARD_PID=$!
-    echo "$GUARD_PID" > /tmp/guard-server.pid
+    echo "$GUARD_PID" >/tmp/guard-server.pid
 
     sleep 3
 
     # Verify Guard is running
-    if curl -sk "https://localhost:$GUARD_PORT/healthz" > /dev/null 2>&1; then
+    if curl -sk "https://localhost:$GUARD_PORT/healthz" >/dev/null 2>&1; then
         log_success "Guard started (PID: $GUARD_PID)"
     else
         log_error "Failed to start Guard"
@@ -289,7 +289,7 @@ stop_guard() {
 # Scrape Prometheus metrics
 scrape_metrics() {
     local output_file=$1
-    curl -sk "https://localhost:$GUARD_PORT/metrics" > "$output_file" 2>/dev/null || echo "# Failed to scrape metrics" > "$output_file"
+    curl -sk "https://localhost:$GUARD_PORT/metrics" >"$output_file" 2>/dev/null || echo "# Failed to scrape metrics" >"$output_file"
 }
 
 # Run k6 test scenario
@@ -392,7 +392,7 @@ main() {
     echo "============================================"
 
     # Generate comparison report
-    if command -v python3 &> /dev/null && [[ -f "$SCRIPT_DIR/compare-results.py" ]]; then
+    if command -v python3 &>/dev/null && [[ -f "$SCRIPT_DIR/compare-results.py" ]]; then
         log_info "Generating comparison report..."
         python3 "$SCRIPT_DIR/compare-results.py" "$RESULTS_DIR"
     fi

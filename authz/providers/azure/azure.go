@@ -28,8 +28,8 @@ load on the Azure CheckAccess API:
 
   - Layer 2: Kubernetes API server webhook cache
     Configured via kube-apiserver flags:
-      --authorization-webhook-cache-authorized-ttl (default: 5m)
-      --authorization-webhook-cache-unauthorized-ttl (default: 5m)
+    --authorization-webhook-cache-authorized-ttl (default: 5m)
+    --authorization-webhook-cache-unauthorized-ttl (default: 5m)
 
 # How Caching Works
 
