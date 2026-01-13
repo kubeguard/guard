@@ -169,21 +169,21 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 		}
 	}
 
-	exist, result := s.rbacClient.GetResultFromCache(ctx, request, store)
+	exist, cachedResult := s.rbacClient.GetResultFromCache(ctx, request, store)
 
 	if exist {
-		log.V(5).Info("Cache hit", "allowed", result, "resourceAttributes", request.ResourceAttributes)
-		if result {
-			return &authzv1.SubjectAccessReviewStatus{Allowed: result, Reason: rbac.AccessAllowedVerdict}, nil
+		log.V(5).Info("Cache hit", "allowed", cachedResult.Allowed, "reason", cachedResult.Reason, "resourceAttributes", request.ResourceAttributes)
+		if cachedResult.Allowed {
+			return &authzv1.SubjectAccessReviewStatus{Allowed: true, Reason: cachedResult.Reason}, nil
 		} else {
-			return &authzv1.SubjectAccessReviewStatus{Allowed: result, Denied: true, Reason: rbac.AccessNotAllowedVerdict}, nil
+			return &authzv1.SubjectAccessReviewStatus{Allowed: false, Denied: true, Reason: cachedResult.Reason}, nil
 		}
 	}
 
 	// if set true, webhook will allow access to discovery APIs for authenticated users. If false, access check will be performed on Azure.
 	if s.rbacClient.AllowNonResPathDiscoveryAccess(request) {
 		log.V(5).Info("Allowing user access for discovery check")
-		if err := s.rbacClient.SetResultInCache(ctx, request, true, store); err != nil {
+		if err := s.rbacClient.SetResultInCache(ctx, request, rbac.CacheResult{Allowed: true, Reason: rbac.AccessAllowedVerdict}, store); err != nil {
 			log.Error(err, "Failed to cache discovery access result")
 		}
 		return &authzv1.SubjectAccessReviewStatus{Allowed: true, Reason: rbac.AccessAllowedVerdict}, nil
@@ -200,7 +200,7 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 	response, checkErr := s.rbacClient.CheckAccess(ctx, request)
 	if checkErr == nil {
 		log.Info("Authorization check completed", "allowed", response.Allowed, "reason", response.Reason, "resourceAttributes", request.ResourceAttributes)
-		if cacheErr := s.rbacClient.SetResultInCache(ctx, request, response.Allowed, store); cacheErr != nil {
+		if cacheErr := s.rbacClient.SetResultInCache(ctx, request, rbac.CacheResult{Allowed: response.Allowed, Reason: response.Reason}, store); cacheErr != nil {
 			log.Error(cacheErr, "Failed to cache authorization result")
 		}
 		return response, nil
@@ -215,8 +215,9 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 	// This allows both Guard and API server to cache the result.
 	// Transient errors (5xx, network errors) are returned as errors since they may resolve.
 	if code >= 400 && code < 500 {
+		errorReason := fmt.Sprintf("%s (requestID: %s, statusCode: %d): %s", rbac.CheckAccessErrorVerdict, requestID, code, checkErr.Error())
 		log.Info("Returning denied for 4xx error", "statusCode", code, "error", checkErr.Error(), "resourceAttributes", request.ResourceAttributes)
-		if cacheErr := s.rbacClient.SetResultInCache(ctx, request, false, store); cacheErr != nil {
+		if cacheErr := s.rbacClient.SetResultInCache(ctx, request, rbac.CacheResult{Allowed: false, Reason: errorReason}, store); cacheErr != nil {
 			log.Error(cacheErr, "Failed to cache error result")
 		} else {
 			data.IncErrorsCached()
@@ -225,7 +226,7 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 		return &authzv1.SubjectAccessReviewStatus{
 			Allowed: false,
 			Denied:  true,
-			Reason:  fmt.Sprintf("%s (requestID: %s, statusCode: %d): %s", rbac.CheckAccessErrorVerdict, requestID, code, checkErr.Error()),
+			Reason:  errorReason,
 		}, nil
 	}
 

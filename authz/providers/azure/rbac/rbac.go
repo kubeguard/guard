@@ -69,6 +69,13 @@ type AuthzInfo struct {
 	ARMEndPoint string
 }
 
+// CacheResult stores both the authorization decision and its reason.
+// This allows cached error responses to preserve the original error message.
+type CacheResult struct {
+	Allowed bool   `json:"allowed"`
+	Reason  string `json:"reason"`
+}
+
 type (
 	void struct{}
 )
@@ -292,23 +299,23 @@ func (a *AccessInfo) ShouldSkipAuthzCheckForNonAADUsers() bool {
 	return a.skipAuthzForNonAADUsers
 }
 
-func (a *AccessInfo) GetResultFromCache(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, store authz.Store) (bool, bool) {
+func (a *AccessInfo) GetResultFromCache(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, store authz.Store) (bool, CacheResult) {
 	log := klog.FromContext(ctx)
-	var result bool
+	var result CacheResult
 	key := getResultCacheKey(request, a.allowSubresourceTypeCheck)
 	log.V(10).Info("Cache search", "key", key)
 	found, err := store.Get(key, &result)
 	if err != nil {
 		// Error contains cache statistics for troubleshooting
 		log.V(5).Info("Cache get error", "key", key, "error", err)
-		return false, false
+		return false, CacheResult{}
 	}
 
 	if found {
-		if result {
+		if result.Allowed {
 			log.V(5).Info("Cache hit: allowed", "key", key)
 		} else {
-			log.V(5).Info("Cache hit: denied", "key", key)
+			log.V(5).Info("Cache hit: denied", "key", key, "reason", result.Reason)
 		}
 	} else {
 		// Cache miss - log for observability
@@ -326,10 +333,10 @@ func (a *AccessInfo) SkipAuthzCheck(request *authzv1.SubjectAccessReviewSpec) bo
 	return false
 }
 
-func (a *AccessInfo) SetResultInCache(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, result bool, store authz.Store) error {
+func (a *AccessInfo) SetResultInCache(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, result CacheResult, store authz.Store) error {
 	log := klog.FromContext(ctx)
 	key := getResultCacheKey(request, a.allowSubresourceTypeCheck)
-	log.V(10).Info("Cache set", "key", key, "value", result)
+	log.V(10).Info("Cache set", "key", key, "allowed", result.Allowed, "reason", result.Reason)
 	return store.Set(key, result)
 }
 
