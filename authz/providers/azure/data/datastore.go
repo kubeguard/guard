@@ -25,10 +25,39 @@ import (
 	"go.kubeguard.dev/guard/authz"
 
 	"github.com/allegro/bigcache"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
+var (
+	cacheHits = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "guard_azure_authz_cache_hits_total",
+		Help: "Total number of cache hits for Azure authorization",
+	})
+	cacheMisses = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "guard_azure_authz_cache_misses_total",
+		Help: "Total number of cache misses for Azure authorization",
+	})
+	cacheEntries = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "guard_azure_authz_cache_entries",
+		Help: "Current number of entries in Azure authorization cache",
+	})
+	cacheErrorsCached = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "guard_azure_authz_cache_errors_cached_total",
+		Help: "Total number of 4xx errors cached as denied for Azure authorization",
+	})
+)
+
+func init() {
+	prometheus.MustRegister(cacheHits, cacheMisses, cacheEntries, cacheErrorsCached)
+}
+
+// IncErrorsCached increments the counter for cached errors.
+func IncErrorsCached() {
+	cacheErrorsCached.Inc()
+}
+
 const (
-	maxCacheSizeInMB = 5
+	maxCacheSizeInMB = 50
 	totalShards      = 128
 	ttlInMins        = 3
 	cleanupInMins    = 1
@@ -74,7 +103,8 @@ func (s *DataStore) Get(key string, value interface{}) (found bool, err error) {
 
 	data, err := s.cache.Get(key)
 	if err != nil {
-		if err == bigcache.ErrEntryNotFound {
+		cacheMisses.Inc()
+		if errors.Is(err, bigcache.ErrEntryNotFound) {
 			return false, nil
 		}
 		stats := s.cache.Stats()
@@ -89,6 +119,8 @@ func (s *DataStore) Get(key string, value interface{}) (found bool, err error) {
 			s.cache.Len(), s.cache.Capacity(), stats.Hits, stats.Misses, stats.Collisions, err)
 	}
 
+	cacheHits.Inc()
+	cacheEntries.Set(float64(s.cache.Len()))
 	return true, nil
 }
 
@@ -140,7 +172,7 @@ type Options struct {
 	HardMaxCacheSize int
 }
 
-// DefaultOptions is an Options object with default values.
+// NewOptions returns an Options object with default values.
 // Bigcache provides option to give hash function however we are going with default it uses
 // FNV 1a: https://en.wikipedia.org/wiki/Fowler–Noll–Vo_hash_function#FNV-1a_hash
 // Key : email address/oid - Max length of email is 264 chars but 95% email length is 31
@@ -148,14 +180,16 @@ type Options struct {
 // true means access allowed
 // false means access denied
 // We will tweak MaxEntrySize and MaxEntriesInWindows as per requirement and testing.
-var DefaultOptions = Options{
-	HardMaxCacheSize:   maxCacheSizeInMB,
-	Shards:             totalShards,
-	LifeWindow:         ttlInMins * time.Minute,
-	CleanWindow:        cleanupInMins * time.Minute,
-	MaxEntriesInWindow: maxEntriesInWin,
-	MaxEntrySize:       maxEntrySize,
-	Verbose:            false,
+func NewOptions() Options {
+	return Options{
+		HardMaxCacheSize:   maxCacheSizeInMB,
+		Shards:             totalShards,
+		LifeWindow:         ttlInMins * time.Minute,
+		CleanWindow:        cleanupInMins * time.Minute,
+		MaxEntriesInWindow: maxEntriesInWin,
+		MaxEntrySize:       maxEntrySize,
+		Verbose:            false,
+	}
 }
 
 // NewDataStore creates a BigCache store.
@@ -165,7 +199,7 @@ func NewDataStore(options Options) (authz.Store, error) {
 		LifeWindow:         options.LifeWindow,
 		CleanWindow:        options.CleanWindow,
 		MaxEntriesInWindow: options.MaxEntriesInWindow,
-		MaxEntrySize:       options.MaxEntriesInWindow,
+		MaxEntrySize:       options.MaxEntrySize,
 		Verbose:            options.Verbose,
 		HardMaxCacheSize:   options.HardMaxCacheSize,
 		OnRemove:           nil,
