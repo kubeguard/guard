@@ -12,18 +12,18 @@ menu_name: product_guard_{{ .version }}
 section_menu_id: setup
 ---
 
-> New to Guard? Please start [here](/docs/concepts).
+> New to Guard? Please see the [Guard Concepts Guide](/docs/concepts).
 
 # Installation Guide
 
 Guard binary works as a cli and server. In cli mode, you can use `guard` to generate various configuration to easily deploy Guard server. Guard server uses TLS client auth to secure the communication channel between Kubernetes api server and Guard server. You can run Guard server external to a Kubernetes cluster. This document shows you how to `self-host` Guard server in a Kubernetes cluster. To that end, we run Guard server using a predefined Service ClusterIP `10.96.10.96` and port `443`. This ClusterIP is chosen so that it falls in the default --service-cidr range for [Kubeadm](https://kubernetes.io/docs/admin/kubeadm/). If the service CIDR range for your cluster is different, please pick an appropriate ClusterIP.
 
-If you want to set up guard via [__Kops__](https://github.com/kubernetes/kops) visit [here](/docs/setup/install-kops.md) to see differences in setup.
+If you want to set up guard via [__Kops__](https://github.com/kubernetes/kops), see the [Kops installation guide](/docs/setup/install-kops.md) for differences in setup.
 
-If you want to set up guard via [__Kubespray__](https://github.com/kubernetes-incubator/kubespray) visit [here](/docs/setup/install-kubespray.md).
-
+If you want to set up guard via [__Kubespray__](https://github.com/kubernetes-incubator/kubespray), see the [Kubespray installation guide](/docs/setup/install-kubespray.md).
 
 ## Install Guard as CLI
+
 Download pre-built binaries from [appscode/guard Github releases](https://go.kubeguard.dev/guard/releases) and put the binary to some directory in your `PATH`. To install on Linux 64-bit and MacOS 64-bit you can run the following commands:
 
 ```console
@@ -38,13 +38,13 @@ wget -O guard https://go.kubeguard.dev/guard/releases/download/{{< param "info.v
   && sudo mv guard /usr/local/bin/
 ```
 
-If you prefer to install Guard cli from source code, you will need to set up a GO development environment following [these instructions](https://golang.org/doc/code.html). Then, install `guard` CLI using `go get` from source code.
+If you prefer to install Guard cli from source code, you will need to set up a `go` development environment following [these instructions](https://golang.org/doc/code.html). Then, install `guard` CLI using `go install` from source code.
 
 ```bash
-go get go.kubeguard.dev/guard
+go install go.kubeguard.dev/guard@latest
 ```
 
-Please note that this will install Guard cli from master branch which might include breaking and/or undocumented changes.
+Please note that this will install Guard CLI from the master branch which might include breaking and/or undocumented changes.
 
 ## Initialize PKI
 
@@ -124,6 +124,7 @@ Wrote ca certificates in  /tmp/guard/pki
 Guard can use [supported authenticator](/docs/guides/) to authenticate users for a Kubernetes cluster. A Kubernetes cluster can use one of these organization to authenticate users. But you can configure a single Guard server to perform authentication for multiple clusters, where each cluster uses a different auth provider.
 
 ## Deploy Guard server
+
 Now deploy Guard server so that your Kubernetes api server can access it. Use the command below to generate YAMLs for your particular setup. Then use `kubectl apply -f` to install Guard server.
 
 ```console
@@ -139,6 +140,7 @@ By default, the installer.yaml will deploy Guard server on master instances. If 
 the node selector in installer.yaml to `"node-role.kubernetes.io/master": "true"` due to [kubernetes-incubator/kubespray#2108](https://github.com/kubernetes-incubator/kubespray/issues/2108).
 
 ## Configure Kubernetes API Server
+
 To use webhook authentication, you need to set `--authentication-token-webhook-config-file` flag of your Kubernetes api server to a [kubeconfig file](https://kubernetes.io/docs/admin/authentication/#webhook-token-authentication) describing how to access the Guard webhook service. You can use the following command to generate a sample `kubeconfig` file.
 
 ```console
@@ -165,7 +167,6 @@ users:
     client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUMyakNDQWNLZ0F3SUJBZ0lJQTZJZmR0dEIzTlV3RFFZSktvWklodmNOQVFFTEJRQXdEVEVMTUFrR0ExVUUKQXhNQ1kyRXdIaGNOTVRjd09ESTVNVFF5TXpNNFdoY05NVGd3T0RJNU1UUXlOREEwV2pBa01ROHdEUVlEVlFRSwpFd1pIYVhSb2RXSXhFVEFQQmdOVkJBTVRDR0Z3Y0hOamIyUmxNSUlCSWpBTkJna3Foa2lHOXcwQkFRRUZBQU9DCkFROEFNSUlCQ2dLQ0FRRUE3NG5nc25IcldkeHovZUNWdEVwVUdVcmQ1dWkwSVhteGFkZlVuM3hpVTduZHdsYzgKc2loT1hLQ2pEaWM5cjZweW16MTJ5Ry93WCtZM1diOUU5a0VxQzg5L2oyR0ZrSFNVOU40VFlsQlZka0pSRUQ2dAoySjZpVnNPZE9BeE9MeDNidG5QR3RYNi9KRTZSTVFCLzhkcUYyenFUZm5ST3FFNFE0N01wL0NKYmdkcEpjbm9mCmdKVzN5Z2pJYk96WHhIZVNNcjlIclhveGRLbGFPVk1hU3BmY0RVREZrQXV1MEREZCszT3hwbG03TlNpS2JpbnUKM0d3VDc4YkRtNzZCTCtEOWhKeXB2OVZDTFkyMVB3WnB3ejJmaThYdzN2WDM3VVdPenA0OXlCMyttYnVjWkpGSgpCRTNORVJyZFVvWFhyeUJrdDhEdXp0SzhYM3dhOExGdmsvOWxWd0lEQVFBQm95Y3dKVEFPQmdOVkhROEJBZjhFCkJBTUNCYUF3RXdZRFZSMGxCQXd3Q2dZSUt3WUJCUVVIQXdJd0RRWUpLb1pJaHZjTkFRRUxCUUFEZ2dFQkFFN0YKZkdpOWpDSzc0eGZZdmY3b3Byb1NxSVpoYmdyODVkcENCZ2FVbEhlK0ZJYkpVeWhnL2c2OVNCOUlhWitpTWYxNgpNWkJVTWs4Tmg5dUZWYWVQVUdCWG0vTUtBeGx0V0J0UHh0VFFMV0cycU9LbXczK3Z5UUJ4R2JMaytycndXVS9YCjR5SzcxbWc5ZG5GVXdWOGI2UWtwM1IxMVdCZzlCeHExU1RQL210S2NyNVVDS3ZWVmlEYlpobzRkRy9ZUHdMbEUKS1N4UGtqS3NPVU54dDlHZkdNTHVRMVFQWXZDYTZjZ1MxN3BERWZacWVqdmthc0UxeTNSQWpPa2pubTJ2KzIzbgpBN2kxYWwwMDZjTEpQdTl3S3IyMzhJQ0Q3N2ZxQzhTaXJhN3V3NUgxbkVvMTh1am94NmI2UG5XazdmeTZabDRHCjBWMXBCSDJtL1JqK0RudGVTM0k9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
     client-key-data: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcFFJQkFBS0NBUUVBNzRuZ3NuSHJXZHh6L2VDVnRFcFVHVXJkNXVpMElYbXhhZGZVbjN4aVU3bmR3bGM4CnNpaE9YS0NqRGljOXI2cHltejEyeUcvd1grWTNXYjlFOWtFcUM4OS9qMkdGa0hTVTlONFRZbEJWZGtKUkVENnQKMko2aVZzT2RPQXhPTHgzYnRuUEd0WDYvSkU2Uk1RQi84ZHFGMnpxVGZuUk9xRTRRNDdNcC9DSmJnZHBKY25vZgpnSlczeWdqSWJPelh4SGVTTXI5SHJYb3hkS2xhT1ZNYVNwZmNEVURGa0F1dTBERGQrM094cGxtN05TaUtiaW51CjNHd1Q3OGJEbTc2QkwrRDloSnlwdjlWQ0xZMjFQd1pwd3oyZmk4WHczdlgzN1VXT3pwNDl5QjMrbWJ1Y1pKRkoKQkUzTkVScmRVb1hYcnlCa3Q4RHV6dEs4WDN3YThMRnZrLzlsVndJREFRQUJBb0lCQVFDam9LdTlPZFJyTGd5TwpBRHhEVEFMbXhCMlEvcVVOdVBOWU9mY2tldk12L21kZHVmbmNPV3hPR2UxSVhjWGxtYWx3SWl4aC94VlViUTZpClgrWGIwZWZHNlpkWmVtU2lxUUNYeEp1NUxPYzBRVmplbi9KaFp2dStDU0g4aDJ0aEJDUnlIZVEvVnJWN043QTIKcVFDOVZXamF1TWpJT09zQ1RWRjhPWWNVbE9PdGJ2MFFRSUFNRDdxak1jcTdIRlJMbjlHSXJjSGVZWTd2RTdONQpucFdOMWZOT25BZXNnaVNRcGYxdGNYcmJUckNkb1JweExlU2RFUngyVnBkdFE1V3hFTm9YYURJT3FJVXB2anJaCjIwSUZqazY3eVVOTlBCLzJkU3VmZzVaekxEYWNGUy9lenYvUDVJYnVEazBHZWQyZGhkT2t3K2duVFNabjg0Sk4KMDg4TlMvVUJBb0dCQVBGOG44dEVmTURDNjlTc1RGWWh4NUc2aE1PWThlS0kxTDJQeTVVaEN4WCtXUlpoQndaVQpWaGhVMVpOcTgvUXkwb201WEQyT1UwR0tGQjY3aE9kU1l6TUc3a0NqKzl3bHZDM0loRmxLd2R1ZC8relBWTFkvCngxRjFtVnA3aTllZXZiZmdZdUQxdDRvTDVxc2lveldGZ2g2UndSZzVWTXpGd0N2WXZwUk9CcGZUQW9HQkFQM3YKUjNyRit1cW96YU9IcldrUjFEL3E5MHlRd3ZpamlRWDhyNEg3QVZTVVpnQmhwbEpmUDRTVU84NWdUbmhBLzl4ZQp3R1NTQzFGWkpVeDRmOW41MFN0dFlkNFhIMTZiU1lyOEpWQWxVRWY5QWR1czBkc1pKdkZLSEM5S3VjNEFPeUFPClYvUGR0Rk1FV2J5WERSQXdBTTVwNzZsU1pZVXA5cDFLVTZ6SndHM3RBb0dCQUlmdzdRK0RmV3NTRDZwSVdDekEKbFZUL0Y4LzRZR3B6TnJlRHBFcE9NS3h2NDN6S29DYTdBVUJ2T1Uva2pISnl6YnlFSVYzeHFnS2lGVk43b29TSwpCNWZwRmVSRHEvdXhMbTdqaTBXczVOYVo2a0ZJTWRycXFteTc4OWxRNVZjN1lIZUxsSDRwTk9vOGF0ejZBY0NXCmFMcUd1Sm5IWkdwbUJCbHF5Vlk1V2xMTEFvR0FPWVlBelVFWURCeGRLUlJOSmlZUnpNRHZjSHJDa0F5THQ3MTgKREpmTnYxazJtaE9FMTlnWHpYSys4WXREZTE1T0Y1K25PYUVUeTBQRWZVUTJ3aXdqUkJFdFFHQkFqTy9rZ3dXSApkbFpkajFFeklJNVBvN0JZOEFQM3lvYkUvSE4wOFZnT2VJSGFuWXU0d0UzL2VaRkdQWHdsL0ZkY0JBUnpoMElWCkhtazluQ2tDZ1lFQXJyNGQ3WFBUNlBvTTA5TjFSYnVtQnROUW96cGxpb0wwb0tqZUxHL0RHcUd5Q3lpcDVsNnMKUW5vblpPcW9BVzdqZlRiMThvVVVzVkJTdDJvd20zempac05XZFdZcEptL1ZCSDQvY0dOeFJuSXN1OFNsdFdBZAp1YjVZQS9YcnEvUTRNcUJnZEVwYm9HTnlzUVlscE0rMmxHZWpiZ0pDUTI4b3dJYndLQ3JSY2t3PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
 ```
-
 
 ## Using Guard service name instead of IP in authentication webhook config file
 

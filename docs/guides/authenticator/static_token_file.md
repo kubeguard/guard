@@ -26,6 +26,7 @@ $ guard get installer \
 
 $ kubectl apply -f installer.yaml
 ```
+
 ![github-webhook-flow](/docs/images/token-auth-webhook-flow.png)
 
 ```json
@@ -37,10 +38,7 @@ $ kubectl apply -f installer.yaml
     "user": {
       "username": "<user-name>",
       "uid": "<user-id>",
-      "groups": [
-        "<group-1>",
-        "<group-2>"
-      ]
+      "groups": ["<group-1>", "<group-2>"]
     }
   }
 }
@@ -49,15 +47,17 @@ $ kubectl apply -f installer.yaml
 Guard uses the token found in `TokenReview` request object to get user's information and list of groups this user is member of. In the `TokenReview` response, `status.user.username`, `status.user.uid` and `status.user.groups` are set to username, userid and groups found in token file.
 
 ### Token file
+
 Token file is a csv file containing four columns: token, username, user uid and group names. Group names column may be empty or contain multiple names. Token must be unique for each user.
 
-|username |uid      |token                 |List groups user is member of
-|---------|---------|----------------------|----------------------------------
-|user1    |1123     |alkskjhfdku3jkfhm     |test,dev
-|user2    |566      |kjasdfgjkewyucxmj12   |dev
-|user3    |7654     |lskdfjldskfnkjhf      |
+| username | uid  | token               | List groups user is member of |
+| -------- | ---- | ------------------- | ----------------------------- |
+| user1    | 1123 | alkskjhfdku3jkfhm   | test,dev                      |
+| user2    | 566  | kjasdfgjkewyucxmj12 | dev                           |
+| user3    | 7654 | lskdfjldskfnkjhf    |                               |
 
 For above user's, token file is given below:
+
 ```console
 $ cat token.csv
 alkskjhfdku3jkfhm,user1,1123,"test,dev"
@@ -65,7 +65,9 @@ kjasdfgjkewyucxmj12,user2,566,dev
 lskdfjldskfnkjhf,user3,7654,
 
 ```
+
 ### Configure Kubectl
+
 ```console
 kubectl config set-credentials <user_name> --token=<token>
 ```
@@ -73,12 +75,14 @@ kubectl config set-credentials <user_name> --token=<token>
 Or You can add user in .kube/config file
 
 ```yaml
+
 ...
 users:
-- name: <user_name>
-  user:
-    token: <token>
+  - name: <user_name>
+    user:
+      token: <token>
 ```
+
 ```console
 $ kubectl get pods --all-namespaces --user <user_name>
 NAMESPACE     NAME                               READY     STATUS    RESTARTS   AGE

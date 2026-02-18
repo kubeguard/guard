@@ -16,6 +16,7 @@ aliases:
 ---
 
 # Contribution Guidelines
+
 Want to hack on Guard?
 
 AppsCode projects are [Apache 2.0 licensed](https://go.kubeguard.dev/guard/blob/master/LICENSE) and accept contributions via
@@ -46,7 +47,7 @@ If you have found a bug with Guard or want to request for new features, please [
 
 ## Submit PR
 
-If you fix a bug or developed a new feature, feel free to submit a PR. In either case, please file a [Github issue](https://go.kubeguard.dev/guard/issues/new) first, so that we can have a discussion on it. This is a rough outline of what a contributor's workflow looks like:
+If you fix a bug or developed a new feature, feel free to submit a PR. In either case, please file a [Github issue](https://github.com/kubeguard/guard/issues/new) first, so that we can have a discussion on it. This is a rough outline of what a contributor's workflow looks like:
 
 - Create a topic branch from where you want to base your work (usually master).
 - Make commits of logical units.

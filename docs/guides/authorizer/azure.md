@@ -14,14 +14,13 @@ section_menu_id: guides
 
 # Azure Authorizer
 
-Guard installation guide can be found [here](/docs/setup/install.md). To use Azure, create a client cert with `Organization` set to `Azure`.For Azure `CommonName` is optional. To ease this process, use the Guard cli to issue a client cert/key pair.
+The [Guard installation guide](/docs/setup/install.md) contains setup instructions. To use Azure, create a client cert with `Organization` set to `Azure`.For Azure `CommonName` is optional. To ease this process, use the Guard cli to issue a client cert/key pair.
 
 ```console
 $ guard init client [CommonName] -o Azure
 ```
 
-Azure authenticator guide can be found [here](/docs/guides/authenticator/azure.md).
-
+See the [Azure authentication guide](/docs/guides/authenticator/azure.md) for more information.
 
 ## ARC mode
 
@@ -53,6 +52,7 @@ $ kubectl apply -f installer.yaml
 > Keep azure.skip-authz-for-non-aad-users=true for certificate users (non AAD users) to work with Azure authorization. You are required to set separate Kubernetes RBAC authorizer for certificate users.
 
 ## Further Reading:
-- https://docs.microsoft.com/en-us/azure/role-based-access-control/overview
-- https://docs.microsoft.com/en-us/azure/role-based-access-control/best-practices
-- https://aka.ms/AzureArcK8sDocs
+
+- <https://docs.microsoft.com/en-us/azure/role-based-access-control/overview>
+- <https://docs.microsoft.com/en-us/azure/role-based-access-control/best-practices>
+- <https://aka.ms/AzureArcK8sDocs>

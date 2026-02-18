@@ -13,13 +13,13 @@ section_menu_id: reference
 
 Prints Kubernetes objects for deploying guard server
 
-```
+```console
 guard get installer [flags]
 ```
 
 ### Options
 
-```
+```text
       --addr string                                  Address (host:port) of guard server. (default "10.96.10.96:443")
       --auth-providers strings                       name of providers for which guard will provide authentication service (required), supported providers : Azure/Github/Gitlab/Google/Ldap/Token-Auth
       --authz-providers strings                      name of providers for which guard will provide authorization service, supported providers : Azure
@@ -85,5 +85,4 @@ guard get installer [flags]
 
 ### SEE ALSO
 
-* [guard get](/docs/reference/guard_get.md)	 - Get PKI
-
+- [guard get](/docs/reference/guard_get.md) - Get PKI
