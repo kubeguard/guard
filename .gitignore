@@ -34,3 +34,6 @@ _testmain.go
 
 # Test binaries
 tests/mock-server/mock-server
+
+.cache/
+.config/
