@@ -261,6 +261,18 @@ func (s Authenticator) Check(ctx context.Context, token string) (*authv1.UserInf
 			resp.Groups = groups
 			return resp, nil
 		}
+		// When overage claim is present and we need Graph API, but the token
+		// is from a service principal, OBO flow will fail. Short-circuit with
+		// a clear error message.
+		if isAppToken(claims) {
+			return nil, fmt.Errorf(
+				"group membership overage claim detected for a service principal token. " +
+					"Resolving group membership via Graph API using On-Behalf-Of flow is not " +
+					"supported for service principal tokens. The service principal has more " +
+					"than 200 group memberships. Please reduce group memberships or configure " +
+					"the application to not require group resolution. " +
+					"For troubleshooting, see https://aka.ms/overageclaimtroubleshoot")
+		}
 	}
 	if !s.Options.SkipGroupMembershipResolution {
 		if err := s.graphClient.RefreshToken(ctx, token); err != nil {
@@ -347,6 +359,17 @@ func getGroupsAndCheckOverage(claims claims) ([]string, bool, error) {
 
 	// return true to proceed to call graph api
 	return nil, false, nil
+}
+
+// isAppToken checks the "idtyp" claim to determine if a token was issued
+// for an application (service principal) rather than a user.
+// v1 tokens without "idtyp" are assumed to be user tokens.
+func isAppToken(c claims) bool {
+	idtyp, err := c.string("idtyp")
+	if err != nil {
+		return false // absent idtyp → assume user (v1 token behavior)
+	}
+	return strings.EqualFold(idtyp, "app")
 }
 
 func marshalGenericTo(src interface{}, dst interface{}) error {

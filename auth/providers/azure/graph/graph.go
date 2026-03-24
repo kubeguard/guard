@@ -350,6 +350,21 @@ func (u *UserInfo) isTokenExpired() bool {
 	return u.expires.Before(time.Now())
 }
 
+// isAppToken checks the "idtyp" claim of a raw JWT to determine if the token
+// was issued for an application (service principal) rather than a user.
+func isAppToken(rawToken string) bool {
+	claims := jwt.MapClaims{}
+	_, _, err := new(jwt.Parser).ParseUnverified(rawToken, claims)
+	if err != nil {
+		return false
+	}
+	if claims[idtypClaim] == nil {
+		return false // absent idtyp → assume user (v1 token behavior)
+	}
+	idtyp, ok := claims[idtypClaim].(string)
+	return ok && strings.EqualFold(idtyp, "app")
+}
+
 // GetGroups gets a list of all groups that the given user principal is part of
 // Generally in federated directories the email address is the userPrincipalName
 func (u *UserInfo) GetGroups(ctx context.Context, userPrincipal string, token string) ([]string, error) {
@@ -361,6 +376,13 @@ func (u *UserInfo) GetGroups(ctx context.Context, userPrincipal string, token st
 		}
 		return groupIds, nil
 	}
+
+	// Defense-in-depth: check if the token is from a service principal.
+	// OBO-based token acquisition does not support service principal tokens.
+	if isAppToken(token) {
+		return nil, errors.New("resolving group membership via Graph API is not supported for service principal tokens. For troubleshooting, please refer to aka.ms/overageclaimtroubleshoot")
+	}
+
 	// Get the group IDs for the user
 	groupIDs, err := u.getGroupIDs(ctx, userPrincipal)
 	if err != nil {

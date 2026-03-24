@@ -625,3 +625,129 @@ func TestGetGroupsPaging(t *testing.T) {
 		t.Errorf("Should have gotten a list of groups with 3 entries. Got: %d", len(groups))
 	}
 }
+
+func TestGetGroupsRejectsSPNToken(t *testing.T) {
+	ctx := context.Background()
+	key, err := NewSwkKey()
+	if err != nil {
+		t.Fatalf("Failed to generate key. Error:%+v", err)
+	}
+
+	validBody := `{
+		"value": [
+			"f36ec2c5-fa5t-4f05-b87f-deadbeef"
+		]
+	}`
+
+	mux := http.NewServeMux()
+	mux.Handle("/users/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(validBody))
+	}))
+	mux.Handle("/directoryObjects/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`{"value": [{"@odata.type": "#microsoft.graph.group", "displayName": "TestGroup"}]}`))
+	}))
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+	apiURL, _ := url.Parse(ts.URL)
+
+	u := &UserInfo{
+		client:        httpclient.DefaultHTTPClient,
+		apiURL:        apiURL,
+		headers:       http.Header{},
+		expires:       time.Now().Add(time.Hour),
+		groupsPerCall: expandedGroupsPerCall,
+	}
+
+	t.Run("SPN token should be rejected in non-ARC path", func(t *testing.T) {
+		tokenstring, err := key.GenerateToken([]byte(fmt.Sprintf(accessTokenWithOverageClaimForApp, ts.URL, time.Now().Add(time.Minute*5).Unix())))
+		if err != nil {
+			t.Fatalf("Error when generating token. Error:%+v", err)
+		}
+
+		groups, err := u.GetGroups(ctx, "spn@app.com", tokenstring)
+		if err == nil {
+			t.Error("Should have gotten error for SPN token")
+		}
+		if groups != nil {
+			t.Error("Group list should be nil")
+		}
+		if !strings.Contains(err.Error(), "resolving group membership via Graph API is not supported for service principal tokens") {
+			t.Errorf("Expected SPN not supported error, Got: %s", err.Error())
+		}
+	})
+
+	t.Run("User token should be allowed in non-ARC path", func(t *testing.T) {
+		tokenstring, err := key.GenerateToken([]byte(fmt.Sprintf(accessTokenWithOverageClaimForUser, ts.URL, time.Now().Add(time.Minute*5).Unix())))
+		if err != nil {
+			t.Fatalf("Error when generating token. Error:%+v", err)
+		}
+
+		groups, err := u.GetGroups(ctx, "user@corp.com", tokenstring)
+		if err != nil {
+			t.Errorf("Should not have gotten error for user token: %s", err)
+		}
+		if len(groups) != 1 {
+			t.Errorf("Should have gotten 1 group. Got: %d", len(groups))
+		}
+	})
+
+	t.Run("Token without idtyp should be allowed in non-ARC path", func(t *testing.T) {
+		tokenstring, err := key.GenerateToken([]byte(fmt.Sprintf(accessTokenWithOverageClaim, ts.URL, time.Now().Add(time.Minute*5).Unix())))
+		if err != nil {
+			t.Fatalf("Error when generating token. Error:%+v", err)
+		}
+
+		groups, err := u.GetGroups(ctx, "v1user@corp.com", tokenstring)
+		if err != nil {
+			t.Errorf("Should not have gotten error for v1 token without idtyp: %s", err)
+		}
+		if len(groups) != 1 {
+			t.Errorf("Should have gotten 1 group. Got: %d", len(groups))
+		}
+	})
+}
+
+func TestIsAppTokenGraph(t *testing.T) {
+	key, err := NewSwkKey()
+	if err != nil {
+		t.Fatalf("Failed to generate key. Error:%+v", err)
+	}
+
+	t.Run("app token returns true", func(t *testing.T) {
+		tokenstring, err := key.GenerateToken([]byte(fmt.Sprintf(accessTokenWithOverageClaimForApp, "http://test", time.Now().Add(time.Minute*5).Unix())))
+		if err != nil {
+			t.Fatalf("Error generating token: %+v", err)
+		}
+		if !isAppToken(tokenstring) {
+			t.Error("Expected isAppToken to return true for app token")
+		}
+	})
+
+	t.Run("user token returns false", func(t *testing.T) {
+		tokenstring, err := key.GenerateToken([]byte(fmt.Sprintf(accessTokenWithOverageClaimForUser, "http://test", time.Now().Add(time.Minute*5).Unix())))
+		if err != nil {
+			t.Fatalf("Error generating token: %+v", err)
+		}
+		if isAppToken(tokenstring) {
+			t.Error("Expected isAppToken to return false for user token")
+		}
+	})
+
+	t.Run("token without idtyp returns false", func(t *testing.T) {
+		tokenstring, err := key.GenerateToken([]byte(fmt.Sprintf(accessTokenWithOverageClaim, "http://test", time.Now().Add(time.Minute*5).Unix())))
+		if err != nil {
+			t.Fatalf("Error generating token: %+v", err)
+		}
+		if isAppToken(tokenstring) {
+			t.Error("Expected isAppToken to return false for token without idtyp")
+		}
+	})
+
+	t.Run("invalid token returns false", func(t *testing.T) {
+		if isAppToken("not-a-valid-jwt") {
+			t.Error("Expected isAppToken to return false for invalid token")
+		}
+	})
+}
