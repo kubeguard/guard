@@ -1,7 +1,5 @@
 <p align="center"><img src="/logo/LOGO_GUARD_Readme.jpg"></p>
 
-<!-- dummy change for PR test -->
-
 [![Build Status](https://github.com/kubeguard/guard/workflows/CI/badge.svg)](https://github.com/kubeguard/guard/actions?workflow=CI)
 [![codecov](https://codecov.io/gh/kubeguard/guard/branch/master/graph/badge.svg)](https://codecov.io/gh/kubeguard/guard)
 [![Docker Pulls](https://img.shields.io/docker/pulls/appscode/guard.svg)](https://hub.docker.com/r/appscode/guard/)
