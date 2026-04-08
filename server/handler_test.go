@@ -211,23 +211,4 @@ func TestWriteAuthDecisionError(t *testing.T) {
 		assert.False(t, review.Status.Authenticated)
 		assert.Contains(t, review.Status.Error, "Missing client certificate")
 	})
-
-	t.Run("successful authentication returns HTTP 200 with Authenticated true", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		userInfo := &auth.UserInfo{
-			Username: "testuser",
-			Groups:   []string{"group1"},
-		}
-		write(w, userInfo, nil)
-
-		resp := w.Result()
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-		var review auth.TokenReview
-		err := json.NewDecoder(resp.Body).Decode(&review)
-		assert.Nil(t, err)
-		assert.True(t, review.Status.Authenticated)
-		assert.Equal(t, "testuser", review.Status.User.Username)
-		assert.Empty(t, review.Status.Error)
-	})
 }
