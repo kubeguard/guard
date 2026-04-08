@@ -53,6 +53,7 @@ const (
 	managedClusters           = "Microsoft.ContainerService/managedClusters"
 	fleets                    = "Microsoft.ContainerService/fleets"
 	fleetMembers              = "Microsoft.ContainerService/fleets/members"
+	aiManagers                = "Microsoft.ContainerService/AIManagers"
 	connectedClusters         = "Microsoft.Kubernetes/connectedClusters"
 	checkAccessPath           = "/providers/Microsoft.Authorization/checkaccess"
 	queryParamAPIVersion      = "api-version"
@@ -174,6 +175,8 @@ func getClusterType(clsType string) string {
 		return managedClusters
 	case authzOpts.FleetAuthzMode:
 		return fleets
+	case authzOpts.AIManagerAuthzMode:
+		return aiManagers
 	default:
 		return ""
 	}
@@ -264,6 +267,8 @@ func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo) (*
 	case authzOpts.FleetAuthzMode:
 		tokenProvider = graph.NewAKSTokenProvider(opts.AKSAuthzTokenURL, authopts.TenantID)
 	case authzOpts.AKSAuthzMode:
+		tokenProvider = graph.NewAKSTokenProvider(opts.AKSAuthzTokenURL, authopts.TenantID)
+	case authzOpts.AIManagerAuthzMode:
 		tokenProvider = graph.NewAKSTokenProvider(opts.AKSAuthzTokenURL, authopts.TenantID)
 	}
 
@@ -503,7 +508,7 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 	// Fallback to managed namespace check
 	managedNamespaceExists, managedNamespacePath := getManagedNameSpaceScope(request)
 	if a.useManagedNamespaceResourceScopeFormat &&
-		(a.clusterType == managedClusters || a.clusterType == fleets) &&
+		(a.clusterType == managedClusters || a.clusterType == fleets || a.clusterType == aiManagers) &&
 		managedNamespaceExists {
 		log.V(7).Info("Falling back to managed namespace scope check", "namespacePath", managedNamespacePath)
 		// Build managed namespace URL
