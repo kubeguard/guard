@@ -34,6 +34,15 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 // write replies to the request with the specified TokenReview object and HTTP code.
 // It does not otherwise end the request; the caller should ensure no further
 // writes are done to w.
+//
+// Per the TokenReview webhook contract, authentication decision errors (e.g., invalid token,
+// SPN overage) return HTTP 200 with Authenticated: false and Status.Error set. This ensures
+// the API server's webhook authenticator reads the error from Status.Error rather than treating
+// the response as a webhook transport failure and retrying with exponential backoff.
+// See: https://kubernetes.io/docs/reference/access-authn-authz/authentication/#webhook-token-authentication
+//
+// Infrastructure errors annotated with errutils.WithCode (e.g., missing client certificate,
+// malformed request body) retain their explicit HTTP status code.
 func write(w http.ResponseWriter, info *auth.UserInfo, err error) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("x-content-type-options", "nosniff")
@@ -46,7 +55,11 @@ func write(w http.ResponseWriter, info *auth.UserInfo, err error) {
 	}
 
 	if err != nil {
-		code := http.StatusUnauthorized
+		// If the error carries an explicit HTTP status code (e.g., 400 for bad requests),
+		// use it. These are infrastructure/protocol errors, not authentication decisions.
+		// Otherwise, return HTTP 200 per the TokenReview webhook contract — the authentication
+		// decision (Authenticated: false) and error detail are conveyed in the response body.
+		code := http.StatusOK
 		if v, ok := err.(errutils.HttpStatusCode); ok {
 			code = v.Code()
 		}

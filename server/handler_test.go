@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -29,6 +30,7 @@ import (
 	"go.kubeguard.dev/guard/auth/providers/gitlab"
 	"go.kubeguard.dev/guard/auth/providers/google"
 	"go.kubeguard.dev/guard/auth/providers/ldap"
+	errutils "go.kubeguard.dev/guard/util/error"
 
 	fuzz "github.com/google/gofuzz"
 	"github.com/pkg/errors"
@@ -177,4 +179,55 @@ func TestGetAuthProviderClient(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWriteAuthDecisionError(t *testing.T) {
+	t.Run("authentication decision error returns HTTP 200 with Status.Error", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		authErr := fmt.Errorf("group membership overage claim detected for a service principal token")
+		write(w, nil, authErr)
+
+		resp := w.Result()
+		assert.Equal(t, http.StatusOK, resp.StatusCode, "auth decision errors should return HTTP 200 per TokenReview webhook contract")
+
+		var review auth.TokenReview
+		err := json.NewDecoder(resp.Body).Decode(&review)
+		assert.Nil(t, err)
+		assert.False(t, review.Status.Authenticated)
+		assert.Contains(t, review.Status.Error, "group membership overage claim")
+	})
+
+	t.Run("infrastructure error with WithCode returns its HTTP status code", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		infraErr := errutils.WithCode(errors.New("Missing client certificate"), http.StatusBadRequest)
+		write(w, nil, infraErr)
+
+		resp := w.Result()
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "infrastructure errors should retain their explicit HTTP status code")
+
+		var review auth.TokenReview
+		err := json.NewDecoder(resp.Body).Decode(&review)
+		assert.Nil(t, err)
+		assert.False(t, review.Status.Authenticated)
+		assert.Contains(t, review.Status.Error, "Missing client certificate")
+	})
+
+	t.Run("successful authentication returns HTTP 200 with Authenticated true", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		userInfo := &auth.UserInfo{
+			Username: "testuser",
+			Groups:   []string{"group1"},
+		}
+		write(w, userInfo, nil)
+
+		resp := w.Result()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var review auth.TokenReview
+		err := json.NewDecoder(resp.Body).Decode(&review)
+		assert.Nil(t, err)
+		assert.True(t, review.Status.Authenticated)
+		assert.Equal(t, "testuser", review.Status.User.Username)
+		assert.Empty(t, review.Status.Error)
+	})
 }

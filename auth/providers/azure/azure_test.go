@@ -436,7 +436,7 @@ func TestCheckAzureAuthenticationSPNWithOverage(t *testing.T) {
 		resp, err := client.Check(ctx, token)
 		assert.NotNil(t, err)
 		assert.Nil(t, resp)
-		assert.Contains(t, err.Error(), "group membership overage claim detected for a service principal token")
+		assert.Contains(t, err.Error(), "[AADSTS7000113] service principal token with group membership overage")
 		assert.Contains(t, err.Error(), "https://aka.ms/overageclaimtroubleshoot")
 	})
 
@@ -471,7 +471,7 @@ func TestCheckAzureAuthenticationSPNWithOverage(t *testing.T) {
 		// Should not error with SPN-specific message; it will proceed to Graph API call
 		resp, err := client.Check(ctx, token)
 		if err != nil {
-			assert.NotContains(t, err.Error(), "group membership overage claim detected for a service principal token")
+			assert.NotContains(t, err.Error(), "[AADSTS7000113] service principal token with group membership overage")
 		} else {
 			assert.NotNil(t, resp)
 		}

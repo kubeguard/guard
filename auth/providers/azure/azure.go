@@ -266,12 +266,9 @@ func (s Authenticator) Check(ctx context.Context, token string) (*authv1.UserInf
 		// a clear error message.
 		if isAppToken(claims) {
 			return nil, fmt.Errorf(
-				"group membership overage claim detected for a service principal token. " +
-					"Resolving group membership via Graph API using On-Behalf-Of flow is not " +
-					"supported for service principal tokens. The service principal has more " +
-					"than 200 group memberships. Please reduce group memberships or configure " +
-					"the application to not require group resolution. " +
-					"For troubleshooting, see https://aka.ms/overageclaimtroubleshoot")
+				"[AADSTS7000113] service principal token with group membership overage (>200 groups) " +
+					"is not supported for group resolution via Graph API. " +
+					"For troubleshooting, please refer to https://aka.ms/overageclaimtroubleshoot")
 		}
 	}
 	if !s.Options.SkipGroupMembershipResolution {

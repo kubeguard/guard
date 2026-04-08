@@ -218,7 +218,7 @@ func (u *UserInfo) getMemberGroupsUsingARCOboService(ctx context.Context, access
 		}
 	}
 	if !isAADUser {
-		return nil, errors.New("Overage claim (users with more than 200 group membership) for SPN is currently not supported. For troubleshooting, please refer to aka.ms/overageclaimtroubleshoot")
+		return nil, errors.New("[AADSTS7000113] service principal token with group membership overage (>200 groups) is not supported for group resolution via Graph API. For troubleshooting, please refer to https://aka.ms/overageclaimtroubleshoot")
 	}
 
 	buf := new(bytes.Buffer)
@@ -380,7 +380,7 @@ func (u *UserInfo) GetGroups(ctx context.Context, userPrincipal string, token st
 	// Defense-in-depth: check if the token is from a service principal.
 	// OBO-based token acquisition does not support service principal tokens.
 	if isAppToken(token) {
-		return nil, errors.New("resolving group membership via Graph API is not supported for service principal tokens. For troubleshooting, please refer to aka.ms/overageclaimtroubleshoot")
+		return nil, errors.New("[AADSTS7000113] service principal token with group membership overage (>200 groups) is not supported for group resolution via Graph API. For troubleshooting, please refer to https://aka.ms/overageclaimtroubleshoot")
 	}
 
 	// Get the group IDs for the user
