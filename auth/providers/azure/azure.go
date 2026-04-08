@@ -266,9 +266,8 @@ func (s Authenticator) Check(ctx context.Context, token string) (*authv1.UserInf
 		// a clear error message.
 		if isAppToken(claims) {
 			return nil, fmt.Errorf(
-				"[AADSTS7000113] service principal token with group membership overage (>200 groups) " +
-					"is not supported for group resolution via Graph API. " +
-					"For troubleshooting, please refer to https://aka.ms/overageclaimtroubleshoot")
+				"service principal with group membership exceeding 200 is not supported. " +
+					"See https://learn.microsoft.com/en-us/azure/aks/kubelogin-authentication#kubelogin-authentication-in-aks-limitations")
 		}
 	}
 	if !s.Options.SkipGroupMembershipResolution {

@@ -443,8 +443,8 @@ func TestGetMemberGroupsUsingARCOboService(t *testing.T) {
 			t.Error("Group list should be nil")
 		}
 
-		if !strings.Contains(err.Error(), "[AADSTS7000113] service principal token with group membership overage (>200 groups) is not supported for group resolution via Graph API") {
-			t.Errorf("Expected: [AADSTS7000113] service principal token with group membership overage error, Got: %s", err.Error())
+		if !strings.Contains(err.Error(), "service principal with group membership exceeding 200 is not supported") {
+			t.Errorf("Expected: service principal with group membership exceeding 200 error, Got: %s", err.Error())
 		}
 	})
 	t.Run("bad response body", func(t *testing.T) {
@@ -673,7 +673,7 @@ func TestGetGroupsRejectsSPNToken(t *testing.T) {
 		if groups != nil {
 			t.Error("Group list should be nil")
 		}
-		if !strings.Contains(err.Error(), "[AADSTS7000113] service principal token with group membership overage") {
+		if !strings.Contains(err.Error(), "service principal with group membership exceeding 200 is not supported") {
 			t.Errorf("Expected SPN overage error, Got: %s", err.Error())
 		}
 	})
