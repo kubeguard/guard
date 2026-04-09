@@ -446,6 +446,15 @@ func TestGetMemberGroupsUsingARCOboService(t *testing.T) {
 		if !strings.Contains(err.Error(), "Overage claim (users with more than 200 group membership) for SPN is currently not supported") {
 			t.Errorf("Expected: Overage claim for SPN error, Got: %s", err.Error())
 		}
+
+		// Verify the error carries HTTP 200 so the API server logs the message.
+		codeErr, ok := err.(interface{ Code() int })
+		if !ok {
+			t.Fatal("error should implement Code()")
+		}
+		if codeErr.Code() != http.StatusOK {
+			t.Errorf("Expected status code %d, got %d", http.StatusOK, codeErr.Code())
+		}
 	})
 	t.Run("bad response body", func(t *testing.T) {
 		ts, u := getAPIServerAndUserInfo(http.StatusOK, "{bad_json")

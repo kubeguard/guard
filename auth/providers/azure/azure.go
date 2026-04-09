@@ -262,9 +262,15 @@ func (s Authenticator) Check(ctx context.Context, token string) (*authv1.UserInf
 			resp.Groups = groups
 			return resp, nil
 		}
-		// When overage claim is present and we need Graph API, but the token
-		// is from a service principal, OBO flow will fail. Short-circuit with
-		// a clear error message.
+		// Service principal token with >200 groups. OBO flow does not
+		// support SPNs, so short-circuit instead of letting AAD fail with
+		// a cryptic AADSTS7000113.
+		//
+		// StatusOK: K8s webhook authenticator only reads and logs
+		// TokenReview Status.Error on HTTP 200. Non-200 is treated as a
+		// transport error and the message is discarded. We need this error
+		// to surface in API server logs so operators can diagnose why the
+		// SPN authentication was rejected.
 		if isAppToken(claims) {
 			return nil, errutils.WithCode(
 				fmt.Errorf(

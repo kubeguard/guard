@@ -219,6 +219,14 @@ func (u *UserInfo) getMemberGroupsUsingARCOboService(ctx context.Context, access
 		}
 	}
 	if !isAADUser {
+		// Service principal token; the ARC OBO service does not support
+		// group resolution for SPNs.
+		//
+		// StatusOK: K8s webhook authenticator only reads and logs
+		// TokenReview Status.Error on HTTP 200. Non-200 is treated as a
+		// transport error and the message is discarded. We need this error
+		// to surface in API server logs so operators can diagnose why the
+		// SPN authentication was rejected.
 		return nil, errutils.WithCode(
 			fmt.Errorf("Overage claim (users with more than 200 group membership) for SPN is currently not supported. "+
 				"For troubleshooting, please refer to aka.ms/overageclaimtroubleshoot"),

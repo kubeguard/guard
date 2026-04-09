@@ -438,6 +438,10 @@ func TestCheckAzureAuthenticationSPNWithOverage(t *testing.T) {
 		assert.Nil(t, resp)
 		assert.Contains(t, err.Error(), "service principal with group membership exceeding 200 is not supported")
 		assert.Contains(t, err.Error(), "kubelogin-authentication-in-aks-limitations")
+
+		codeErr, ok := err.(interface{ Code() int })
+		assert.True(t, ok, "error should implement Code()")
+		assert.Equal(t, http.StatusOK, codeErr.Code(), "error should HTTP 200 so the API server logs the message.")
 	})
 
 	t.Run("SPN token with groups in token should succeed (no Graph call needed)", func(t *testing.T) {
