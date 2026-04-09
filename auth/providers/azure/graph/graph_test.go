@@ -443,8 +443,8 @@ func TestGetMemberGroupsUsingARCOboService(t *testing.T) {
 			t.Error("Group list should be nil")
 		}
 
-		if !strings.Contains(err.Error(), "service principal with group membership exceeding 200 is not supported") {
-			t.Errorf("Expected: service principal with group membership exceeding 200 error, Got: %s", err.Error())
+		if !strings.Contains(err.Error(), "Overage claim (users with more than 200 group membership) for SPN is currently not supported") {
+			t.Errorf("Expected: Overage claim for SPN error, Got: %s", err.Error())
 		}
 	})
 	t.Run("bad response body", func(t *testing.T) {

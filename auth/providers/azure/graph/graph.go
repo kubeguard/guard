@@ -29,6 +29,7 @@ import (
 	"sync"
 	"time"
 
+	errutils "go.kubeguard.dev/guard/util/error"
 	"go.kubeguard.dev/guard/util/httpclient"
 
 	"github.com/golang-jwt/jwt"
@@ -218,7 +219,10 @@ func (u *UserInfo) getMemberGroupsUsingARCOboService(ctx context.Context, access
 		}
 	}
 	if !isAADUser {
-		return nil, errors.New("service principal with group membership exceeding 200 is not supported. See https://learn.microsoft.com/en-us/azure/aks/kubelogin-authentication#kubelogin-authentication-in-aks-limitations")
+		return nil, errutils.WithCode(
+			fmt.Errorf("Overage claim (users with more than 200 group membership) for SPN is currently not supported. "+
+				"For troubleshooting, please refer to aka.ms/overageclaimtroubleshoot"),
+			http.StatusOK)
 	}
 
 	buf := new(bytes.Buffer)
