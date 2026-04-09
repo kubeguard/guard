@@ -28,6 +28,7 @@ import (
 	"go.kubeguard.dev/guard/auth"
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 	azureutils "go.kubeguard.dev/guard/util/azure"
+	errutils "go.kubeguard.dev/guard/util/error"
 
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/coreos/go-oidc"
@@ -265,9 +266,11 @@ func (s Authenticator) Check(ctx context.Context, token string) (*authv1.UserInf
 		// is from a service principal, OBO flow will fail. Short-circuit with
 		// a clear error message.
 		if isAppToken(claims) {
-			return nil, fmt.Errorf(
-				"service principal with group membership exceeding 200 is not supported. " +
-					"See https://learn.microsoft.com/en-us/azure/aks/kubelogin-authentication#kubelogin-authentication-in-aks-limitations")
+			return nil, errutils.WithCode(
+				fmt.Errorf(
+					"service principal with group membership exceeding 200 is not supported. "+
+						"See https://learn.microsoft.com/en-us/azure/aks/kubelogin-authentication#kubelogin-authentication-in-aks-limitations"),
+				http.StatusOK)
 		}
 	}
 	if !s.Options.SkipGroupMembershipResolution {
