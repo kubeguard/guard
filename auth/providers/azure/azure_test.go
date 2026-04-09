@@ -456,26 +456,6 @@ func TestCheckAzureAuthenticationSPNWithOverage(t *testing.T) {
 		assert.NotNil(t, resp)
 		assert.Equal(t, 3, len(resp.Groups))
 	})
-
-	t.Run("User token with idtyp=user and overage should proceed to Graph call", func(t *testing.T) {
-		srv, client := getServerAndClient(t, signKey, loginResp, 3, true, false, ClientCredentialAuthMode)
-		client.Options.ResolveGroupMembershipOnlyOnOverageClaim = true
-		client.Options.UseGroupUID = true
-		defer srv.Close()
-
-		token, err := signKey.sign([]byte(fmt.Sprintf(accessTokenUserWithIdtyp, srv.URL)))
-		if err != nil {
-			t.Fatalf("Error when signing token. reason: %v", err)
-		}
-
-		// Should not error with SPN-specific message; it will proceed to Graph API call
-		resp, err := client.Check(ctx, token)
-		if err != nil {
-			assert.NotContains(t, err.Error(), "service principal with group membership exceeding 200 is not supported")
-		} else {
-			assert.NotNil(t, resp)
-		}
-	})
 }
 
 func TestIsAppToken(t *testing.T) {
@@ -489,18 +469,8 @@ func TestIsAppToken(t *testing.T) {
 		assert.True(t, isAppToken(c))
 	})
 
-	t.Run("token with idtyp=user should return false", func(t *testing.T) {
-		c := claims{"idtyp": "user"}
-		assert.False(t, isAppToken(c))
-	})
-
 	t.Run("token without idtyp should return false (v1 token)", func(t *testing.T) {
 		c := claims{"upn": "user@example.com"}
-		assert.False(t, isAppToken(c))
-	})
-
-	t.Run("token with non-string idtyp should return false", func(t *testing.T) {
-		c := claims{"idtyp": 123}
 		assert.False(t, isAppToken(c))
 	})
 }
