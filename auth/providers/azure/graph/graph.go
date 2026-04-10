@@ -29,6 +29,7 @@ import (
 	"sync"
 	"time"
 
+	errutils "go.kubeguard.dev/guard/util/error"
 	"go.kubeguard.dev/guard/util/httpclient"
 
 	"github.com/golang-jwt/jwt"
@@ -218,7 +219,18 @@ func (u *UserInfo) getMemberGroupsUsingARCOboService(ctx context.Context, access
 		}
 	}
 	if !isAADUser {
-		return nil, errors.New("Overage claim (users with more than 200 group membership) for SPN is currently not supported. For troubleshooting, please refer to aka.ms/overageclaimtroubleshoot")
+		// Service principal token; the ARC OBO service does not support
+		// group resolution for SPNs.
+		//
+		// StatusOK: K8s webhook authenticator only reads and logs
+		// TokenReview Status.Error on HTTP 200. Non-200 is treated as a
+		// transport error and the message is discarded. We need this error
+		// to surface in API server logs so operators can diagnose why the
+		// SPN authentication was rejected.
+		return nil, errutils.WithCode(
+			fmt.Errorf("Overage claim (users with more than 200 group membership) for SPN is currently not supported. "+
+				"For troubleshooting, please refer to aka.ms/overageclaimtroubleshoot"),
+			http.StatusOK)
 	}
 
 	buf := new(bytes.Buffer)
@@ -361,6 +373,7 @@ func (u *UserInfo) GetGroups(ctx context.Context, userPrincipal string, token st
 		}
 		return groupIds, nil
 	}
+
 	// Get the group IDs for the user
 	groupIDs, err := u.getGroupIDs(ctx, userPrincipal)
 	if err != nil {
