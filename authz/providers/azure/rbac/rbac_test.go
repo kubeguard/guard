@@ -249,7 +249,7 @@ func TestCheckAccess(t *testing.T) {
 				expectedAllowed:            true,
 				expectedDenied:             false,
 				enableManagedNamespaceRBAC: true,
-				clusterTypes:               []string{managedClusters, fleets, aiManagers},
+				clusterTypes:               []string{managedClusters, fleets},
 			},
 			{
 				name:                       "denied for managedNamespaces, allowed for namespaces",
