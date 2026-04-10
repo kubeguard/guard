@@ -280,7 +280,7 @@ func (a *AccessInfo) checkAccessV2(ctx context.Context, request *authzv1.Subject
 	// Fallback to managed namespace check
 	managedNamespaceExists, managedNamespacePath := getManagedNameSpaceScope(request)
 	if a.useManagedNamespaceResourceScopeFormat &&
-		(a.clusterType == managedClusters || a.clusterType == fleets || a.clusterType == aiManagers) &&
+		(a.clusterType == managedClusters || a.clusterType == fleets) &&
 		managedNamespaceExists {
 		log.V(7).Info("Falling back to managed namespace scope check (v2)", "namespacePath", managedNamespacePath)
 
