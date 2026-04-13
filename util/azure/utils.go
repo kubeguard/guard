@@ -53,6 +53,7 @@ const requestIDKey contextKey = "requestID"
 const (
 	ManagedClusters             = "Microsoft.ContainerService/managedClusters"
 	Fleets                      = "Microsoft.ContainerService/fleets"
+	AIManagers                  = "Microsoft.ContainerService/aiManagers"
 	ConnectedClusters           = "Microsoft.Kubernetes/connectedClusters"
 	OperationsEndpointFormatARC = "%s/providers/Microsoft.Kubernetes/operations?api-version=2021-10-01"
 	OperationsEndpointFormatAKS = "%s/providers/Microsoft.ContainerService/operations?api-version=2018-10-31"
@@ -252,6 +253,8 @@ func SetDiscoverResourcesSettings(clusterType string, environment string, loginU
 		case ManagedClusters:
 			settings.operationsEndpoint = fmt.Sprintf(OperationsEndpointFormatAKS, settings.environment.ResourceManagerEndpoint)
 		case Fleets:
+			settings.operationsEndpoint = fmt.Sprintf(OperationsEndpointFormatAKS, settings.environment.ResourceManagerEndpoint)
+		case AIManagers:
 			settings.operationsEndpoint = fmt.Sprintf(OperationsEndpointFormatAKS, settings.environment.ResourceManagerEndpoint)
 		default:
 			return fmt.Errorf("Failed to create endpoint for Get Operations call. Cluster type %s is not supported.", clusterType)
