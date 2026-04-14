@@ -121,6 +121,24 @@ var validationErrorData = []struct {
 		errors.New("azure.skip-group-membership-resolution cannot be false when passthrough azure.auth-mode is used"),
 		false,
 	},
+	{
+		"azure.entra-sdk-url must be a valid URL",
+		func(o Options) Options {
+			o.EntraSDKURL = "://bad-url"
+			return o
+		},
+		errors.New("azure.entra-sdk-url is not a valid URL: parse \"://bad-url\": missing protocol scheme"),
+		false,
+	},
+	{
+		"azure.entra-sdk-url must be a base URL",
+		func(o Options) Options {
+			o.EntraSDKURL = "http://localhost:8080/Validate"
+			return o
+		},
+		errors.New("azure.entra-sdk-url must be a base URL"),
+		false,
+	},
 }
 
 func getNonEmptyOptions() Options {
@@ -169,6 +187,15 @@ func TestOptionsValidate(t *testing.T) {
 		{
 			"validation passed",
 			getNonEmptyOptions(),
+			nil,
+		},
+		{
+			"validation passed with Entra SDK URL",
+			func() Options {
+				o := getNonEmptyOptions()
+				o.EntraSDKURL = "http://localhost:8080"
+				return o
+			}(),
 			nil,
 		},
 	}

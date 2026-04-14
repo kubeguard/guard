@@ -21,6 +21,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -105,6 +106,12 @@ func newRSAKey() (*signingKey, error) {
 	return &signingKey{"", priv, priv.Public(), jose.RS256}, nil
 }
 
+func resetOIDCIssuerProviderCache() {
+	cachedOIDCIssuerProvidersMutex.Lock()
+	defer cachedOIDCIssuerProvidersMutex.Unlock()
+	cachedOIDCIssuerProvider = nil
+}
+
 func clientSetup(clientID, clientSecret, tenantID, serverUrl string, useGroupUID, verifyClientID bool, authMode string) (*Authenticator, error) {
 	c := &Authenticator{
 		Options: Options{
@@ -127,13 +134,40 @@ func clientSetup(clientID, clientSecret, tenantID, serverUrl string, useGroupUID
 		return nil, fmt.Errorf("failed to create provider for azure. Reason: %v", err)
 	}
 
-	c.verifier = p.Verifier(&oidc.Config{
+	c.verifier = &OIDCAccessTokenVerifier{Verifier: p.Verifier(&oidc.Config{
 		SkipClientIDCheck: !verifyClientID,
 		SkipExpiryCheck:   true,
 		ClientID:          clientID,
-	})
+	})}
 
 	c.graphClient, err = graph.TestUserInfo(clientID, clientSecret, serverUrl+"/login", serverUrl+"/api", useGroupUID)
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+func entraClientSetup(clientID, clientSecret, tenantID, graphServerURL, sdkURL string, useGroupUID, verifyClientID bool) (*Authenticator, error) {
+	c := &Authenticator{
+		Options: Options{
+			ClientID:             clientID,
+			ClientSecret:         clientSecret,
+			TenantID:             tenantID,
+			UseGroupUID:          useGroupUID,
+			VerifyClientID:       verifyClientID,
+			EntraSDKURL:          sdkURL,
+			AzureRegion:          "eastus",
+			HttpClientRetryCount: httpClientRetryCount,
+		},
+	}
+	verifier, err := newEntraSDKTokenVerifier(sdkURL, clientID, verifyClientID, httpClientRetryCount)
+	if err != nil {
+		return nil, err
+	}
+	c.verifier = verifier
+
+	c.graphClient, err = graph.TestUserInfo(clientID, clientSecret, graphServerURL+"/login", graphServerURL+"/api", useGroupUID)
 	if err != nil {
 		return nil, err
 	}
@@ -685,6 +719,146 @@ func TestGetMetadata(t *testing.T) {
 		metadata, err := getMetadata(ctx, testServer.URL+"/", "testTenant", httpClientRetryCount)
 		assert.Error(t, err)
 		assert.Nil(t, metadata)
+	})
+}
+
+func TestNewAccessTokenVerifier(t *testing.T) {
+	t.Run("selects Entra SDK verifier when URL is provided", func(t *testing.T) {
+		verifier, err := newAccessTokenVerifier("https://issuer.example.com", Options{EntraSDKURL: "http://localhost:8080"})
+		assert.NoError(t, err)
+		assert.IsType(t, &EntraSDKTokenVerifier{}, verifier)
+	})
+
+	t.Run("returns error when Entra SDK URL includes a non-root path", func(t *testing.T) {
+		verifier, err := newAccessTokenVerifier("https://issuer.example.com", Options{EntraSDKURL: "http://localhost:8080/Validate"})
+		assert.Nil(t, verifier)
+		assert.EqualError(t, err, "Entra SDK endpoint must be a base URL")
+	})
+
+	t.Run("selects OIDC verifier when Entra SDK URL is not provided", func(t *testing.T) {
+		resetOIDCIssuerProviderCache()
+		defer resetOIDCIssuerProviderCache()
+
+		signKey, err := newRSAKey()
+		if err != nil {
+			t.Fatalf("Error when creating signing key: %v", err)
+		}
+		jwkResp, err := json.Marshal(signKey.jwk())
+		if err != nil {
+			t.Fatalf("Error when generating JWK response: %v", err)
+		}
+		groupIDs, groupList := getGroupsAndIds(t, 1)
+		srv, err := serverSetup(fmt.Sprintf(loginResp, "graph-access-token"), http.StatusOK, jwkResp, groupIDs, groupList)
+		if err != nil {
+			t.Fatalf("Error when creating OIDC server: %v", err)
+		}
+		defer srv.Close()
+
+		verifier, err := newAccessTokenVerifier(srv.URL, Options{ClientID: "client_id", VerifyClientID: true, HttpClientRetryCount: httpClientRetryCount})
+		assert.NoError(t, err)
+		assert.IsType(t, &OIDCAccessTokenVerifier{}, verifier)
+	})
+}
+
+func TestCheckAzureAuthenticationWithEntraSDK(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("uses SDK claims and keeps Guard-side audience and graph validations", func(t *testing.T) {
+		groupIDs, groupList := getGroupsAndIds(t, 5)
+		graphSrv, err := serverSetup(fmt.Sprintf(loginResp, "graph-access-token"), http.StatusOK, []byte(`{"keys":[]}`), groupIDs, groupList)
+		if !assert.NoError(t, err) {
+			return
+		}
+		defer graphSrv.Close()
+
+		sdkSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/Validate", r.URL.Path)
+			assert.Equal(t, "Bearer entra-access-token", r.Header.Get("Authorization"))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"protocol":"Bearer","token":"entra-access-token","claims":{"aud":"client_id","upn":"nahid","oid":"abc-123d4"}}`))
+		}))
+		defer sdkSrv.Close()
+
+		client, err := entraClientSetup("client_id", "client_secret", "tenant_id", graphSrv.URL, sdkSrv.URL, false, true)
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		resp, err := client.Check(ctx, "entra-access-token")
+		if assert.NoError(t, err) && assert.NotNil(t, resp) {
+			assertUserInfo(t, resp, 5, client.UseGroupUID)
+		}
+	})
+
+	t.Run("rejects mismatched audience during SDK verification", func(t *testing.T) {
+		groupIDs, groupList := getGroupsAndIds(t, 5)
+		graphSrv, err := serverSetup(fmt.Sprintf(loginResp, "graph-access-token"), http.StatusOK, []byte(`{"keys":[]}`), groupIDs, groupList)
+		if !assert.NoError(t, err) {
+			return
+		}
+		defer graphSrv.Close()
+
+		sdkSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"protocol":"Bearer","token":"entra-access-token","claims":{"aud":"different-client","upn":"nahid","oid":"abc-123d4"}}`))
+		}))
+		defer sdkSrv.Close()
+
+		client, err := entraClientSetup("client_id", "client_secret", "tenant_id", graphSrv.URL, sdkSrv.URL, false, true)
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		resp, err := client.Check(ctx, "entra-access-token")
+		assert.Nil(t, resp)
+		assert.ErrorContains(t, err, "failed to verify token for azure")
+		assert.ErrorContains(t, err, `expected audience "client_id" got different-client`)
+	})
+
+	t.Run("uses the inner PoP access token with the SDK verifier", func(t *testing.T) {
+		var validatedAuthorizationHeaders []string
+		sdkSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			validatedAuthorizationHeaders = append(validatedAuthorizationHeaders, r.Header.Get("Authorization"))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"protocol":"Bearer","token":"inner-token","claims":{"aud":"client_id","upn":"nahid","oid":"abc-123d4","groups":["1","2","3"]}}`))
+		}))
+		defer sdkSrv.Close()
+
+		groupIDs, groupList := getGroupsAndIds(t, 0)
+		graphSrv, err := serverSetup(fmt.Sprintf(loginResp, "graph-access-token"), http.StatusOK, []byte(`{"keys":[]}`), groupIDs, groupList)
+		if !assert.NoError(t, err) {
+			return
+		}
+		defer graphSrv.Close()
+
+		client, err := entraClientSetup("client_id", "client_secret", "tenant_id", graphSrv.URL, sdkSrv.URL, true, true)
+		if !assert.NoError(t, err) {
+			return
+		}
+		client.Options.EnablePOP = true
+		client.Options.POPTokenHostname = "test-host"
+		client.Options.PoPTokenValidityDuration = 15 * time.Minute
+		client.Options.ResolveGroupMembershipOnlyOnOverageClaim = true
+		client.popTokenVerifier = NewPoPVerifier(client.POPTokenHostname, client.PoPTokenValidityDuration)
+
+		popToken, err := NewPoPTokenBuilder().
+			SetTimestamp(time.Now().Unix()).
+			SetHostName(client.POPTokenHostname).
+			GetToken()
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		expectedInnerAccessToken, err := client.popTokenVerifier.ValidatePopToken(popToken)
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		resp, err := client.Check(ctx, popToken)
+		if assert.NoError(t, err) && assert.NotNil(t, resp) {
+			assertUserInfo(t, resp, 3, client.UseGroupUID)
+		}
+		assert.Equal(t, []string{"Bearer " + expectedInnerAccessToken}, validatedAuthorizationHeaders)
 	})
 }
 
