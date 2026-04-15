@@ -139,6 +139,26 @@ var validationErrorData = []struct {
 		errors.New("azure.entra-sdk-url must be a base URL"),
 		false,
 	},
+	{
+		"azure.client-id is required with Entra SDK URL",
+		func(o Options) Options {
+			o.EntraSDKURL = "http://localhost:8080"
+			o.ClientID = empty
+			return o
+		},
+		errors.New("azure.client-id must be non-empty when Entra SDK is enabled"),
+		false,
+	},
+	{
+		"azure.environment must resolve for Entra SDK",
+		func(o Options) Options {
+			o.EntraSDKURL = "http://localhost:8080"
+			o.Environment = "definitely-not-a-real-cloud"
+			return o
+		},
+		errors.New("failed to resolve Entra SDK Azure AD instance: autorest/azure: There is no cloud environment matching the name \"DEFINITELY-NOT-A-REAL-CLOUD\""),
+		false,
+	},
 }
 
 func getNonEmptyOptions() Options {
@@ -214,4 +234,33 @@ func TestOptionsValidate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOptionsEntraSDKEnvVars(t *testing.T) {
+	t.Run("returns expected env vars for public cloud", func(t *testing.T) {
+		envVars, err := Options{
+			ClientID: "client-id",
+			TenantID: "tenant-id",
+		}.EntraSDKEnvVars()
+
+		if assert.NoError(t, err) {
+			assert.Equal(t, []string{"AzureAd__Instance", "AzureAd__TenantId", "AzureAd__ClientId", "AzureAd__Audience"}, []string{envVars[0].Name, envVars[1].Name, envVars[2].Name, envVars[3].Name})
+			assert.Equal(t, "https://login.microsoftonline.com/", envVars[0].Value)
+			assert.Equal(t, "tenant-id", envVars[1].Value)
+			assert.Equal(t, "client-id", envVars[2].Value)
+			assert.Equal(t, "client-id", envVars[3].Value)
+		}
+	})
+
+	t.Run("uses the configured Azure environment", func(t *testing.T) {
+		envVars, err := Options{
+			Environment: "AzureChinaCloud",
+			ClientID:    "client-id",
+			TenantID:    "tenant-id",
+		}.EntraSDKEnvVars()
+
+		if assert.NoError(t, err) {
+			assert.Equal(t, "https://login.chinacloudapi.cn/", envVars[0].Value)
+		}
+	})
 }

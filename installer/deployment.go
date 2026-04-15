@@ -38,6 +38,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+const (
+	DefaultAzureEntraSDKImage  = "mcr.microsoft.com/entra-sdk/auth-sidecar:1.0.0-azurelinux3.0-distroless"
+	azureEntraSDKContainerName = "entra-sdk"
+	azureEntraSDKPort          = 8080
+)
+
 func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runtime.Object, err error) {
 	d := &apps.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -189,6 +195,37 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 			d.Spec.Template.Spec.InitContainers = initContainer
 		}
 	}
+	if authopts.AuthProvider.Has(azure.OrgType) && authopts.UseAzureEntraSDK {
+		entraSDKEnv, err := authopts.Azure.EntraSDKEnvVars()
+		if err != nil {
+			return nil, err
+		}
+		d.Spec.Template.Spec.Containers = append(d.Spec.Template.Spec.Containers, core.Container{
+			Name:  azureEntraSDKContainerName,
+			Image: authopts.AzureEntraSDKImage,
+			Env:   entraSDKEnv,
+			ReadinessProbe: &core.Probe{
+				ProbeHandler: core.ProbeHandler{
+					HTTPGet: &core.HTTPGetAction{
+						Path:   "/healthz",
+						Port:   intstr.FromInt(azureEntraSDKPort),
+						Scheme: core.URISchemeHTTP,
+					},
+				},
+				InitialDelaySeconds: int32(30),
+			},
+			LivenessProbe: &core.Probe{
+				ProbeHandler: core.ProbeHandler{
+					HTTPGet: &core.HTTPGetAction{
+						Path:   "/healthz",
+						Port:   intstr.FromInt(azureEntraSDKPort),
+						Scheme: core.URISchemeHTTP,
+					},
+				},
+				InitialDelaySeconds: int32(30),
+			},
+		})
+	}
 	objects = append(objects, d)
 
 	servingOpts := server.NewSecureServingOptionsFromDir(authopts.PkiDir)
@@ -221,7 +258,11 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 	}
 
 	if authopts.AuthProvider.Has(azure.OrgType) {
-		if extras, err := authopts.Azure.Apply(d); err != nil {
+		azureOpts := authopts.Azure
+		if authopts.UseAzureEntraSDK {
+			azureOpts.EntraSDKURL = fmt.Sprintf("http://127.0.0.1:%d", azureEntraSDKPort)
+		}
+		if extras, err := azureOpts.Apply(d); err != nil {
 			return nil, err
 		} else {
 			objects = append(objects, extras...)

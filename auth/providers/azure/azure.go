@@ -438,13 +438,9 @@ func (c claims) string(key string) (string, error) {
 type getMetadataFunc = func(context.Context, string, string, int) (*metadataJSON, error)
 
 func getAuthInfo(ctx context.Context, environment, tenantID string, retryCount int, getMetadata getMetadataFunc) (*authInfo, error) {
-	var err error
-	env := azure.PublicCloud
-	if environment != "" {
-		env, err = azure.EnvironmentFromName(environment)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to parse environment for azure")
-		}
+	env, err := resolveAzureEnvironment(environment)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse environment for azure")
 	}
 
 	metadata, err := getMetadata(ctx, env.ActiveDirectoryEndpoint, tenantID, retryCount)
@@ -462,6 +458,20 @@ func getAuthInfo(ctx context.Context, environment, tenantID string, retryCount i
 		MSGraphHost: msgraphHost,
 		Issuer:      metadata.Issuer,
 	}, nil
+}
+
+func resolveAzureEnvironment(environment string) (azure.Environment, error) {
+	env := azure.PublicCloud
+	if environment == "" {
+		return env, nil
+	}
+
+	resolved, err := azure.EnvironmentFromName(environment)
+	if err != nil {
+		return azure.Environment{}, err
+	}
+
+	return resolved, nil
 }
 
 func extractTokenClaims(rawToken string) (string, error) {

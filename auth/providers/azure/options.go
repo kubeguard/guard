@@ -153,8 +153,33 @@ func (o *Options) Validate() []error {
 		} else if parsed.Path != "" && parsed.Path != "/" {
 			errs = append(errs, errors.New("azure.entra-sdk-url must be a base URL"))
 		}
+
+		if _, err := o.EntraSDKEnvVars(); err != nil {
+			errs = append(errs, err)
+		}
 	}
 	return errs
+}
+
+func (o Options) EntraSDKEnvVars() ([]core.EnvVar, error) {
+	if o.ClientID == "" {
+		return nil, errors.New("azure.client-id must be non-empty when Entra SDK is enabled")
+	}
+	if o.TenantID == "" {
+		return nil, errors.New("azure.tenant-id must be non-empty when Entra SDK is enabled")
+	}
+
+	env, err := resolveAzureEnvironment(o.Environment)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to resolve Entra SDK Azure AD instance")
+	}
+
+	return []core.EnvVar{
+		{Name: "AzureAd__Instance", Value: env.ActiveDirectoryEndpoint},
+		{Name: "AzureAd__TenantId", Value: o.TenantID},
+		{Name: "AzureAd__ClientId", Value: o.ClientID},
+		{Name: "AzureAd__Audience", Value: o.ClientID},
+	}, nil
 }
 
 func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err error) {
