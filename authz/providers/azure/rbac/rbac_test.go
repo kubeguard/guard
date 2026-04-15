@@ -260,7 +260,7 @@ func TestCheckAccess(t *testing.T) {
 				expectedAllowed:            true,
 				expectedDenied:             false,
 				enableManagedNamespaceRBAC: true,
-				clusterTypes:               []string{managedClusters, fleets, aiManagers},
+				clusterTypes:               []string{managedClusters, fleets},
 			},
 			{
 				name:                       "denied for both",
@@ -271,7 +271,7 @@ func TestCheckAccess(t *testing.T) {
 				expectedAllowed:            false,
 				expectedDenied:             true,
 				enableManagedNamespaceRBAC: true,
-				clusterTypes:               []string{managedClusters, fleets, aiManagers},
+				clusterTypes:               []string{managedClusters, fleets},
 			},
 			{
 				name:                       "allowed for both",
@@ -282,7 +282,7 @@ func TestCheckAccess(t *testing.T) {
 				expectedAllowed:            true,
 				expectedDenied:             false,
 				enableManagedNamespaceRBAC: true,
-				clusterTypes:               []string{managedClusters, fleets, aiManagers},
+				clusterTypes:               []string{managedClusters, fleets},
 			},
 			{
 				name:                       "allowed for both flag off",
