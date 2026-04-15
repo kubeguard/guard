@@ -133,6 +133,25 @@ func TestNewDeploymentWithAzureEntraSDK(t *testing.T) {
 			assert.Equal(t, "example.com/custom/entra-sdk:test", deployment.Spec.Template.Spec.Containers[1].Image)
 		}
 	})
+
+	t.Run("defaults verbosity when unset", func(t *testing.T) {
+		authopts := newAzureAuthOptions(t)
+		authopts.VerbosityLevel = ""
+
+		objects, err := newDeployment(authopts, AuthzOptions{})
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		deployment := findDeployment(t, objects)
+		if !assert.NotNil(t, deployment) {
+			return
+		}
+
+		guardContainer := deployment.Spec.Template.Spec.Containers[0]
+		assert.Contains(t, guardContainer.Args, "--v=3")
+		assert.NotContains(t, guardContainer.Args, "--v=")
+	})
 }
 
 func newAzureAuthOptions(t *testing.T) AuthOptions {

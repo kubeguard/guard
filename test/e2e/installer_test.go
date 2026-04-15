@@ -45,28 +45,27 @@ import (
 
 var _ = Describe("Installer test", func() {
 	const (
-		privateRegistryName    = "appscode"
-		serverAddr             = "10.96.10.96"
-		yamlDir                = "test-guard/yaml"
-		certDir                = "test-guard/certs"
-		tokenAuthDir           = "test-guard/auth"
-		tokenFileName          = "token.csv"
-		saDir                  = "test-guard/sa"
-		saFileName             = "sa.json"
-		installerfileName      = "installer.yaml"
-		serviceName            = "guard"
-		deploymentName         = "guard"
-		clusterRoleName        = "guard"
-		clusterRoleBindingName = "guard"
-		pkiSecret              = "guard-pki"
-		googleSecret           = "guard-google-auth"
-		azureSecret            = "guard-azure-auth"
-		ldapSecret             = "guard-ldap-auth"
-		tokenSecret            = "guard-token-auth"
-		timeOut                = 10 * time.Minute
-		pollingInterval        = 10 * time.Second
-		tokenData              = "token,username,uid,group"
-		saData                 = `{
+		privateRegistryName = "appscode"
+		serverAddr          = "10.96.10.96"
+		testRootDirName     = "test-guard"
+		yamlDirName         = "yaml"
+		certDirName         = "certs"
+		tokenAuthDirName    = "auth"
+		tokenFileName       = "token.csv"
+		saDirName           = "sa"
+		saFileName          = "sa.json"
+		installerfileName   = "installer.yaml"
+		serviceName         = "guard"
+		deploymentName      = "guard"
+		pkiSecret           = "guard-pki"
+		googleSecret        = "guard-google-auth"
+		azureSecret         = "guard-azure-auth"
+		ldapSecret          = "guard-ldap-auth"
+		tokenSecret         = "guard-token-auth"
+		timeOut             = 1 * time.Minute
+		pollingInterval     = 10 * time.Second
+		tokenData           = "token,username,uid,group"
+		saData              = `{
 								   "type": "service_account",
 								   "project_id": "",
 								   "private_key_id": "",
@@ -81,8 +80,13 @@ var _ = Describe("Installer test", func() {
 	)
 
 	var (
-		f     *framework.Invocation
-		appFs afero.Fs
+		f            *framework.Invocation
+		appFs        afero.Fs
+		testRootDir  string
+		yamlDir      string
+		certDir      string
+		tokenAuthDir string
+		saDir        string
 	)
 
 	var (
@@ -97,6 +101,7 @@ var _ = Describe("Installer test", func() {
 			ClientID:     "client_id",
 			ClientSecret: "client_secret",
 			TenantID:     "tenant_id",
+			AuthMode:     azure.ClientCredentialAuthMode,
 		}
 
 		ldapOpts = ldap.Options{
@@ -116,14 +121,8 @@ var _ = Describe("Installer test", func() {
 			IsSecureLDAP:         false,
 		}
 
-		tokenOpts = token.Options{
-			AuthFile: filepath.Join(tokenAuthDir, tokenFileName),
-		}
-
-		googleOpts = google.Options{
-			ServiceAccountJsonFile: filepath.Join(saDir, saFileName),
-			AdminEmail:             "admin@gmail.com",
-		}
+		tokenOpts  token.Options
+		googleOpts google.Options
 	)
 
 	var (
@@ -146,6 +145,9 @@ var _ = Describe("Installer test", func() {
 			By("Executing command : kubectl apply -f " + file)
 			cmd := "kubectl"
 			args := []string{"apply", "-f", file}
+			if options.KubeContext != "" {
+				args = append([]string{"--context", options.KubeContext}, args...)
+			}
 			err = exec.Command(cmd, args...).Run()
 			Expect(err).NotTo(HaveOccurred())
 		}
@@ -187,22 +189,6 @@ var _ = Describe("Installer test", func() {
 			}, timeOut, pollingInterval).Should(BeTrue())
 		}
 
-		checkClusterRoleCreated = func() {
-			By("Checking cluster role created.")
-			Eventually(func() bool {
-				_, err := f.KubeClient.RbacV1().ClusterRoles().Get(context.TODO(), clusterRoleName, metav1.GetOptions{})
-				return err == nil
-			}, timeOut, pollingInterval).Should(BeTrue())
-		}
-
-		checkClusterRoleBindingCreated = func() {
-			By("Checking cluster role binding created.")
-			Eventually(func() bool {
-				_, err := f.KubeClient.RbacV1().ClusterRoleBindings().Get(context.TODO(), clusterRoleBindingName, metav1.GetOptions{})
-				return err == nil
-			}, timeOut, pollingInterval).Should(BeTrue())
-		}
-
 		checkServiceDeleted = func() {
 			By("Checking service Deleted. service name: " + serviceName)
 			Eventually(func() bool {
@@ -237,29 +223,24 @@ var _ = Describe("Installer test", func() {
 				return kerr.IsNotFound(err) || kerr.IsGone(err)
 			}, timeOut, pollingInterval).Should(BeTrue())
 		}
-
-		checkClusterRoleDeleted = func() {
-			By("Checking cluster role Deleted.")
-			Eventually(func() bool {
-				_, err := f.KubeClient.RbacV1().ClusterRoles().Get(context.TODO(), clusterRoleName, metav1.GetOptions{})
-				return kerr.IsNotFound(err) || kerr.IsGone(err)
-			}, timeOut, pollingInterval).Should(BeTrue())
-		}
-
-		checkClusterRoleBindingDeleted = func() {
-			By("Checking cluster role binding Deleted.")
-			Eventually(func() bool {
-				_, err := f.KubeClient.RbacV1().ClusterRoleBindings().Get(context.TODO(), clusterRoleBindingName, metav1.GetOptions{})
-				return kerr.IsNotFound(err) || kerr.IsGone(err)
-			}, timeOut, pollingInterval).Should(BeTrue())
-		}
 	)
 
 	BeforeEach(func() {
 		By("Setting up certificates")
 		appFs = afero.NewOsFs()
 		f = root.Invoke()
-		err := appFs.MkdirAll(yamlDir, 0o777)
+
+		cwd, err := filepath.Abs(".")
+		Expect(err).NotTo(HaveOccurred())
+		testRootDir = filepath.Join(cwd, testRootDirName)
+		yamlDir = filepath.Join(testRootDir, yamlDirName)
+		certDir = filepath.Join(testRootDir, certDirName)
+		tokenAuthDir = filepath.Join(testRootDir, tokenAuthDirName)
+		saDir = filepath.Join(testRootDir, saDirName)
+		tokenOpts = token.Options{AuthFile: filepath.Join(tokenAuthDir, tokenFileName)}
+		googleOpts = google.Options{ServiceAccountJsonFile: filepath.Join(saDir, saFileName), AdminEmail: "admin@gmail.com"}
+
+		err = appFs.MkdirAll(yamlDir, 0o777)
 		Expect(err).NotTo(HaveOccurred())
 
 		err = appFs.MkdirAll(filepath.Join(certDir, "pki"), 0o777)
@@ -285,7 +266,7 @@ var _ = Describe("Installer test", func() {
 	})
 
 	AfterEach(func() {
-		err := appFs.RemoveAll("test-guard")
+		err := appFs.RemoveAll(testRootDir)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -311,8 +292,6 @@ var _ = Describe("Installer test", func() {
 
 			checkServiceDeleted()
 			checkDeploymentDeleted()
-			checkClusterRoleBindingDeleted()
-			checkClusterRoleDeleted()
 			checkPodDeleted()
 			checkSecretDeleted(secretName)
 		})
@@ -320,8 +299,6 @@ var _ = Describe("Installer test", func() {
 		AfterEach(func() {
 			Expect(f.DeleteService(serviceName, root.Namespace())).NotTo(HaveOccurred())
 			Expect(f.DeleteDeployment(deploymentName, root.Namespace())).NotTo(HaveOccurred())
-			Expect(f.DeleteClusterRole(clusterRoleName)).NotTo(HaveOccurred())
-			Expect(f.DeleteClusterRoleBinding(clusterRoleBindingName)).NotTo(HaveOccurred())
 			Expect(f.DeleteSecret(secretName, root.Namespace())).NotTo(HaveOccurred())
 		})
 
@@ -334,8 +311,6 @@ var _ = Describe("Installer test", func() {
 				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
-				checkClusterRoleCreated()
-				checkClusterRoleBindingCreated()
 				checkDeploymentCreated()
 				checkPodCreated()
 				checkSecretCreated(secretName)
@@ -347,8 +322,6 @@ var _ = Describe("Installer test", func() {
 				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
-				checkClusterRoleCreated()
-				checkClusterRoleBindingCreated()
 				checkDeploymentCreated()
 				checkPodCreated()
 				checkSecretCreated(secretName)
@@ -364,8 +337,6 @@ var _ = Describe("Installer test", func() {
 				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
-				checkClusterRoleCreated()
-				checkClusterRoleBindingCreated()
 				checkDeploymentCreated()
 				checkPodCreated()
 				checkSecretCreated(secretName)
@@ -377,8 +348,6 @@ var _ = Describe("Installer test", func() {
 				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
-				checkClusterRoleCreated()
-				checkClusterRoleBindingCreated()
 				checkDeploymentCreated()
 				checkPodCreated()
 				checkSecretCreated(secretName)
@@ -401,8 +370,6 @@ var _ = Describe("Installer test", func() {
 				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
-				checkClusterRoleCreated()
-				checkClusterRoleBindingCreated()
 				checkDeploymentCreated()
 				checkPodCreated()
 				checkSecretCreated(secretName)
@@ -427,8 +394,6 @@ var _ = Describe("Installer test", func() {
 				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
-				checkClusterRoleCreated()
-				checkClusterRoleBindingCreated()
 				checkDeploymentCreated()
 				checkPodCreated()
 				checkSecretCreated(secretName)
@@ -460,8 +425,6 @@ var _ = Describe("Installer test", func() {
 				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
-				checkClusterRoleCreated()
-				checkClusterRoleBindingCreated()
 				checkDeploymentCreated()
 				checkPodCreated()
 				checkSecretCreated(secretName)
@@ -494,8 +457,6 @@ var _ = Describe("Installer test", func() {
 				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
-				checkClusterRoleCreated()
-				checkClusterRoleBindingCreated()
 				checkDeploymentCreated()
 				checkPodCreated()
 				checkSecretCreated(secretName)
@@ -556,8 +517,6 @@ var _ = Describe("Installer test", func() {
 
 			checkServiceDeleted()
 			checkDeploymentDeleted()
-			checkClusterRoleBindingDeleted()
-			checkClusterRoleDeleted()
 			checkPodDeleted()
 
 			for _, name := range secretNames {
@@ -568,8 +527,6 @@ var _ = Describe("Installer test", func() {
 		AfterEach(func() {
 			Expect(f.DeleteService(serviceName, root.Namespace())).NotTo(HaveOccurred())
 			Expect(f.DeleteDeployment(deploymentName, root.Namespace())).NotTo(HaveOccurred())
-			Expect(f.DeleteClusterRole(clusterRoleName)).NotTo(HaveOccurred())
-			Expect(f.DeleteClusterRoleBinding(clusterRoleBindingName)).NotTo(HaveOccurred())
 
 			for _, name := range secretNames {
 				Expect(f.DeleteSecret(name, root.Namespace())).NotTo(HaveOccurred())
@@ -580,8 +537,6 @@ var _ = Describe("Installer test", func() {
 			setupGuard(authopts, authzopts)
 
 			checkServiceCreated()
-			checkClusterRoleCreated()
-			checkClusterRoleBindingCreated()
 			checkDeploymentCreated()
 			checkPodCreated()
 
