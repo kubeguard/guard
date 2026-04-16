@@ -140,11 +140,11 @@ func (o *Options) Validate(azure azure.Options) []error {
 		errs = append(errs, errors.New("azure.resource-id must be non-empty for authorization"))
 	}
 
-	if (o.AuthzMode == AKSAuthzMode || o.AuthzMode == FleetAuthzMode || o.AuthzMode == AIManagerAuthzMode) && o.AKSAuthzTokenURL == "" {
+	if requiresAKSAuthzTokenURL(o.AuthzMode) && o.AKSAuthzTokenURL == "" {
 		errs = append(errs, errors.New("azure.aks-authz-token-url must be non-empty"))
 	}
 
-	if o.AuthzMode != AKSAuthzMode && o.AuthzMode != FleetAuthzMode && o.AuthzMode != AIManagerAuthzMode && o.AKSAuthzTokenURL != "" {
+	if !requiresAKSAuthzTokenURL(o.AuthzMode) && o.AKSAuthzTokenURL != "" {
 		errs = append(errs, errors.New("azure.aks-authz-token-url must be set only with AKS/Fleet/AIManager authz mode"))
 	}
 
@@ -228,4 +228,12 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 
 	d.Spec.Template.Spec.Containers[0].Args = args
 	return extraObjs, nil
+}
+
+func requiresAKSAuthzTokenURL(mode string) bool {
+	switch mode {
+	case AKSAuthzMode, FleetAuthzMode, AIManagerAuthzMode:
+		return true
+	}
+	return false
 }

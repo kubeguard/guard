@@ -264,11 +264,7 @@ func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo) (*
 		} else {
 			tokenProvider = graph.NewMSITokenProvider(authzInfo.ARMEndPoint, graph.MSIEndpointForARC)
 		}
-	case authzOpts.FleetAuthzMode:
-		tokenProvider = graph.NewAKSTokenProvider(opts.AKSAuthzTokenURL, authopts.TenantID)
-	case authzOpts.AKSAuthzMode:
-		tokenProvider = graph.NewAKSTokenProvider(opts.AKSAuthzTokenURL, authopts.TenantID)
-	case authzOpts.AIManagerAuthzMode:
+	case authzOpts.FleetAuthzMode, authzOpts.AKSAuthzMode, authzOpts.AIManagerAuthzMode:
 		tokenProvider = graph.NewAKSTokenProvider(opts.AKSAuthzTokenURL, authopts.TenantID)
 	}
 
