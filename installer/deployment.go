@@ -18,6 +18,7 @@ package installer
 
 import (
 	"fmt"
+	"strings"
 
 	"go.kubeguard.dev/guard/auth/providers/azure"
 	"go.kubeguard.dev/guard/auth/providers/github"
@@ -111,6 +112,9 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 				Name: authopts.imagePullSecret,
 			},
 		}
+	}
+	if authopts.isLocalGuardImage() {
+		d.Spec.Template.Spec.Containers[0].ImagePullPolicy = core.PullNever
 	}
 	if authopts.RunOnMaster {
 		d.Spec.Template.Spec.NodeSelector = map[string]string{
@@ -316,3 +320,16 @@ func (o AuthOptions) guardImage() string {
 	return fmt.Sprintf("%s/guard:%v", o.PrivateRegistry, stringz.Val(v.Version.Version, "canary"))
 }
 
+func (o AuthOptions) isLocalGuardImage() bool {
+	if o.GuardImage == "" {
+		return false
+	}
+
+	registry := o.GuardImage
+	if slash := strings.Index(registry, "/"); slash >= 0 {
+		registry = registry[:slash]
+	}
+
+	return registry == "localhost" || strings.HasPrefix(registry, "localhost:") || registry == "127.0.0.1" ||
+		strings.HasPrefix(registry, "127.0.0.1:") || registry == "[::1]" || strings.HasPrefix(registry, "[::1]:")
+}

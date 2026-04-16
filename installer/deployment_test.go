@@ -134,10 +134,10 @@ func TestNewDeploymentWithAzureEntraSDK(t *testing.T) {
 		}
 	})
 
-	t.Run("uses custom guard image", func(t *testing.T) {
+	t.Run("uses local custom guard image", func(t *testing.T) {
 		authopts := newAzureAuthOptions(t)
 		authopts.PrivateRegistry = "appscode"
-		authopts.GuardImage = "guard-e2e/guard:local"
+		authopts.GuardImage = "localhost/guard-e2e/guard:local"
 
 		objects, err := newDeployment(authopts, AuthzOptions{})
 		if !assert.NoError(t, err) {
@@ -150,7 +150,27 @@ func TestNewDeploymentWithAzureEntraSDK(t *testing.T) {
 		}
 
 		guardContainer := deployment.Spec.Template.Spec.Containers[0]
-		assert.Equal(t, "guard-e2e/guard:local", guardContainer.Image)
+		assert.Equal(t, "localhost/guard-e2e/guard:local", guardContainer.Image)
+		assert.Equal(t, core.PullNever, guardContainer.ImagePullPolicy)
+	})
+
+	t.Run("uses external custom guard image without forcing PullNever", func(t *testing.T) {
+		authopts := newAzureAuthOptions(t)
+		authopts.GuardImage = "ghcr.io/example/guard:test"
+
+		objects, err := newDeployment(authopts, AuthzOptions{})
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		deployment := findDeployment(t, objects)
+		if !assert.NotNil(t, deployment) {
+			return
+		}
+
+		guardContainer := deployment.Spec.Template.Spec.Containers[0]
+		assert.Equal(t, "ghcr.io/example/guard:test", guardContainer.Image)
+		assert.Empty(t, guardContainer.ImagePullPolicy)
 	})
 
 	t.Run("defaults verbosity when unset", func(t *testing.T) {
