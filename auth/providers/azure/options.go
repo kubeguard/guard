@@ -240,14 +240,10 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 		args = append(args, fmt.Sprintf("--azure.tenant-id=%s", o.TenantID))
 	}
 
-	switch o.AuthMode {
-	case AKSAuthMode:
-		fallthrough
-	case OBOAuthMode:
-		fallthrough
-	case ClientCredentialAuthMode:
-		args = append(args, fmt.Sprintf("--azure.auth-mode=%s", o.AuthMode))
-	default:
+	authMode := strings.ToLower(strings.TrimSpace(o.AuthMode))
+	if authMode != "" {
+		args = append(args, fmt.Sprintf("--azure.auth-mode=%s", authMode))
+	} else {
 		args = append(args, fmt.Sprintf("--azure.auth-mode=%s", ClientCredentialAuthMode))
 	}
 

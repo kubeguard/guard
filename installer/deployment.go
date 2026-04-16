@@ -65,7 +65,7 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 					Containers: []core.Container{
 						{
 							Name:  "guard",
-							Image: fmt.Sprintf("%s/guard:%v", authopts.PrivateRegistry, stringz.Val(v.Version.Version, "canary")),
+							Image: authopts.guardImage(),
 							Args: []string{
 								"run",
 								fmt.Sprintf("--v=%s", stringz.Val(authopts.VerbosityLevel, "3")),
@@ -83,7 +83,6 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 										Scheme: core.URISchemeHTTPS,
 									},
 								},
-								InitialDelaySeconds: int32(30),
 							},
 							LivenessProbe: &core.Probe{
 								ProbeHandler: core.ProbeHandler{
@@ -93,7 +92,6 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 										Scheme: core.URISchemeHTTPS,
 									},
 								},
-								InitialDelaySeconds: int32(30),
 							},
 						},
 					},
@@ -212,7 +210,6 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 						Scheme: core.URISchemeHTTP,
 					},
 				},
-				InitialDelaySeconds: int32(30),
 			},
 			LivenessProbe: &core.Probe{
 				ProbeHandler: core.ProbeHandler{
@@ -222,7 +219,6 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 						Scheme: core.URISchemeHTTP,
 					},
 				},
-				InitialDelaySeconds: int32(30),
 			},
 		})
 	}
@@ -311,3 +307,12 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 
 	return
 }
+
+func (o AuthOptions) guardImage() string {
+	if o.GuardImage != "" {
+		return o.GuardImage
+	}
+
+	return fmt.Sprintf("%s/guard:%v", o.PrivateRegistry, stringz.Val(v.Version.Version, "canary"))
+}
+

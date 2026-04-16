@@ -283,6 +283,7 @@ var _ = Describe("Installer test", func() {
 				RunOnMaster:     false,
 				Namespace:       root.Namespace(),
 				Addr:            serverAddr + ":443",
+				GuardImage:      options.GuardImage,
 				PrivateRegistry: privateRegistryName,
 			}
 
@@ -479,6 +480,7 @@ var _ = Describe("Installer test", func() {
 				RunOnMaster:     false,
 				Namespace:       root.Namespace(),
 				Addr:            serverAddr + ":443",
+				GuardImage:      options.GuardImage,
 				PrivateRegistry: privateRegistryName,
 				Azure:           azureOpts,
 				LDAP:            ldapOpts,

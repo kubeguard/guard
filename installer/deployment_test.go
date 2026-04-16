@@ -134,6 +134,25 @@ func TestNewDeploymentWithAzureEntraSDK(t *testing.T) {
 		}
 	})
 
+	t.Run("uses custom guard image", func(t *testing.T) {
+		authopts := newAzureAuthOptions(t)
+		authopts.PrivateRegistry = "appscode"
+		authopts.GuardImage = "guard-e2e/guard:local"
+
+		objects, err := newDeployment(authopts, AuthzOptions{})
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		deployment := findDeployment(t, objects)
+		if !assert.NotNil(t, deployment) {
+			return
+		}
+
+		guardContainer := deployment.Spec.Template.Spec.Containers[0]
+		assert.Equal(t, "guard-e2e/guard:local", guardContainer.Image)
+	})
+
 	t.Run("defaults verbosity when unset", func(t *testing.T) {
 		authopts := newAzureAuthOptions(t)
 		authopts.VerbosityLevel = ""
@@ -210,7 +229,6 @@ func assertEntraSDKProbe(t *testing.T, probe *core.Probe) {
 		assert.Equal(t, "/healthz", probe.HTTPGet.Path)
 		assert.Equal(t, intstr.FromInt(azureEntraSDKPort), probe.HTTPGet.Port)
 		assert.Equal(t, core.URISchemeHTTP, probe.HTTPGet.Scheme)
-		assert.Equal(t, int32(30), probe.InitialDelaySeconds)
 	}
 }
 

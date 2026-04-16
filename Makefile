@@ -291,11 +291,9 @@ e2e-tests: $(BUILD_DIRS)
 	        ARCH=$(ARCH)                                        \
 	        OS=$(OS)                                            \
 	        VERSION=$(VERSION)                                  \
-	        DOCKER_REGISTRY=$(REGISTRY)                         \
-	        TAG=$(TAG)                                          \
 	        KUBECONFIG=$${KUBECONFIG#$(HOME)}                   \
 	        GINKGO_ARGS='$(GINKGO_ARGS)'                        \
-	        TEST_ARGS='$(TEST_ARGS) --image-tag=$(TAG)'         \
+	        TEST_ARGS='$(TEST_ARGS)'                            \
 	        ./hack/e2e.sh                                       \
 	    "
 

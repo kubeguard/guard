@@ -40,6 +40,7 @@ type AuthOptions struct {
 	Namespace          string
 	Addr               string
 	RunOnMaster        bool
+	GuardImage         string
 	PrivateRegistry    string
 	UseAzureEntraSDK   bool
 	AzureEntraSDKImage string
@@ -93,6 +94,7 @@ func (o *AuthOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&o.Namespace, "namespace", "n", o.Namespace, "Name of Kubernetes namespace used to run guard server.")
 	fs.StringVar(&o.Addr, "addr", o.Addr, "Address (host:port) of guard server.")
 	fs.BoolVar(&o.RunOnMaster, "run-on-master", o.RunOnMaster, "If true, runs Guard server on master instances")
+	fs.StringVar(&o.GuardImage, "guard-image", o.GuardImage, "Container image for the Guard server. When set, this overrides --private-registry and the derived version tag")
 	fs.StringVar(&o.PrivateRegistry, "private-registry", o.PrivateRegistry, "Private Docker registry")
 	fs.BoolVar(&o.UseAzureEntraSDK, "azure.use-entra-sdk", o.UseAzureEntraSDK, "If true, configures Guard installer to run the Entra SDK sidecar for Azure auth")
 	fs.StringVar(&o.AzureEntraSDKImage, "azure.entra-sdk-image", o.AzureEntraSDKImage, "Container image for the Entra SDK sidecar used with Azure auth")

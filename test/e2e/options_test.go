@@ -28,6 +28,7 @@ import (
 type E2EOptions struct {
 	KubeContext string
 	KubeConfig  string
+	GuardImage  string
 }
 
 var options = &E2EOptions{
@@ -38,6 +39,7 @@ var options = &E2EOptions{
 func init() {
 	flag.StringVar(&options.KubeConfig, "kubeconfig", "", "Path to kubeconfig file with authorization information (the master location is set by the master flag).")
 	flag.StringVar(&options.KubeContext, "kube-context", "", "Name of kube context")
+	flag.StringVar(&options.GuardImage, "guard-image", "", "Full Guard image reference to use in E2E deployment generation")
 	enableLogging()
 }
 
@@ -46,10 +48,10 @@ func enableLogging() {
 		logs.InitLogs()
 		defer logs.FlushLogs()
 	}()
-	//err := flag.Set("logtostderr", "true")
-	//if err != nil {
+	// err := flag.Set("logtostderr", "true")
+	// if err != nil {
 	//	klog.Fatal(err)
-	//}
+	// }
 	logLevelFlag := flag.Lookup("v")
 	if logLevelFlag != nil {
 		if len(logLevelFlag.Value.String()) > 0 && logLevelFlag.Value.String() != "0" {
