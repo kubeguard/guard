@@ -28,6 +28,7 @@ import (
 	"go.kubeguard.dev/guard/auth"
 	"go.kubeguard.dev/guard/auth/providers/azure/graph"
 	azureutils "go.kubeguard.dev/guard/util/azure"
+	errutils "go.kubeguard.dev/guard/util/error"
 
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/coreos/go-oidc"
@@ -261,6 +262,22 @@ func (s Authenticator) Check(ctx context.Context, token string) (*authv1.UserInf
 			resp.Groups = groups
 			return resp, nil
 		}
+		// Service principal token with >200 groups. OBO flow does not
+		// support SPNs, so short-circuit instead of letting AAD fail with
+		// a cryptic AADSTS7000113.
+		//
+		// StatusOK: K8s webhook authenticator only reads and logs
+		// TokenReview Status.Error on HTTP 200. Non-200 is treated as a
+		// transport error and the message is discarded. We need this error
+		// to surface in API server logs so operators can diagnose why the
+		// SPN authentication was rejected.
+		if isAppToken(claims) {
+			return nil, errutils.WithCode(
+				fmt.Errorf(
+					"service principal with group membership exceeding 200 is not supported. "+
+						"See https://learn.microsoft.com/en-us/azure/aks/kubelogin-authentication#kubelogin-authentication-in-aks-limitations"),
+				http.StatusOK)
+		}
 	}
 	if !s.Options.SkipGroupMembershipResolution {
 		if err := s.graphClient.RefreshToken(ctx, token); err != nil {
@@ -347,6 +364,17 @@ func getGroupsAndCheckOverage(claims claims) ([]string, bool, error) {
 
 	// return true to proceed to call graph api
 	return nil, false, nil
+}
+
+// isAppToken checks the "idtyp" claim to determine if a token was issued
+// for an application (service principal) rather than a user.
+// v1 tokens without "idtyp" are assumed to be user tokens.
+func isAppToken(c claims) bool {
+	idtyp, err := c.string("idtyp")
+	if err != nil {
+		return false // absent idtyp → assume user (v1 token behavior)
+	}
+	return strings.EqualFold(idtyp, "app")
 }
 
 func marshalGenericTo(src interface{}, dst interface{}) error {

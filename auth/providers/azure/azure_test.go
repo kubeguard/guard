@@ -56,6 +56,9 @@ const (
 	accessTokenWithOverageClaim    = `{ "aud": "client_id", "iss" : "%v", "upn": "nahid", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
 	accessTokenWithNoGroups        = `{ "aud": "client_id", "iss" : "%v", "oid": "abc-123d4" }`
 	accessTokenWithoutOverageClaim = `{ "aud": "client_id", "iss" : "%v", "upn": "nahid", "_claim_names": {"foo": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://foobar" }} }`
+	accessTokenSPNWithOverage      = `{ "aud": "client_id", "iss" : "%v", "oid": "spn-oid-123", "idtyp": "app", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://graph.microsoft.com/v2.0/me/memberOf" }} }`
+	accessTokenSPNWithGroups       = `{ "aud": "client_id", "iss" : "%v", "oid": "spn-oid-123", "idtyp": "app", "groups": ["1", "2", "3"] }`
+	accessTokenUserWithIdtyp       = `{ "aud": "client_id", "iss" : "%v", "upn": "nahid", "oid": "abc-123d4", "idtyp": "user", "_claim_names": {"groups": "src1"}, "_claim_sources": {"src1": {"endpoint": "https://graph.microsoft.com/v2.0/me/memberOf"}} }`
 	badToken                       = "bad_token"
 	httpClientRetryCount           = 2
 )
@@ -410,6 +413,70 @@ func TestCheckAzureAuthenticationWithOverageCheckOption(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestCheckAzureAuthenticationSPNWithOverage(t *testing.T) {
+	ctx := context.Background()
+	signKey, err := newRSAKey()
+	if err != nil {
+		t.Fatalf("Error when creating signing key. reason : %v", err)
+	}
+
+	t.Run("SPN token with overage claim should return clear error", func(t *testing.T) {
+		srv, client := getServerAndClient(t, signKey, loginResp, 3, true, false, ClientCredentialAuthMode)
+		client.Options.ResolveGroupMembershipOnlyOnOverageClaim = true
+		client.Options.UseGroupUID = true
+		defer srv.Close()
+
+		token, err := signKey.sign([]byte(fmt.Sprintf(accessTokenSPNWithOverage, srv.URL)))
+		if err != nil {
+			t.Fatalf("Error when signing token. reason: %v", err)
+		}
+
+		resp, err := client.Check(ctx, token)
+		assert.NotNil(t, err)
+		assert.Nil(t, resp)
+		assert.Contains(t, err.Error(), "service principal with group membership exceeding 200 is not supported")
+		assert.Contains(t, err.Error(), "kubelogin-authentication-in-aks-limitations")
+
+		codeErr, ok := err.(interface{ Code() int })
+		assert.True(t, ok, "error should implement Code()")
+		assert.Equal(t, http.StatusOK, codeErr.Code(), "error should HTTP 200 so the API server logs the message.")
+	})
+
+	t.Run("SPN token with groups in token should succeed (no Graph call needed)", func(t *testing.T) {
+		srv, client := getServerAndClient(t, signKey, loginResp, 3, true, false, ClientCredentialAuthMode)
+		client.Options.ResolveGroupMembershipOnlyOnOverageClaim = true
+		client.Options.UseGroupUID = true
+		defer srv.Close()
+
+		token, err := signKey.sign([]byte(fmt.Sprintf(accessTokenSPNWithGroups, srv.URL)))
+		if err != nil {
+			t.Fatalf("Error when signing token. reason: %v", err)
+		}
+
+		resp, err := client.Check(ctx, token)
+		assert.Nil(t, err)
+		assert.NotNil(t, resp)
+		assert.Equal(t, 3, len(resp.Groups))
+	})
+}
+
+func TestIsAppToken(t *testing.T) {
+	t.Run("token with idtyp=app should return true", func(t *testing.T) {
+		c := claims{"idtyp": "app"}
+		assert.True(t, isAppToken(c))
+	})
+
+	t.Run("token with idtyp=APP (case insensitive) should return true", func(t *testing.T) {
+		c := claims{"idtyp": "APP"}
+		assert.True(t, isAppToken(c))
+	})
+
+	t.Run("token without idtyp should return false (v1 token)", func(t *testing.T) {
+		c := claims{"upn": "user@example.com"}
+		assert.False(t, isAppToken(c))
+	})
 }
 
 func TestCheckAzureAuthenticationFailed(t *testing.T) {
