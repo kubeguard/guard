@@ -18,6 +18,7 @@ package e2e_test
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os/exec"
 	"path/filepath"
@@ -37,6 +38,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/spf13/afero"
 	"gomodules.xyz/cert"
+	core "k8s.io/api/core/v1"
 	kerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -223,6 +225,61 @@ var _ = Describe("Installer test", func() {
 				return kerr.IsNotFound(err) || kerr.IsGone(err)
 			}, timeOut, pollingInterval).Should(BeTrue())
 		}
+
+		checkAzureEntraSDKSidecarCreated = func() {
+			By("Checking Azure Entra SDK sidecar created")
+			Eventually(func() error {
+				deployment, err := f.GetDeployment(deploymentName, root.Namespace())
+				if err != nil {
+					return err
+				}
+
+				containers := deployment.Spec.Template.Spec.Containers
+				if len(containers) != 2 {
+					return fmt.Errorf("expected 2 deployment containers, got %d", len(containers))
+				}
+
+				guardContainer := containers[0]
+				if guardContainer.Name != "guard" {
+					return fmt.Errorf("expected first container to be guard, got %q", guardContainer.Name)
+				}
+				if !containsArg(guardContainer.Args, "--azure.entra-sdk-url=http://127.0.0.1:8080") {
+					return fmt.Errorf("expected guard to use the localhost Entra SDK URL")
+				}
+
+				entraContainer := containers[1]
+				if entraContainer.Name != "entra-sdk" {
+					return fmt.Errorf("expected second container to be entra-sdk, got %q", entraContainer.Name)
+				}
+				if entraContainer.Image != installer.DefaultAzureEntraSDKImage {
+					return fmt.Errorf("expected Entra SDK image %q, got %q", installer.DefaultAzureEntraSDKImage, entraContainer.Image)
+				}
+				if len(entraContainer.Env) != 4 {
+					return fmt.Errorf("expected 4 Entra SDK env vars, got %d", len(entraContainer.Env))
+				}
+
+				expectedEnv := []core.EnvVar{
+					{Name: "AzureAd__Instance", Value: "https://login.microsoftonline.com/"},
+					{Name: "AzureAd__TenantId", Value: azureOpts.TenantID},
+					{Name: "AzureAd__ClientId", Value: azureOpts.ClientID},
+					{Name: "AzureAd__Audience", Value: azureOpts.ClientID},
+				}
+				for i := range expectedEnv {
+					if entraContainer.Env[i] != expectedEnv[i] {
+						return fmt.Errorf("unexpected Entra SDK env var at index %d: got %#v want %#v", i, entraContainer.Env[i], expectedEnv[i])
+					}
+				}
+
+				if !hasHTTPProbe(entraContainer.ReadinessProbe, "/healthz", 8080, core.URISchemeHTTP) {
+					return fmt.Errorf("expected Entra SDK readiness probe on /healthz")
+				}
+				if !hasHTTPProbe(entraContainer.LivenessProbe, "/healthz", 8080, core.URISchemeHTTP) {
+					return fmt.Errorf("expected Entra SDK liveness probe on /healthz")
+				}
+
+				return nil
+			}, timeOut, pollingInterval).Should(Succeed())
+		}
 	)
 
 	BeforeEach(func() {
@@ -376,6 +433,20 @@ var _ = Describe("Installer test", func() {
 				checkSecretCreated(secretName)
 				checkSecretCreated(azureSecret)
 				// time.Sleep(55 * time.Minute)
+			})
+
+			It("Set up guard for azure with Entra SDK should be successful", func() {
+				authopts.UseAzureEntraSDK = true
+				authopts.AzureEntraSDKImage = installer.DefaultAzureEntraSDKImage
+
+				setupGuard(authopts, authzopts)
+
+				checkServiceCreated()
+				checkDeploymentCreated()
+				checkPodCreated()
+				checkSecretCreated(secretName)
+				checkSecretCreated(azureSecret)
+				checkAzureEntraSDKSidecarCreated()
 			})
 		})
 
@@ -548,3 +619,21 @@ var _ = Describe("Installer test", func() {
 		})
 	})
 })
+
+func containsArg(args []string, expected string) bool {
+	for _, arg := range args {
+		if arg == expected {
+			return true
+		}
+	}
+
+	return false
+}
+
+func hasHTTPProbe(probe *core.Probe, path string, port int32, scheme core.URIScheme) bool {
+	if probe == nil || probe.HTTPGet == nil {
+		return false
+	}
+
+	return probe.HTTPGet.Path == path && probe.HTTPGet.Port.IntVal == port && probe.HTTPGet.Scheme == scheme
+}

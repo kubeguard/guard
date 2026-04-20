@@ -23,13 +23,13 @@ import (
 
 	"go.kubeguard.dev/guard/auth/providers"
 	"go.kubeguard.dev/guard/auth/providers/azure"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/stretchr/testify/assert"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func TestAuthOptionsValidateWithAzureEntraSDK(t *testing.T) {
@@ -249,6 +249,10 @@ func assertEntraSDKProbe(t *testing.T, probe *core.Probe) {
 		assert.Equal(t, "/healthz", probe.HTTPGet.Path)
 		assert.Equal(t, intstr.FromInt(azureEntraSDKPort), probe.HTTPGet.Port)
 		assert.Equal(t, core.URISchemeHTTP, probe.HTTPGet.Scheme)
+		assert.Equal(t, []core.HTTPHeader{{
+			Name:  "Host",
+			Value: "localhost",
+		}}, probe.HTTPGet.HTTPHeaders)
 	}
 }
 

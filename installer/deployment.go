@@ -84,6 +84,7 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 										Scheme: core.URISchemeHTTPS,
 									},
 								},
+								InitialDelaySeconds: 1,
 							},
 							LivenessProbe: &core.Probe{
 								ProbeHandler: core.ProbeHandler{
@@ -93,6 +94,7 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 										Scheme: core.URISchemeHTTPS,
 									},
 								},
+								InitialDelaySeconds: 1,
 							},
 						},
 					},
@@ -212,8 +214,13 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 						Path:   "/healthz",
 						Port:   intstr.FromInt(azureEntraSDKPort),
 						Scheme: core.URISchemeHTTP,
+						HTTPHeaders: []core.HTTPHeader{{
+							Name:  "Host",
+							Value: "localhost",
+						}},
 					},
 				},
+				InitialDelaySeconds: 1,
 			},
 			LivenessProbe: &core.Probe{
 				ProbeHandler: core.ProbeHandler{
@@ -221,8 +228,13 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 						Path:   "/healthz",
 						Port:   intstr.FromInt(azureEntraSDKPort),
 						Scheme: core.URISchemeHTTP,
+						HTTPHeaders: []core.HTTPHeader{{
+							Name:  "Host",
+							Value: "localhost",
+						}},
 					},
 				},
+				InitialDelaySeconds: 1,
 			},
 		})
 	}
