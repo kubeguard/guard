@@ -255,6 +255,8 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 
 	args = append(args, fmt.Sprintf("--azure.graph-call-on-overage-claim=%t", o.ResolveGroupMembershipOnlyOnOverageClaim))
 
+	args = append(args, fmt.Sprintf("--azure.skip-group-membership-resolution=%t", o.SkipGroupMembershipResolution))
+
 	args = append(args, fmt.Sprintf("--azure.verify-clientID=%t", o.VerifyClientID))
 
 	args = append(args, fmt.Sprintf("--azure.http-client-retry-count=%d", o.HttpClientRetryCount))
