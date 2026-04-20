@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
 	"os/exec"
 	"path/filepath"
 	"time"
@@ -32,6 +33,7 @@ import (
 	"go.kubeguard.dev/guard/auth/providers/ldap"
 	"go.kubeguard.dev/guard/auth/providers/token"
 	"go.kubeguard.dev/guard/installer"
+	"go.kubeguard.dev/guard/server"
 	"go.kubeguard.dev/guard/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -48,6 +50,7 @@ import (
 var _ = Describe("Installer test", func() {
 	const (
 		privateRegistryName = "appscode"
+		serverDNSName       = "server"
 		serverAddr          = "10.96.10.96"
 		testRootDirName     = "test-guard"
 		yamlDirName         = "yaml"
@@ -226,7 +229,7 @@ var _ = Describe("Installer test", func() {
 			}, timeOut, pollingInterval).Should(BeTrue())
 		}
 
-		checkAzureEntraSDKSidecarCreated = func() {
+		checkAzureEntraSDKSidecarCreated = func(expectedAzureOpts azure.Options) {
 			By("Checking Azure Entra SDK sidecar created")
 			Eventually(func() error {
 				deployment, err := f.GetDeployment(deploymentName, root.Namespace())
@@ -258,11 +261,9 @@ var _ = Describe("Installer test", func() {
 					return fmt.Errorf("expected 4 Entra SDK env vars, got %d", len(entraContainer.Env))
 				}
 
-				expectedEnv := []core.EnvVar{
-					{Name: "AzureAd__Instance", Value: "https://login.microsoftonline.com/"},
-					{Name: "AzureAd__TenantId", Value: azureOpts.TenantID},
-					{Name: "AzureAd__ClientId", Value: azureOpts.ClientID},
-					{Name: "AzureAd__Audience", Value: azureOpts.ClientID},
+				expectedEnv, err := expectedAzureOpts.EntraSDKEnvVars()
+				if err != nil {
+					return err
 				}
 				for i := range expectedEnv {
 					if entraContainer.Env[i] != expectedEnv[i] {
@@ -270,10 +271,10 @@ var _ = Describe("Installer test", func() {
 					}
 				}
 
-				if !hasHTTPProbe(entraContainer.ReadinessProbe, "/healthz", 8080, core.URISchemeHTTP) {
+				if !hasHTTPProbe(entraContainer.ReadinessProbe, "/healthz", 8080, core.URISchemeHTTP, "localhost") {
 					return fmt.Errorf("expected Entra SDK readiness probe on /healthz")
 				}
-				if !hasHTTPProbe(entraContainer.LivenessProbe, "/healthz", 8080, core.URISchemeHTTP) {
+				if !hasHTTPProbe(entraContainer.LivenessProbe, "/healthz", 8080, core.URISchemeHTTP, "localhost") {
 					return fmt.Errorf("expected Entra SDK liveness probe on /healthz")
 				}
 
@@ -312,7 +313,7 @@ var _ = Describe("Installer test", func() {
 
 		// write server cert, key
 		srvCert, srvKey, err := f.CertStore.NewServerCertPairBytes(cert.AltNames{
-			DNSNames: []string{"server"},
+			DNSNames: []string{serverDNSName},
 			IPs:      []net.IP{net.ParseIP(serverAddr)},
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -446,7 +447,76 @@ var _ = Describe("Installer test", func() {
 				checkPodCreated()
 				checkSecretCreated(secretName)
 				checkSecretCreated(azureSecret)
-				checkAzureEntraSDKSidecarCreated()
+				checkAzureEntraSDKSidecarCreated(authopts.Azure)
+			})
+
+			It("Set up guard for azure with Entra SDK validates a real access token", func() {
+				if !options.AzureEntraSDKAuth.Configured() {
+					Skip(options.AzureEntraSDKAuth.SkipMessage())
+				}
+
+				authopts.Azure = options.AzureEntraSDKAuth.AzureOptions()
+				authopts.UseAzureEntraSDK = true
+				authopts.AzureEntraSDKImage = installer.DefaultAzureEntraSDKImage
+
+				setupGuard(authopts, authzopts)
+
+				checkServiceCreated()
+				checkDeploymentCreated()
+				checkPodCreated()
+				checkSecretCreated(secretName)
+				checkSecretCreated(azureSecret)
+				checkAzureEntraSDKSidecarCreated(authopts.Azure)
+
+				expectedUser, err := expectedAzureUserInfoFromAccessToken(options.AzureEntraSDKAuth.AccessToken)
+				Expect(err).NotTo(HaveOccurred())
+
+				forwardCtx, cancel := context.WithTimeout(context.Background(), timeOut)
+				defer cancel()
+
+				forwardSession, err := f.PortForwardFirstPod(
+					forwardCtx,
+					root.Namespace(),
+					"app=guard",
+					server.ServingPort,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				defer func() {
+					Expect(forwardSession.Close()).NotTo(HaveOccurred())
+				}()
+
+				Eventually(func() error {
+					review, statusCode, err := sendTokenReviewRequest(
+						forwardSession.LocalPort,
+						serverDNSName,
+						azure.OrgType,
+						options.AzureEntraSDKAuth.AccessToken,
+						f,
+					)
+					if err != nil {
+						return err
+					}
+					if statusCode != http.StatusOK {
+						return fmt.Errorf("unexpected tokenreview status code: %d", statusCode)
+					}
+					if !review.Status.Authenticated {
+						return fmt.Errorf("tokenreview was not authenticated: %s", review.Status.Error)
+					}
+					if review.Status.User.Username != expectedUser.Username {
+						return fmt.Errorf(
+							"unexpected username: got %q want %q",
+							review.Status.User.Username,
+							expectedUser.Username,
+						)
+					}
+
+					oid := review.Status.User.Extra["oid"]
+					if len(oid) != 1 || oid[0] != expectedUser.ObjectID {
+						return fmt.Errorf("unexpected oid extra: got %v want [%s]", oid, expectedUser.ObjectID)
+					}
+
+					return nil
+				}, timeOut, pollingInterval).Should(Succeed())
 			})
 		})
 
@@ -630,10 +700,26 @@ func containsArg(args []string, expected string) bool {
 	return false
 }
 
-func hasHTTPProbe(probe *core.Probe, path string, port int32, scheme core.URIScheme) bool {
+func hasHTTPProbe(
+	probe *core.Probe,
+	path string,
+	port int32,
+	scheme core.URIScheme,
+	hostHeader string,
+) bool {
 	if probe == nil || probe.HTTPGet == nil {
 		return false
 	}
 
-	return probe.HTTPGet.Path == path && probe.HTTPGet.Port.IntVal == port && probe.HTTPGet.Scheme == scheme
+	if probe.HTTPGet.Path != path || probe.HTTPGet.Port.IntVal != port || probe.HTTPGet.Scheme != scheme {
+		return false
+	}
+
+	for _, header := range probe.HTTPGet.HTTPHeaders {
+		if header.Name == "Host" && header.Value == hostHeader {
+			return true
+		}
+	}
+
+	return false
 }
