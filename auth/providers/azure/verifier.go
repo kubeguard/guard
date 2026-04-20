@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -116,6 +117,9 @@ func (e *EntraSDKTokenVerifier) Verify(ctx context.Context, rawAccessToken strin
 	if err != nil {
 		return nil, err
 	}
+	if hostHeader := entraSDKRequestHost(e.baseURL); hostHeader != "" {
+		req.Host = hostHeader
+	}
 	req.Header.Set("Authorization", "Bearer "+rawAccessToken)
 	req.Header.Set("Accept", "application/json")
 
@@ -156,6 +160,27 @@ func (e *EntraSDKTokenVerifier) Verify(ctx context.Context, rawAccessToken strin
 	}
 
 	return &staticClaimsToken{parsedClaims: validated.Claims}, nil
+}
+
+func entraSDKRequestHost(baseURL *url.URL) string {
+	if baseURL == nil {
+		return ""
+	}
+
+	hostname := strings.TrimSpace(baseURL.Hostname())
+	if hostname == "" {
+		return ""
+	}
+
+	if strings.EqualFold(hostname, "localhost") {
+		return "localhost"
+	}
+
+	if ip := net.ParseIP(hostname); ip != nil && ip.IsLoopback() {
+		return "localhost"
+	}
+
+	return hostname
 }
 
 type staticClaimsToken struct {

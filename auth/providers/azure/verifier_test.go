@@ -20,6 +20,8 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,13 +29,14 @@ import (
 
 func TestEntraSDKTokenVerifierVerify(t *testing.T) {
 	t.Run("calls Validate endpoint and returns claims", func(t *testing.T) {
-		var method, path, query, authHeader, acceptHeader string
+		var method, path, query, authHeader, acceptHeader, hostHeader string
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			method = r.Method
 			path = r.URL.Path
 			query = r.URL.RawQuery
 			authHeader = r.Header.Get("Authorization")
 			acceptHeader = r.Header.Get("Accept")
+			hostHeader = r.Host
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"protocol":"Bearer","token":"entra-token","claims":{"aud":["client_id","extra"],"upn":"nahid","oid":"abc-123d4"}}`))
 		}))
@@ -59,6 +62,26 @@ func TestEntraSDKTokenVerifierVerify(t *testing.T) {
 		assert.Empty(t, query)
 		assert.Equal(t, "Bearer entra-token", authHeader)
 		assert.Equal(t, "application/json", acceptHeader)
+		assert.Equal(t, "localhost", hostHeader)
+	})
+
+	t.Run("normalizes loopback hosts to localhost", func(t *testing.T) {
+		var hostHeader string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			hostHeader = r.Host
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"protocol":"Bearer","token":"entra-token","claims":{"aud":"client_id","oid":"abc-123d4"}}`))
+		}))
+		defer srv.Close()
+
+		verifier, err := newEntraSDKTokenVerifier(srv.URL, "client_id", false, httpClientRetryCount)
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		_, err = verifier.Verify(context.Background(), "entra-token")
+		assert.NoError(t, err)
+		assert.True(t, strings.HasPrefix(hostHeader, "localhost"))
 	})
 
 	t.Run("returns SDK error detail on non-200 response", func(t *testing.T) {
@@ -149,3 +172,18 @@ func TestParseEntraSDKError(t *testing.T) {
 		assert.EqualError(t, err, "Entra SDK validate request failed with status 502")
 	})
 }
+
+func TestEntraSDKRequestHost(t *testing.T) {
+	t.Run("returns empty when base URL is nil", func(t *testing.T) {
+		assert.Empty(t, entraSDKRequestHost(nil))
+	})
+
+	t.Run("normalizes loopback ip to localhost", func(t *testing.T) {
+		assert.Equal(t, "localhost", entraSDKRequestHost(&url.URL{Host: "127.0.0.1:8080"}))
+	})
+
+	t.Run("preserves non-loopback hostname without port", func(t *testing.T) {
+		assert.Equal(t, "entra-sdk.example.com", entraSDKRequestHost(&url.URL{Host: "entra-sdk.example.com:8080"}))
+	})
+}
+
