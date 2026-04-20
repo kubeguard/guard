@@ -18,6 +18,7 @@ package azure
 
 import (
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -292,5 +293,33 @@ func TestOptionsApplyIncludesSkipGroupMembershipResolutionArg(t *testing.T) {
 	args := deployment.Spec.Template.Spec.Containers[0].Args
 	assert.Contains(t, args, "--azure.skip-group-membership-resolution=true")
 	assert.Contains(t, args, "--azure.graph-call-on-overage-claim=true")
+}
+
+func TestOptionsApplyIncludesPoPArgs(t *testing.T) {
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{Name: "guard", Args: []string{"run"}}},
+				},
+			},
+		},
+	}
+
+	opts := getNonEmptyOptions()
+	opts.EnablePOP = true
+	opts.POPTokenHostname = "oid@tenant"
+	opts.PoPTokenValidityDuration = 17 * time.Minute
+
+	_, err := opts.Apply(deployment)
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	args := deployment.Spec.Template.Spec.Containers[0].Args
+	assert.Contains(t, args, "--azure.enable-pop=true")
+	assert.Contains(t, args, "--azure.pop-hostname=oid@tenant")
+	assert.Contains(t, args, "--azure.pop-token-validity-duration=17m0s")
 }
 

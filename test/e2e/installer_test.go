@@ -518,6 +518,80 @@ var _ = Describe("Installer test", func() {
 					return nil
 				}, timeOut, pollingInterval).Should(Succeed())
 			})
+
+			It("Set up guard for azure with Entra SDK validates a real PoP token", func() {
+				if !options.AzureEntraSDKAuth.PoPConfigured() {
+					Skip(options.AzureEntraSDKAuth.PoPSkipMessage())
+				}
+
+				popToken := options.AzureEntraSDKAuth.PoPToken
+
+				authopts.Azure = options.AzureEntraSDKAuth.AzurePoPOptions()
+				authopts.UseAzureEntraSDK = true
+				authopts.AzureEntraSDKImage = installer.DefaultAzureEntraSDKImage
+
+				setupGuard(authopts, authzopts)
+
+				checkServiceCreated()
+				checkDeploymentCreated()
+				checkPodCreated()
+				checkSecretCreated(secretName)
+				checkSecretCreated(azureSecret)
+				checkAzureEntraSDKSidecarCreated(authopts.Azure)
+
+				expectedUser, err := expectedAzureUserInfoFromPoPToken(
+					popToken,
+					options.AzureEntraSDKAuth.PoPHostname,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				forwardCtx, cancel := context.WithTimeout(context.Background(), timeOut)
+				defer cancel()
+
+				forwardSession, err := f.PortForwardFirstPod(
+					forwardCtx,
+					root.Namespace(),
+					"app=guard",
+					server.ServingPort,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				defer func() {
+					Expect(forwardSession.Close()).NotTo(HaveOccurred())
+				}()
+
+				Eventually(func() error {
+					review, statusCode, err := sendTokenReviewRequest(
+						forwardSession.LocalPort,
+						serverDNSName,
+						azure.OrgType,
+						popToken,
+						f,
+					)
+					if err != nil {
+						return err
+					}
+					if statusCode != http.StatusOK {
+						return fmt.Errorf("unexpected tokenreview status code: %d", statusCode)
+					}
+					if !review.Status.Authenticated {
+						return fmt.Errorf("tokenreview was not authenticated: %s", review.Status.Error)
+					}
+					if review.Status.User.Username != expectedUser.Username {
+						return fmt.Errorf(
+							"unexpected username: got %q want %q",
+							review.Status.User.Username,
+							expectedUser.Username,
+						)
+					}
+
+					oid := review.Status.User.Extra["oid"]
+					if len(oid) != 1 || oid[0] != expectedUser.ObjectID {
+						return fmt.Errorf("unexpected oid extra: got %v want [%s]", oid, expectedUser.ObjectID)
+					}
+
+					return nil
+				}, timeOut, pollingInterval).Should(Succeed())
+			})
 		})
 
 		Context("Setting up guard for LDAP", func() {

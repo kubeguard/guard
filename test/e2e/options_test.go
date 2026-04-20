@@ -41,6 +41,8 @@ type AzureEntraSDKE2EOptions struct {
 	ClientID    string
 	TenantID    string
 	AccessToken string
+	PoPToken    string
+	PoPHostname string
 }
 
 var options = &E2EOptions{
@@ -80,6 +82,8 @@ func loadAzureEntraSDKE2EOptions() AzureEntraSDKE2EOptions {
 		ClientID:    strings.TrimSpace(os.Getenv("AZURE_E2E_CLIENT_ID")),
 		TenantID:    strings.TrimSpace(os.Getenv("AZURE_E2E_TENANT_ID")),
 		AccessToken: strings.TrimSpace(os.Getenv("AZURE_E2E_ACCESS_TOKEN")),
+		PoPToken:    strings.TrimSpace(os.Getenv("AZURE_E2E_POP_TOKEN")),
+		PoPHostname: strings.TrimSpace(os.Getenv("AZURE_E2E_POP_HOSTNAME")),
 	}
 }
 
@@ -105,6 +109,31 @@ func (o AzureEntraSDKE2EOptions) SkipMessage() string {
 	return fmt.Sprintf("Azure Entra SDK E2E is not configured; missing %s", strings.Join(o.Missing(), ", "))
 }
 
+func (o AzureEntraSDKE2EOptions) PoPConfigured() bool {
+	return len(o.PoPMissing()) == 0
+}
+
+func (o AzureEntraSDKE2EOptions) PoPMissing() []string {
+	var missing []string
+	if o.ClientID == "" {
+		missing = append(missing, "AZURE_E2E_CLIENT_ID")
+	}
+	if o.TenantID == "" {
+		missing = append(missing, "AZURE_E2E_TENANT_ID")
+	}
+	if o.PoPHostname == "" {
+		missing = append(missing, "AZURE_E2E_POP_HOSTNAME")
+	}
+	if o.PoPToken == "" {
+		missing = append(missing, "AZURE_E2E_POP_TOKEN")
+	}
+	return missing
+}
+
+func (o AzureEntraSDKE2EOptions) PoPSkipMessage() string {
+	return fmt.Sprintf("Azure Entra SDK PoP E2E is not configured; missing %s", strings.Join(o.PoPMissing(), ", "))
+}
+
 func (o AzureEntraSDKE2EOptions) AzureOptions() azure.Options {
 	return azure.Options{
 		Environment: o.Environment,
@@ -120,3 +149,11 @@ func (o AzureEntraSDKE2EOptions) AzureOptions() azure.Options {
 		VerifyClientID:                           true,
 	}
 }
+
+func (o AzureEntraSDKE2EOptions) AzurePoPOptions() azure.Options {
+	poPOpts := o.AzureOptions()
+	poPOpts.EnablePOP = true
+	poPOpts.POPTokenHostname = o.PoPHostname
+	return poPOpts
+}
+

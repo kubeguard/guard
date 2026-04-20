@@ -257,6 +257,16 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 
 	args = append(args, fmt.Sprintf("--azure.skip-group-membership-resolution=%t", o.SkipGroupMembershipResolution))
 
+	if o.EnablePOP {
+		args = append(args, fmt.Sprintf("--azure.enable-pop=%t", o.EnablePOP))
+	}
+	if o.POPTokenHostname != "" {
+		args = append(args, fmt.Sprintf("--azure.pop-hostname=%s", o.POPTokenHostname))
+	}
+	if o.PoPTokenValidityDuration > 0 {
+		args = append(args, fmt.Sprintf("--azure.pop-token-validity-duration=%s", o.PoPTokenValidityDuration))
+	}
+
 	args = append(args, fmt.Sprintf("--azure.verify-clientID=%t", o.VerifyClientID))
 
 	args = append(args, fmt.Sprintf("--azure.http-client-retry-count=%d", o.HttpClientRetryCount))

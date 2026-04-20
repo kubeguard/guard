@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	azureauth "go.kubeguard.dev/guard/auth/providers/azure"
 	"go.kubeguard.dev/guard/test/e2e/framework"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -34,7 +35,10 @@ import (
 	authv1 "k8s.io/api/authentication/v1"
 )
 
-const azureE2EClientCommonName = "azure-e2e-client"
+const (
+	azureE2EClientCommonName = "azure-e2e-client"
+	azureE2ERequestTimeout   = 10 * time.Second
+)
 
 type expectedAzureTokenReviewUser struct {
 	Username string
@@ -65,6 +69,15 @@ func expectedAzureUserInfoFromAccessToken(rawAccessToken string) (expectedAzureT
 	return expectedAzureTokenReviewUser{Username: username, ObjectID: objectID}, nil
 }
 
+func expectedAzureUserInfoFromPoPToken(rawPoPToken, hostName string) (expectedAzureTokenReviewUser, error) {
+	innerAccessToken, err := azureauth.NewPoPVerifier(hostName, 15*time.Minute).ValidatePopToken(rawPoPToken)
+	if err != nil {
+		return expectedAzureTokenReviewUser{}, fmt.Errorf("failed to extract inner access token from PoP token: %w", err)
+	}
+
+	return expectedAzureUserInfoFromAccessToken(innerAccessToken)
+}
+
 func sendTokenReviewRequest(
 	localPort uint16,
 	serverName, org, rawToken string,
@@ -89,7 +102,7 @@ func sendTokenReviewRequest(
 	}
 
 	httpClient := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: azureE2ERequestTimeout,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				Certificates: []tls.Certificate{tlsCert},
