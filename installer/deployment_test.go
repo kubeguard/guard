@@ -32,6 +32,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+const testProxyURL = "http://proxy.example.com:8080"
+
 func TestAuthOptionsValidateWithAzureEntraSDK(t *testing.T) {
 	t.Run("requires azure auth provider", func(t *testing.T) {
 		authopts := NewAuthOptions()
@@ -137,7 +139,7 @@ func TestNewDeploymentWithAzureEntraSDK(t *testing.T) {
 	t.Run("configures proxy settings for the Entra SDK sidecar", func(t *testing.T) {
 		authopts := newAzureAuthOptions(t)
 		authopts.UseAzureEntraSDK = true
-		authopts.HttpProxy = "http://proxy.example.com:8080"
+		authopts.HttpProxy = testProxyURL
 
 		objects, err := newDeployment(authopts, AuthzOptions{})
 		if !assert.NoError(t, err) {
@@ -157,7 +159,7 @@ func TestNewDeploymentWithAzureEntraSDK(t *testing.T) {
 
 	t.Run("configures proxy settings for the Guard container", func(t *testing.T) {
 		authopts := newAzureAuthOptions(t)
-		authopts.HttpProxy = "http://proxy.example.com:8080"
+		authopts.HttpProxy = testProxyURL
 
 		objects, err := newDeployment(authopts, AuthzOptions{})
 		if !assert.NoError(t, err) {
@@ -177,7 +179,7 @@ func TestNewDeploymentWithAzureEntraSDK(t *testing.T) {
 	t.Run("mounts proxy certs for Guard and Entra SDK containers", func(t *testing.T) {
 		authopts := newAzureAuthOptions(t)
 		authopts.UseAzureEntraSDK = true
-		authopts.HttpProxy = "http://proxy.example.com:8080"
+		authopts.HttpProxy = testProxyURL
 		authopts.ProxyCert = "proxy-cert-data"
 
 		objects, err := newDeployment(authopts, AuthzOptions{})
@@ -222,7 +224,7 @@ func TestNewDeploymentWithAzureEntraSDK(t *testing.T) {
 
 	t.Run("mounts proxy certs for the Guard container", func(t *testing.T) {
 		authopts := newAzureAuthOptions(t)
-		authopts.HttpProxy = "http://proxy.example.com:8080"
+		authopts.HttpProxy = testProxyURL
 		authopts.ProxyCert = "proxy-cert-data"
 
 		objects, err := newDeployment(authopts, AuthzOptions{})
