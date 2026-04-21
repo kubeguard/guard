@@ -29,8 +29,9 @@ import (
 )
 
 const (
-	empty    = ""
-	nonempty = "non-empty"
+	empty                = ""
+	nonempty             = "non-empty"
+	localEntraSDKBaseURL = "http://localhost:8080"
 )
 
 type optionFunc func(o Options) Options
@@ -137,7 +138,7 @@ var validationErrorData = []struct {
 	{
 		"azure.entra-sdk-url must be a base URL",
 		func(o Options) Options {
-			o.EntraSDKURL = "http://localhost:8080/Validate"
+			o.EntraSDKURL = localEntraSDKBaseURL + "/Validate"
 			return o
 		},
 		errors.New("azure.entra-sdk-url must be a base URL"),
@@ -146,7 +147,7 @@ var validationErrorData = []struct {
 	{
 		"azure.client-id is required with Entra SDK URL",
 		func(o Options) Options {
-			o.EntraSDKURL = "http://localhost:8080"
+			o.EntraSDKURL = localEntraSDKBaseURL
 			o.ClientID = empty
 			return o
 		},
@@ -156,7 +157,7 @@ var validationErrorData = []struct {
 	{
 		"azure.environment must resolve for Entra SDK",
 		func(o Options) Options {
-			o.EntraSDKURL = "http://localhost:8080"
+			o.EntraSDKURL = localEntraSDKBaseURL
 			o.Environment = "definitely-not-a-real-cloud"
 			return o
 		},
@@ -217,7 +218,7 @@ func TestOptionsValidate(t *testing.T) {
 			"validation passed with Entra SDK URL",
 			func() Options {
 				o := getNonEmptyOptions()
-				o.EntraSDKURL = "http://localhost:8080"
+				o.EntraSDKURL = localEntraSDKBaseURL
 				return o
 			}(),
 			nil,

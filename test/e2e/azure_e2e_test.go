@@ -56,12 +56,12 @@ func expectedAzureUserInfoFromAccessToken(rawAccessToken string) (expectedAzureT
 		return expectedAzureTokenReviewUser{}, fmt.Errorf("Azure access token claims had unexpected type %T", parsedToken.Claims)
 	}
 
-	objectID, _ := stringClaim(claims, "oid")
+	objectID := stringClaim(claims, "oid")
 	if objectID == "" {
 		return expectedAzureTokenReviewUser{}, fmt.Errorf("Azure access token does not contain an oid claim")
 	}
 
-	username, _ := stringClaim(claims, "upn")
+	username := stringClaim(claims, "upn")
 	if username == "" {
 		username = objectID
 	}
@@ -158,21 +158,21 @@ func sendTokenReviewRequest(
 	return &review, resp.StatusCode, nil
 }
 
-func stringClaim(claims jwt.MapClaims, name string) (string, bool) {
+func stringClaim(claims jwt.MapClaims, name string) string {
 	value, ok := claims[name]
 	if !ok {
-		return "", false
+		return ""
 	}
 
 	stringValue, ok := value.(string)
 	if !ok {
-		return "", false
+		return ""
 	}
 
 	stringValue = strings.TrimSpace(stringValue)
 	if stringValue == "" {
-		return "", false
+		return ""
 	}
 
-	return stringValue, true
+	return stringValue
 }
