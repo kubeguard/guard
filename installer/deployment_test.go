@@ -134,6 +134,129 @@ func TestNewDeploymentWithAzureEntraSDK(t *testing.T) {
 		}
 	})
 
+	t.Run("configures proxy settings for the Entra SDK sidecar", func(t *testing.T) {
+		authopts := newAzureAuthOptions(t)
+		authopts.UseAzureEntraSDK = true
+		authopts.HttpProxy = "http://proxy.example.com:8080"
+
+		objects, err := newDeployment(authopts, AuthzOptions{})
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		deployment := findDeployment(t, objects)
+		if !assert.NotNil(t, deployment) {
+			return
+		}
+
+		if assert.Len(t, deployment.Spec.Template.Spec.Containers, 2) {
+			assertProxySecretEnvFrom(t, deployment.Spec.Template.Spec.Containers[0].EnvFrom)
+			assertProxySecretEnvFrom(t, deployment.Spec.Template.Spec.Containers[1].EnvFrom)
+		}
+	})
+
+	t.Run("configures proxy settings for the Guard container", func(t *testing.T) {
+		authopts := newAzureAuthOptions(t)
+		authopts.HttpProxy = "http://proxy.example.com:8080"
+
+		objects, err := newDeployment(authopts, AuthzOptions{})
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		deployment := findDeployment(t, objects)
+		if !assert.NotNil(t, deployment) {
+			return
+		}
+
+		if assert.Len(t, deployment.Spec.Template.Spec.Containers, 1) {
+			assertProxySecretEnvFrom(t, deployment.Spec.Template.Spec.Containers[0].EnvFrom)
+		}
+	})
+
+	t.Run("mounts proxy certs for Guard and Entra SDK containers", func(t *testing.T) {
+		authopts := newAzureAuthOptions(t)
+		authopts.UseAzureEntraSDK = true
+		authopts.HttpProxy = "http://proxy.example.com:8080"
+		authopts.ProxyCert = "proxy-cert-data"
+
+		objects, err := newDeployment(authopts, AuthzOptions{})
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		deployment := findDeployment(t, objects)
+		if !assert.NotNil(t, deployment) {
+			return
+		}
+
+		if assert.Len(t, deployment.Spec.Template.Spec.Containers, 2) {
+			assertSSLCertsVolumeMount(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts)
+			assertEntraSDKTrustVolumeMount(t, deployment.Spec.Template.Spec.Containers[1].VolumeMounts)
+		}
+
+		assert.Contains(t, deployment.Spec.Template.Spec.Volumes, core.Volume{
+			Name: proxyCertStoreVolumeName,
+			VolumeSource: core.VolumeSource{
+				Secret: &core.SecretVolumeSource{SecretName: "guard-proxy-cert"},
+			},
+		})
+		assert.Contains(t, deployment.Spec.Template.Spec.Volumes, core.Volume{
+			Name: guardSSLCertsVolumeName,
+			VolumeSource: core.VolumeSource{
+				EmptyDir: &core.EmptyDirVolumeSource{},
+			},
+		})
+		assert.Contains(t, deployment.Spec.Template.Spec.Volumes, core.Volume{
+			Name: entraSDKCertsVolumeName,
+			VolumeSource: core.VolumeSource{
+				EmptyDir: &core.EmptyDirVolumeSource{},
+			},
+		})
+
+		if assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 2) {
+			assertGuardProxyCertInitContainer(t, deployment.Spec.Template.Spec.InitContainers[0])
+			assertEntraSDKProxyCertInitContainer(t, deployment.Spec.Template.Spec.InitContainers[1])
+		}
+	})
+
+	t.Run("mounts proxy certs for the Guard container", func(t *testing.T) {
+		authopts := newAzureAuthOptions(t)
+		authopts.HttpProxy = "http://proxy.example.com:8080"
+		authopts.ProxyCert = "proxy-cert-data"
+
+		objects, err := newDeployment(authopts, AuthzOptions{})
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		deployment := findDeployment(t, objects)
+		if !assert.NotNil(t, deployment) {
+			return
+		}
+
+		if assert.Len(t, deployment.Spec.Template.Spec.Containers, 1) {
+			assertSSLCertsVolumeMount(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts)
+		}
+
+		assert.Contains(t, deployment.Spec.Template.Spec.Volumes, core.Volume{
+			Name: proxyCertStoreVolumeName,
+			VolumeSource: core.VolumeSource{
+				Secret: &core.SecretVolumeSource{SecretName: "guard-proxy-cert"},
+			},
+		})
+		assert.Contains(t, deployment.Spec.Template.Spec.Volumes, core.Volume{
+			Name: guardSSLCertsVolumeName,
+			VolumeSource: core.VolumeSource{
+				EmptyDir: &core.EmptyDirVolumeSource{},
+			},
+		})
+
+		if assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 1) {
+			assertGuardProxyCertInitContainer(t, deployment.Spec.Template.Spec.InitContainers[0])
+		}
+	})
+
 	t.Run("uses local custom guard image", func(t *testing.T) {
 		authopts := newAzureAuthOptions(t)
 		authopts.PrivateRegistry = "appscode"
@@ -264,4 +387,66 @@ func assertEntraSDKEnvVars(t *testing.T, envVars []core.EnvVar) {
 		assert.Equal(t, core.EnvVar{Name: "AzureAd__ClientId", Value: "client-id"}, envVars[2])
 		assert.Equal(t, core.EnvVar{Name: "AzureAd__Audience", Value: "client-id"}, envVars[3])
 	}
+}
+
+func assertProxySecretEnvFrom(t *testing.T, envFrom []core.EnvFromSource) {
+	t.Helper()
+	for _, envFromSource := range envFrom {
+		if envFromSource.SecretRef != nil && envFromSource.SecretRef.Name == "guard-proxy" {
+			return
+		}
+	}
+	assert.Fail(t, "expected envFrom to contain the guard-proxy secret")
+}
+
+func assertSSLCertsVolumeMount(t *testing.T, volumeMounts []core.VolumeMount) {
+	t.Helper()
+	assert.Contains(t, volumeMounts, core.VolumeMount{
+		Name:      guardSSLCertsVolumeName,
+		MountPath: "/etc/ssl/certs/",
+	})
+}
+
+func assertEntraSDKTrustVolumeMount(t *testing.T, volumeMounts []core.VolumeMount) {
+	t.Helper()
+	assert.Contains(t, volumeMounts, core.VolumeMount{
+		Name:      entraSDKCertsVolumeName,
+		MountPath: "/etc/pki/ca-trust/extracted/",
+	})
+}
+
+func assertGuardProxyCertInitContainer(t *testing.T, initContainer core.Container) {
+	t.Helper()
+	assert.Equal(t, "update-proxy-certs", initContainer.Name)
+	assert.Equal(t, "nginx:stable-alpine", initContainer.Image)
+	assert.Equal(t, []string{"sh", "-c", "update-ca-certificates"}, initContainer.Command)
+	assertProxySecretEnvFrom(t, initContainer.EnvFrom)
+	assert.Contains(t, initContainer.VolumeMounts, core.VolumeMount{
+		Name:      proxyCertStoreVolumeName,
+		MountPath: "/usr/local/share/ca-certificates/proxy-cert.crt",
+		SubPath:   "proxy-cert.crt",
+	})
+	assertSSLCertsVolumeMount(t, initContainer.VolumeMounts)
+}
+
+func assertEntraSDKProxyCertInitContainer(t *testing.T, initContainer core.Container) {
+	t.Helper()
+	assert.Equal(t, "update-entra-sdk-proxy-certs", initContainer.Name)
+	assert.Equal(t, azureLinuxBaseCoreImage, initContainer.Image)
+	assert.Equal(
+		t,
+		[]string{
+			"sh",
+			"-c",
+			"mkdir -p /etc/pki/ca-trust/extracted/openssl /etc/pki/ca-trust/extracted/pem /etc/pki/ca-trust/extracted/java /etc/pki/ca-trust/extracted/edk2 && update-ca-trust",
+		},
+		initContainer.Command,
+	)
+	assertProxySecretEnvFrom(t, initContainer.EnvFrom)
+	assert.Contains(t, initContainer.VolumeMounts, core.VolumeMount{
+		Name:      proxyCertStoreVolumeName,
+		MountPath: "/etc/pki/ca-trust/source/anchors/proxy-cert.crt",
+		SubPath:   "proxy-cert.crt",
+	})
+	assertEntraSDKTrustVolumeMount(t, initContainer.VolumeMounts)
 }

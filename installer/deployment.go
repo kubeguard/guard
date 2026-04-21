@@ -43,6 +43,10 @@ const (
 	DefaultAzureEntraSDKImage  = "mcr.microsoft.com/entra-sdk/auth-sidecar:1.0.0-azurelinux3.0-distroless"
 	azureEntraSDKContainerName = "entra-sdk"
 	azureEntraSDKPort          = 8080
+	azureLinuxBaseCoreImage    = "mcr.microsoft.com/azurelinux/base/core:3.0"
+	proxyCertStoreVolumeName   = "proxy-certstore"
+	guardSSLCertsVolumeName    = "ssl-certs"
+	entraSDKCertsVolumeName    = "entra-sdk-ssl-certs"
 )
 
 func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runtime.Object, err error) {
@@ -128,77 +132,6 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 			Effect:   core.TaintEffectNoSchedule,
 		})
 	}
-	if authopts.HttpsProxy != "" || authopts.HttpProxy != "" || authopts.NoProxy != "" {
-		proxyEnvVarRef := core.EnvFromSource{
-			SecretRef: &core.SecretEnvSource{},
-		}
-
-		proxyEnvVarRef.SecretRef.Name = "guard-proxy"
-		d.Spec.Template.Spec.Containers[0].EnvFrom = append(d.Spec.Template.Spec.Containers[0].EnvFrom, proxyEnvVarRef)
-		if authopts.ProxyCert != "" {
-			proxycertVolumeRef := core.Volume{
-				Name: "proxy-certstore",
-				VolumeSource: core.VolumeSource{
-					Secret: &core.SecretVolumeSource{
-						SecretName: "guard-proxy-cert",
-					},
-				},
-			}
-
-			sslCertsVolumeRef := core.Volume{
-				Name: "ssl-certs",
-				VolumeSource: core.VolumeSource{
-					EmptyDir: &core.EmptyDirVolumeSource{},
-				},
-			}
-
-			d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, proxycertVolumeRef)
-			d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, sslCertsVolumeRef)
-
-			sslCertsVolumeMount := core.VolumeMount{
-				Name:      "ssl-certs",
-				MountPath: "/etc/ssl/certs/",
-			}
-
-			d.Spec.Template.Spec.Containers[0].VolumeMounts = append(d.Spec.Template.Spec.Containers[0].VolumeMounts, sslCertsVolumeMount)
-
-			optionalSecret := false
-			initContainer := []core.Container{
-				{
-					Name:  "update-proxy-certs",
-					Image: "nginx:stable-alpine",
-					Command: []string{
-						"sh",
-						"-c",
-						"update-ca-certificates",
-					},
-					EnvFrom: []core.EnvFromSource{
-						{
-							SecretRef: &core.SecretEnvSource{
-								LocalObjectReference: core.LocalObjectReference{
-									Name: "guard-proxy",
-								},
-								Optional: &optionalSecret,
-							},
-						},
-					},
-					VolumeMounts: []core.VolumeMount{
-						{
-							Name:      "proxy-certstore",
-							MountPath: "/usr/local/share/ca-certificates/proxy-cert.crt",
-							SubPath:   "proxy-cert.crt",
-						},
-						{
-							Name:      "ssl-certs",
-							MountPath: "/etc/ssl/certs/",
-						},
-					},
-				},
-			}
-
-			d.Spec.Template.Spec.InitContainers = initContainer
-		}
-	}
 	if authopts.AuthProvider.Has(azure.OrgType) && authopts.UseAzureEntraSDK {
 		entraSDKEnv, err := authopts.Azure.EntraSDKEnvVars()
 		if err != nil {
@@ -237,6 +170,124 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 				InitialDelaySeconds: 1,
 			},
 		})
+	}
+	if authopts.HttpsProxy != "" || authopts.HttpProxy != "" || authopts.NoProxy != "" {
+		proxyEnvVarRef := core.EnvFromSource{
+			SecretRef: &core.SecretEnvSource{},
+		}
+
+		proxyEnvVarRef.SecretRef.Name = "guard-proxy"
+		d.Spec.Template.Spec.Containers[0].EnvFrom = append(d.Spec.Template.Spec.Containers[0].EnvFrom, proxyEnvVarRef)
+		if authopts.UseAzureEntraSDK {
+			d.Spec.Template.Spec.Containers[1].EnvFrom = append(d.Spec.Template.Spec.Containers[1].EnvFrom, proxyEnvVarRef)
+		}
+		if authopts.ProxyCert != "" {
+			proxycertVolumeRef := core.Volume{
+				Name: proxyCertStoreVolumeName,
+				VolumeSource: core.VolumeSource{
+					Secret: &core.SecretVolumeSource{
+						SecretName: "guard-proxy-cert",
+					},
+				},
+			}
+
+			sslCertsVolumeRef := core.Volume{
+				Name: guardSSLCertsVolumeName,
+				VolumeSource: core.VolumeSource{
+					EmptyDir: &core.EmptyDirVolumeSource{},
+				},
+			}
+
+			d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, proxycertVolumeRef)
+			d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, sslCertsVolumeRef)
+
+			sslCertsVolumeMount := core.VolumeMount{
+				Name:      guardSSLCertsVolumeName,
+				MountPath: "/etc/ssl/certs/",
+			}
+
+			d.Spec.Template.Spec.Containers[0].VolumeMounts = append(d.Spec.Template.Spec.Containers[0].VolumeMounts, sslCertsVolumeMount)
+
+			optionalSecret := false
+			initContainers := []core.Container{
+				{
+					Name:  "update-proxy-certs",
+					Image: "nginx:stable-alpine",
+					Command: []string{
+						"sh",
+						"-c",
+						"update-ca-certificates",
+					},
+					EnvFrom: []core.EnvFromSource{
+						{
+							SecretRef: &core.SecretEnvSource{
+								LocalObjectReference: core.LocalObjectReference{
+									Name: "guard-proxy",
+								},
+								Optional: &optionalSecret,
+							},
+						},
+					},
+					VolumeMounts: []core.VolumeMount{
+						{
+							Name:      proxyCertStoreVolumeName,
+							MountPath: "/usr/local/share/ca-certificates/proxy-cert.crt",
+							SubPath:   "proxy-cert.crt",
+						},
+						{
+							Name:      guardSSLCertsVolumeName,
+							MountPath: "/etc/ssl/certs/",
+						},
+					},
+				},
+			}
+			if authopts.UseAzureEntraSDK {
+				d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, core.Volume{
+					Name: entraSDKCertsVolumeName,
+					VolumeSource: core.VolumeSource{
+						EmptyDir: &core.EmptyDirVolumeSource{},
+					},
+				})
+
+				d.Spec.Template.Spec.Containers[1].VolumeMounts = append(d.Spec.Template.Spec.Containers[1].VolumeMounts, core.VolumeMount{
+					Name:      entraSDKCertsVolumeName,
+					MountPath: "/etc/pki/ca-trust/extracted/",
+				})
+
+				initContainers = append(initContainers, core.Container{
+					Name:  "update-entra-sdk-proxy-certs",
+					Image: azureLinuxBaseCoreImage,
+					Command: []string{
+						"sh",
+						"-c",
+						"mkdir -p /etc/pki/ca-trust/extracted/openssl /etc/pki/ca-trust/extracted/pem /etc/pki/ca-trust/extracted/java /etc/pki/ca-trust/extracted/edk2 && update-ca-trust",
+					},
+					EnvFrom: []core.EnvFromSource{
+						{
+							SecretRef: &core.SecretEnvSource{
+								LocalObjectReference: core.LocalObjectReference{
+									Name: "guard-proxy",
+								},
+								Optional: &optionalSecret,
+							},
+						},
+					},
+					VolumeMounts: []core.VolumeMount{
+						{
+							Name:      proxyCertStoreVolumeName,
+							MountPath: "/etc/pki/ca-trust/source/anchors/proxy-cert.crt",
+							SubPath:   "proxy-cert.crt",
+						},
+						{
+							Name:      entraSDKCertsVolumeName,
+							MountPath: "/etc/pki/ca-trust/extracted/",
+						},
+					},
+				})
+			}
+
+			d.Spec.Template.Spec.InitContainers = initContainers
+		}
 	}
 	objects = append(objects, d)
 
