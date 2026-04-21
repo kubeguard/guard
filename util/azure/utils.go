@@ -51,13 +51,15 @@ type contextKey string
 const requestIDKey contextKey = "requestID"
 
 const (
-	ManagedClusters             = "Microsoft.ContainerService/managedClusters"
-	Fleets                      = "Microsoft.ContainerService/fleets"
-	ConnectedClusters           = "Microsoft.Kubernetes/connectedClusters"
-	OperationsEndpointFormatARC = "%s/providers/Microsoft.Kubernetes/operations?api-version=2021-10-01"
-	OperationsEndpointFormatAKS = "%s/providers/Microsoft.ContainerService/operations?api-version=2018-10-31"
-	retrieveServerApiError      = "unable to retrieve the complete list of server APIs"
-	apiserviceUnreachableError  = "the server is currently unable to handle the request"
+	ManagedClusters                   = "Microsoft.ContainerService/managedClusters"
+	Fleets                            = "Microsoft.ContainerService/fleets"
+	AIManagers                        = "Microsoft.ContainerService/aiManagers"
+	ConnectedClusters                 = "Microsoft.Kubernetes/connectedClusters"
+	OperationsEndpointFormatARC       = "%s/providers/Microsoft.Kubernetes/operations?api-version=2021-10-01"
+	OperationsEndpointFormatAKS       = "%s/providers/Microsoft.ContainerService/operations?api-version=2018-10-31"
+	OperationsEndpointFormatAIManager = "%s/providers/Microsoft.ContainerService/operations?api-version=2026-03-02-preview"
+	retrieveServerApiError            = "unable to retrieve the complete list of server APIs"
+	apiserviceUnreachableError        = "the server is currently unable to handle the request"
 )
 
 var (
@@ -253,6 +255,8 @@ func SetDiscoverResourcesSettings(clusterType string, environment string, loginU
 			settings.operationsEndpoint = fmt.Sprintf(OperationsEndpointFormatAKS, settings.environment.ResourceManagerEndpoint)
 		case Fleets:
 			settings.operationsEndpoint = fmt.Sprintf(OperationsEndpointFormatAKS, settings.environment.ResourceManagerEndpoint)
+		case AIManagers:
+			settings.operationsEndpoint = fmt.Sprintf(OperationsEndpointFormatAIManager, settings.environment.ResourceManagerEndpoint)
 		default:
 			return fmt.Errorf("Failed to create endpoint for Get Operations call. Cluster type %s is not supported.", clusterType)
 		}
