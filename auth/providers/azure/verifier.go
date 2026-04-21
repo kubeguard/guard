@@ -25,10 +25,12 @@ type VerifiedAccessToken interface {
 	Claims() (claims, error)
 }
 
-var _ AccessTokenVerifier = (*OIDCAccessTokenVerifier)(nil)
-var _ AccessTokenVerifier = (*EntraSDKTokenVerifier)(nil)
-var _ VerifiedAccessToken = (*oidcVerifiedAccessToken)(nil)
-var _ VerifiedAccessToken = (*staticClaimsToken)(nil)
+var (
+	_ AccessTokenVerifier = (*OIDCAccessTokenVerifier)(nil)
+	_ AccessTokenVerifier = (*EntraSDKTokenVerifier)(nil)
+	_ VerifiedAccessToken = (*oidcVerifiedAccessToken)(nil)
+	_ VerifiedAccessToken = (*staticClaimsToken)(nil)
+)
 
 type OIDCAccessTokenVerifier struct {
 	Verifier *oidc.IDTokenVerifier

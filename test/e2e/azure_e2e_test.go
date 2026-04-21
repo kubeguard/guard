@@ -176,4 +176,3 @@ func stringClaim(claims jwt.MapClaims, name string) (string, bool) {
 
 	return stringValue, true
 }
-

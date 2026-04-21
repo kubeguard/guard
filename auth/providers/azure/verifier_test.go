@@ -186,4 +186,3 @@ func TestEntraSDKRequestHost(t *testing.T) {
 		assert.Equal(t, "entra-sdk.example.com", entraSDKRequestHost(&url.URL{Host: "entra-sdk.example.com:8080"}))
 	})
 }
-

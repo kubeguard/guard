@@ -322,4 +322,3 @@ func TestOptionsApplyIncludesPoPArgs(t *testing.T) {
 	assert.Contains(t, args, "--azure.pop-hostname=oid@tenant")
 	assert.Contains(t, args, "--azure.pop-token-validity-duration=17m0s")
 }
-

@@ -23,13 +23,13 @@ import (
 
 	"go.kubeguard.dev/guard/auth/providers"
 	"go.kubeguard.dev/guard/auth/providers/azure"
-	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/stretchr/testify/assert"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func TestAuthOptionsValidateWithAzureEntraSDK(t *testing.T) {

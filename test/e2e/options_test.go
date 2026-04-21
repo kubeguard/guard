@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"go.kubeguard.dev/guard/auth/providers/azure"
+
 	"gomodules.xyz/logs"
 	"k8s.io/client-go/util/homedir"
 )
@@ -156,4 +157,3 @@ func (o AzureEntraSDKE2EOptions) AzurePoPOptions() azure.Options {
 	poPOpts.POPTokenHostname = o.PoPHostname
 	return poPOpts
 }
-

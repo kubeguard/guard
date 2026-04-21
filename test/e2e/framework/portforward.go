@@ -173,4 +173,3 @@ func (f *Framework) getFirstRunningPod(ctx context.Context, namespace, labelSele
 	}
 	return nil, fmt.Errorf("no running pods found for label selector %q", labelSelector)
 }
-
