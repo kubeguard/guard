@@ -18,6 +18,7 @@ package e2e_test
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -28,9 +29,13 @@ import (
 	"time"
 
 	azureauth "go.kubeguard.dev/guard/auth/providers/azure"
+	"go.kubeguard.dev/guard/authz/providers/azure"
+	"go.kubeguard.dev/guard/server"
 	"go.kubeguard.dev/guard/test/e2e/framework"
 
 	"github.com/golang-jwt/jwt/v4"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	"gomodules.xyz/cert"
 	authv1 "k8s.io/api/authentication/v1"
 )
@@ -80,12 +85,12 @@ func expectedAzureUserInfoFromPoPToken(rawPoPToken, hostName string) (expectedAz
 
 func sendTokenReviewRequest(
 	localPort uint16,
-	serverName, org, rawToken string,
+	serverName, rawToken string,
 	invocation *framework.Invocation,
 ) (*authv1.TokenReview, int, error) {
 	clientCrt, clientKey, err := invocation.CertStore.NewClientCertPairBytes(
 		cert.AltNames{DNSNames: []string{azureE2EClientCommonName}},
-		org,
+		azure.OrgType,
 	)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to create client certificate: %w", err)
@@ -156,6 +161,55 @@ func sendTokenReviewRequest(
 	}
 
 	return &review, resp.StatusCode, nil
+}
+
+func validateAzureTokenReview(
+	namespace, serverName, rawToken string,
+	invocation *framework.Invocation,
+	expectedUser expectedAzureTokenReviewUser,
+	timeout, pollingInterval time.Duration,
+) {
+	By("Checking guard token review")
+	forwardCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	forwardSession, err := invocation.PortForwardFirstPod(
+		forwardCtx,
+		namespace,
+		"app=guard",
+		server.ServingPort,
+	)
+	Expect(err).NotTo(HaveOccurred())
+	defer func() {
+		Expect(forwardSession.Close()).NotTo(HaveOccurred())
+	}()
+
+	Eventually(func() error {
+		review, statusCode, err := sendTokenReviewRequest(forwardSession.LocalPort, serverName, rawToken, invocation)
+		if err != nil {
+			return err
+		}
+		if statusCode != http.StatusOK {
+			return fmt.Errorf("unexpected tokenreview status code: %d", statusCode)
+		}
+		if !review.Status.Authenticated {
+			return fmt.Errorf("tokenreview was not authenticated: %s", review.Status.Error)
+		}
+		if review.Status.User.Username != expectedUser.Username {
+			return fmt.Errorf(
+				"unexpected username: got %q want %q",
+				review.Status.User.Username,
+				expectedUser.Username,
+			)
+		}
+
+		oid := review.Status.User.Extra["oid"]
+		if len(oid) != 1 || oid[0] != expectedUser.ObjectID {
+			return fmt.Errorf("unexpected oid extra: got %v want [%s]", oid, expectedUser.ObjectID)
+		}
+
+		return nil
+	}, timeout, pollingInterval).Should(Succeed())
 }
 
 func stringClaim(claims jwt.MapClaims, name string) string {

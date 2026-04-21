@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/http"
 	"os/exec"
 	"path/filepath"
 	"time"
@@ -33,7 +32,6 @@ import (
 	"go.kubeguard.dev/guard/auth/providers/ldap"
 	"go.kubeguard.dev/guard/auth/providers/token"
 	"go.kubeguard.dev/guard/installer"
-	"go.kubeguard.dev/guard/server"
 	"go.kubeguard.dev/guard/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -471,52 +469,15 @@ var _ = Describe("Installer test", func() {
 				expectedUser, err := expectedAzureUserInfoFromAccessToken(options.AzureEntraSDKAuth.AccessToken)
 				Expect(err).NotTo(HaveOccurred())
 
-				forwardCtx, cancel := context.WithTimeout(context.Background(), timeOut)
-				defer cancel()
-
-				forwardSession, err := f.PortForwardFirstPod(
-					forwardCtx,
+				validateAzureTokenReview(
 					root.Namespace(),
-					"app=guard",
-					server.ServingPort,
+					serverDNSName,
+					options.AzureEntraSDKAuth.AccessToken,
+					f,
+					expectedUser,
+					timeOut,
+					pollingInterval,
 				)
-				Expect(err).NotTo(HaveOccurred())
-				defer func() {
-					Expect(forwardSession.Close()).NotTo(HaveOccurred())
-				}()
-
-				Eventually(func() error {
-					review, statusCode, err := sendTokenReviewRequest(
-						forwardSession.LocalPort,
-						serverDNSName,
-						azure.OrgType,
-						options.AzureEntraSDKAuth.AccessToken,
-						f,
-					)
-					if err != nil {
-						return err
-					}
-					if statusCode != http.StatusOK {
-						return fmt.Errorf("unexpected tokenreview status code: %d", statusCode)
-					}
-					if !review.Status.Authenticated {
-						return fmt.Errorf("tokenreview was not authenticated: %s", review.Status.Error)
-					}
-					if review.Status.User.Username != expectedUser.Username {
-						return fmt.Errorf(
-							"unexpected username: got %q want %q",
-							review.Status.User.Username,
-							expectedUser.Username,
-						)
-					}
-
-					oid := review.Status.User.Extra["oid"]
-					if len(oid) != 1 || oid[0] != expectedUser.ObjectID {
-						return fmt.Errorf("unexpected oid extra: got %v want [%s]", oid, expectedUser.ObjectID)
-					}
-
-					return nil
-				}, timeOut, pollingInterval).Should(Succeed())
 			})
 
 			It("Set up guard for azure with Entra SDK validates a real PoP token", func() {
@@ -545,52 +506,15 @@ var _ = Describe("Installer test", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				forwardCtx, cancel := context.WithTimeout(context.Background(), timeOut)
-				defer cancel()
-
-				forwardSession, err := f.PortForwardFirstPod(
-					forwardCtx,
+				validateAzureTokenReview(
 					root.Namespace(),
-					"app=guard",
-					server.ServingPort,
+					serverDNSName,
+					popToken,
+					f,
+					expectedUser,
+					timeOut,
+					pollingInterval,
 				)
-				Expect(err).NotTo(HaveOccurred())
-				defer func() {
-					Expect(forwardSession.Close()).NotTo(HaveOccurred())
-				}()
-
-				Eventually(func() error {
-					review, statusCode, err := sendTokenReviewRequest(
-						forwardSession.LocalPort,
-						serverDNSName,
-						azure.OrgType,
-						popToken,
-						f,
-					)
-					if err != nil {
-						return err
-					}
-					if statusCode != http.StatusOK {
-						return fmt.Errorf("unexpected tokenreview status code: %d", statusCode)
-					}
-					if !review.Status.Authenticated {
-						return fmt.Errorf("tokenreview was not authenticated: %s", review.Status.Error)
-					}
-					if review.Status.User.Username != expectedUser.Username {
-						return fmt.Errorf(
-							"unexpected username: got %q want %q",
-							review.Status.User.Username,
-							expectedUser.Username,
-						)
-					}
-
-					oid := review.Status.User.Extra["oid"]
-					if len(oid) != 1 || oid[0] != expectedUser.ObjectID {
-						return fmt.Errorf("unexpected oid extra: got %v want [%s]", oid, expectedUser.ObjectID)
-					}
-
-					return nil
-				}, timeOut, pollingInterval).Should(Succeed())
 			})
 		})
 
