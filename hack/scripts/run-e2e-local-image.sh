@@ -328,7 +328,7 @@ esac
 
 # Run tests --------------------------------------------------------------------
 
-ginkgo_cmd=(go run github.com/onsi/ginkgo/v2/ginkgo -r --v --show-node-events --trace)
+ginkgo_cmd=(go run github.com/onsi/ginkgo/v2/ginkgo -r -v --show-node-events --trace)
 if [[ -n "$GINKGO_FOCUS" ]]; then
     ginkgo_cmd+=("--focus=$GINKGO_FOCUS")
 fi
