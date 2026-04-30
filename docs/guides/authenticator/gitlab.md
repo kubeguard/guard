@@ -14,7 +14,7 @@ section_menu_id: guides
 
 # Gitlab Authenticator
 
-Guard installation guide can be found [here](/docs/setup/install.md). To use Gitlab, you need a client cert with `Organization` set to `Gitlab`. To ease this process, use the Guard cli to issue a client cert/key pair.
+The [Guard installation guide](/docs/setup/install.md) can be found in our documentation. To use Gitlab, you need a client cert with `Organization` set to `Gitlab`. To ease this process, use the Guard cli to issue a client cert/key pair.
 
 ```console
 $ guard init client {common-name} -o Gitlab

@@ -13,13 +13,13 @@ section_menu_id: reference
 
 Generate server certificate pair
 
-```
+```console
 guard init server [flags]
 ```
 
 ### Options
 
-```
+```text
       --domains strings   Alternative Domain names
   -h, --help              help for server
       --ips ipSlice       Alternative IP addresses (default [127.0.0.1])
@@ -28,5 +28,4 @@ guard init server [flags]
 
 ### SEE ALSO
 
-* [guard init](/docs/reference/guard_init.md)	 - Init PKI
-
+- [guard init](/docs/reference/guard_init.md) - Init PKI
