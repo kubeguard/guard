@@ -69,7 +69,7 @@ type claims map[string]interface{}
 type Authenticator struct {
 	Options
 	graphClient      *graph.UserInfo
-	verifier         *oidc.IDTokenVerifier
+	verifier         AccessTokenVerifier
 	popTokenVerifier *PoPTokenVerifier
 }
 
@@ -152,12 +152,11 @@ func New(ctx context.Context, opts Options) (auth.Interface, error) {
 
 	klog.V(3).Infof("Using issuer url: %v", cachedAuthInfo.Issuer)
 
-	provider, err := getOIDCIssuerProvider(cachedAuthInfo.Issuer, c.HttpClientRetryCount)
+	var err error
+	c.verifier, err = newAccessTokenVerifier(cachedAuthInfo.Issuer, opts)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create provider for azure")
+		return nil, err
 	}
-
-	c.verifier = provider.Verifier(&oidc.Config{SkipClientIDCheck: !opts.VerifyClientID, ClientID: opts.ClientID})
 	if opts.EnablePOP {
 		c.popTokenVerifier = NewPoPVerifier(c.POPTokenHostname, c.PoPTokenValidityDuration)
 	}
@@ -176,6 +175,21 @@ func New(ctx context.Context, opts Options) (auth.Interface, error) {
 		return nil, errors.Wrap(err, "failed to create ms graph client")
 	}
 	return c, nil
+}
+
+func newAccessTokenVerifier(issuerURL string, opts Options) (AccessTokenVerifier, error) {
+	if opts.EntraSDKURL != "" {
+		return newEntraSDKTokenVerifier(opts.EntraSDKURL, opts.ClientID, opts.VerifyClientID, opts.HttpClientRetryCount)
+	}
+
+	provider, err := getOIDCIssuerProvider(issuerURL, opts.HttpClientRetryCount)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create provider for azure")
+	}
+
+	return &OIDCAccessTokenVerifier{
+		Verifier: provider.Verifier(&oidc.Config{SkipClientIDCheck: !opts.VerifyClientID, ClientID: opts.ClientID}),
+	}, nil
 }
 
 type metadataJSON struct {
@@ -233,7 +247,7 @@ func (s Authenticator) Check(ctx context.Context, token string) (*authv1.UserInf
 	}
 
 	ctx = azureutils.WithRetryableHttpClient(ctx, s.HttpClientRetryCount)
-	idToken, err := s.verifier.Verify(ctx, token)
+	verifiedToken, err := s.verifier.Verify(ctx, token)
 	if err != nil {
 		if klog.V(7).Enabled() {
 			if claims, err := extractTokenClaims(token); err == nil {
@@ -243,7 +257,7 @@ func (s Authenticator) Check(ctx context.Context, token string) (*authv1.UserInf
 		return nil, errors.Wrap(err, "failed to verify token for azure")
 	}
 
-	claims, err := getClaims(idToken)
+	claims, err := verifiedToken.Claims()
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing claims")
 	}
@@ -385,16 +399,6 @@ func marshalGenericTo(src interface{}, dst interface{}) error {
 	return json.Unmarshal(b, dst)
 }
 
-// GetClaims returns a Claims object
-func getClaims(token *oidc.IDToken) (claims, error) {
-	c := claims{}
-	err := token.Claims(&c)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling claims: %s", err)
-	}
-	return c, nil
-}
-
 // ReviewFromClaims creates a new TokenReview object from the claims object
 // the claims object
 func (c claims) getUserInfo(usernameClaim, userObjectIDClaim string) (*authv1.UserInfo, error) {
@@ -434,13 +438,9 @@ func (c claims) string(key string) (string, error) {
 type getMetadataFunc = func(context.Context, string, string, int) (*metadataJSON, error)
 
 func getAuthInfo(ctx context.Context, environment, tenantID string, retryCount int, getMetadata getMetadataFunc) (*authInfo, error) {
-	var err error
-	env := azure.PublicCloud
-	if environment != "" {
-		env, err = azure.EnvironmentFromName(environment)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to parse environment for azure")
-		}
+	env, err := resolveAzureEnvironment(environment)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse environment for azure")
 	}
 
 	metadata, err := getMetadata(ctx, env.ActiveDirectoryEndpoint, tenantID, retryCount)
@@ -458,6 +458,20 @@ func getAuthInfo(ctx context.Context, environment, tenantID string, retryCount i
 		MSGraphHost: msgraphHost,
 		Issuer:      metadata.Issuer,
 	}, nil
+}
+
+func resolveAzureEnvironment(environment string) (azure.Environment, error) {
+	env := azure.PublicCloud
+	if environment == "" {
+		return env, nil
+	}
+
+	resolved, err := azure.EnvironmentFromName(environment)
+	if err != nil {
+		return azure.Environment{}, err
+	}
+
+	return resolved, nil
 }
 
 func extractTokenClaims(rawToken string) (string, error) {

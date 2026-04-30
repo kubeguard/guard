@@ -22,15 +22,24 @@ import (
 	"gomodules.xyz/cert/certstore"
 	"gomodules.xyz/x/crypto/rand"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"kmodules.xyz/client-go/tools/clientcmd"
 )
 
 type Framework struct {
 	KubeClient kubernetes.Interface
+	RestConfig *rest.Config
 	namespace  string
 	CertStore  *certstore.CertStore
 }
 
-func New(kubeClient kubernetes.Interface) *Framework {
+func New(kubeConfigPath, kubeContext string) *Framework {
+	restConfig, err := clientcmd.BuildConfigFromContext(kubeConfigPath, kubeContext)
+	Expect(err).NotTo(HaveOccurred())
+
+	kubeClient, err := kubernetes.NewForConfig(restConfig)
+	Expect(err).NotTo(HaveOccurred())
+
 	store, err := certstore.New(blobfs.NewInMemoryFS(), "pki")
 	Expect(err).NotTo(HaveOccurred())
 
@@ -39,6 +48,7 @@ func New(kubeClient kubernetes.Interface) *Framework {
 
 	return &Framework{
 		KubeClient: kubeClient,
+		RestConfig: restConfig,
 		namespace:  rand.WithUniqSuffix("test-guard"),
 		CertStore:  store,
 	}
