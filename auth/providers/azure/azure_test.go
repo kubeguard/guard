@@ -134,7 +134,7 @@ func clientSetup(clientID, clientSecret, tenantID, serverUrl string, useGroupUID
 		return nil, fmt.Errorf("failed to create provider for azure. Reason: %v", err)
 	}
 
-	c.verifier = &OIDCAccessTokenVerifier{Verifier: p.Verifier(&oidc.Config{
+	c.verifier = &OIDCAccessTokenVerifier{verifier: p.Verifier(&oidc.Config{
 		SkipClientIDCheck: !verifyClientID,
 		SkipExpiryCheck:   true,
 		ClientID:          clientID,

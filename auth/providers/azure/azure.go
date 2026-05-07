@@ -188,7 +188,7 @@ func newAccessTokenVerifier(issuerURL string, opts Options) (AccessTokenVerifier
 	}
 
 	return &OIDCAccessTokenVerifier{
-		Verifier: provider.Verifier(&oidc.Config{SkipClientIDCheck: !opts.VerifyClientID, ClientID: opts.ClientID}),
+		verifier: provider.Verifier(&oidc.Config{SkipClientIDCheck: !opts.VerifyClientID, ClientID: opts.ClientID}),
 	}, nil
 }
 

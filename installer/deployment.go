@@ -40,13 +40,8 @@ import (
 )
 
 const (
-	DefaultAzureEntraSDKImage  = "mcr.microsoft.com/entra-sdk/auth-sidecar:1.0.0-azurelinux3.0-distroless"
-	azureEntraSDKContainerName = "entra-sdk"
-	azureEntraSDKPort          = 8080
-	azureLinuxBaseCoreImage    = "mcr.microsoft.com/azurelinux/base/core:3.0"
-	proxyCertStoreVolumeName   = "proxy-certstore"
-	guardSSLCertsVolumeName    = "ssl-certs"
-	entraSDKCertsVolumeName    = "entra-sdk-ssl-certs"
+	proxyCertStoreVolumeName = "proxy-certstore"
+	guardSSLCertsVolumeName  = "ssl-certs"
 )
 
 func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runtime.Object, err error) {
