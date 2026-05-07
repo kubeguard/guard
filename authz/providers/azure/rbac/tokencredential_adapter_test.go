@@ -60,7 +60,7 @@ func TestTokenProviderAdapter_GetToken_Success(t *testing.T) {
 		},
 	}
 
-	adapter := newTokenProviderAdapter(mockProvider)
+	adapter := newTokenProviderAdapter(mockProvider, "https://authorization.azure.net/.default")
 
 	// Act
 	ctx := context.Background()
@@ -80,7 +80,7 @@ func TestTokenProviderAdapter_GetToken_ProviderError(t *testing.T) {
 		err:  expectedError,
 	}
 
-	adapter := newTokenProviderAdapter(mockProvider)
+	adapter := newTokenProviderAdapter(mockProvider, "https://authorization.azure.net/.default")
 
 	// Act
 	ctx := context.Background()
@@ -96,7 +96,7 @@ func TestTokenProviderAdapter_GetToken_ProviderError(t *testing.T) {
 func TestTokenProviderAdapter_GetToken_ExpiryConversion(t *testing.T) {
 	// Arrange
 	// Test that Unix timestamp is correctly converted to time.Time
-	specificTime := time.Date(2025, 12, 31, 23, 59, 59, 0, time.UTC)
+	specificTime := time.Date(2027, 12, 31, 23, 59, 59, 0, time.UTC)
 	expectedExpiresOn := specificTime.Unix()
 
 	mockProvider := &mockTokenProvider{
@@ -107,7 +107,7 @@ func TestTokenProviderAdapter_GetToken_ExpiryConversion(t *testing.T) {
 		},
 	}
 
-	adapter := newTokenProviderAdapter(mockProvider)
+	adapter := newTokenProviderAdapter(mockProvider, "https://authorization.azure.net/.default")
 
 	// Act
 	ctx := context.Background()
@@ -117,4 +117,57 @@ func TestTokenProviderAdapter_GetToken_ExpiryConversion(t *testing.T) {
 	assert.NoError(t, err)
 	// Compare Unix timestamps to avoid timezone issues
 	assert.Equal(t, expectedExpiresOn, token.ExpiresOn.Unix())
+}
+
+func TestTokenProviderAdapter_GetToken_ZeroExpiresOn(t *testing.T) {
+	mockProvider := &mockTokenProvider{
+		name: "mock-provider",
+		response: graph.AuthResponse{
+			Token:     "token",
+			ExpiresOn: 0,
+		},
+	}
+
+	adapter := newTokenProviderAdapter(mockProvider, "https://authorization.azure.net/.default")
+
+	ctx := context.Background()
+	token, err := adapter.GetToken(ctx, policy.TokenRequestOptions{})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid expiry")
+	assert.Contains(t, err.Error(), "mock-provider")
+	assert.Empty(t, token.Token)
+}
+
+func TestTokenProviderAdapter_GetToken_ExpiredToken(t *testing.T) {
+	pastTime := time.Now().Add(-1 * time.Hour).Unix()
+
+	mockProvider := &mockTokenProvider{
+		name: "mock-provider",
+		response: graph.AuthResponse{
+			Token:     "expired-token",
+			ExpiresOn: int(pastTime),
+		},
+	}
+
+	adapter := newTokenProviderAdapter(mockProvider, "https://authorization.azure.net/.default")
+
+	ctx := context.Background()
+	token, err := adapter.GetToken(ctx, policy.TokenRequestOptions{})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid expiry")
+	assert.Contains(t, err.Error(), "mock-provider")
+	assert.Empty(t, token.Token)
+}
+
+func TestTokenProviderAdapter_ScopeStored(t *testing.T) {
+	mockProvider := &mockTokenProvider{name: "mock-provider"}
+	scope := "https://authorization.azure.net/.default"
+
+	adapter := newTokenProviderAdapter(mockProvider, scope)
+
+	tpa, ok := adapter.(*tokenProviderAdapter)
+	assert.True(t, ok)
+	assert.Equal(t, scope, tpa.scope)
 }
