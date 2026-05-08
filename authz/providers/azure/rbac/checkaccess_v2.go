@@ -85,7 +85,7 @@ func (a *AccessInfo) performCheckAccessV2(
 		batchLog := log.WithValues("correlationID", correlationID, "batchIndex", batchIndex, "actionsCount", len(batchActions))
 		batchCtx := klog.NewContext(ctx, batchLog)
 
-		batchLog.Info("Starting CheckAccess v2 batch")
+		batchLog.V(7).Info("Starting CheckAccess v2 batch")
 		start := time.Now()
 
 		// Build authorization request manually instead of using SDK's CreateAuthorizationRequest.
@@ -107,7 +107,7 @@ func (a *AccessInfo) performCheckAccessV2(
 			return nil, fmt.Errorf("CheckAccess v2 batch failed (batchIndex: %d, durationSeconds: %.2f): %w", batchIndex, duration, err)
 		}
 
-		batchLog.Info("CheckAccess v2 request succeeded", "durationSeconds", duration, "decisionsCount", len(resp.Value))
+		batchLog.V(5).Info("CheckAccess v2 request succeeded", "durationSeconds", duration, "decisionsCount", len(resp.Value))
 		// Use HTTP 200 to represent successful SDK calls, consistent with v1's HTTP 200 OK pattern
 		statusCode := azureutils.ConvertIntToString(http.StatusOK)
 		checkAccessTotal.WithLabelValues(statusCode, "v2").Inc()
