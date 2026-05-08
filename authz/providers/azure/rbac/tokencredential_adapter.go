@@ -43,7 +43,7 @@ func newTokenProviderAdapter(provider graph.TokenProvider, scope string) azcore.
 // GetToken implements azcore.TokenCredential interface by adapting the graph.TokenProvider.Acquire method.
 func (a *tokenProviderAdapter) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
 	log := klog.FromContext(ctx)
-	log.Info("Acquiring PDP token", "provider", a.provider.Name(), "scope", a.scope)
+	log.V(5).Info("Acquiring PDP token", "provider", a.provider.Name(), "scope", a.scope)
 
 	authResp, err := a.provider.Acquire(ctx, "")
 	if err != nil {
@@ -55,7 +55,7 @@ func (a *tokenProviderAdapter) GetToken(ctx context.Context, opts policy.TokenRe
 		return azcore.AccessToken{}, fmt.Errorf("token from provider %s has invalid expiry: %d (resolved to %v)", a.provider.Name(), authResp.ExpiresOn, expiresOn)
 	}
 
-	log.Info("PDP token acquired successfully", "provider", a.provider.Name(), "expiresOn", expiresOn)
+	log.V(5).Info("PDP token acquired successfully", "expiresOn", expiresOn)
 
 	return azcore.AccessToken{
 		Token:     authResp.Token,

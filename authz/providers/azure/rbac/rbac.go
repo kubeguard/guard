@@ -625,8 +625,6 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		checkAccessTotal.WithLabelValues(internalServerCode, "v1").Inc()
-		checkAccessDuration.WithLabelValues(internalServerCode, "v1").Observe(duration)
 		return errutils.WithCode(fmt.Errorf("Failed to read response body: %w", err), http.StatusInternalServerError)
 	}
 
