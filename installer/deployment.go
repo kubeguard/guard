@@ -173,7 +173,7 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 
 		proxyEnvVarRef.SecretRef.Name = "guard-proxy"
 		d.Spec.Template.Spec.Containers[0].EnvFrom = append(d.Spec.Template.Spec.Containers[0].EnvFrom, proxyEnvVarRef)
-		if authopts.UseAzureEntraSDK {
+		if authopts.AuthProvider.Has(azure.OrgType) && authopts.UseAzureEntraSDK {
 			d.Spec.Template.Spec.Containers[1].EnvFrom = append(d.Spec.Template.Spec.Containers[1].EnvFrom, proxyEnvVarRef)
 		}
 		if authopts.ProxyCert != "" {
@@ -236,7 +236,7 @@ func newDeployment(authopts AuthOptions, authzopts AuthzOptions) (objects []runt
 					},
 				},
 			}
-			if authopts.UseAzureEntraSDK {
+			if authopts.AuthProvider.Has(azure.OrgType) && authopts.UseAzureEntraSDK {
 				d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, core.Volume{
 					Name: entraSDKCertsVolumeName,
 					VolumeSource: core.VolumeSource{

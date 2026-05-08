@@ -152,15 +152,12 @@ func (t *staticClaimsToken) Claims() (claims, error) {
 }
 
 type entraSDKValidateResponse struct {
-	Protocol string                 `json:"protocol"`
-	Token    string                 `json:"token"`
-	Claims   map[string]interface{} `json:"claims"`
+	Claims map[string]interface{} `json:"claims"`
 }
 
 type entraSDKErrorResponse struct {
 	Type   string `json:"type"`
 	Title  string `json:"title"`
-	Status int    `json:"status"`
 	Detail string `json:"detail"`
 }
 
