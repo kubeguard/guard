@@ -1,24 +1,26 @@
 # Guard
 
-Kubernetes Webhook Authentication/Authorization server for AKS clusters with Azure AD integration.
+Kubernetes Webhook Authentication/Authorization server.
 
-## Architecture
+## Build
 
-- Guard runs in the **CCP namespace on the cx-underlay**, co-located with kube-apiserver
-- Deployed via CCP Helm chart: `aks-rp/ccp/control-plane-core/charts/kube-control-plane/charts/kube-authwebhook/`
-- Credentials via `guard-secrets` Secret (client-id, tenant-id)
-- Token exchange via OBO service: `http://obo.<namespace>.svc.cluster.local`
+```bash
+make build              # build for current platform
+make build-linux_amd64  # cross-compile
+make fmt                # format
+make lint               # lint
+make ci                 # full CI (verify + lint + build + test)
+go test ./authz/providers/azure/rbac/... -v  # unit tests
+```
 
 ## Known Gotchas
 
-- **VM size in staging**: `Standard_DS2_v2` NOT allowed - use `standard_d2s_v5`
-- **Region in staging**: `westus2` has VHD bugs - prefer `eastus2`
-- **Base image**: Use `alpine:3.20` not `distroless/static` - needs CA certificates
 - **Guard CLI flags**: `--tls-ca-file`, `--tls-cert-file`, `--tls-private-key-file` (NOT `--ca-cert-file`)
 - **Webhook endpoint**: `/subjectaccessreviews` (NOT the full K8s API path)
 - **Client cert**: `-o Azure` org required for mTLS
-- **Azure SDK**: `BearerTokenPolicy` requires HTTPS for auth tokens - PDP must be TLS even in test
+- **Base image for testing**: Use `alpine:3.20` not `distroless/static` - needs CA certificates
+- **Azure SDK**: `BearerTokenPolicy` requires HTTPS for auth tokens
 
-## Skills
+## Commands
 
-- `/guard-staging-test` - deploy Guard + mock PDP to AKS INT/Staging and run e2e validation
+- `/guard-staging-test` - deploy Guard + mock PDP to staging and run e2e validation

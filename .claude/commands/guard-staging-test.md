@@ -246,6 +246,5 @@ az group delete -n akolomeetc --yes --no-wait
 ## Notes
 
 - This test validates: code path routing, token acquisition, ExpiresOn validation, v2 SDK request/response parsing, error handling, cache behavior
-- It does NOT validate end-to-end PDP authorization against Azure RBAC (requires CCP deployment)
-- Kusto dashboard tiles only populate after code is deployed to production CCP via AKS RP pipeline
-- See `CLAUDE.md` for known gotchas and architecture details
+- It does NOT validate end-to-end PDP authorization (requires production deployment)
+- See `CLAUDE.md` for known gotchas
