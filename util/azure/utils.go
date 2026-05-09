@@ -59,7 +59,6 @@ const (
 	OperationsEndpointFormatAKS       = "%s/providers/Microsoft.ContainerService/operations?api-version=2018-10-31"
 	OperationsEndpointFormatAIManager = "%s/providers/Microsoft.ContainerService/operations?api-version=2026-03-02-preview"
 	retrieveServerApiError            = "unable to retrieve the complete list of server APIs"
-	apiserviceUnreachableError        = "the server is currently unable to handle the request"
 )
 
 var (
@@ -439,9 +438,13 @@ func fetchApiResources() ([]*metav1.APIResourceList, error) {
 	}
 
 	if err != nil {
-		// ignoring unreachable apiservice error.
-		if strings.Contains(err.Error(), retrieveServerApiError) && strings.Contains(err.Error(), apiserviceUnreachableError) {
-			klog.Infof("Error while fetching apiservices from apiserver: %s", err.Error())
+		// ServerPreferredResources returns partial results when individual API groups
+		// fail discovery (e.g., broken aggregated APIServices returning empty responses
+		// or unreachable backing services). The retrieveServerApiError prefix indicates
+		// partial failure - the returned list still contains all successfully discovered
+		// resources, so we log and continue rather than failing.
+		if strings.Contains(err.Error(), retrieveServerApiError) {
+			klog.Infof("Partial error while fetching apiservices from apiserver, continuing with available resources: %s", err.Error())
 		} else {
 			return nil, err
 		}
