@@ -141,7 +141,7 @@ func main() {
 	// AKS OBO authz token endpoint (production pattern: /v1/<ccpid>/authztoken)
 	mux.HandleFunc("/v1/", handleOBOToken)
 
-	// AKS token endpoint (legacy)
+	// OBO token endpoint (legacy path, kept for backward compatibility)
 	mux.HandleFunc("/authz/token", handleTokenRequest)
 
 	// CheckAccess v2 PDP endpoint (SDK posts directly to root)
