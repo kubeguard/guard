@@ -218,19 +218,20 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 
 	// Initialize CheckAccess V2 client if enabled
 	if opts.UseCheckAccessV2 {
-		// Create token credential adapter from existing token provider
-		tokenCred := newTokenProviderAdapter(tokenProvider, opts.PDPScope)
+		// Create a separate token provider for v2 that requests PDP-audience tokens.
+		// V1 and v2 require different token audiences:
+		//   V1: https://management.core.windows.net/ (ARM) - default from OBO
+		//   V2: https://authorization.azure.net (PDP) - must be explicitly requested
+		// The PDP scope (e.g. "https://authorization.azure.net/.default") is trimmed
+		// to the resource identifier for the OBO request.
+		pdpResource := strings.TrimSuffix(opts.PDPScope, "/.default")
+		v2TokenProvider := graph.NewAKSTokenProviderWithResource(opts.AKSAuthzTokenURL, authopts.TenantID, pdpResource)
+		tokenCred := newTokenProviderAdapter(v2TokenProvider, opts.PDPScope)
 
-		// Configure azcore.ClientOptions to retain HTTP client customization capability
-		// This allows custom user agent and other HTTP settings similar to v1
 		clientOpts := &azcore.ClientOptions{
 			Transport: httpclient.DefaultHTTPClient,
 		}
 
-		// Initialize PDP client with user-provided scope
-		// Scope must be provided via --azure.pdp-scope flag
-		// Example: https://authorization.azure.net/.default for public cloud
-		// Reference: https://github.com/Azure/ARO-RP/blob/master/pkg/util/azureclient/environments.go
 		pdpClient, err := checkaccess.NewRemotePDPClient(
 			opts.PDPEndpoint,
 			opts.PDPScope,

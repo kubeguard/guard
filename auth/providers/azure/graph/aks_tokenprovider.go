@@ -32,6 +32,7 @@ type aksTokenProvider struct {
 	client   *http.Client
 	tokenURL string
 	tenantID string
+	resource string
 }
 
 // NewAKSTokenProvider returns a TokenProvider that implements On-Behalf-Of flow using AKS first party service
@@ -44,6 +45,19 @@ func NewAKSTokenProvider(tokenURL, tenantID string) TokenProvider {
 	}
 }
 
+// NewAKSTokenProviderWithResource returns a TokenProvider that requests tokens
+// with a specific resource/audience from the OBO service. Used by CheckAccess v2
+// to obtain PDP-audience tokens instead of the default ARM-audience tokens.
+func NewAKSTokenProviderWithResource(tokenURL, tenantID, resource string) TokenProvider {
+	return &aksTokenProvider{
+		name:     "AKSTokenProvider",
+		client:   httpclient.DefaultHTTPClient,
+		tokenURL: tokenURL,
+		tenantID: tenantID,
+		resource: resource,
+	}
+}
+
 func (u *aksTokenProvider) Name() string { return u.name }
 
 func (u *aksTokenProvider) Acquire(ctx context.Context, token string) (AuthResponse, error) {
@@ -51,9 +65,11 @@ func (u *aksTokenProvider) Acquire(ctx context.Context, token string) (AuthRespo
 	tokenReq := struct {
 		TenantID    string `json:"tenantID,omitempty"`
 		AccessToken string `json:"accessToken,omitempty"`
+		Resource    string `json:"resource,omitempty"`
 	}{
 		TenantID:    u.tenantID,
 		AccessToken: token,
+		Resource:    u.resource,
 	}
 
 	buf := new(bytes.Buffer)
