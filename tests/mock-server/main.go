@@ -311,9 +311,22 @@ func handleCheckAccessRouter(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// OBOTokenRequest matches the request format from aksTokenProvider.Acquire()
+type OBOTokenRequest struct {
+	TenantID    string `json:"tenantID,omitempty"`
+	AccessToken string `json:"accessToken,omitempty"`
+	Resource    string `json:"resource,omitempty"`
+}
+
 func handleOBOToken(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req OBOTokenRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
@@ -326,8 +339,13 @@ func handleOBOToken(w http.ResponseWriter, r *http.Request) {
 		ExpiresOn: time.Now().Add(1 * time.Hour).Unix(),
 	}
 
+	resource := req.Resource
+	if resource == "" {
+		resource = "https://management.azure.com"
+	}
+
 	if config.VerboseLogging {
-		log.Printf("[OBO-TOKEN] Issued authz token for path %s (total: %d)", r.URL.Path, tokenIssueCount.Load())
+		log.Printf("[OBO-TOKEN] Issued token for path %s resource=%s (total: %d)", r.URL.Path, resource, tokenIssueCount.Load())
 	}
 
 	w.Header().Set("Content-Type", "application/json")
