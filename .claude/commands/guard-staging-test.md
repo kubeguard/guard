@@ -4,7 +4,6 @@ Deploy the current Guard branch to a real AKS cluster in `AKS INT/Staging Test` 
 
 ### Prerequisites
 
-- Azure subscription: `AKS INT/Staging Test` (`az account set --subscription 'AKS INT/Staging Test'`)
 - Resource group: `akolomeetc`
 - ACR: `akolomeetcacr`
 
