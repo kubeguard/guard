@@ -2,12 +2,7 @@
 
 Deploy the current Guard branch to a real AKS cluster in `AKS INT/Staging Test` subscription and validate CheckAccess v2 end-to-end against a mock PDP service. Execute all steps and show raw logs as confirmation.
 
-### Prerequisites
-
-- Resource group: `akolomeetc`
-- ACR: `akolomeetcacr`
-
-One-time setup:
+### One-time setup
 
 ```bash
 az account set --subscription 'AKS INT/Staging Test'
