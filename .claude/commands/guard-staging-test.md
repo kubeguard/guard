@@ -1,13 +1,13 @@
 # Staging Test: CheckAccess v2 with Mock PDP
 
-Deploy the current Guard branch to a real AKS cluster in `AKS INT/Staging Test` subscription and validate CheckAccess v2 end-to-end against a mock PDP service. Execute all steps and show raw logs as confirmation.
+Deploy the current Guard branch to a real AKS cluster in `<SUBSCRIPTION>` subscription and validate CheckAccess v2 end-to-end against a mock PDP service. Execute all steps and show raw logs as confirmation.
 
 ### One-time setup
 
 ```bash
-az account set --subscription 'AKS INT/Staging Test'
-az group create -l eastus2 -n akolomeetc
-az acr create --name akolomeetcacr --resource-group akolomeetc --sku Basic --location eastus2
+az account set --subscription '<SUBSCRIPTION>'
+az group create -l eastus2 -n <RG>
+az acr create --name <ACR> --resource-group <RG> --sku Basic --location eastus2
 ```
 
 ### 1. Build and push images
@@ -23,26 +23,26 @@ RUN chmod +x /guard
 USER 65534
 ENTRYPOINT ["/guard"]
 EOF
-az acr build --registry akolomeetcacr --image guard:pr-test --file bin/Dockerfile.test bin/
+az acr build --registry <ACR> --image guard:pr-test --file bin/Dockerfile.test bin/
 
 # Mock PDP image
 GOOS=linux GOARCH=amd64 go build -o tests/mock-server/mock-server-linux-amd64 ./tests/mock-server/
-az acr build --registry akolomeetcacr --image mock-pdp:latest --file tests/mock-server/Dockerfile tests/mock-server/
+az acr build --registry <ACR> --image mock-pdp:latest --file tests/mock-server/Dockerfile tests/mock-server/
 ```
 
 ### 2. Create AKS cluster
 
 ```bash
 az aks create \
-    --resource-group akolomeetc \
+    --resource-group <RG> \
     --name guard-v2-staging \
     --enable-aad --enable-azure-rbac \
-    --attach-acr akolomeetcacr \
+    --attach-acr <ACR> \
     --node-count 1 \
     --node-vm-size standard_d2s_v5 \
     --location eastus2
 
-az aks get-credentials -g akolomeetc -n guard-v2-staging --admin --overwrite-existing
+az aks get-credentials -g <RG> -n guard-v2-staging --admin --overwrite-existing
 ```
 
 ### 3. Deploy mock PDP + Guard
@@ -52,7 +52,7 @@ The mock server replaces external token and authorization services. It runs in d
 - HTTPS :8443 for PDP checkAccess v2 endpoint (Azure SDK requires TLS for authenticated requests)
 
 ```bash
-RG=akolomeetc CLUSTER=guard-v2-staging
+RG=<RG> CLUSTER=guard-v2-staging
 CLUSTER_ID=$(az aks show -g $RG -n $CLUSTER --query id -o tsv)
 TENANT_ID=$(az aks show -g $RG -n $CLUSTER --query aadProfile.tenantId -o tsv)
 PKI_DIR="/tmp/guard-v2-test-pki"
@@ -102,7 +102,7 @@ kubectl patch deployment guard-v2-test -n guard-v2-test --type=strategic -p '{
         {"name": "shared-certs", "mountPath": "/shared-certs"}
       ]}],
     "containers": [{"name": "guard",
-      "image": "akolomeetcacr.azurecr.io/guard:pr-test",
+      "image": "<ACR>.azurecr.io/guard:pr-test",
       "env": [{"name": "SSL_CERT_FILE", "value": "/shared-certs/ca-bundle.crt"}],
       "args": [
         "run",
@@ -185,7 +185,7 @@ curl -sk https://localhost:8443/metrics | grep api_version
 kill $PF_PID 2>/dev/null
 ```
 
-Expected raw output (confirmed 2026-05-09 on `guard-v2-staging` in `AKS INT/Staging Test`):
+Expected raw output (confirmed 2026-05-09 on `guard-v2-staging` in `<SUBSCRIPTION>`):
 
 **Guard logs:**
 
@@ -194,7 +194,7 @@ I0509 03:44:00.500121  1 server.go:218] setting up authz providers
 I0509 03:44:00.500234  1 server.go:234] Initializing authorization cache: size=50MB, ttl=3m
 I0509 03:44:20.031595  1 authzhandler.go:39] Recieved subject access review request
 I0509 03:44:20.032085  1 azure.go:113] Creating Azure global authz client
-I0509 03:44:20.032186  1 rbac.go:323] "Cache miss" key="akolomeetc@microsoft.com/default/-/pods/read"
+I0509 03:44:20.032186  1 rbac.go:323] "Cache miss" key="<USER>@<DOMAIN>/default/-/pods/read"
 I0509 03:44:20.073290  1 rbac.go:289] "Token refreshed successfully" expiresAt="2026-05-09 04:39:20 +0000 UTC"
 I0509 03:44:20.073311  1 rbac.go:474] "Using CheckAccess v2 API"
 I0509 03:44:20.073347  1 checkaccess_v2.go:271] "Performing primary CheckAccess v2" actionsCount=1
@@ -234,7 +234,7 @@ Verify: `api_version="v2"` label present, duration reasonable (not 0, not >10s).
 ### 6. Cleanup
 
 ```bash
-az group delete -n akolomeetc --yes --no-wait
+az group delete -n <RG> --yes --no-wait
 ```
 
 ## Notes
