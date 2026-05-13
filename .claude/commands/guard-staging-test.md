@@ -53,8 +53,8 @@ az aks get-credentials -g akolomeetc -n guard-v2-staging --admin --overwrite-exi
 
 ### 3. Deploy mock PDP + Guard
 
-The mock PDP replaces the production OBO + PDP services. It runs in dual mode:
-- HTTP :8080 for OBO token endpoints (production pattern: `http://obo.<ns>.svc.cluster.local`)
+The mock server replaces external token and authorization services. It runs in dual mode:
+- HTTP :8080 for token exchange endpoints
 - HTTPS :8443 for PDP checkAccess v2 endpoint (Azure SDK requires TLS for authenticated requests)
 
 ```bash
