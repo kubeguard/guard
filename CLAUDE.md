@@ -13,6 +13,22 @@ make ci                 # full CI (verify + lint + build + test)
 go test ./authz/providers/azure/rbac/... -v  # unit tests
 ```
 
+## Pre-commit Verification
+
+**ALWAYS** run before committing. Docker is often unavailable locally so `make ci`
+won't work. Run these checks manually instead:
+
+```bash
+go build ./...                                                          # build
+golangci-lint run ./...                                                 # lint
+gofmt -l .                                                              # format (expect no output)
+go test ./authz/providers/azure/rbac/... ./auth/providers/azure/graph/... -count=1  # unit tests
+```
+
+License headers: all non-vendor `.go`, `.sh`, and `Dockerfile` files need Apache 2.0 headers.
+Shell scripts need a blank line between shebang and header (see `hack/license/bash.txt`).
+Do NOT commit if any check fails.
+
 ## Known Gotchas
 
 - **Guard CLI flags**: `--tls-ca-file`, `--tls-cert-file`, `--tls-private-key-file` (NOT `--ca-cert-file`)
