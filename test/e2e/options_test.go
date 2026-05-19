@@ -18,26 +18,44 @@ package e2e_test
 
 import (
 	"flag"
+	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
+
+	"go.kubeguard.dev/guard/auth/providers/azure"
 
 	"gomodules.xyz/logs"
 	"k8s.io/client-go/util/homedir"
 )
 
 type E2EOptions struct {
-	KubeContext string
-	KubeConfig  string
+	KubeContext       string
+	KubeConfig        string
+	GuardImage        string
+	AzureEntraSDKAuth AzureEntraSDKE2EOptions
+}
+
+type AzureEntraSDKE2EOptions struct {
+	Environment string
+	ClientID    string
+	TenantID    string
+	AccessToken string
+	PoPToken    string
+	PoPHostname string
 }
 
 var options = &E2EOptions{
-	KubeConfig:  filepath.Join(homedir.HomeDir(), ".kube", "config"),
-	KubeContext: "minikube",
+	KubeConfig:        filepath.Join(homedir.HomeDir(), ".kube", "config"),
+	KubeContext:       "minikube",
+	AzureEntraSDKAuth: loadAzureEntraSDKE2EOptions(),
 }
 
 func init() {
 	flag.StringVar(&options.KubeConfig, "kubeconfig", "", "Path to kubeconfig file with authorization information (the master location is set by the master flag).")
 	flag.StringVar(&options.KubeContext, "kube-context", "", "Name of kube context")
+	flag.StringVar(&options.GuardImage, "guard-image", "", "Full Guard image reference to use in E2E deployment generation")
 	enableLogging()
 }
 
@@ -46,10 +64,10 @@ func enableLogging() {
 		logs.InitLogs()
 		defer logs.FlushLogs()
 	}()
-	//err := flag.Set("logtostderr", "true")
-	//if err != nil {
+	// err := flag.Set("logtostderr", "true")
+	// if err != nil {
 	//	klog.Fatal(err)
-	//}
+	// }
 	logLevelFlag := flag.Lookup("v")
 	if logLevelFlag != nil {
 		if len(logLevelFlag.Value.String()) > 0 && logLevelFlag.Value.String() != "0" {
@@ -57,4 +75,85 @@ func enableLogging() {
 		}
 	}
 	_ = flag.Set("v", strconv.Itoa(2))
+}
+
+func loadAzureEntraSDKE2EOptions() AzureEntraSDKE2EOptions {
+	return AzureEntraSDKE2EOptions{
+		Environment: strings.TrimSpace(os.Getenv("AZURE_E2E_ENVIRONMENT")),
+		ClientID:    strings.TrimSpace(os.Getenv("AZURE_E2E_CLIENT_ID")),
+		TenantID:    strings.TrimSpace(os.Getenv("AZURE_E2E_TENANT_ID")),
+		AccessToken: strings.TrimSpace(os.Getenv("AZURE_E2E_ACCESS_TOKEN")),
+		PoPToken:    strings.TrimSpace(os.Getenv("AZURE_E2E_POP_TOKEN")),
+		PoPHostname: strings.TrimSpace(os.Getenv("AZURE_E2E_POP_HOSTNAME")),
+	}
+}
+
+func (o AzureEntraSDKE2EOptions) Configured() bool {
+	return len(o.Missing()) == 0
+}
+
+func (o AzureEntraSDKE2EOptions) Missing() []string {
+	var missing []string
+	if o.ClientID == "" {
+		missing = append(missing, "AZURE_E2E_CLIENT_ID")
+	}
+	if o.TenantID == "" {
+		missing = append(missing, "AZURE_E2E_TENANT_ID")
+	}
+	if o.AccessToken == "" {
+		missing = append(missing, "AZURE_E2E_ACCESS_TOKEN")
+	}
+	return missing
+}
+
+func (o AzureEntraSDKE2EOptions) SkipMessage() string {
+	return fmt.Sprintf("Azure Entra SDK E2E is not configured; missing %s", strings.Join(o.Missing(), ", "))
+}
+
+func (o AzureEntraSDKE2EOptions) PoPConfigured() bool {
+	return len(o.PoPMissing()) == 0
+}
+
+func (o AzureEntraSDKE2EOptions) PoPMissing() []string {
+	var missing []string
+	if o.ClientID == "" {
+		missing = append(missing, "AZURE_E2E_CLIENT_ID")
+	}
+	if o.TenantID == "" {
+		missing = append(missing, "AZURE_E2E_TENANT_ID")
+	}
+	if o.PoPHostname == "" {
+		missing = append(missing, "AZURE_E2E_POP_HOSTNAME")
+	}
+	if o.PoPToken == "" {
+		missing = append(missing, "AZURE_E2E_POP_TOKEN")
+	}
+	return missing
+}
+
+func (o AzureEntraSDKE2EOptions) PoPSkipMessage() string {
+	return fmt.Sprintf("Azure Entra SDK PoP E2E is not configured; missing %s", strings.Join(o.PoPMissing(), ", "))
+}
+
+func (o AzureEntraSDKE2EOptions) AzureOptions() azure.Options {
+	return azure.Options{
+		Environment: o.Environment,
+		ClientID:    o.ClientID,
+		TenantID:    o.TenantID,
+		// Use passthrough so Guard does not require Graph client credentials for
+		// this verifier-focused E2E. The test only exercises access token
+		// validation plus Guard's post-validation claim checks, and explicitly
+		// skips group membership resolution.
+		AuthMode:                                 azure.PassthroughAuthMode,
+		ResolveGroupMembershipOnlyOnOverageClaim: true,
+		SkipGroupMembershipResolution:            true,
+		VerifyClientID:                           true,
+	}
+}
+
+func (o AzureEntraSDKE2EOptions) AzurePoPOptions() azure.Options {
+	poPOpts := o.AzureOptions()
+	poPOpts.EnablePOP = true
+	poPOpts.POPTokenHostname = o.PoPHostname
+	return poPOpts
 }

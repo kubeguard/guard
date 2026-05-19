@@ -18,6 +18,7 @@ package e2e_test
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os/exec"
 	"path/filepath"
@@ -37,6 +38,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/spf13/afero"
 	"gomodules.xyz/cert"
+	core "k8s.io/api/core/v1"
 	kerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -45,28 +47,28 @@ import (
 
 var _ = Describe("Installer test", func() {
 	const (
-		privateRegistryName    = "appscode"
-		serverAddr             = "10.96.10.96"
-		yamlDir                = "test-guard/yaml"
-		certDir                = "test-guard/certs"
-		tokenAuthDir           = "test-guard/auth"
-		tokenFileName          = "token.csv"
-		saDir                  = "test-guard/sa"
-		saFileName             = "sa.json"
-		installerfileName      = "installer.yaml"
-		serviceName            = "guard"
-		deploymentName         = "guard"
-		clusterRoleName        = "guard"
-		clusterRoleBindingName = "guard"
-		pkiSecret              = "guard-pki"
-		googleSecret           = "guard-google-auth"
-		azureSecret            = "guard-azure-auth"
-		ldapSecret             = "guard-ldap-auth"
-		tokenSecret            = "guard-token-auth"
-		timeOut                = 10 * time.Minute
-		pollingInterval        = 10 * time.Second
-		tokenData              = "token,username,uid,group"
-		saData                 = `{
+		privateRegistryName = "appscode"
+		serverDNSName       = "server"
+		serverAddr          = "10.96.10.96"
+		testRootDirName     = "test-guard"
+		yamlDirName         = "yaml"
+		certDirName         = "certs"
+		tokenAuthDirName    = "auth"
+		tokenFileName       = "token.csv"
+		saDirName           = "sa"
+		saFileName          = "sa.json"
+		installerfileName   = "installer.yaml"
+		serviceName         = "guard"
+		deploymentName      = "guard"
+		pkiSecret           = "guard-pki"
+		googleSecret        = "guard-google-auth"
+		azureSecret         = "guard-azure-auth"
+		ldapSecret          = "guard-ldap-auth"
+		tokenSecret         = "guard-token-auth"
+		timeOut             = 1 * time.Minute
+		pollingInterval     = 10 * time.Second
+		tokenData           = "token,username,uid,group"
+		saData              = `{
 								   "type": "service_account",
 								   "project_id": "",
 								   "private_key_id": "",
@@ -81,8 +83,13 @@ var _ = Describe("Installer test", func() {
 	)
 
 	var (
-		f     *framework.Invocation
-		appFs afero.Fs
+		f            *framework.Invocation
+		appFs        afero.Fs
+		testRootDir  string
+		yamlDir      string
+		certDir      string
+		tokenAuthDir string
+		saDir        string
 	)
 
 	var (
@@ -97,6 +104,7 @@ var _ = Describe("Installer test", func() {
 			ClientID:     "client_id",
 			ClientSecret: "client_secret",
 			TenantID:     "tenant_id",
+			AuthMode:     azure.ClientCredentialAuthMode,
 		}
 
 		ldapOpts = ldap.Options{
@@ -116,14 +124,8 @@ var _ = Describe("Installer test", func() {
 			IsSecureLDAP:         false,
 		}
 
-		tokenOpts = token.Options{
-			AuthFile: filepath.Join(tokenAuthDir, tokenFileName),
-		}
-
-		googleOpts = google.Options{
-			ServiceAccountJsonFile: filepath.Join(saDir, saFileName),
-			AdminEmail:             "admin@gmail.com",
-		}
+		tokenOpts  token.Options
+		googleOpts google.Options
 	)
 
 	var (
@@ -146,6 +148,9 @@ var _ = Describe("Installer test", func() {
 			By("Executing command : kubectl apply -f " + file)
 			cmd := "kubectl"
 			args := []string{"apply", "-f", file}
+			if options.KubeContext != "" {
+				args = append([]string{"--context", options.KubeContext}, args...)
+			}
 			err = exec.Command(cmd, args...).Run()
 			Expect(err).NotTo(HaveOccurred())
 		}
@@ -187,22 +192,6 @@ var _ = Describe("Installer test", func() {
 			}, timeOut, pollingInterval).Should(BeTrue())
 		}
 
-		checkClusterRoleCreated = func() {
-			By("Checking cluster role created.")
-			Eventually(func() bool {
-				_, err := f.KubeClient.RbacV1().ClusterRoles().Get(context.TODO(), clusterRoleName, metav1.GetOptions{})
-				return err == nil
-			}, timeOut, pollingInterval).Should(BeTrue())
-		}
-
-		checkClusterRoleBindingCreated = func() {
-			By("Checking cluster role binding created.")
-			Eventually(func() bool {
-				_, err := f.KubeClient.RbacV1().ClusterRoleBindings().Get(context.TODO(), clusterRoleBindingName, metav1.GetOptions{})
-				return err == nil
-			}, timeOut, pollingInterval).Should(BeTrue())
-		}
-
 		checkServiceDeleted = func() {
 			By("Checking service Deleted. service name: " + serviceName)
 			Eventually(func() bool {
@@ -238,20 +227,57 @@ var _ = Describe("Installer test", func() {
 			}, timeOut, pollingInterval).Should(BeTrue())
 		}
 
-		checkClusterRoleDeleted = func() {
-			By("Checking cluster role Deleted.")
-			Eventually(func() bool {
-				_, err := f.KubeClient.RbacV1().ClusterRoles().Get(context.TODO(), clusterRoleName, metav1.GetOptions{})
-				return kerr.IsNotFound(err) || kerr.IsGone(err)
-			}, timeOut, pollingInterval).Should(BeTrue())
-		}
+		checkAzureEntraSDKSidecarCreated = func(expectedAzureOpts azure.Options) {
+			By("Checking Azure Entra SDK sidecar created")
+			Eventually(func() error {
+				deployment, err := f.GetDeployment(deploymentName, root.Namespace())
+				if err != nil {
+					return err
+				}
 
-		checkClusterRoleBindingDeleted = func() {
-			By("Checking cluster role binding Deleted.")
-			Eventually(func() bool {
-				_, err := f.KubeClient.RbacV1().ClusterRoleBindings().Get(context.TODO(), clusterRoleBindingName, metav1.GetOptions{})
-				return kerr.IsNotFound(err) || kerr.IsGone(err)
-			}, timeOut, pollingInterval).Should(BeTrue())
+				containers := deployment.Spec.Template.Spec.Containers
+				if len(containers) != 2 {
+					return fmt.Errorf("expected 2 deployment containers, got %d", len(containers))
+				}
+
+				guardContainer := containers[0]
+				if guardContainer.Name != "guard" {
+					return fmt.Errorf("expected first container to be guard, got %q", guardContainer.Name)
+				}
+				if !containsArg(guardContainer.Args, "--azure.entra-sdk-url=http://127.0.0.1:8080") {
+					return fmt.Errorf("expected guard to use the localhost Entra SDK URL")
+				}
+
+				entraContainer := containers[1]
+				if entraContainer.Name != "entra-sdk" {
+					return fmt.Errorf("expected second container to be entra-sdk, got %q", entraContainer.Name)
+				}
+				if entraContainer.Image != installer.DefaultAzureEntraSDKImage {
+					return fmt.Errorf("expected Entra SDK image %q, got %q", installer.DefaultAzureEntraSDKImage, entraContainer.Image)
+				}
+				if len(entraContainer.Env) != 4 {
+					return fmt.Errorf("expected 4 Entra SDK env vars, got %d", len(entraContainer.Env))
+				}
+
+				expectedEnv, err := expectedAzureOpts.EntraSDKEnvVars()
+				if err != nil {
+					return err
+				}
+				for i := range expectedEnv {
+					if entraContainer.Env[i] != expectedEnv[i] {
+						return fmt.Errorf("unexpected Entra SDK env var at index %d: got %#v want %#v", i, entraContainer.Env[i], expectedEnv[i])
+					}
+				}
+
+				if !hasHTTPProbe(entraContainer.ReadinessProbe, "/healthz", 8080, core.URISchemeHTTP, "localhost") {
+					return fmt.Errorf("expected Entra SDK readiness probe on /healthz")
+				}
+				if !hasHTTPProbe(entraContainer.LivenessProbe, "/healthz", 8080, core.URISchemeHTTP, "localhost") {
+					return fmt.Errorf("expected Entra SDK liveness probe on /healthz")
+				}
+
+				return nil
+			}, timeOut, pollingInterval).Should(Succeed())
 		}
 	)
 
@@ -259,7 +285,18 @@ var _ = Describe("Installer test", func() {
 		By("Setting up certificates")
 		appFs = afero.NewOsFs()
 		f = root.Invoke()
-		err := appFs.MkdirAll(yamlDir, 0o777)
+
+		cwd, err := filepath.Abs(".")
+		Expect(err).NotTo(HaveOccurred())
+		testRootDir = filepath.Join(cwd, testRootDirName)
+		yamlDir = filepath.Join(testRootDir, yamlDirName)
+		certDir = filepath.Join(testRootDir, certDirName)
+		tokenAuthDir = filepath.Join(testRootDir, tokenAuthDirName)
+		saDir = filepath.Join(testRootDir, saDirName)
+		tokenOpts = token.Options{AuthFile: filepath.Join(tokenAuthDir, tokenFileName)}
+		googleOpts = google.Options{ServiceAccountJsonFile: filepath.Join(saDir, saFileName), AdminEmail: "admin@gmail.com"}
+
+		err = appFs.MkdirAll(yamlDir, 0o777)
 		Expect(err).NotTo(HaveOccurred())
 
 		err = appFs.MkdirAll(filepath.Join(certDir, "pki"), 0o777)
@@ -274,7 +311,7 @@ var _ = Describe("Installer test", func() {
 
 		// write server cert, key
 		srvCert, srvKey, err := f.CertStore.NewServerCertPairBytes(cert.AltNames{
-			DNSNames: []string{"server"},
+			DNSNames: []string{serverDNSName},
 			IPs:      []net.IP{net.ParseIP(serverAddr)},
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -285,7 +322,7 @@ var _ = Describe("Installer test", func() {
 	})
 
 	AfterEach(func() {
-		err := appFs.RemoveAll("test-guard")
+		err := appFs.RemoveAll(testRootDir)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -302,6 +339,7 @@ var _ = Describe("Installer test", func() {
 				RunOnMaster:     false,
 				Namespace:       root.Namespace(),
 				Addr:            serverAddr + ":443",
+				GuardImage:      options.GuardImage,
 				PrivateRegistry: privateRegistryName,
 			}
 
@@ -311,8 +349,6 @@ var _ = Describe("Installer test", func() {
 
 			checkServiceDeleted()
 			checkDeploymentDeleted()
-			checkClusterRoleBindingDeleted()
-			checkClusterRoleDeleted()
 			checkPodDeleted()
 			checkSecretDeleted(secretName)
 		})
@@ -320,8 +356,6 @@ var _ = Describe("Installer test", func() {
 		AfterEach(func() {
 			Expect(f.DeleteService(serviceName, root.Namespace())).NotTo(HaveOccurred())
 			Expect(f.DeleteDeployment(deploymentName, root.Namespace())).NotTo(HaveOccurred())
-			Expect(f.DeleteClusterRole(clusterRoleName)).NotTo(HaveOccurred())
-			Expect(f.DeleteClusterRoleBinding(clusterRoleBindingName)).NotTo(HaveOccurred())
 			Expect(f.DeleteSecret(secretName, root.Namespace())).NotTo(HaveOccurred())
 		})
 
@@ -334,8 +368,6 @@ var _ = Describe("Installer test", func() {
 				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
-				checkClusterRoleCreated()
-				checkClusterRoleBindingCreated()
 				checkDeploymentCreated()
 				checkPodCreated()
 				checkSecretCreated(secretName)
@@ -347,8 +379,6 @@ var _ = Describe("Installer test", func() {
 				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
-				checkClusterRoleCreated()
-				checkClusterRoleBindingCreated()
 				checkDeploymentCreated()
 				checkPodCreated()
 				checkSecretCreated(secretName)
@@ -364,8 +394,6 @@ var _ = Describe("Installer test", func() {
 				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
-				checkClusterRoleCreated()
-				checkClusterRoleBindingCreated()
 				checkDeploymentCreated()
 				checkPodCreated()
 				checkSecretCreated(secretName)
@@ -377,8 +405,6 @@ var _ = Describe("Installer test", func() {
 				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
-				checkClusterRoleCreated()
-				checkClusterRoleBindingCreated()
 				checkDeploymentCreated()
 				checkPodCreated()
 				checkSecretCreated(secretName)
@@ -401,13 +427,94 @@ var _ = Describe("Installer test", func() {
 				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
-				checkClusterRoleCreated()
-				checkClusterRoleBindingCreated()
 				checkDeploymentCreated()
 				checkPodCreated()
 				checkSecretCreated(secretName)
 				checkSecretCreated(azureSecret)
 				// time.Sleep(55 * time.Minute)
+			})
+
+			It("Set up guard for azure with Entra SDK should be successful", func() {
+				authopts.UseAzureEntraSDK = true
+				authopts.AzureEntraSDKImage = installer.DefaultAzureEntraSDKImage
+
+				setupGuard(authopts, authzopts)
+
+				checkServiceCreated()
+				checkDeploymentCreated()
+				checkPodCreated()
+				checkSecretCreated(secretName)
+				checkSecretCreated(azureSecret)
+				checkAzureEntraSDKSidecarCreated(authopts.Azure)
+			})
+
+			It("Set up guard for azure with Entra SDK validates a real access token", func() {
+				if !options.AzureEntraSDKAuth.Configured() {
+					Skip(options.AzureEntraSDKAuth.SkipMessage())
+				}
+
+				authopts.Azure = options.AzureEntraSDKAuth.AzureOptions()
+				authopts.UseAzureEntraSDK = true
+				authopts.AzureEntraSDKImage = installer.DefaultAzureEntraSDKImage
+
+				setupGuard(authopts, authzopts)
+
+				checkServiceCreated()
+				checkDeploymentCreated()
+				checkPodCreated()
+				checkSecretCreated(secretName)
+				checkSecretCreated(azureSecret)
+				checkAzureEntraSDKSidecarCreated(authopts.Azure)
+
+				expectedUser, err := expectedAzureUserInfoFromAccessToken(options.AzureEntraSDKAuth.AccessToken)
+				Expect(err).NotTo(HaveOccurred())
+
+				validateAzureTokenReview(
+					root.Namespace(),
+					serverDNSName,
+					options.AzureEntraSDKAuth.AccessToken,
+					f,
+					expectedUser,
+					timeOut,
+					pollingInterval,
+				)
+			})
+
+			It("Set up guard for azure with Entra SDK validates a real PoP token", func() {
+				if !options.AzureEntraSDKAuth.PoPConfigured() {
+					Skip(options.AzureEntraSDKAuth.PoPSkipMessage())
+				}
+
+				popToken := options.AzureEntraSDKAuth.PoPToken
+
+				authopts.Azure = options.AzureEntraSDKAuth.AzurePoPOptions()
+				authopts.UseAzureEntraSDK = true
+				authopts.AzureEntraSDKImage = installer.DefaultAzureEntraSDKImage
+
+				setupGuard(authopts, authzopts)
+
+				checkServiceCreated()
+				checkDeploymentCreated()
+				checkPodCreated()
+				checkSecretCreated(secretName)
+				checkSecretCreated(azureSecret)
+				checkAzureEntraSDKSidecarCreated(authopts.Azure)
+
+				expectedUser, err := expectedAzureUserInfoFromPoPToken(
+					popToken,
+					options.AzureEntraSDKAuth.PoPHostname,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				validateAzureTokenReview(
+					root.Namespace(),
+					serverDNSName,
+					popToken,
+					f,
+					expectedUser,
+					timeOut,
+					pollingInterval,
+				)
 			})
 		})
 
@@ -427,8 +534,6 @@ var _ = Describe("Installer test", func() {
 				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
-				checkClusterRoleCreated()
-				checkClusterRoleBindingCreated()
 				checkDeploymentCreated()
 				checkPodCreated()
 				checkSecretCreated(secretName)
@@ -460,8 +565,6 @@ var _ = Describe("Installer test", func() {
 				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
-				checkClusterRoleCreated()
-				checkClusterRoleBindingCreated()
 				checkDeploymentCreated()
 				checkPodCreated()
 				checkSecretCreated(secretName)
@@ -494,8 +597,6 @@ var _ = Describe("Installer test", func() {
 				setupGuard(authopts, authzopts)
 
 				checkServiceCreated()
-				checkClusterRoleCreated()
-				checkClusterRoleBindingCreated()
 				checkDeploymentCreated()
 				checkPodCreated()
 				checkSecretCreated(secretName)
@@ -518,6 +619,7 @@ var _ = Describe("Installer test", func() {
 				RunOnMaster:     false,
 				Namespace:       root.Namespace(),
 				Addr:            serverAddr + ":443",
+				GuardImage:      options.GuardImage,
 				PrivateRegistry: privateRegistryName,
 				Azure:           azureOpts,
 				LDAP:            ldapOpts,
@@ -556,8 +658,6 @@ var _ = Describe("Installer test", func() {
 
 			checkServiceDeleted()
 			checkDeploymentDeleted()
-			checkClusterRoleBindingDeleted()
-			checkClusterRoleDeleted()
 			checkPodDeleted()
 
 			for _, name := range secretNames {
@@ -568,8 +668,6 @@ var _ = Describe("Installer test", func() {
 		AfterEach(func() {
 			Expect(f.DeleteService(serviceName, root.Namespace())).NotTo(HaveOccurred())
 			Expect(f.DeleteDeployment(deploymentName, root.Namespace())).NotTo(HaveOccurred())
-			Expect(f.DeleteClusterRole(clusterRoleName)).NotTo(HaveOccurred())
-			Expect(f.DeleteClusterRoleBinding(clusterRoleBindingName)).NotTo(HaveOccurred())
 
 			for _, name := range secretNames {
 				Expect(f.DeleteSecret(name, root.Namespace())).NotTo(HaveOccurred())
@@ -580,8 +678,6 @@ var _ = Describe("Installer test", func() {
 			setupGuard(authopts, authzopts)
 
 			checkServiceCreated()
-			checkClusterRoleCreated()
-			checkClusterRoleBindingCreated()
 			checkDeploymentCreated()
 			checkPodCreated()
 
@@ -591,3 +687,37 @@ var _ = Describe("Installer test", func() {
 		})
 	})
 })
+
+func containsArg(args []string, expected string) bool {
+	for _, arg := range args {
+		if arg == expected {
+			return true
+		}
+	}
+
+	return false
+}
+
+func hasHTTPProbe(
+	probe *core.Probe,
+	path string,
+	port int32,
+	scheme core.URIScheme,
+	hostHeader string,
+) bool {
+	if probe == nil || probe.HTTPGet == nil {
+		return false
+	}
+
+	if probe.HTTPGet.Path != path || probe.HTTPGet.Port.IntVal != port || probe.HTTPGet.Scheme != scheme {
+		return false
+	}
+
+	for _, header := range probe.HTTPGet.HTTPHeaders {
+		if header.Name == "Host" && header.Value == hostHeader {
+			return true
+		}
+	}
+
+	return false
+}

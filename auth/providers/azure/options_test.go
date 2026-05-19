@@ -18,15 +18,20 @@ package azure
 
 import (
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 const (
-	empty    = ""
-	nonempty = "non-empty"
+	empty                = ""
+	nonempty             = "non-empty"
+	localEntraSDKBaseURL = "http://localhost:8080"
 )
 
 type optionFunc func(o Options) Options
@@ -121,6 +126,44 @@ var validationErrorData = []struct {
 		errors.New("azure.skip-group-membership-resolution cannot be false when passthrough azure.auth-mode is used"),
 		false,
 	},
+	{
+		"azure.entra-sdk-url must be a valid URL",
+		func(o Options) Options {
+			o.EntraSDKURL = "://bad-url"
+			return o
+		},
+		errors.New("azure.entra-sdk-url is not a valid URL: parse \"://bad-url\": missing protocol scheme"),
+		false,
+	},
+	{
+		"azure.entra-sdk-url must be a base URL",
+		func(o Options) Options {
+			o.EntraSDKURL = localEntraSDKBaseURL + "/Validate"
+			return o
+		},
+		errors.New("azure.entra-sdk-url must be a base URL"),
+		false,
+	},
+	{
+		"azure.client-id is required with Entra SDK URL",
+		func(o Options) Options {
+			o.EntraSDKURL = localEntraSDKBaseURL
+			o.ClientID = empty
+			return o
+		},
+		errors.New("azure.client-id must be non-empty when Entra SDK is enabled"),
+		false,
+	},
+	{
+		"azure.environment must resolve for Entra SDK",
+		func(o Options) Options {
+			o.EntraSDKURL = localEntraSDKBaseURL
+			o.Environment = "definitely-not-a-real-cloud"
+			return o
+		},
+		errors.New("failed to resolve Entra SDK Azure AD instance: autorest/azure: There is no cloud environment matching the name \"DEFINITELY-NOT-A-REAL-CLOUD\""),
+		false,
+	},
 }
 
 func getNonEmptyOptions() Options {
@@ -171,6 +214,15 @@ func TestOptionsValidate(t *testing.T) {
 			getNonEmptyOptions(),
 			nil,
 		},
+		{
+			"validation passed with Entra SDK URL",
+			func() Options {
+				o := getNonEmptyOptions()
+				o.EntraSDKURL = localEntraSDKBaseURL
+				return o
+			}(),
+			nil,
+		},
 	}
 
 	testData = append(testData, getTestDataForIndivitualError()...)
@@ -187,4 +239,87 @@ func TestOptionsValidate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOptionsEntraSDKEnvVars(t *testing.T) {
+	t.Run("returns expected env vars for public cloud", func(t *testing.T) {
+		envVars, err := Options{
+			ClientID: "client-id",
+			TenantID: "tenant-id",
+		}.EntraSDKEnvVars()
+
+		if assert.NoError(t, err) {
+			assert.Equal(t, []string{"AzureAd__Instance", "AzureAd__TenantId", "AzureAd__ClientId", "AzureAd__Audience"}, []string{envVars[0].Name, envVars[1].Name, envVars[2].Name, envVars[3].Name})
+			assert.Equal(t, "https://login.microsoftonline.com/", envVars[0].Value)
+			assert.Equal(t, "tenant-id", envVars[1].Value)
+			assert.Equal(t, "client-id", envVars[2].Value)
+			assert.Equal(t, "client-id", envVars[3].Value)
+		}
+	})
+
+	t.Run("uses the configured Azure environment", func(t *testing.T) {
+		envVars, err := Options{
+			Environment: "AzureChinaCloud",
+			ClientID:    "client-id",
+			TenantID:    "tenant-id",
+		}.EntraSDKEnvVars()
+
+		if assert.NoError(t, err) {
+			assert.Equal(t, "https://login.chinacloudapi.cn/", envVars[0].Value)
+		}
+	})
+}
+
+func TestOptionsApplyIncludesSkipGroupMembershipResolutionArg(t *testing.T) {
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{Name: "guard", Args: []string{"run"}}},
+				},
+			},
+		},
+	}
+
+	opts := getNonEmptyOptions()
+	opts.SkipGroupMembershipResolution = true
+	opts.ResolveGroupMembershipOnlyOnOverageClaim = true
+
+	_, err := opts.Apply(deployment)
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	args := deployment.Spec.Template.Spec.Containers[0].Args
+	assert.Contains(t, args, "--azure.skip-group-membership-resolution=true")
+	assert.Contains(t, args, "--azure.graph-call-on-overage-claim=true")
+}
+
+func TestOptionsApplyIncludesPoPArgs(t *testing.T) {
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{Name: "guard", Args: []string{"run"}}},
+				},
+			},
+		},
+	}
+
+	opts := getNonEmptyOptions()
+	opts.EnablePOP = true
+	opts.POPTokenHostname = "oid@tenant"
+	opts.PoPTokenValidityDuration = 17 * time.Minute
+
+	_, err := opts.Apply(deployment)
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	args := deployment.Spec.Template.Spec.Containers[0].Args
+	assert.Contains(t, args, "--azure.enable-pop=true")
+	assert.Contains(t, args, "--azure.pop-hostname=oid@tenant")
+	assert.Contains(t, args, "--azure.pop-token-validity-duration=17m0s")
 }
