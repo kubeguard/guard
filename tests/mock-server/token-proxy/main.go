@@ -75,7 +75,7 @@ func handleOBOToken(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to read body", http.StatusBadRequest)
 		return
 	}
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 
 	var req oboRequest
 	if err := json.Unmarshal(body, &req); err != nil {
@@ -116,7 +116,9 @@ func handleOBOToken(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path, resource, time.Unix(expiresOn, 0).Format(time.RFC3339), count)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Printf("[ERROR] Failed to encode response: %v", err)
+	}
 }
 
 func getIMDSToken(resource, clientID string) (*imdsTokenResponse, error) {
@@ -136,7 +138,7 @@ func getIMDSToken(resource, clientID string) (*imdsTokenResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf("IMDS request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -152,12 +154,12 @@ func getIMDSToken(resource, clientID string) (*imdsTokenResponse, error) {
 }
 
 func handleHealth(w http.ResponseWriter, _ *http.Request) {
-	w.Write([]byte("OK"))
+	_, _ = w.Write([]byte("OK"))
 }
 
 func handleMetrics(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]any{
 		"tokens_issued": tokensIssued.Load(),
 		"client_id":     cfg.ClientID,
 		"port":          cfg.Port,
