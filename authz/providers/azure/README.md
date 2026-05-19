@@ -531,7 +531,7 @@ az account show --query '{name:name, id:id}' -o table
 # Set environment variables
 export RG="guard-test-rg"
 export CLUSTER="guard-test-cluster"
-export LOCATION="westus2"
+export LOCATION="eastus2"  # westus2 has VHD provisioning bugs in staging
 
 # Create resource group
 az group create -l $LOCATION -n $RG
@@ -549,7 +549,7 @@ az aks create \
     --enable-aad \
     --enable-azure-rbac \
     --node-count 1 \
-    --node-vm-size Standard_DS2_v2
+    --node-vm-size standard_d2s_v5  # Standard_DS2_v2 not allowed in staging
 
 # Wait for cluster creation (5-10 minutes)
 az aks wait --resource-group $RG --name $CLUSTER --created
@@ -641,8 +641,11 @@ export FQDN="$FQDN"
 export TENANT_ID="$TENANT_ID"
 export AKS_AUTHZ_TOKEN_URL="$AKS_AUTHZ_TOKEN_URL"
 export USER_OID="$USER_OID"
-export PDP_ENDPOINT="https://westus2.authorization.azure.net"
+export PDP_ENDPOINT="https://${LOCATION}.authorization.azure.net/providers/microsoft.authorization/checkAccess?api-version=2021-06-01-preview"
 export PDP_SCOPE="https://authorization.azure.net/.default"
+# NOTE: The CheckAccess v2 SDK POSTs directly to PDP_ENDPOINT with no path manipulation.
+# The full checkAccess path and api-version must be included in the endpoint URL.
+# Using just "https://{region}.authorization.azure.net" returns 404.
 EOF
 
 echo "Environment saved to guard-test.env"
@@ -705,9 +708,9 @@ source guard-test.env
 
 # Start Guard server
 ./bin/guard-darwin-arm64 run \
-    --ca-cert-file=$PKI_DIR/pki/ca.crt \
-    --cert-file=$PKI_DIR/pki/server.crt \
-    --key-file=$PKI_DIR/pki/server.key \
+    --tls-ca-file=$PKI_DIR/pki/ca.crt \
+    --tls-cert-file=$PKI_DIR/pki/server.crt \
+    --tls-private-key-file=$PKI_DIR/pki/server.key \
     --secure-addr=:8443 \
     --auth-providers=azure \
     --azure.tenant-id="$TENANT_ID" \
@@ -894,6 +897,93 @@ curl -k \
     -d @/tmp/sar-crd.json \
     https://localhost:8443/subjectaccessreviews
 ```
+
+## Testing Guard Against Real Azure PDP
+
+The local testing above uses the AKS `/authz/token` endpoint for OBO tokens, which is
+internal-only and returns 404 from outside the cluster. To test Guard's full CheckAccess v2
+code path against the **real Azure PDP**, use the token-proxy approach.
+
+### Architecture
+
+```
+Guard -> token-proxy (IMDS) -> real PDP at {region}.authorization.azure.net
+```
+
+The `token-proxy` (`tests/mock-server/token-proxy/`) replaces OBO by getting real
+PDP-audience tokens from IMDS via a managed identity. Everything else is real.
+
+### Why a Token Proxy?
+
+Per [eng.ms Setup Test Account Permission](https://eng.ms/docs/microsoft-security/identity/auth-authz/access-control-managed-identityacmi/azure-authz-data-plane/authz-dataplane-partner-wiki/remotepdp/samples/setuptestaccountpermission):
+
+- CheckAccess v2 callers must be **confidential clients** (app/MI, not user accounts)
+- The caller needs `Microsoft.Authorization/checkAccess/action` - a non-public permission only available via wildcard (Contributor role)
+- Microsoft tenant blocks App Registration, so we use the AKS kubelet managed identity as the confidential client
+
+### One-time Setup
+
+```bash
+# Grant kubelet MI Contributor (provides wildcard checkAccess/action)
+KUBELET_OID=$(az aks show -g $RG -n $CLUSTER \
+  --query identityProfile.kubeletidentity.objectId -o tsv)
+KUBELET_CLIENT_ID=$(az aks show -g $RG -n $CLUSTER \
+  --query identityProfile.kubeletidentity.clientId -o tsv)
+
+az role assignment create \
+  --assignee-object-id "$KUBELET_OID" \
+  --assignee-principal-type ServicePrincipal \
+  --role "Contributor" \
+  --scope "/subscriptions/$(az account show --query id -o tsv)"
+```
+
+### Deploy Token Proxy and Guard
+
+```bash
+# Build and push token-proxy
+GOOS=linux GOARCH=amd64 go build -o /tmp/tp-build/token-proxy-linux-amd64 ./tests/mock-server/token-proxy/
+cd /tmp/tp-build && az acr build --registry <acr-name> --image token-proxy:latest . --platform linux/amd64
+
+# Deploy token-proxy (pass kubelet client ID)
+# --client-id is required for IMDS token requests
+kubectl create deployment token-proxy -n guard-v2-test \
+  --image=<acr>.azurecr.io/token-proxy:latest \
+  -- --port=8080 --client-id=$KUBELET_CLIENT_ID
+kubectl expose deployment token-proxy -n guard-v2-test --port=8080
+
+# Deploy Guard pointing to token-proxy (OBO) and real PDP
+# Key flags:
+#   --azure.aks-authz-token-url=http://token-proxy.<ns>.svc:8080/v1/<ccpid>/authztoken
+#   --azure.pdp-endpoint=https://<region>.authorization.azure.net/providers/microsoft.authorization/checkAccess?api-version=2021-06-01-preview
+#   --azure.pdp-scope=https://authorization.azure.net/.default
+```
+
+### Run Tests
+
+```bash
+kubectl port-forward -n guard-v2-test svc/guard-v2-test 18443:8443 &
+
+# Authorized user - expect Allowed from real PDP
+curl -sk --cacert $PKI_DIR/pki/ca.crt \
+  --cert $PKI_DIR/pki/azure@azure.crt --key $PKI_DIR/pki/azure@azure.key \
+  -X POST https://localhost:18443/subjectaccessreviews \
+  -H "Content-Type: application/json" \
+  -d '{"apiVersion":"authorization.k8s.io/v1","kind":"SubjectAccessReview","spec":{"user":"user@example.com","groups":["system:authenticated"],"extra":{"oid":["'"$USER_OID"'"]},"resourceAttributes":{"verb":"list","resource":"pods","namespace":"default"}}}'
+
+# Verify Guard logs show real PDP interaction
+kubectl logs deployment/guard-v2-test -n guard-v2-test | grep "CheckAccess v2 request succeeded"
+```
+
+### PDP Endpoint URL Format
+
+The CheckAccess v2 Go SDK POSTs directly to `r.endpoint` with no path manipulation:
+
+| URL | Result |
+|-----|--------|
+| `https://eastus2.authorization.azure.net` | **404 Not Found** |
+| `https://eastus2.authorization.azure.net/providers/microsoft.authorization/checkAccess?api-version=2021-06-01-preview` | **200 OK** |
+
+Always include the full `/providers/microsoft.authorization/checkAccess?api-version=...` path in `--azure.pdp-endpoint`.
 
 ## Validation and Metrics
 
