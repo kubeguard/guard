@@ -18,6 +18,7 @@ aliases:
 # Change Log
 
 ## [v0.6.2](https://go.kubeguard.dev/guard/tree/v0.6.2) (2020-09-24)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/v0.6.1...v0.6.2)
 
 **Closed issues:**
@@ -47,6 +48,7 @@ aliases:
 - Update to Kubernetes v1.18.3 [\#260](https://go.kubeguard.dev/guard/pull/260) ([1gtm](https://github.com/1gtm))
 
 ## [v0.6.1](https://go.kubeguard.dev/guard/tree/v0.6.1) (2020-06-05)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/v0.6.0...v0.6.1)
 
 **Merged pull requests:**
@@ -54,11 +56,12 @@ aliases:
 - Changed azure authz support to use v1beta1 version instead of v1 for SubjectAccessReview [\#259](https://go.kubeguard.dev/guard/pull/259) ([Anumita](https://github.com/Anumita))
 
 ## [v0.6.0](https://go.kubeguard.dev/guard/tree/v0.6.0) (2020-06-03)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/v0.6.0-rc.0...v0.6.0)
 
 **Closed issues:**
 
-- Missing files for os x  [\#249](https://go.kubeguard.dev/guard/issues/249)
+- Missing files for os x [\#249](https://go.kubeguard.dev/guard/issues/249)
 
 **Merged pull requests:**
 
@@ -67,6 +70,7 @@ aliases:
 - Update CHANGELOG.md [\#256](https://go.kubeguard.dev/guard/pull/256) ([tamalsaha](https://github.com/tamalsaha))
 
 ## [v0.6.0-rc.0](https://go.kubeguard.dev/guard/tree/v0.6.0-rc.0) (2020-06-02)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/v0.5.0...v0.6.0-rc.0)
 
 **Merged pull requests:**
@@ -76,6 +80,7 @@ aliases:
 - Update to Kubernetes 1.18.3 [\#253](https://go.kubeguard.dev/guard/pull/253) ([tamalsaha](https://github.com/tamalsaha))
 
 ## [v0.5.0](https://go.kubeguard.dev/guard/tree/v0.5.0) (2020-05-11)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/v0.5.0-rc.1...v0.5.0)
 
 **Merged pull requests:**
@@ -84,6 +89,7 @@ aliases:
 - Azure: switch to new graph endpoint for US Government cloud [\#250](https://go.kubeguard.dev/guard/pull/250) ([karataliu](https://github.com/karataliu))
 
 ## [v0.5.0-rc.1](https://go.kubeguard.dev/guard/tree/v0.5.0-rc.1) (2020-02-16)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/v0.5.0-rc.0...v0.5.0-rc.1)
 
 **Closed issues:**
@@ -101,6 +107,7 @@ aliases:
 - Add flag to call Graph api only when overage indicator is present [\#245](https://go.kubeguard.dev/guard/pull/245) ([weinong](https://github.com/weinong))
 
 ## [v0.5.0-rc.0](https://go.kubeguard.dev/guard/tree/v0.5.0-rc.0) (2020-01-26)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/0.4.0...v0.5.0-rc.0)
 
 **Closed issues:**
@@ -128,11 +135,12 @@ aliases:
 - typo in error command the it should be -o [\#214](https://go.kubeguard.dev/guard/pull/214) ([kanolato](https://github.com/kanolato))
 
 ## [0.4.0](https://go.kubeguard.dev/guard/tree/0.4.0) (2019-02-04)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/0.3.0...0.4.0)
 
 **Closed issues:**
 
-- Support Azure Active Directory in sovereign cloud  [\#208](https://go.kubeguard.dev/guard/issues/208)
+- Support Azure Active Directory in sovereign cloud [\#208](https://go.kubeguard.dev/guard/issues/208)
 - Dependabot couldn't find a Gopkg.toml for this project [\#205](https://go.kubeguard.dev/guard/issues/205)
 
 **Merged pull requests:**
@@ -144,6 +152,7 @@ aliases:
 - Support aad sovereign clouds [\#209](https://go.kubeguard.dev/guard/pull/209) ([karataliu](https://github.com/karataliu))
 
 ## [0.3.0](https://go.kubeguard.dev/guard/tree/0.3.0) (2018-12-03)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/0.2.1...0.3.0)
 
 **Fixed bugs:**
@@ -152,7 +161,7 @@ aliases:
 
 **Closed issues:**
 
-- Github connector docs asks for unnecessary public\_repo permissions [\#195](https://go.kubeguard.dev/guard/issues/195)
+- Github connector docs asks for unnecessary public_repo permissions [\#195](https://go.kubeguard.dev/guard/issues/195)
 - Guard should not log password/secrets [\#194](https://go.kubeguard.dev/guard/issues/194)
 - Issues with LDAP and guard get installer [\#193](https://go.kubeguard.dev/guard/issues/193)
 - Dependabot couldn't find a Gopkg.toml for this project [\#191](https://go.kubeguard.dev/guard/issues/191)
@@ -160,7 +169,7 @@ aliases:
 - Missing binaries for 0.2.1 guard-darwin [\#189](https://go.kubeguard.dev/guard/issues/189)
 - Guard pod keeps restarting ~ every 8 hours [\#187](https://go.kubeguard.dev/guard/issues/187)
 - Logo Proposal for Guard [\#184](https://go.kubeguard.dev/guard/issues/184)
-- Using Gitlab's full\_path instead of name while using authentication by Groups [\#181](https://go.kubeguard.dev/guard/issues/181)
+- Using Gitlab's full_path instead of name while using authentication by Groups [\#181](https://go.kubeguard.dev/guard/issues/181)
 - panic: assignment to entry in nil map [\#178](https://go.kubeguard.dev/guard/issues/178)
 
 **Merged pull requests:**
@@ -168,7 +177,7 @@ aliases:
 - Use docker build --pull [\#204](https://go.kubeguard.dev/guard/pull/204) ([tamalsaha](https://github.com/tamalsaha))
 - Prepare docs for 0.3.0 release [\#203](https://go.kubeguard.dev/guard/pull/203) ([tamalsaha](https://github.com/tamalsaha))
 - Fix Gitlab tests [\#202](https://go.kubeguard.dev/guard/pull/202) ([tamalsaha](https://github.com/tamalsaha))
-- Support group id or full\_path for Gitlab connector [\#201](https://go.kubeguard.dev/guard/pull/201) ([tamalsaha](https://github.com/tamalsaha))
+- Support group id or full_path for Gitlab connector [\#201](https://go.kubeguard.dev/guard/pull/201) ([tamalsaha](https://github.com/tamalsaha))
 - Document Github connector permissions to read:org [\#200](https://go.kubeguard.dev/guard/pull/200) ([tamalsaha](https://github.com/tamalsaha))
 - Redact password/secrets when dumping flags. [\#199](https://go.kubeguard.dev/guard/pull/199) ([tamalsaha](https://github.com/tamalsaha))
 - Revendor and run gofmt [\#198](https://go.kubeguard.dev/guard/pull/198) ([tamalsaha](https://github.com/tamalsaha))
@@ -182,6 +191,7 @@ aliases:
 - Log userinfo at klog.V\(10\) [\#180](https://go.kubeguard.dev/guard/pull/180) ([tamalsaha](https://github.com/tamalsaha))
 
 ## [0.2.1](https://go.kubeguard.dev/guard/tree/0.2.1) (2018-07-10)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/0.2.0...0.2.1)
 
 **Closed issues:**
@@ -199,11 +209,12 @@ aliases:
 - Add missing image in azure [\#169](https://go.kubeguard.dev/guard/pull/169) ([nightfury1204](https://github.com/nightfury1204))
 
 ## [0.2.0](https://go.kubeguard.dev/guard/tree/0.2.0) (2018-06-22)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/0.1.4...0.2.0)
 
 **Closed issues:**
 
-- Use a GUARD\_PKI\_DIR env variable [\#158](https://go.kubeguard.dev/guard/issues/158)
+- Use a GUARD_PKI_DIR env variable [\#158](https://go.kubeguard.dev/guard/issues/158)
 - Azure AAD auth provider is using AAD group's displayName instead of unique objectId for auth [\#153](https://go.kubeguard.dev/guard/issues/153)
 
 **Merged pull requests:**
@@ -212,7 +223,7 @@ aliases:
 - Fix flaky LDAP tests [\#167](https://go.kubeguard.dev/guard/pull/167) ([tamalsaha](https://github.com/tamalsaha))
 - Fix bad pointer in frame ldap.handleBind [\#166](https://go.kubeguard.dev/guard/pull/166) ([tamalsaha](https://github.com/tamalsaha))
 - Document --azure.use-group-uid flag [\#165](https://go.kubeguard.dev/guard/pull/165) ([tamalsaha](https://github.com/tamalsaha))
-- Add GUARD\_DATA\_DIR env variable [\#164](https://go.kubeguard.dev/guard/pull/164) ([tamalsaha](https://github.com/tamalsaha))
+- Add GUARD_DATA_DIR env variable [\#164](https://go.kubeguard.dev/guard/pull/164) ([tamalsaha](https://github.com/tamalsaha))
 - Various fixed based on goreportcard [\#163](https://go.kubeguard.dev/guard/pull/163) ([tamalsaha](https://github.com/tamalsaha))
 - Fix test command in make.py [\#162](https://go.kubeguard.dev/guard/pull/162) ([tamalsaha](https://github.com/tamalsaha))
 - Skip e2e tests from travis. [\#161](https://go.kubeguard.dev/guard/pull/161) ([tamalsaha](https://github.com/tamalsaha))
@@ -222,6 +233,7 @@ aliases:
 - User auth info added for AWS EKS [\#150](https://go.kubeguard.dev/guard/pull/150) ([sanjid133](https://github.com/sanjid133))
 
 ## [0.1.4](https://go.kubeguard.dev/guard/tree/0.1.4) (2018-06-20)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/0.1.3...0.1.4)
 
 **Closed issues:**
@@ -236,6 +248,7 @@ aliases:
 - Allow Azure AAD auth provider to use AAD group ids instead of display name for authn/authz [\#154](https://go.kubeguard.dev/guard/pull/154) ([amanohar](https://github.com/amanohar))
 
 ## [0.1.3](https://go.kubeguard.dev/guard/tree/0.1.3) (2018-06-06)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/0.1.2...0.1.3)
 
 **Merged pull requests:**
@@ -247,6 +260,7 @@ aliases:
 - Fix a typo in kubectl invocation [\#137](https://go.kubeguard.dev/guard/pull/137) ([farcaller](https://github.com/farcaller))
 
 ## [0.1.2](https://go.kubeguard.dev/guard/tree/0.1.2) (2018-05-04)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/0.1.1...0.1.2)
 
 **Merged pull requests:**
@@ -256,6 +270,7 @@ aliases:
 - Add paging to get around directoryObjects.getByIds limit of 1000 [\#133](https://go.kubeguard.dev/guard/pull/133) ([amanohar](https://github.com/amanohar))
 
 ## [0.1.1](https://go.kubeguard.dev/guard/tree/0.1.1) (2018-04-20)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/0.1.0...0.1.1)
 
 **Fixed bugs:**
@@ -287,6 +302,7 @@ aliases:
 - Update GitLab documentation to clarify the usage of base-url [\#111](https://go.kubeguard.dev/guard/pull/111) ([alexanderdavidsen](https://github.com/alexanderdavidsen))
 
 ## [0.1.0](https://go.kubeguard.dev/guard/tree/0.1.0) (2018-04-04)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/0.1.0-rc.5...0.1.0)
 
 **Closed issues:**
@@ -333,7 +349,7 @@ aliases:
 - Add travis.yml [\#78](https://go.kubeguard.dev/guard/pull/78) ([tamalsaha](https://github.com/tamalsaha))
 - Add test for google [\#77](https://go.kubeguard.dev/guard/pull/77) ([nightfury1204](https://github.com/nightfury1204))
 - Validate google IDToken [\#74](https://go.kubeguard.dev/guard/pull/74) ([nightfury1204](https://github.com/nightfury1204))
-- Print id\_token & refresh\_token for Google [\#73](https://go.kubeguard.dev/guard/pull/73) ([tamalsaha](https://github.com/tamalsaha))
+- Print id_token & refresh_token for Google [\#73](https://go.kubeguard.dev/guard/pull/73) ([tamalsaha](https://github.com/tamalsaha))
 - Add test for LDAP [\#70](https://go.kubeguard.dev/guard/pull/70) ([nightfury1204](https://github.com/nightfury1204))
 - Bug fixes and add CA cert flag for LDAP [\#69](https://go.kubeguard.dev/guard/pull/69) ([nightfury1204](https://github.com/nightfury1204))
 - Add test for azure [\#68](https://go.kubeguard.dev/guard/pull/68) ([nightfury1204](https://github.com/nightfury1204))
@@ -353,6 +369,7 @@ aliases:
 - Document how to use kube-dns to connect api server to guard server [\#47](https://go.kubeguard.dev/guard/pull/47) ([tamalsaha](https://github.com/tamalsaha))
 
 ## [0.1.0-rc.5](https://go.kubeguard.dev/guard/tree/0.1.0-rc.5) (2018-01-04)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/0.1.0-rc.4...0.1.0-rc.5)
 
 **Closed issues:**
@@ -382,6 +399,7 @@ aliases:
 - Use client-go 5.x [\#27](https://go.kubeguard.dev/guard/pull/27) ([tamalsaha](https://github.com/tamalsaha))
 
 ## [0.1.0-rc.4](https://go.kubeguard.dev/guard/tree/0.1.0-rc.4) (2017-09-25)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/0.1.0-rc.3...0.1.0-rc.4)
 
 **Merged pull requests:**
@@ -392,9 +410,11 @@ aliases:
 - Fix docs of Developer-guide [\#23](https://go.kubeguard.dev/guard/pull/23) ([the-redback](https://github.com/the-redback))
 
 ## [0.1.0-rc.3](https://go.kubeguard.dev/guard/tree/0.1.0-rc.3) (2017-09-07)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/0.1.0-rc.2...0.1.0-rc.3)
 
 ## [0.1.0-rc.2](https://go.kubeguard.dev/guard/tree/0.1.0-rc.2) (2017-09-01)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/0.1.0-rc.1...0.1.0-rc.2)
 
 **Merged pull requests:**
@@ -402,6 +422,7 @@ aliases:
 - Make sure user of member of Github org or GSuite domain [\#22](https://go.kubeguard.dev/guard/pull/22) ([tamalsaha](https://github.com/tamalsaha))
 
 ## [0.1.0-rc.1](https://go.kubeguard.dev/guard/tree/0.1.0-rc.1) (2017-08-30)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/0.1.0-rc.0...0.1.0-rc.1)
 
 **Merged pull requests:**
@@ -409,15 +430,17 @@ aliases:
 - Improve logging for Guard server [\#20](https://go.kubeguard.dev/guard/pull/20) ([tamalsaha](https://github.com/tamalsaha))
 
 ## [0.1.0-rc.0](https://go.kubeguard.dev/guard/tree/0.1.0-rc.0) (2017-08-29)
+
 [Full Changelog](https://go.kubeguard.dev/guard/compare/0.1.0-alpha.0...0.1.0-rc.0)
 
 **Merged pull requests:**
 
 - Document ClusterIP choice [\#16](https://go.kubeguard.dev/guard/pull/16) ([tamalsaha](https://github.com/tamalsaha))
-- Various fixes  [\#15](https://go.kubeguard.dev/guard/pull/15) ([tamalsaha](https://github.com/tamalsaha))
+- Various fixes [\#15](https://go.kubeguard.dev/guard/pull/15) ([tamalsaha](https://github.com/tamalsaha))
 - Refactor handlers [\#12](https://go.kubeguard.dev/guard/pull/12) ([tamalsaha](https://github.com/tamalsaha))
 
 ## [0.1.0-alpha.0](https://go.kubeguard.dev/guard/tree/0.1.0-alpha.0) (2017-08-28)
+
 **Closed issues:**
 
 - Gtihub Teams [\#2](https://go.kubeguard.dev/guard/issues/2)
@@ -433,6 +456,4 @@ aliases:
 - Implement authN webhook for Google and Github [\#4](https://go.kubeguard.dev/guard/pull/4) ([tamalsaha](https://github.com/tamalsaha))
 - Implement init commands [\#3](https://go.kubeguard.dev/guard/pull/3) ([tamalsaha](https://github.com/tamalsaha))
 
-
-
-\* *This Change Log was automatically generated by [github_changelog_generator](https://github.com/skywinder/Github-Changelog-Generator)*
+\* _This Change Log was automatically generated by [github_changelog_generator](https://github.com/skywinder/Github-Changelog-Generator)_

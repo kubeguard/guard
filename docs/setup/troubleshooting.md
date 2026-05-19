@@ -11,7 +11,7 @@ menu_name: product_guard_{{ .version }}
 section_menu_id: setup
 ---
 
-> New to Guard? Please start [here](/docs/concepts).
+> New to Guard? Please see the [Guard Concepts Guide](/docs/concepts).
 
 ## Troubleshooting
 
@@ -19,7 +19,7 @@ section_menu_id: setup
 
 Say, you are seeing logs like below in Guard server logs:
 
-```
+```text
 I0830 16:41:59.919947       1 logs.go:19] FLAG: --alsologtostderr="false"
 I0830 16:41:59.919987       1 logs.go:19] FLAG: --analytics="true"
 I0830 16:41:59.920016       1 logs.go:19] FLAG: --ca-cert-file="/srv/guard/pki/ca.crt"
@@ -38,7 +38,7 @@ I0830 16:42:45.430823       1 logs.go:19] http: TLS handshake error from 1.1.2.6
 I0830 16:43:00.483658       1 logs.go:19] http: TLS handshake error from 1.1.2.6:34062: remote error: tls: bad certificate
 ```
 
-```
+```text
 admin@ip-172-20-48-207:~$ sudo tail -f /var/log/kube-apiserver.log | grep auth
 E0830 16:56:46.430468       6 authentication.go:58] Unable to authenticate the request due to an error: [invalid bearer token, [invalid bearer token, [invalid bearer token, invalid bearer token, Post https://10.7.3.3:9844/apis/authentication.k8s.io/v1beta1/tokenreviews: x509: certificate is valid for 1.27.55.255, not 10.7.3.3]]]
 ```
@@ -49,7 +49,7 @@ To debug this issue, follow the steps below:
 
 2. Now check the common name(CN) and subject alternative names (SANS) in the server.crt. If that does not include the ip addressfrom step 1, we need to regenerate the server certificates.
 
-```
+```console
 $ guard init server --ips=<ip1>,<ip2> --domains=<dns1>,<dns2>
 ```
 

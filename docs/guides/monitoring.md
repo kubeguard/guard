@@ -18,7 +18,7 @@ section_menu_id: guides
 
 Create a ServiceMonitor for [Prometheus-Operator](https://github.com/coreos/prometheus-operator) to automatically scrape Guard's metrics endpoint.
 
-```
+```yaml
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -42,7 +42,7 @@ spec:
 
 If prometheus-operator and kube-prometheus is installed using CoreOS's [helm charts](https://github.com/coreos/prometheus-operator/tree/master/helm), the serviceMonitor can be defined in kube-prometheus's values.yaml.
 
-```
+```yaml
 prometheus:
   serviceMonitors:
     - name: guard
@@ -62,6 +62,6 @@ prometheus:
         any: true
 ```
 
-# Grafana Dashboard for Guard
+## Grafana Dashboard for Guard
 
-A simple Grafana dashbord for Guard can be found [here](https://go.kubeguard.dev/guard/raw/master/contrib/Guard-grafana-dashboard.json)
+A simple Grafana dashboard for Guard can be found in the [Guard Grafana dashboard JSON file](https://go.kubeguard.dev/guard/raw/master/contrib/Guard-grafana-dashboard.json)

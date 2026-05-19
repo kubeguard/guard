@@ -13,13 +13,13 @@ section_menu_id: reference
 
 Generate client certificate pair
 
-```
+```console
 guard init client [flags]
 ```
 
 ### Options
 
-```
+```text
   -h, --help                  help for client
   -o, --organization string   Name of Organization (Azure/Github/Gitlab/Google/Ldap/Token-Auth).
       --pki-dir string        Path to directory where pki files are stored. (default "/Users/tamal/.guard")
@@ -27,5 +27,4 @@ guard init client [flags]
 
 ### SEE ALSO
 
-* [guard init](/docs/reference/guard_init.md)	 - Init PKI
-
+- [guard init](/docs/reference/guard_init.md) - Init PKI

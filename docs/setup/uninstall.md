@@ -13,6 +13,7 @@ section_menu_id: setup
 ---
 
 # Uninstall Guard
+
 Please follow the steps below to uninstall Guard:
 
 - Delete the various objects created for Guard operator.

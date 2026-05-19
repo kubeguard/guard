@@ -14,7 +14,7 @@ section_menu_id: guides
 
 # LDAP Authenticator
 
-Guard installation guide can be found [here](/docs/setup/install.md). To use LDAP, create a client cert with `Organization` set to `Ldap`. For LDAP `CommonName` is optional. To ease this process, use the Guard cli to issue a client cert/key pair.
+The [Guard installation guide](/docs/setup/install.md) contains setup instructions. To use LDAP, create a client cert with `Organization` set to `Ldap`. For LDAP `CommonName` is optional. To ease this process, use the Guard cli to issue a client cert/key pair.
 
 ```console
 # If CommonName is not provided, then default CommonName `ldap` is used
@@ -219,6 +219,7 @@ kube-system   kube-dns-6f4fd4bdf-f7csh           3/3       Running   0          
 ```
 
 **Flag** details for get token:
+
 ```console
 # LDAP user authentication mechanism
 #   - 0 for simple authentication

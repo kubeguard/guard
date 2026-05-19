@@ -13,18 +13,17 @@ section_menu_id: reference
 
 Init CA
 
-```
+```console
 guard init ca [flags]
 ```
 
 ### Options
 
-```
+```text
   -h, --help             help for ca
       --pki-dir string   Path to directory where pki files are stored. (default "/Users/tamal/.guard")
 ```
 
 ### SEE ALSO
 
-* [guard init](/docs/reference/guard_init.md)	 - Init PKI
-
+- [guard init](/docs/reference/guard_init.md) - Init PKI

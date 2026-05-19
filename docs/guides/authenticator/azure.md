@@ -14,7 +14,7 @@ section_menu_id: guides
 
 # Azure Authenticator
 
-Guard installation guide can be found [here](/docs/setup/install.md). To use Azure, create a client cert with `Organization` set to `Azure`.For Azure `CommonName` is optional. To ease this process, use the Guard cli to issue a client cert/key pair.
+The [Guard installation guide](/docs/setup/install.md) contains setup instructions. To use Azure, create a client cert with `Organization` set to `Azure`.For Azure `CommonName` is optional. To ease this process, use the Guard cli to issue a client cert/key pair.
 
 ```console
 $ guard init client [CommonName] -o Azure
@@ -40,6 +40,7 @@ $ guard get installer \
 
 $ kubectl apply -f installer.yaml
 ```
+
 > **Note:** guard take `<application_secret>` from environment variable **AZURE_CLIENT_SECRET**.
 
 Procedure to find `<application_id>`, `<application_secret>` are given below. Replace the `<tenant_id>` with your azure tenant id.
@@ -85,23 +86,23 @@ $ kubectl apply -f installer.yaml
 
 Configuring Azure AD as a auth provider requires an initial setup by `Global Administrator` of such AD. This involves a complex multi-step process. Please see the video above to setup your Azure AD.
 
-1.  Sign in to the [Azure portal](https://portal.azure.com/). Please make sure that you are a `Global Administrator` of your Azure AD. If not, please contact your Azure AD administrator to perform these steps.
+1. Sign in to the [Azure portal](https://portal.azure.com/). Please make sure that you are a `Global Administrator` of your Azure AD. If not, please contact your Azure AD administrator to perform these steps.
 
     ![aad-dir-role](/docs/images/azure/dir-role.png)
 
-2.  Create an Azure Active Directory Web App / API application
+2. Create an Azure Active Directory Web App / API application
 
     ![create-app-registration](/docs/images/azure/create-app-registration.png)
 
-3.  Use the **Application ID** as `<application_id>`
+3. Use the **Application ID** as `<application_id>`
 
     ![application-id](/docs/images/azure/application-id.png)
 
-4.  Click on the **Settings**, click on the **key** , generate a key and use this key as `<application_secret>`
+4. Click on the **Settings**, click on the **key** , generate a key and use this key as `<application_secret>`
 
     ![secret-key](/docs/images/azure/secret-key.png)
 
-5.  Add **Microsoft Graph** api with _application permission_ `Read directory data` and _delegated permission_ `Read directory data` and `Sign in and read user profile`.
+5. Add **Microsoft Graph** api with _application permission_ `Read directory data` and _delegated permission_ `Read directory data` and `Sign in and read user profile`.
 
     ![add-api](/docs/images/azure/add-api.png)
     ![add-api-2](/docs/images/azure/add-api-2.png)
@@ -111,15 +112,15 @@ Configuring Azure AD as a auth provider requires an initial setup by `Global Adm
     ![guard-grant-perm](/docs/images/azure/guard-grant-perm.png)
     ![guard-permissions](/docs/images/azure/guard-permissions.png)
 
-7.  Create a second Azure Active Directory native application
+7. Create a second Azure Active Directory native application
 
     ![create-native-app](/docs/images/azure/create-native-app.png)
 
-8.  Use the **Application ID** of this native app as `<client_id>`
+8. Use the **Application ID** of this native app as `<client_id>`
 
     ![client-id](/docs/images/azure/client-id.png)
 
-9.  Add application created at step 2 with permission `Access <Application_Name_Created_At_Step_2>`
+9. Add application created at step 2 with permission `Access <Application_Name_Created_At_Step_2>`
 
     ![add-guard-app](/docs/images/azure/add-guard-api.png)
 
@@ -143,6 +144,7 @@ $ guard get installer \
 
 $ kubectl apply -f installer.yaml
 ```
+
 > **Note:** Guard takes `<application_secret>` from environment variable **AZURE_CLIENT_SECRET**.
 
 ### Configure Azure Active Directory App
@@ -188,7 +190,7 @@ users:
 
 The access token is acquired when first `kubectl` command is executed
 
-   ```
+   ```console
    $ kubectl get pods --user <user_name>
 
    To sign in, use a web browser to open the page https://aka.ms/devicelogin and enter the code DEC7D48GA to authenticate.
@@ -214,9 +216,10 @@ However, if it is desired to disable such validation, update below option
     --azure.verify-clientID=false
 ```
 
-## Further Reading:
-- https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-integrating-applications
-- https://github.com/kubernetes/client-go/blob/master/plugin/pkg/client/auth/azure/README.md
-- https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow
-- https://docs.microsoft.com/en-us/azure/active-directory/develop/access-tokens#payload-claims
-- https://docs.microsoft.com/en-us/azure/active-directory/develop/access-tokens#validating-tokens
+## Further Reading
+
+- <https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-integrating-applications>
+- <https://github.com/kubernetes/client-go/blob/master/plugin/pkg/client/auth/azure/README.md>
+- <https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow>
+- <https://docs.microsoft.com/en-us/azure/active-directory/develop/access-tokens#payload-claims>
+- <https://docs.microsoft.com/en-us/azure/active-directory/develop/access-tokens#validating-tokens>

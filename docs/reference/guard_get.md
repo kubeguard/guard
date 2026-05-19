@@ -15,14 +15,13 @@ Get PKI
 
 ### Options
 
-```
+```text
   -h, --help   help for get
 ```
 
 ### SEE ALSO
 
-* [guard](/docs/reference/guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
-* [guard get installer](/docs/reference/guard_get_installer.md)	 - Prints Kubernetes objects for deploying guard server
-* [guard get token](/docs/reference/guard_get_token.md)	 - Get tokens for Azure/Github/Gitlab/Google/Ldap/Token-Auth
-* [guard get webhook-config](/docs/reference/guard_get_webhook-config.md)	 - Prints authentication token webhook config file
-
+- [guard](/docs/reference/guard.md) - Guard by AppsCode - Kubernetes Authentication WebHook Server
+- [guard get installer](/docs/reference/guard_get_installer.md) - Prints Kubernetes objects for deploying guard server
+- [guard get token](/docs/reference/guard_get_token.md) - Get tokens for Azure/Github/Gitlab/Google/Ldap/Token-Auth
+- [guard get webhook-config](/docs/reference/guard_get_webhook-config.md) - Prints authentication token webhook config file
