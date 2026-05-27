@@ -306,6 +306,17 @@ func Test_getDataActions(t *testing.T) {
 		},
 
 		{
+			"aimanager-inference",
+			args{
+				isWildcardTest: false,
+				subRevReq: &authzv1.SubjectAccessReviewSpec{
+					ResourceAttributes: &authzv1.ResourceAttributes{Group: "", Resource: "namespaces", Version: "v1", Name: "test", Verb: "inference"},
+				}, clusterType: "Microsoft.ContainerService/aiManagers",
+			},
+			[]azureutils.AuthorizationActionInfo{{AuthorizationEntity: azureutils.AuthorizationEntity{Id: "Microsoft.ContainerService/aiManagers/namespaces/inference/action"}, IsDataAction: true}},
+		},
+
+		{
 			"arc5",
 			args{
 				isWildcardTest: false,

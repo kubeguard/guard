@@ -226,6 +226,8 @@ func getActionName(verb string) string {
 		return "use/action"
 	case "impersonate":
 		return "impersonate/action"
+	case "inference":
+		return "inference/action"
 
 	case "create":
 		fallthrough // instead of action create will be mapped to write
