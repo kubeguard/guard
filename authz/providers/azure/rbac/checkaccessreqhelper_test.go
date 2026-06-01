@@ -20,12 +20,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"reflect"
 	"strings"
 	"testing"
 
 	azureutils "go.kubeguard.dev/guard/util/azure"
+	errutils "go.kubeguard.dev/guard/util/error"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -697,6 +699,62 @@ func Test_getDataActions(t *testing.T) {
 					}
 				}
 			}
+		})
+	}
+}
+
+func Test_getDataActions_wildcardWithEmptyOperationsMap(t *testing.T) {
+	getStoredOperationsMap = func() azureutils.OperationsMap {
+		return azureutils.NewOperationsMap()
+	}
+
+	tests := []struct {
+		name string
+		spec *authzv1.SubjectAccessReviewSpec
+	}{
+		{
+			name: "wildcard resource",
+			spec: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Verb:      "create",
+					Namespace: "kube-system",
+					Resource:  "*",
+				},
+			},
+		},
+		{
+			name: "wildcard verb",
+			spec: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Verb:     "*",
+					Resource: "pods",
+				},
+			},
+		},
+		{
+			name: "wildcard group",
+			spec: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Verb:     "get",
+					Resource: "pods",
+					Group:    "*",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			got, err := getDataActions(ctx, tt.spec, "Microsoft.ContainerService/managedClusters", false, false)
+
+			assert.Nil(t, got, "expected nil actions for wildcard with empty operations map")
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "operations map not populated")
+
+			var codeErr errutils.HttpStatusCode
+			assert.True(t, errors.As(err, &codeErr), "error should implement HttpStatusCode")
+			assert.Equal(t, http.StatusBadRequest, codeErr.Code(), "error should carry 400 status code")
 		})
 	}
 }

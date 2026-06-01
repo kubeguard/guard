@@ -313,7 +313,10 @@ func getDataActions(ctx context.Context, subRevReq *authzv1.SubjectAccessReviewS
 
 		} else {
 			if len(storedOperationsMap) == 0 {
-				return nil, fmt.Errorf("Wildcard support for Resource/Verb/Group is not enabled for request Group: %s, Resource: %s, Verb: %s", subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb)
+				return nil, errutils.WithCode(
+					fmt.Errorf("wildcard resource/verb/group check unavailable: operations map not populated (Group: %s, Resource: %s, Verb: %s)",
+						subRevReq.ResourceAttributes.Group, subRevReq.ResourceAttributes.Resource, subRevReq.ResourceAttributes.Verb),
+					http.StatusBadRequest)
 			}
 
 			authInfoList, err = getAuthInfoListForWildcard(ctx, subRevReq, storedOperationsMap, clusterType, isCustomerResourceTypeCheckAvailable, allowSubresourceTypeCheck)
