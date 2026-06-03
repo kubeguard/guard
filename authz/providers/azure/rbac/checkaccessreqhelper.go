@@ -874,7 +874,7 @@ func buildCheckAccessV2URL(endpoint, apiVersion string) (string, error) {
 	if apiVersion == "" {
 		apiVersion = defaultCheckAccessV2APIVersion
 	}
-	rv.Path = path.Join(rv.Path, checkAccessPath)
+	rv = rv.JoinPath(checkAccessPath)
 	params := rv.Query()
 	params.Set(queryParamAPIVersion, apiVersion)
 	rv.RawQuery = params.Encode()
