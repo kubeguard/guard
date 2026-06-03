@@ -180,14 +180,6 @@ func (o *Options) Validate(azure azure.Options) []error {
 		errs = append(errs, errors.New("azure.pdp-scope must be non-empty when azure.use-checkaccess-v2 is enabled (e.g., https://authorization.azure.net/.default)"))
 	}
 
-	if o.PDPEndpoint != "" && !o.UseCheckAccessV2 {
-		errs = append(errs, errors.New("azure.use-checkaccess-v2 must be enabled when azure.pdp-endpoint is specified"))
-	}
-
-	if o.PDPScope != "" && !o.UseCheckAccessV2 {
-		errs = append(errs, errors.New("azure.use-checkaccess-v2 must be enabled when azure.pdp-scope is specified"))
-	}
-
 	if o.CacheSizeMB < minCacheSizeMB || o.CacheSizeMB > maxCacheSizeMB {
 		errs = append(errs, fmt.Errorf("azure.cache-size-mb must be between %d and %d", minCacheSizeMB, maxCacheSizeMB))
 	}
