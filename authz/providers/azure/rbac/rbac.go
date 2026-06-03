@@ -50,15 +50,19 @@ import (
 )
 
 const (
-	managedClusters           = "Microsoft.ContainerService/managedClusters"
-	fleets                    = "Microsoft.ContainerService/fleets"
-	fleetMembers              = "Microsoft.ContainerService/fleets/members"
-	aiManagers                = "Microsoft.ContainerService/aiManagers"
-	connectedClusters         = "Microsoft.Kubernetes/connectedClusters"
-	checkAccessPath           = "/providers/Microsoft.Authorization/checkaccess"
-	queryParamAPIVersion      = "api-version"
-	checkAccessAPIVersion     = "2018-09-01-preview"
-	remainingSubReadARMHeader = "x-ms-ratelimit-remaining-subscription-reads"
+	managedClusters       = "Microsoft.ContainerService/managedClusters"
+	fleets                = "Microsoft.ContainerService/fleets"
+	fleetMembers          = "Microsoft.ContainerService/fleets/members"
+	aiManagers            = "Microsoft.ContainerService/aiManagers"
+	connectedClusters     = "Microsoft.Kubernetes/connectedClusters"
+	checkAccessPath       = "/providers/Microsoft.Authorization/checkaccess"
+	queryParamAPIVersion  = "api-version"
+	checkAccessAPIVersion = "2018-09-01-preview"
+	// defaultCheckAccessV2APIVersion is the PDP data-plane api-version used for
+	// CheckAccess v2 when --azure.checkaccess-v2-api-version is unset. Validated
+	// against the regional PDP endpoint (https://<region>.authorization.azure.net).
+	defaultCheckAccessV2APIVersion = "2021-06-01-preview"
+	remainingSubReadARMHeader      = "x-ms-ratelimit-remaining-subscription-reads"
 	// Time delta to refresh token before expiry
 	tokenExpiryDelta           = 300 * time.Second
 	checkaccessContextTimeout  = 23 * time.Second
@@ -92,9 +96,8 @@ type AccessInfo struct {
 
 	// V2 API fields - used only when useCheckAccessV2=true
 	// These fields use the official Azure checkaccess-v2-go-sdk
-	useCheckAccessV2     bool
-	pdpClient            checkaccess.RemotePDPClient
-	checkAccessV2Version string
+	useCheckAccessV2 bool
+	pdpClient        checkaccess.RemotePDPClient
 
 	tokenProvider                          graph.TokenProvider
 	clusterType                            string
@@ -203,7 +206,6 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 		auditSAR:                               opts.AuditSAR,
 		fleetManagerResourceId:                 opts.FleetManagerResourceId,
 		useCheckAccessV2:                       opts.UseCheckAccessV2,
-		checkAccessV2Version:                   opts.CheckAccessV2APIVersion,
 	}
 
 	u.skipCheck = make(map[string]void, len(opts.SkipAuthzCheck))
@@ -232,8 +234,17 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 			Transport: httpclient.DefaultHTTPClient,
 		}
 
+		// The checkaccess-v2-go-sdk POSTs directly to the endpoint with no path
+		// manipulation, so compose the full checkAccess URL (path + api-version)
+		// here. A bare regional PDP host returns a non-JSON 404 that the SDK then
+		// fails to decode ("invalid character ..."), so this step is required.
+		pdpEndpoint, err := buildCheckAccessV2URL(opts.PDPEndpoint, opts.CheckAccessV2APIVersion)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build CheckAccess v2 PDP endpoint: %w", err)
+		}
+
 		pdpClient, err := checkaccess.NewRemotePDPClient(
-			opts.PDPEndpoint,
+			pdpEndpoint,
 			opts.PDPScope,
 			tokenCred,
 			clientOpts,

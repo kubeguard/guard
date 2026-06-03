@@ -1487,3 +1487,57 @@ func Test_buildCheckAccessURL(t *testing.T) {
 		})
 	}
 }
+
+func Test_buildCheckAccessV2URL(t *testing.T) {
+	tests := []struct {
+		name       string
+		endpoint   string
+		apiVersion string
+		want       string
+		wantErr    bool
+	}{
+		{
+			name:     "bare regional host gets checkaccess path and default api-version",
+			endpoint: "https://westcentralus.authorization.azure.net",
+			want:     "https://westcentralus.authorization.azure.net/providers/Microsoft.Authorization/checkaccess?api-version=" + defaultCheckAccessV2APIVersion,
+		},
+		{
+			name:     "trailing slash does not produce a double slash",
+			endpoint: "https://westcentralus.authorization.azure.net/",
+			want:     "https://westcentralus.authorization.azure.net/providers/Microsoft.Authorization/checkaccess?api-version=" + defaultCheckAccessV2APIVersion,
+		},
+		{
+			name:       "explicit api-version overrides the default",
+			endpoint:   "https://eastus2.authorization.azure.net",
+			apiVersion: "2099-01-01",
+			want:       "https://eastus2.authorization.azure.net/providers/Microsoft.Authorization/checkaccess?api-version=2099-01-01",
+		},
+		{
+			name:     "fully formed url with checkaccess path is returned unchanged",
+			endpoint: "https://eastus2.authorization.azure.net/providers/microsoft.authorization/checkAccess?api-version=2021-06-01-preview",
+			want:     "https://eastus2.authorization.azure.net/providers/microsoft.authorization/checkAccess?api-version=2021-06-01-preview",
+		},
+		{
+			name:     "empty endpoint returns error",
+			endpoint: "",
+			wantErr:  true,
+		},
+		{
+			name:     "non-https endpoint returns error",
+			endpoint: "http://westcentralus.authorization.azure.net",
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := buildCheckAccessV2URL(tt.endpoint, tt.apiVersion)
+			if tt.wantErr {
+				assert.Errorf(t, err, "expect error, but got none. Got: %q", got)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}

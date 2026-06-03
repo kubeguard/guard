@@ -840,3 +840,44 @@ func buildCheckAccessURL(
 
 	return rv.String(), nil
 }
+
+// buildCheckAccessV2URL composes the full PDP CheckAccess v2 request URL from a
+// regional PDP endpoint (for example "https://westcentralus.authorization.azure.net").
+//
+// The checkaccess-v2-go-sdk POSTs directly to the endpoint with no path
+// manipulation, so the checkAccess path and api-version must already be present in
+// the URL handed to the SDK. A bare regional host returns a non-JSON 404 that the
+// SDK then fails to decode ("invalid character ..."), so composing the URL here is
+// required for v2 to function.
+//
+// If endpoint already targets the checkAccess path (for example a fully-formed URL
+// supplied for testing) it is returned unchanged. A non-empty apiVersion overrides
+// defaultCheckAccessV2APIVersion.
+func buildCheckAccessV2URL(endpoint, apiVersion string) (string, error) {
+	if strings.TrimSpace(endpoint) == "" {
+		return "", fmt.Errorf("PDP endpoint must not be empty")
+	}
+
+	rv, err := url.Parse(endpoint)
+	if err != nil {
+		return "", fmt.Errorf("invalid PDP endpoint %q: %w", endpoint, err)
+	}
+	if !strings.EqualFold(rv.Scheme, "https") {
+		return "", fmt.Errorf("invalid PDP endpoint scheme %q, expected https", rv.Scheme)
+	}
+
+	// Endpoint already targets the checkAccess path: treat it as fully formed.
+	if strings.HasSuffix(strings.ToLower(strings.TrimRight(rv.Path, "/")), strings.ToLower(checkAccessPath)) {
+		return endpoint, nil
+	}
+
+	if apiVersion == "" {
+		apiVersion = defaultCheckAccessV2APIVersion
+	}
+	rv.Path = path.Join(rv.Path, checkAccessPath)
+	params := rv.Query()
+	params.Set(queryParamAPIVersion, apiVersion)
+	rv.RawQuery = params.Encode()
+
+	return rv.String(), nil
+}
