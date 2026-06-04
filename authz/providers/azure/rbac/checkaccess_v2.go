@@ -66,7 +66,7 @@ import (
 func (a *AccessInfo) performCheckAccessV2(
 	ctx context.Context,
 	resourceId string,
-	actions []string,
+	actions []azureutils.AuthorizationActionInfo,
 	userOid string,
 	groups []string,
 ) (*authzv1.SubjectAccessReviewStatus, error) {
@@ -124,13 +124,7 @@ func (a *AccessInfo) performCheckAccessV2(
 // buildAuthorizationRequestV2 constructs a CheckAccess v2 AuthorizationRequest.
 // This replaces the SDK's CreateAuthorizationRequest which expects JWT claims.
 // For AKS/Guard, the user identity (oid, groups) comes from SubjectAccessReviewSpec.
-func buildAuthorizationRequestV2(resourceId string, actions []string, userOid string, groups []string) checkaccess.AuthorizationRequest {
-	// Build action info list
-	actionInfos := make([]checkaccess.ActionInfo, len(actions))
-	for i, action := range actions {
-		actionInfos[i] = checkaccess.ActionInfo{Id: action}
-	}
-
+func buildAuthorizationRequestV2(resourceId string, actions []azureutils.AuthorizationActionInfo, userOid string, groups []string) checkaccess.AuthorizationRequest {
 	// Build subject attributes with oid and groups
 	subjectAttrs := checkaccess.SubjectAttributes{
 		ObjectId: userOid,
@@ -143,11 +137,39 @@ func buildAuthorizationRequestV2(resourceId string, actions []string, userOid st
 		Subject: checkaccess.SubjectInfo{
 			Attributes: subjectAttrs,
 		},
-		Actions: actionInfos,
+		Actions: toActionInfos(actions),
 		Resource: checkaccess.ResourceInfo{
 			Id: resourceId,
 		},
 	}
+}
+
+// toActionInfos converts internal AuthorizationActionInfo values to the SDK's
+// ActionInfo type. It preserves IsDataAction (Kubernetes RBAC actions are data
+// actions, and PDP denies them when this is false) and any subresource attributes.
+func toActionInfos(actions []azureutils.AuthorizationActionInfo) []checkaccess.ActionInfo {
+	actionInfos := make([]checkaccess.ActionInfo, len(actions))
+	for i, action := range actions {
+		actionInfos[i] = checkaccess.ActionInfo{
+			Id:           action.Id,
+			IsDataAction: action.IsDataAction,
+			Attributes:   toSDKAttributes(action.Attributes),
+		}
+	}
+	return actionInfos
+}
+
+// toSDKAttributes converts a map[string]string to the SDK's Attributes type
+// (map[string]interface{}), returning nil for an empty map.
+func toSDKAttributes(attrs map[string]string) checkaccess.Attributes {
+	if len(attrs) == 0 {
+		return nil
+	}
+	out := make(checkaccess.Attributes, len(attrs))
+	for key, value := range attrs {
+		out[key] = value
+	}
+	return out
 }
 
 // convertV2ResponseToStatus converts CheckAccess v2 AuthorizationDecision responses
@@ -344,22 +366,13 @@ func (a *AccessInfo) checkAccessV2(ctx context.Context, request *authzv1.Subject
 	return status, nil
 }
 
-// getDataActionsV2 converts SubjectAccessReviewSpec to a list of action IDs for v2 API.
-// This extracts the action ID portion from the v1 AuthorizationActionInfo.
-func getDataActionsV2(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, clusterType string, allowCustomResourceTypeCheck bool, allowSubresourceTypeCheck bool) ([]string, error) {
-	// Reuse v1 logic to get actions
-	authInfoList, err := getDataActions(ctx, request, clusterType, allowCustomResourceTypeCheck, allowSubresourceTypeCheck)
-	if err != nil {
-		return nil, err
-	}
-
-	// Extract action IDs
-	actions := make([]string, len(authInfoList))
-	for i, authInfo := range authInfoList {
-		actions[i] = authInfo.AuthorizationEntity.Id
-	}
-
-	return actions, nil
+// getDataActionsV2 builds the list of authorization actions for the v2 API.
+// It returns the full AuthorizationActionInfo (not just the action IDs) so that
+// IsDataAction and any subresource attributes are preserved for the PDP request
+// (see buildAuthorizationRequestV2 / toActionInfos). Dropping IsDataAction makes
+// PDP evaluate Kubernetes RBAC actions as management actions and deny every check.
+func getDataActionsV2(ctx context.Context, request *authzv1.SubjectAccessReviewSpec, clusterType string, allowCustomResourceTypeCheck bool, allowSubresourceTypeCheck bool) ([]azureutils.AuthorizationActionInfo, error) {
+	return getDataActions(ctx, request, clusterType, allowCustomResourceTypeCheck, allowSubresourceTypeCheck)
 }
 
 // buildResourceIDForV2 constructs and validates a resource ID for CheckAccess v2 API.

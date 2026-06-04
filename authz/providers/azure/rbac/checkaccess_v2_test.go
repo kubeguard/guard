@@ -36,6 +36,8 @@ import (
 	"errors"
 	"testing"
 
+	azureutils "go.kubeguard.dev/guard/util/azure"
+
 	checkaccess "github.com/Azure/checkaccess-v2-go-sdk/client"
 	"github.com/stretchr/testify/assert"
 	authzv1 "k8s.io/api/authorization/v1"
@@ -43,6 +45,15 @@ import (
 
 // testUserOid is a valid UUID used consistently across v2 tests
 const testUserOid = "12345678-1234-1234-1234-123456789abc"
+
+// dataAction builds an AuthorizationActionInfo for a data-plane action - the common
+// case for Kubernetes RBAC checks - used across the v2 request-building tests.
+func dataAction(id string) azureutils.AuthorizationActionInfo {
+	return azureutils.AuthorizationActionInfo{
+		AuthorizationEntity: azureutils.AuthorizationEntity{Id: id},
+		IsDataAction:        true,
+	}
+}
 
 // mockPDPClient is a mock implementation of checkaccess.RemotePDPClient for testing
 type mockPDPClient struct {
@@ -191,7 +202,7 @@ func TestExtractUserIdentityV2_InvalidOid(t *testing.T) {
 
 func TestBuildAuthorizationRequestV2(t *testing.T) {
 	resourceId := "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ContainerService/managedClusters/cluster"
-	actions := []string{"action1", "action2"}
+	actions := []azureutils.AuthorizationActionInfo{dataAction("action1"), dataAction("action2")}
 	userOid := testUserOid
 	groups := []string{"group1", "group2"}
 
@@ -203,12 +214,31 @@ func TestBuildAuthorizationRequestV2(t *testing.T) {
 	assert.Len(t, authzReq.Actions, 2)
 	assert.Equal(t, "action1", authzReq.Actions[0].Id)
 	assert.Equal(t, "action2", authzReq.Actions[1].Id)
+	// Regression: Kubernetes RBAC actions must be sent as data actions. If IsDataAction
+	// is false, PDP evaluates them as management actions and denies every request.
+	assert.True(t, authzReq.Actions[0].IsDataAction)
+	assert.True(t, authzReq.Actions[1].IsDataAction)
 }
 
 func TestBuildAuthorizationRequestV2_EmptyGroups(t *testing.T) {
-	authzReq := buildAuthorizationRequestV2("/resource", []string{"action"}, "oid", nil)
+	authzReq := buildAuthorizationRequestV2("/resource", []azureutils.AuthorizationActionInfo{dataAction("action")}, "oid", nil)
 
 	assert.Nil(t, authzReq.Subject.Attributes.Groups)
+}
+
+func TestBuildAuthorizationRequestV2_PreservesAttributes(t *testing.T) {
+	actions := []azureutils.AuthorizationActionInfo{
+		{
+			AuthorizationEntity: azureutils.AuthorizationEntity{Id: "Microsoft.ContainerService/managedClusters/pods/logs/read"},
+			IsDataAction:        true,
+			Attributes:          map[string]string{SubresourceAttrName: "pods/logs"},
+		},
+	}
+
+	authzReq := buildAuthorizationRequestV2("/resource", actions, "oid", nil)
+
+	assert.True(t, authzReq.Actions[0].IsDataAction)
+	assert.Equal(t, "pods/logs", authzReq.Actions[0].Attributes[SubresourceAttrName])
 }
 
 func TestGetDataActionsV2_Success(t *testing.T) {
@@ -225,8 +255,9 @@ func TestGetDataActionsV2_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, actions)
-	assert.Contains(t, actions[0], "pods")
-	assert.Contains(t, actions[0], "read")
+	assert.Contains(t, actions[0].Id, "pods")
+	assert.Contains(t, actions[0].Id, "read")
+	assert.True(t, actions[0].IsDataAction)
 }
 
 func TestPerformCheckAccessV2_Success(t *testing.T) {
@@ -235,6 +266,8 @@ func TestPerformCheckAccessV2_Success(t *testing.T) {
 			// Verify the request was built correctly
 			assert.Equal(t, testUserOid, authzReq.Subject.Attributes.ObjectId)
 			assert.Equal(t, []string{"group1"}, authzReq.Subject.Attributes.Groups)
+			// Regression: actions must be sent as data actions, else PDP denies them.
+			assert.True(t, authzReq.Actions[0].IsDataAction)
 
 			return &checkaccess.AuthorizationDecisionResponse{
 				Value: []checkaccess.AuthorizationDecision{
@@ -256,7 +289,7 @@ func TestPerformCheckAccessV2_Success(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	actions := []string{"Microsoft.ContainerService/managedClusters/pods/read"}
+	actions := []azureutils.AuthorizationActionInfo{dataAction("Microsoft.ContainerService/managedClusters/pods/read")}
 	userOid := testUserOid
 	groups := []string{"group1"}
 	status, err := accessInfo.performCheckAccessV2(ctx, "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ContainerService/managedClusters/cluster", actions, userOid, groups)
@@ -269,9 +302,9 @@ func TestPerformCheckAccessV2_Success(t *testing.T) {
 
 func TestPerformCheckAccessV2_BatchingMultipleBatches(t *testing.T) {
 	// Create 250 actions to test batching (should create 2 batches: 200 + 50)
-	actions := make([]string, 250)
+	actions := make([]azureutils.AuthorizationActionInfo, 250)
 	for i := 0; i < 250; i++ {
-		actions[i] = "Microsoft.ContainerService/managedClusters/action"
+		actions[i] = dataAction("Microsoft.ContainerService/managedClusters/action")
 	}
 
 	callCount := 0
@@ -325,7 +358,7 @@ func TestPerformCheckAccessV2_CheckAccessError(t *testing.T) {
 	ctx := context.Background()
 	userOid := testUserOid
 	groups := []string{"group1"}
-	status, err := accessInfo.performCheckAccessV2(ctx, "/resource", []string{"action"}, userOid, groups)
+	status, err := accessInfo.performCheckAccessV2(ctx, "/resource", []azureutils.AuthorizationActionInfo{dataAction("action")}, userOid, groups)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "CheckAccess v2 batch failed")
