@@ -65,6 +65,17 @@ func createOperationsMap(clusterType string) azureutils.OperationsMap {
 	}
 }
 
+// setStoredOperationsMap overrides the package-level getStoredOperationsMap seam
+// for the duration of the test and restores it on cleanup. getStoredOperationsMap
+// is package state; a test that mutates it without restoring leaks its setup into
+// later tests (in source order), making outcomes order-dependent.
+func setStoredOperationsMap(t *testing.T, m azureutils.OperationsMap) {
+	t.Helper()
+	prev := getStoredOperationsMap
+	t.Cleanup(func() { getStoredOperationsMap = prev })
+	getStoredOperationsMap = func() azureutils.OperationsMap { return m }
+}
+
 func Test_getScope(t *testing.T) {
 	type args struct {
 		resourceId                      string
@@ -659,10 +670,7 @@ func Test_getDataActions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			operationsMap := createOperationsMap(tt.args.clusterType)
-			getStoredOperationsMap = func() azureutils.OperationsMap {
-				return operationsMap
-			}
+			setStoredOperationsMap(t, createOperationsMap(tt.args.clusterType))
 
 			ctx := context.Background()
 			got, _ := getDataActions(ctx, tt.args.subRevReq, tt.args.clusterType, tt.args.isCrTest, tt.args.isSubresTest)
@@ -704,9 +712,7 @@ func Test_getDataActions(t *testing.T) {
 }
 
 func Test_getDataActions_wildcardWithEmptyOperationsMap(t *testing.T) {
-	getStoredOperationsMap = func() azureutils.OperationsMap {
-		return azureutils.NewOperationsMap()
-	}
+	setStoredOperationsMap(t, azureutils.NewOperationsMap())
 
 	tests := []struct {
 		name string
@@ -897,7 +903,7 @@ func Test_prepareCheckAccessRequestBodyWithCustomResource(t *testing.T) {
 		},
 	}
 	clusterType := aksClusterType
-	createOperationsMap(clusterType)
+	setStoredOperationsMap(t, createOperationsMap(clusterType))
 
 	ctx := context.Background()
 	got, _ := prepareCheckAccessRequestBody(ctx, req, clusterType, resourceId, false, true, false)
@@ -937,9 +943,7 @@ func Test_prepareCheckAccessRequestBodyWithCustomResourceOperationsMapEmpty(t *t
 	}
 	clusterType := aksClusterType
 
-	getStoredOperationsMap = func() azureutils.OperationsMap {
-		return azureutils.OperationsMap{}
-	}
+	setStoredOperationsMap(t, azureutils.OperationsMap{})
 
 	ctx := context.Background()
 	got, _ := prepareCheckAccessRequestBody(ctx, req, clusterType, resourceId, false, true, false)
@@ -971,10 +975,7 @@ func Test_prepareCheckAccessRequestBodyWithCustomResourceTypeCheckDisabled(t *te
 	}
 	clusterType := aksClusterType
 	operationsMap := createOperationsMap(clusterType)
-
-	getStoredOperationsMap = func() azureutils.OperationsMap {
-		return operationsMap
-	}
+	setStoredOperationsMap(t, operationsMap)
 
 	ctx := context.Background()
 	got, _ := prepareCheckAccessRequestBody(ctx, req, clusterType, resourceId, false, false, false)
@@ -1006,10 +1007,7 @@ func Test_prepareCheckAccessRequestBodyWithCustomResourceAndStars(t *testing.T) 
 	}
 	clusterType := aksClusterType
 	operationsMap := createOperationsMap(clusterType)
-
-	getStoredOperationsMap = func() azureutils.OperationsMap {
-		return operationsMap
-	}
+	setStoredOperationsMap(t, operationsMap)
 
 	ctx := context.Background()
 	got, _ := prepareCheckAccessRequestBody(ctx, req, clusterType, resourceId, false, true, false)
