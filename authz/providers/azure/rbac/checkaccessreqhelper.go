@@ -49,6 +49,7 @@ const (
 	NonAADUserNotAllowedVerdict = "Access denied by Azure RBAC for non AAD users. Configure --azure.skip-authz-for-non-aad-users to enable access. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig."
 	CheckAccessErrorVerdict     = "Access denied due to Azure RBAC check failure. Please retry later."
 	PodsResource                = "pods"
+	CSRResource                 = "certificatesigningrequests"
 	CustomResources             = "customresources"
 	ReadVerb                    = "read"
 	WriteVerb                   = "write"
@@ -248,16 +249,35 @@ func getActionName(verb string) string {
 	}
 }
 
+// securitySensitiveSubresources lists resource/subresource pairs where the
+// subresource represents a distinct authorization gate in upstream Kubernetes
+// and MUST be preserved in the DataAction string rather than collapsed into
+// the base resource action. Each entry produces "<resource>/<subresource>/action"
+// instead of "<resource>/write".
+//
+// pods/exec: exec into a container is a fundamentally different privilege than
+// creating a pod; the DataAction must remain pods/exec/action.
+//
+// certificatesigningrequests/nodeclient: the upstream csrapprover issues a SAR
+// with this subresource to gate kubelet CSR auto-approval. Collapsing it into
+// certificatesigningrequests/write allows any principal with CSR-write to get a
+// signed kubelet certificate (MSRC 119438).
+var securitySensitiveSubresources = map[string]map[string]struct{}{
+	PodsResource: {
+		"exec": {},
+	},
+	CSRResource: {
+		"nodeclient": {},
+	},
+}
+
 func getResourceAndAction(resource string, subResource string, verb string) string {
-	var action string
-
-	if resource == PodsResource && subResource == "exec" {
-		action = path.Join(resource, subResource, "action")
-	} else {
-		action = path.Join(resource, getActionName(verb))
+	if subs, ok := securitySensitiveSubresources[resource]; ok && subResource != "" {
+		if _, sensitive := subs[subResource]; sensitive {
+			return path.Join(resource, subResource, "action")
+		}
 	}
-
-	return action
+	return path.Join(resource, getActionName(verb))
 }
 
 func getDataActions(ctx context.Context, subRevReq *authzv1.SubjectAccessReviewSpec, clusterType string, allowCustomResourceTypeCheck bool, allowSubresourceTypeCheck bool) ([]azureutils.AuthorizationActionInfo, error) {
