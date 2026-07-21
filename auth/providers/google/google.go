@@ -65,8 +65,12 @@ func New(ctx context.Context, opts Options, domain string) (auth.Interface, erro
 		return nil, errors.Wrap(err, "failed to create oidc provider for google")
 	}
 
+	clientID := opts.ClientID
+	if clientID == "" {
+		clientID = GoogleOauth2ClientID
+	}
 	g.verifier = provider.Verifier(&oidc.Config{
-		ClientID: GoogleOauth2ClientID,
+		ClientID: clientID,
 	})
 
 	if opts.ServiceAccountJsonFile != "" {
