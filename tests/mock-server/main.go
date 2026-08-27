@@ -52,12 +52,50 @@ type CheckAccessRequest struct {
 	} `json:"Resource"`
 }
 
-// AuthorizationDecision matches Guard's expected response format.
+// AuthorizationDecision matches Guard's expected v1 response format.
 type AuthorizationDecision struct {
 	Decision       string `json:"accessDecision"`
 	ActionID       string `json:"actionId"`
 	IsDataAction   bool   `json:"isDataAction"`
 	TimeToLiveInMs int    `json:"timeToLiveInMs"`
+}
+
+// V2 response types matching the checkaccess-v2-go-sdk types.
+
+type V2RoleAssignment struct {
+	ID               string `json:"id,omitempty"`
+	RoleDefinitionID string `json:"roleDefinitionId,omitempty"`
+	PrincipalID      string `json:"principalId,omitempty"`
+	PrincipalType    string `json:"principaltype,omitempty"`
+	Scope            string `json:"scope,omitempty"`
+}
+
+type V2AuthorizationDecision struct {
+	ActionID       string           `json:"actionId,omitempty"`
+	AccessDecision string           `json:"accessDecision,omitempty"`
+	IsDataAction   bool             `json:"isDataAction,omitempty"`
+	RoleAssignment V2RoleAssignment `json:"roleAssignment,omitempty"`
+	TimeToLiveInMs int              `json:"timeToLiveInMs,omitempty"`
+}
+
+type V2AuthorizationDecisionResponse struct {
+	Value []V2AuthorizationDecision `json:"value"`
+}
+
+type V2AuthorizationRequest struct {
+	Subject struct {
+		Attributes struct {
+			ObjectID  string   `json:"ObjectId"`
+			Groups    []string `json:"Groups,omitempty"`
+			ClaimName string   `json:"_claim_names,omitempty"`
+		} `json:"Attributes"`
+	} `json:"Subject"`
+	Actions []struct {
+		ID string `json:"Id"`
+	} `json:"Actions"`
+	Resource struct {
+		ID string `json:"Id"`
+	} `json:"Resource"`
 }
 
 // Config holds the mock server configuration.
@@ -100,11 +138,17 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// AKS token endpoint
+	// AKS OBO authz token endpoint (production pattern: /v1/<ccpid>/authztoken)
+	mux.HandleFunc("/v1/", handleOBOToken)
+
+	// OBO token endpoint (legacy path, kept for backward compatibility)
 	mux.HandleFunc("/authz/token", handleTokenRequest)
 
-	// CheckAccess v1 API endpoint (wildcard for different resource paths)
-	mux.HandleFunc("/", handleCheckAccess)
+	// CheckAccess v2 PDP endpoint (SDK posts directly to root)
+	mux.HandleFunc("/checkaccess/v2", handleCheckAccessV2)
+
+	// CheckAccess v1 API endpoint (wildcard for ARM resource paths)
+	mux.HandleFunc("/", handleCheckAccessRouter)
 
 	// Metrics endpoint
 	mux.HandleFunc("/mock-metrics", handleMockMetrics)
@@ -112,27 +156,48 @@ func main() {
 	// Health endpoint
 	mux.HandleFunc("/health", handleHealth)
 
-	addr := fmt.Sprintf(":%d", config.Port)
-	log.Printf("Mock Azure server starting on %s", addr)
 	log.Printf("Configuration: latency=%d-%dms, allow_rate=%.2f, throttle_rate=%.2f",
 		config.MinLatencyMS, config.MaxLatencyMS, config.AllowRate, config.ThrottleRate)
 
-	server := &http.Server{
-		Addr:         addr,
-		Handler:      mux,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-	}
-
-	var err error
 	if config.UseTLS {
-		err = server.ListenAndServeTLS(config.CertFile, config.KeyFile)
-	} else {
-		err = server.ListenAndServe()
-	}
+		// Dual mode: HTTP on 8080 (OBO tokens) + HTTPS on configured port (PDP)
+		go func() {
+			httpAddr := ":8080"
+			log.Printf("Mock Azure server starting HTTP on %s (OBO token endpoints)", httpAddr)
+			httpServer := &http.Server{
+				Addr:         httpAddr,
+				Handler:      mux,
+				ReadTimeout:  30 * time.Second,
+				WriteTimeout: 30 * time.Second,
+			}
+			if err := httpServer.ListenAndServe(); err != nil {
+				log.Fatalf("HTTP server failed: %v", err)
+			}
+		}()
 
-	if err != nil {
-		log.Fatalf("Server failed: %v", err)
+		tlsAddr := fmt.Sprintf(":%d", config.Port)
+		log.Printf("Mock Azure server starting HTTPS on %s (PDP endpoint)", tlsAddr)
+		tlsServer := &http.Server{
+			Addr:         tlsAddr,
+			Handler:      mux,
+			ReadTimeout:  30 * time.Second,
+			WriteTimeout: 30 * time.Second,
+		}
+		if err := tlsServer.ListenAndServeTLS(config.CertFile, config.KeyFile); err != nil {
+			log.Fatalf("HTTPS server failed: %v", err)
+		}
+	} else {
+		addr := fmt.Sprintf(":%d", config.Port)
+		log.Printf("Mock Azure server starting on %s", addr)
+		server := &http.Server{
+			Addr:         addr,
+			Handler:      mux,
+			ReadTimeout:  30 * time.Second,
+			WriteTimeout: 30 * time.Second,
+		}
+		if err := server.ListenAndServe(); err != nil {
+			log.Fatalf("Server failed: %v", err)
+		}
 	}
 }
 
@@ -163,7 +228,7 @@ func handleTokenRequest(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleCheckAccess(w http.ResponseWriter, r *http.Request) {
+func handleCheckAccessRouter(w http.ResponseWriter, r *http.Request) {
 	// Only handle POST requests to checkaccess endpoint
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -244,6 +309,129 @@ func handleCheckAccess(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(decisions); err != nil {
 		log.Printf("[ERROR] Failed to encode checkaccess response: %v", err)
 	}
+}
+
+// OBOTokenRequest matches the request format from aksTokenProvider.Acquire()
+type OBOTokenRequest struct {
+	TenantID    string `json:"tenantID,omitempty"`
+	AccessToken string `json:"accessToken,omitempty"`
+	Resource    string `json:"resource,omitempty"`
+}
+
+func handleOBOToken(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req OBOTokenRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	tokenIssueCount.Add(1)
+	simulateLatency(10, 50)
+
+	response := AuthResponse{
+		TokenType: "Bearer",
+		Token:     fmt.Sprintf("mock-obo-pdp-token-%d-%d", time.Now().UnixNano(), rand.Int63()),
+		ExpiresOn: time.Now().Add(1 * time.Hour).Unix(),
+	}
+
+	resource := req.Resource
+	if resource == "" {
+		resource = "https://management.azure.com"
+	}
+
+	if config.VerboseLogging {
+		log.Printf("[OBO-TOKEN] Issued token for path %s resource=%s (total: %d)", r.URL.Path, resource, tokenIssueCount.Load())
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("[ERROR] Failed to encode OBO token response: %v", err)
+	}
+}
+
+func handleCheckAccessV2(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	reqCount := requestCount.Add(1)
+	simulateLatency(config.MinLatencyMS, config.MaxLatencyMS)
+
+	if rand.Float64() < config.ThrottleRate {
+		throttleCount.Add(1)
+		w.Header().Set("Retry-After", "1")
+		http.Error(w, `{"error":{"code":"TooManyRequests","message":"Rate limit exceeded"}}`, http.StatusTooManyRequests)
+		if config.VerboseLogging {
+			log.Printf("[V2-THROTTLE] Request #%d throttled", reqCount)
+		}
+		return
+	}
+
+	var req V2AuthorizationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":{"code":"BadRequest","message":"Invalid request body"}}`, http.StatusBadRequest)
+		return
+	}
+
+	decisions := make([]V2AuthorizationDecision, len(req.Actions))
+	allAllowed := true
+
+	for i, action := range req.Actions {
+		allowed := rand.Float64() < config.AllowRate
+
+		decision := V2AuthorizationDecision{
+			ActionID:       action.ID,
+			IsDataAction:   true,
+			TimeToLiveInMs: 300000,
+		}
+
+		if allowed {
+			decision.AccessDecision = "Allowed"
+			decision.RoleAssignment = V2RoleAssignment{
+				ID:               fmt.Sprintf("/subscriptions/test-sub/providers/Microsoft.Authorization/roleAssignments/%s", generateUUID()),
+				RoleDefinitionID: fmt.Sprintf("/subscriptions/test-sub/providers/Microsoft.Authorization/roleDefinitions/%s", generateUUID()),
+				PrincipalID:      req.Subject.Attributes.ObjectID,
+				PrincipalType:    "User",
+				Scope:            req.Resource.ID,
+			}
+		} else {
+			allAllowed = false
+			decision.AccessDecision = "NotAllowed"
+		}
+
+		decisions[i] = decision
+	}
+
+	if allAllowed {
+		allowedCount.Add(1)
+	} else {
+		deniedCount.Add(1)
+	}
+
+	resp := V2AuthorizationDecisionResponse{Value: decisions}
+
+	if config.VerboseLogging {
+		log.Printf("[V2-CHECKACCESS] Request #%d: user=%s actions=%d resource=%s allowed=%v",
+			reqCount, req.Subject.Attributes.ObjectID, len(decisions), req.Resource.ID, allAllowed)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("x-ms-request-id", fmt.Sprintf("mock-v2-%d", reqCount))
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Printf("[ERROR] Failed to encode v2 checkaccess response: %v", err)
+	}
+}
+
+func generateUUID() string {
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+		rand.Int31(), rand.Int31n(0xffff), rand.Int31n(0xffff),
+		rand.Int31n(0xffff), rand.Int63n(0xffffffffffff))
 }
 
 func handleMockMetrics(w http.ResponseWriter, r *http.Request) {

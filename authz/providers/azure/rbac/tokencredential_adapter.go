@@ -25,32 +25,38 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"k8s.io/klog/v2"
 )
 
-// tokenProviderAdapter adapts a graph.TokenProvider to azcore.TokenCredential interface
-// for use with the CheckAccess v2 SDK.
 type tokenProviderAdapter struct {
 	provider graph.TokenProvider
+	scope    string
 }
 
-// newTokenProviderAdapter creates a new adapter that wraps a graph.TokenProvider
-// and implements azcore.TokenCredential interface.
-func newTokenProviderAdapter(provider graph.TokenProvider) azcore.TokenCredential {
+func newTokenProviderAdapter(provider graph.TokenProvider, scope string) azcore.TokenCredential {
 	return &tokenProviderAdapter{
 		provider: provider,
+		scope:    scope,
 	}
 }
 
 // GetToken implements azcore.TokenCredential interface by adapting the graph.TokenProvider.Acquire method.
 func (a *tokenProviderAdapter) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
-	// Call the underlying token provider
+	log := klog.FromContext(ctx)
+	log.V(5).Info("Acquiring PDP token", "provider", a.provider.Name(), "scope", a.scope)
+
 	authResp, err := a.provider.Acquire(ctx, "")
 	if err != nil {
 		return azcore.AccessToken{}, fmt.Errorf("failed to acquire token from provider %s: %w", a.provider.Name(), err)
 	}
 
-	// Convert AuthResponse to azcore.AccessToken
 	expiresOn := time.Unix(int64(authResp.ExpiresOn), 0)
+	if authResp.ExpiresOn == 0 || expiresOn.Before(time.Now()) {
+		return azcore.AccessToken{}, fmt.Errorf("token from provider %s has invalid expiry: %d (resolved to %v)", a.provider.Name(), authResp.ExpiresOn, expiresOn)
+	}
+
+	log.V(5).Info("PDP token acquired successfully", "expiresOn", expiresOn)
+
 	return azcore.AccessToken{
 		Token:     authResp.Token,
 		ExpiresOn: expiresOn,

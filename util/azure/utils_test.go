@@ -17,12 +17,57 @@ limitations under the License.
 package azure
 
 import (
+	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 )
+
+func Test_isPartialDiscoveryError(t *testing.T) {
+	tests := []struct {
+		name           string
+		err            error
+		shouldTolerate bool
+	}{
+		{
+			name:           "0-length response from broken aggregated APIService",
+			err:            errors.New("unable to retrieve the complete list of server APIs: nodeagent.microsoft.com/v1alpha1: 0-length response with status code: 200 and content type: application/json"),
+			shouldTolerate: true,
+		},
+		{
+			name:           "unreachable APIService",
+			err:            errors.New("unable to retrieve the complete list of server APIs: somegroup/v1: the server is currently unable to handle the request"),
+			shouldTolerate: true,
+		},
+		{
+			name:           "multiple broken API groups",
+			err:            errors.New("unable to retrieve the complete list of server APIs: nodeagent.microsoft.com/v1alpha1: 0-length response with status code: 200 and content type: application/json, extensions.containerapp.microsoft.com/v1alpha1: 0-length response with status code: 200 and content type: application/json"),
+			shouldTolerate: true,
+		},
+		{
+			name:           "connection refused is not a partial discovery error",
+			err:            errors.New("dial tcp 10.0.0.1:443: connect: connection refused"),
+			shouldTolerate: false,
+		},
+		{
+			name:           "kubeconfig error is not a partial discovery error",
+			err:            errors.New("Error building kubeconfig: stat /nonexistent: no such file or directory"),
+			shouldTolerate: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := strings.Contains(tt.err.Error(), retrieveServerApiError)
+			if got != tt.shouldTolerate {
+				t.Errorf("error %q: tolerate=%v, want %v", tt.err, got, tt.shouldTolerate)
+			}
+		})
+	}
+}
 
 func Test_createOperationsMap(t *testing.T) {
 	type args struct {

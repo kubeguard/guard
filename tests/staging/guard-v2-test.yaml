@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: guard-v2-test
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: guard-test
+  namespace: guard-v2-test
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: guard-test-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: guard-test
+    namespace: guard-v2-test
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guard-v2-test
+  namespace: guard-v2-test
+  labels:
+    app: guard-v2-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: guard-v2-test
+  template:
+    metadata:
+      labels:
+        app: guard-v2-test
+    spec:
+      serviceAccountName: guard-test
+      containers:
+        - name: guard
+          image: akolomeetcacr.azurecr.io/guard:pr449
+          args:
+            - run
+            - --tls-ca-file=/etc/guard/pki/ca.crt
+            - --tls-cert-file=/etc/guard/pki/server.crt
+            - --tls-private-key-file=/etc/guard/pki/server.key
+            - --secure-addr=:8443
+            - --auth-providers=azure
+            - --azure.tenant-id=$(TENANT_ID)
+            - --azure.auth-mode=aks
+            - --azure.aks-token-url=$(AKS_AUTHZ_TOKEN_URL)
+            - --authz-providers=azure
+            - --azure.authz-mode=aks
+            - --azure.resource-id=$(CLUSTER_ID)
+            - --azure.aks-authz-token-url=$(AKS_AUTHZ_TOKEN_URL)
+            - --azure.use-checkaccess-v2=true
+            - --azure.pdp-endpoint=https://westus2.authorization.azure.net
+            - --azure.pdp-scope=https://authorization.azure.net/.default
+            - --azure.skip-authz-for-non-aad-users=true
+            - --azure.allow-nonres-discovery-path-access=true
+            - -v=5
+          env:
+            - name: TENANT_ID
+              value: "PLACEHOLDER_TENANT_ID"
+            - name: AKS_AUTHZ_TOKEN_URL
+              value: "PLACEHOLDER_TOKEN_URL"
+            - name: CLUSTER_ID
+              value: "PLACEHOLDER_CLUSTER_ID"
+          ports:
+            - containerPort: 8443
+              name: https
+          volumeMounts:
+            - name: guard-pki
+              mountPath: /etc/guard/pki
+              readOnly: true
+      volumes:
+        - name: guard-pki
+          secret:
+            secretName: guard-test-pki
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: guard-v2-test
+  namespace: guard-v2-test
+spec:
+  selector:
+    app: guard-v2-test
+  ports:
+    - port: 8443
+      targetPort: 8443
+      name: https

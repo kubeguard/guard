@@ -33,6 +33,7 @@ const (
 	AKSAuthzMode               = "aks"
 	ARCAuthzMode               = "arc"
 	FleetAuthzMode             = "fleet"
+	AIManagerAuthzMode         = "aimanager"
 	defaultArmCallLimit        = 2000
 	maxPermissibleArmCallLimit = 4000
 	defaultCacheSizeMB         = 50
@@ -99,8 +100,8 @@ func NewOptions() Options {
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&o.AuthzMode, "azure.authz-mode", "", "authz mode to call RBAC api, valid values are either aks, arc, or fleet")
-	fs.StringVar(&o.ResourceId, "azure.resource-id", "", "azure cluster resource id (//subscriptions/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/managedClusters/<clustername> for AKS, //subscriptions/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/fleets/<clustername> for Azure Kubernetes Fleet Manager, or //subscriptions/<subName>/resourcegroups/<RGname>/providers/Microsoft.Kubernetes/connectedClusters/<clustername> for arc) to be used as scope for RBAC check")
+	fs.StringVar(&o.AuthzMode, "azure.authz-mode", "", "authz mode to call RBAC api, valid values are either aks, arc, fleet, or aimanager")
+	fs.StringVar(&o.ResourceId, "azure.resource-id", "", "azure cluster resource id (//subscriptions/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/managedClusters/<clustername> for AKS, //subscriptions/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/fleets/<clustername> for Azure Kubernetes Fleet Manager, //subscriptions/<subName>/resourcegroups/<RGname>/providers/Microsoft.Kubernetes/connectedClusters/<clustername> for arc, or //subscriptions/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/aiManagers/<name> for AIManager) to be used as scope for RBAC check")
 	fs.StringVar(&o.AKSAuthzTokenURL, "azure.aks-authz-token-url", "", "url to call for AKS Authz flow")
 	fs.IntVar(&o.ARMCallLimit, "azure.arm-call-limit", o.ARMCallLimit, "No of calls before which webhook switch to new ARM instance to avoid throttling")
 	fs.StringSliceVar(&o.SkipAuthzCheck, "azure.skip-authz-check", o.SkipAuthzCheck, "name of usernames/email for which authz check will be skipped")
@@ -130,20 +131,21 @@ func (o *Options) Validate(azure azure.Options) []error {
 	case AKSAuthzMode:
 	case ARCAuthzMode:
 	case FleetAuthzMode:
+	case AIManagerAuthzMode:
 	default:
-		errs = append(errs, errors.New("invalid azure.authz-mode. valid value is either aks, arc, or fleet"))
+		errs = append(errs, errors.New("invalid azure.authz-mode. valid value is either aks, arc, fleet, or aimanager"))
 	}
 
 	if o.AuthzMode != "" && o.ResourceId == "" {
 		errs = append(errs, errors.New("azure.resource-id must be non-empty for authorization"))
 	}
 
-	if (o.AuthzMode == AKSAuthzMode || o.AuthzMode == FleetAuthzMode) && o.AKSAuthzTokenURL == "" {
+	if requiresAKSAuthzTokenURL(o.AuthzMode) && o.AKSAuthzTokenURL == "" {
 		errs = append(errs, errors.New("azure.aks-authz-token-url must be non-empty"))
 	}
 
-	if o.AuthzMode != AKSAuthzMode && o.AuthzMode != FleetAuthzMode && o.AKSAuthzTokenURL != "" {
-		errs = append(errs, errors.New("azure.aks-authz-token-url must be set only with AKS/Fleet authz mode"))
+	if !requiresAKSAuthzTokenURL(o.AuthzMode) && o.AKSAuthzTokenURL != "" {
+		errs = append(errs, errors.New("azure.aks-authz-token-url must be set only with AKS/Fleet/AIManager authz mode"))
 	}
 
 	if o.AuthzMode == ARCAuthzMode {
@@ -226,4 +228,12 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 
 	d.Spec.Template.Spec.Containers[0].Args = args
 	return extraObjs, nil
+}
+
+func requiresAKSAuthzTokenURL(mode string) bool {
+	switch mode {
+	case AKSAuthzMode, FleetAuthzMode, AIManagerAuthzMode:
+		return true
+	}
+	return false
 }

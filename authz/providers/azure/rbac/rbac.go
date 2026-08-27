@@ -53,6 +53,7 @@ const (
 	managedClusters           = "Microsoft.ContainerService/managedClusters"
 	fleets                    = "Microsoft.ContainerService/fleets"
 	fleetMembers              = "Microsoft.ContainerService/fleets/members"
+	aiManagers                = "Microsoft.ContainerService/aiManagers"
 	connectedClusters         = "Microsoft.Kubernetes/connectedClusters"
 	checkAccessPath           = "/providers/Microsoft.Authorization/checkaccess"
 	queryParamAPIVersion      = "api-version"
@@ -124,7 +125,7 @@ var (
 			Name: "guard_azure_authz_check_access_requests_total",
 			Help: "Number of checkaccess request calls.",
 		},
-		[]string{"code"},
+		[]string{"code", "api_version"},
 	)
 
 	checkAccessFailed = prometheus.NewCounterVec(
@@ -132,13 +133,13 @@ var (
 			Name: "guard_azure_authz_checkaccess_failure_total",
 			Help: "No of checkaccess failures",
 		},
-		[]string{"code"},
+		[]string{"code", "api_version"},
 	)
 
-	checkAccessSucceeded = promauto.NewCounter(prometheus.CounterOpts{
+	checkAccessSucceeded = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "guard_azure_authz_checkaccess_success_total",
 		Help: "Number of successful checkaccess calls.",
-	})
+	}, []string{"api_version"})
 
 	checkAccessContextTimedOutCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -156,7 +157,7 @@ var (
 			Help:    "A histogram of latencies for requests.",
 			Buckets: []float64{.25, .5, 1, 2.5, 5, 10, 15, 20},
 		},
-		[]string{"code"},
+		[]string{"code", "api_version"},
 	)
 
 	CheckAccessErrorFormat = "Error occured during authorization check. Please retry again. Error: %s"
@@ -174,6 +175,8 @@ func getClusterType(clsType string) string {
 		return managedClusters
 	case authzOpts.FleetAuthzMode:
 		return fleets
+	case authzOpts.AIManagerAuthzMode:
+		return aiManagers
 	default:
 		return ""
 	}
@@ -215,19 +218,20 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 
 	// Initialize CheckAccess V2 client if enabled
 	if opts.UseCheckAccessV2 {
-		// Create token credential adapter from existing token provider
-		tokenCred := newTokenProviderAdapter(tokenProvider)
+		// Create a separate token provider for v2 that requests PDP-audience tokens.
+		// V1 and v2 require different token audiences:
+		//   V1: https://management.core.windows.net/ (ARM) - default from OBO
+		//   V2: https://authorization.azure.net (PDP) - must be explicitly requested
+		// The PDP scope (e.g. "https://authorization.azure.net/.default") is trimmed
+		// to the resource identifier for the OBO request.
+		pdpResource := strings.TrimSuffix(opts.PDPScope, "/.default")
+		v2TokenProvider := graph.NewAKSTokenProviderWithResource(opts.AKSAuthzTokenURL, authopts.TenantID, pdpResource)
+		tokenCred := newTokenProviderAdapter(v2TokenProvider, opts.PDPScope)
 
-		// Configure azcore.ClientOptions to retain HTTP client customization capability
-		// This allows custom user agent and other HTTP settings similar to v1
 		clientOpts := &azcore.ClientOptions{
 			Transport: httpclient.DefaultHTTPClient,
 		}
 
-		// Initialize PDP client with user-provided scope
-		// Scope must be provided via --azure.pdp-scope flag
-		// Example: https://authorization.azure.net/.default for public cloud
-		// Reference: https://github.com/Azure/ARO-RP/blob/master/pkg/util/azureclient/environments.go
 		pdpClient, err := checkaccess.NewRemotePDPClient(
 			opts.PDPEndpoint,
 			opts.PDPScope,
@@ -261,9 +265,7 @@ func New(opts authzOpts.Options, authopts auth.Options, authzInfo *AuthzInfo) (*
 		} else {
 			tokenProvider = graph.NewMSITokenProvider(authzInfo.ARMEndPoint, graph.MSIEndpointForARC)
 		}
-	case authzOpts.FleetAuthzMode:
-		tokenProvider = graph.NewAKSTokenProvider(opts.AKSAuthzTokenURL, authopts.TenantID)
-	case authzOpts.AKSAuthzMode:
+	case authzOpts.FleetAuthzMode, authzOpts.AKSAuthzMode, authzOpts.AIManagerAuthzMode:
 		tokenProvider = graph.NewAKSTokenProvider(opts.AKSAuthzTokenURL, authopts.TenantID)
 	}
 
@@ -470,12 +472,12 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 
 	// Route to v2 API if enabled
 	if a.useCheckAccessV2 {
-		log.V(5).Info("Using CheckAccess v2 API")
+		log.Info("Using CheckAccess v2 API")
 		return a.checkAccessV2(ctx, request)
 	}
 
 	// V1 API path (legacy)
-	log.V(7).Info("Using CheckAccess v1 API")
+	log.Info("Using CheckAccess v1 API")
 
 	checkAccessBodies, err := prepareCheckAccessRequestBody(ctx, request, a.clusterType, a.azureResourceId, a.useNamespaceResourceScopeFormat, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
 	if err != nil {
@@ -610,8 +612,8 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 	resp, err := client.Do(req)
 	duration := time.Since(start).Seconds()
 	if err != nil {
-		checkAccessTotal.WithLabelValues(internalServerCode).Inc()
-		checkAccessDuration.WithLabelValues(internalServerCode).Observe(duration)
+		checkAccessTotal.WithLabelValues(internalServerCode, "v1").Inc()
+		checkAccessDuration.WithLabelValues(internalServerCode, "v1").Observe(duration)
 		return errutils.WithCode(fmt.Errorf("CheckAccess request execution failed (durationSeconds: %.2f): %w", duration, err), http.StatusInternalServerError)
 	}
 
@@ -619,13 +621,11 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 		_ = resp.Body.Close()
 	}()
 	respStatusCode := azureutils.ConvertIntToString(resp.StatusCode)
-	checkAccessTotal.WithLabelValues(respStatusCode).Inc()
-	checkAccessDuration.WithLabelValues(respStatusCode).Observe(duration)
+	checkAccessTotal.WithLabelValues(respStatusCode, "v1").Inc()
+	checkAccessDuration.WithLabelValues(respStatusCode, "v1").Observe(duration)
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		checkAccessTotal.WithLabelValues(internalServerCode).Inc()
-		checkAccessDuration.WithLabelValues(internalServerCode).Observe(duration)
 		return errutils.WithCode(fmt.Errorf("Failed to read response body: %w", err), http.StatusInternalServerError)
 	}
 
@@ -641,7 +641,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 				checkAccessThrottled.Inc()
 			}
 
-			checkAccessFailed.WithLabelValues(respStatusCode).Inc()
+			checkAccessFailed.WithLabelValues(respStatusCode, "v1").Inc()
 		}
 
 		return errutils.WithCode(fmt.Errorf("CheckAccess request failed (statusCode: %d, durationSeconds: %.2f): request %s failed with response: %s", resp.StatusCode, duration, req.URL.Path, string(data)), resp.StatusCode)
@@ -657,7 +657,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 		// will connect to different ARM instance of the region to ensure there is no ARM throttling
 		a.client.CloseIdleConnections()
 	}
-	checkAccessSucceeded.Inc()
+	checkAccessSucceeded.WithLabelValues("v1").Inc()
 
 	var status *authzv1.SubjectAccessReviewStatus
 	if resp.StatusCode == http.StatusNotFound {

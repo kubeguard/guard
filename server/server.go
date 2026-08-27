@@ -247,6 +247,8 @@ func (s Server) ListenAndServe() {
 					clusterType = azureutils.ManagedClusters
 				case "fleet":
 					clusterType = azureutils.Fleets
+				case "aimanager":
+					clusterType = azureutils.AIManagers
 				default:
 					klog.Fatalf("Authzmode %s is not supported for fetching list of resources", s.AuthzRecommendedOptions.Azure.AuthzMode)
 				}

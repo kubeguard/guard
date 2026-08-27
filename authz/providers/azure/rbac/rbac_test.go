@@ -293,7 +293,7 @@ func TestCheckAccess(t *testing.T) {
 				expectedAllowed:            true,
 				expectedDenied:             false,
 				enableManagedNamespaceRBAC: false,
-				clusterTypes:               []string{managedClusters, fleets},
+				clusterTypes:               []string{managedClusters, fleets, aiManagers},
 			},
 			{
 				name:                       "denied for both flag off",
@@ -304,7 +304,7 @@ func TestCheckAccess(t *testing.T) {
 				expectedAllowed:            false,
 				expectedDenied:             true,
 				enableManagedNamespaceRBAC: false,
-				clusterTypes:               []string{managedClusters, fleets},
+				clusterTypes:               []string{managedClusters, fleets, aiManagers},
 			},
 			{
 				name:            "allowed for managedNamespaces, denied for namespaces flag off",
@@ -316,7 +316,7 @@ func TestCheckAccess(t *testing.T) {
 				expectedAllowed:            false,
 				expectedDenied:             true,
 				enableManagedNamespaceRBAC: false,
-				clusterTypes:               []string{managedClusters, fleets},
+				clusterTypes:               []string{managedClusters, fleets, aiManagers},
 			},
 			{
 				name:                       "denied for managedNamespaces, allowed for namespaces flag off",
@@ -327,7 +327,7 @@ func TestCheckAccess(t *testing.T) {
 				expectedAllowed:            true,
 				expectedDenied:             false,
 				enableManagedNamespaceRBAC: false,
-				clusterTypes:               []string{managedClusters, fleets},
+				clusterTypes:               []string{managedClusters, fleets, aiManagers},
 			},
 			{
 				name:                       "allowed for managedNamespaces, denied for namespaces non-mc",

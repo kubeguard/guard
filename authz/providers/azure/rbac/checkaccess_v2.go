@@ -101,18 +101,18 @@ func (a *AccessInfo) performCheckAccessV2(
 			batchLog.Error(err, "CheckAccess v2 request failed", "durationSeconds", duration)
 			// Use HTTP 500 to represent SDK errors, consistent with v1's internal server error pattern
 			statusCode := azureutils.ConvertIntToString(http.StatusInternalServerError)
-			checkAccessTotal.WithLabelValues(statusCode).Inc()
-			checkAccessFailed.WithLabelValues(statusCode).Inc()
-			checkAccessDuration.WithLabelValues(statusCode).Observe(duration)
+			checkAccessTotal.WithLabelValues(statusCode, "v2").Inc()
+			checkAccessFailed.WithLabelValues(statusCode, "v2").Inc()
+			checkAccessDuration.WithLabelValues(statusCode, "v2").Observe(duration)
 			return nil, fmt.Errorf("CheckAccess v2 batch failed (batchIndex: %d, durationSeconds: %.2f): %w", batchIndex, duration, err)
 		}
 
 		batchLog.V(5).Info("CheckAccess v2 request succeeded", "durationSeconds", duration, "decisionsCount", len(resp.Value))
 		// Use HTTP 200 to represent successful SDK calls, consistent with v1's HTTP 200 OK pattern
 		statusCode := azureutils.ConvertIntToString(http.StatusOK)
-		checkAccessTotal.WithLabelValues(statusCode).Inc()
-		checkAccessSucceeded.Inc()
-		checkAccessDuration.WithLabelValues(statusCode).Observe(duration)
+		checkAccessTotal.WithLabelValues(statusCode, "v2").Inc()
+		checkAccessSucceeded.WithLabelValues("v2").Inc()
+		checkAccessDuration.WithLabelValues(statusCode, "v2").Observe(duration)
 
 		allDecisions = append(allDecisions, resp.Value...)
 	}
