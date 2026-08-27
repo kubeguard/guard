@@ -50,10 +50,12 @@ jobs:
         with:
           files: |
             bin/guard-darwin-amd64.tar.gz
+            bin/guard-darwin-arm64.tar.gz
             bin/guard-linux-amd64.tar.gz
             bin/guard-linux-arm.tar.gz
             bin/guard-linux-arm64.tar.gz
             bin/guard-windows-amd64.zip
+            bin/guard-windows-arm64.zip
             bin/guard-checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
