@@ -1487,3 +1487,421 @@ func Test_buildCheckAccessURL(t *testing.T) {
 		})
 	}
 }
+
+func Test_PerformCheckFleetReservedResourcesAccess(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	accessInfo := &AccessInfo{
+		auditSAR: false,
+	}
+
+	denied := func(reason string) *authzv1.SubjectAccessReviewStatus {
+		return &authzv1.SubjectAccessReviewStatus{
+			Allowed: false,
+			Denied:  true,
+			Reason:  reason,
+		}
+	}
+
+	tests := []struct {
+		name    string
+		request *authzv1.SubjectAccessReviewSpec
+		want    *authzv1.SubjectAccessReviewStatus
+	}{
+		{
+			name:    "nil request",
+			request: nil,
+			want:    nil,
+		},
+		{
+			name:    "nil resource attributes",
+			request: &authzv1.SubjectAccessReviewSpec{},
+			want:    nil,
+		},
+		// Impersonation. Attribute shapes match what the API server emits for
+		// Impersonate-User, Impersonate-Group, Impersonate-Extra and Impersonate-Uid.
+		{
+			name: "impersonate access to a user",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "", Resource: "users", Name: "someone-else", Verb: "impersonate",
+				},
+			},
+			want: denied(FleetImpersonationAccessDeniedVerdict),
+		},
+		{
+			name: "impersonate access to a privileged group",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "", Resource: "groups", Name: "system:masters", Verb: "impersonate",
+				},
+			},
+			want: denied(FleetImpersonationAccessDeniedVerdict),
+		},
+		{
+			name: "impersonate access to a service account in a non-reserved namespace",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "work", Group: "", Resource: "serviceaccounts", Name: "sa-1", Verb: "impersonate",
+				},
+			},
+			want: denied(FleetImpersonationAccessDeniedVerdict),
+		},
+		{
+			name: "impersonate access to a user extra",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "authentication.k8s.io", Resource: "userextras/scopes", Name: "scope-1", Verb: "impersonate",
+				},
+			},
+			want: denied(FleetImpersonationAccessDeniedVerdict),
+		},
+		{
+			name: "impersonate access to a uid",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "authentication.k8s.io", Resource: "uids", Name: "uid-1", Verb: "impersonate",
+				},
+			},
+			want: denied(FleetImpersonationAccessDeniedVerdict),
+		},
+		{
+			name: "read access to users",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "", Resource: "users", Name: "someone-else", Verb: "get",
+				},
+			},
+			want: nil,
+		},
+		// Fleet reserved namespaces.
+		{
+			name: "write access to a resource in a fleet- prefixed namespace",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "fleet-system", Group: "apps", Resource: "deployments", Verb: "create",
+				},
+			},
+			want: denied(FleetReservedNSAccessNotAllowedVerdict),
+		},
+		{
+			name: "delete access to a resource in a kube- prefixed namespace",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "kube-system", Group: "", Resource: "configmaps", Verb: "delete",
+				},
+			},
+			want: denied(FleetReservedNSAccessNotAllowedVerdict),
+		},
+		{
+			name: "read access to an unprotected resource in a reserved namespace",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "fleet-system", Group: "", Resource: "configmaps", Verb: "get",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "read access to pods in a reserved namespace",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "fleet-system", Group: "", Resource: "pods", Verb: "get",
+				},
+			},
+			want: denied(FleetReservedNSAccessNotAllowedVerdict),
+		},
+		{
+			name: "read access to secrets in a reserved namespace",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "fleet-system", Group: "", Resource: "secrets", Verb: "list",
+				},
+			},
+			want: denied(FleetReservedNSAccessNotAllowedVerdict),
+		},
+		{
+			name: "read access to service accounts in a reserved namespace",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "kube-public", Group: "", Resource: "serviceaccounts", Verb: "watch",
+				},
+			},
+			want: denied(FleetReservedNSAccessNotAllowedVerdict),
+		},
+		{
+			name: "read access to roles in a reserved namespace",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "fleet-member-1", Group: "rbac.authorization.k8s.io", Resource: "roles", Verb: "get",
+				},
+			},
+			want: denied(FleetReservedNSAccessNotAllowedVerdict),
+		},
+		{
+			name: "read access to role bindings in a reserved namespace",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "fleet-member-1", Group: "rbac.authorization.k8s.io", Resource: "rolebindings", Verb: "get",
+				},
+			},
+			want: denied(FleetReservedNSAccessNotAllowedVerdict),
+		},
+		{
+			name: "read access to secrets in a non-reserved namespace",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "work", Group: "", Resource: "secrets", Verb: "get",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "write access to a resource in a non-reserved namespace",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "work", Group: "apps", Resource: "deployments", Verb: "update",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "read access to pod logs in a reserved namespace",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "fleet-system", Group: "", Resource: "pods", Subresource: "log", Verb: "get",
+				},
+			},
+			want: denied(FleetReservedNSAccessNotAllowedVerdict),
+		},
+		{
+			name: "read access to pod status in a reserved namespace",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "fleet-system", Group: "", Resource: "pods", Subresource: "status", Verb: "get",
+				},
+			},
+			want: denied(FleetReservedNSAccessNotAllowedVerdict),
+		},
+		// Reads across all namespaces, which carry an empty namespace and would
+		// otherwise skip the reserved namespace checks.
+		{
+			name: "read access to secrets across all namespaces",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "", Group: "", Resource: "secrets", Verb: "list",
+				},
+			},
+			want: denied(FleetReservedNSAccessNotAllowedVerdict),
+		},
+		{
+			name: "read access to pods across all namespaces",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "", Group: "", Resource: "pods", Verb: "list",
+				},
+			},
+			want: denied(FleetReservedNSAccessNotAllowedVerdict),
+		},
+		{
+			name: "read access to role bindings across all namespaces",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "", Group: "rbac.authorization.k8s.io", Resource: "rolebindings", Verb: "watch",
+				},
+			},
+			want: denied(FleetReservedNSAccessNotAllowedVerdict),
+		},
+		{
+			name: "read access to an unprotected resource across all namespaces",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "", Group: "", Resource: "configmaps", Verb: "list",
+				},
+			},
+			want: nil,
+		},
+		// Cluster scoped RBAC, which is left to Fleet level validating admission policies.
+		{
+			name: "write access to cluster role bindings",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "rbac.authorization.k8s.io", Resource: "clusterrolebindings", Verb: "create",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "write access to cluster roles",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "rbac.authorization.k8s.io", Resource: "clusterroles", Verb: "create",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "write access to a namespaced role",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "work", Group: "rbac.authorization.k8s.io", Resource: "roles", Verb: "create",
+				},
+			},
+			want: nil,
+		},
+		// Admission control configuration.
+		{
+			name: "write access to a Fleet built-in validating admission policy",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "admissionregistration.k8s.io", Resource: "validatingadmissionpolicies", Name: "fleet-builtin-policy-1", Verb: "create",
+				},
+			},
+			want: denied(FleetBuiltInValidatingAdmissionControlAccessDeniedVerdict),
+		},
+		{
+			name: "delete access to a Fleet built-in validating admission policy binding",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "admissionregistration.k8s.io", Resource: "validatingadmissionpolicybindings", Name: "fleet-builtin-binding-1", Verb: "delete",
+				},
+			},
+			want: denied(FleetBuiltInValidatingAdmissionControlAccessDeniedVerdict),
+		},
+		{
+			name: "write access to a Fleet built-in validating webhook configuration",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "admissionregistration.k8s.io", Resource: "validatingwebhookconfigurations", Name: "fleet-builtin-webhook-1", Verb: "update",
+				},
+			},
+			want: denied(FleetBuiltInValidatingAdmissionControlAccessDeniedVerdict),
+		},
+		{
+			name: "read access to a Fleet built-in validating webhook configuration",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "admissionregistration.k8s.io", Resource: "validatingwebhookconfigurations", Name: "fleet-builtin-webhook-1", Verb: "list",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "write access to a user owned validating admission policy",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "admissionregistration.k8s.io", Resource: "validatingadmissionpolicies", Name: "policy-1", Verb: "create",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "delete collection access to validating webhook configurations",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "admissionregistration.k8s.io", Resource: "validatingwebhookconfigurations", Verb: "deletecollection",
+				},
+			},
+			want: denied(FleetBuiltInValidatingAdmissionControlAccessDeniedVerdict),
+		},
+		{
+			name: "delete collection access to validating admission policies",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "admissionregistration.k8s.io", Resource: "validatingadmissionpolicies", Verb: "deletecollection",
+				},
+			},
+			want: denied(FleetBuiltInValidatingAdmissionControlAccessDeniedVerdict),
+		},
+		{
+			name: "delete collection access to validating admission policy bindings",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "admissionregistration.k8s.io", Resource: "validatingadmissionpolicybindings", Verb: "deletecollection",
+				},
+			},
+			want: denied(FleetBuiltInValidatingAdmissionControlAccessDeniedVerdict),
+		},
+		{
+			name: "list access to a validating webhook configuration collection",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "admissionregistration.k8s.io", Resource: "validatingwebhookconfigurations", Verb: "list",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "create access to an unnamed validating webhook configuration",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "admissionregistration.k8s.io", Resource: "validatingwebhookconfigurations", Verb: "create",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "write access to a Fleet built-in mutating webhook configuration",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "admissionregistration.k8s.io", Resource: "mutatingwebhookconfigurations", Name: "fleet-builtin-webhook-1", Verb: "create",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "write access to a user owned mutating admission policy",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "admissionregistration.k8s.io", Resource: "mutatingadmissionpolicies", Name: "policy-1", Verb: "create",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "read access to a node proxy subresource",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "", Resource: "nodes", Subresource: "proxy", Name: "node-1", Verb: "get",
+				},
+			},
+			want: denied(FleetNodeProxyAccessDeniedVerdict),
+		},
+		{
+			name: "write access to a node proxy subresource",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "", Resource: "nodes", Subresource: "proxy", Name: "node-1", Verb: "create",
+				},
+			},
+			want: denied(FleetNodeProxyAccessDeniedVerdict),
+		},
+		{
+			name: "read access to a node status subresource",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Group: "", Resource: "nodes", Subresource: "status", Name: "node-1", Verb: "get",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "read access to a service proxy subresource",
+			request: &authzv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "work", Group: "", Resource: "services", Subresource: "proxy", Name: "svc-1", Verb: "get",
+				},
+			},
+			want: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := accessInfo.CheckFleetProtectedResourcesAccess(ctx, tt.request)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

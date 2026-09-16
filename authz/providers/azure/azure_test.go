@@ -55,6 +55,8 @@ func clientSetup(serverUrl, mode string) (*Authorizer, error) {
 		SkipAuthzCheck:                 []string{"alpha, tango, charlie"},
 		SkipAuthzForNonAADUsers:        true,
 		AllowNonResDiscoveryPathAccess: true,
+		// Used by the AKS/Fleet/AIManager OBO token provider.
+		AKSAuthzTokenURL: serverUrl + "/login/token",
 	}
 
 	authOpts := auth.Options{
@@ -97,9 +99,13 @@ func serverSetup(loginResp, checkaccessResp string, loginStatus, checkaccessStat
 }
 
 func getServerAndClient(t *testing.T, loginResp, checkaccessResp string, checkaccessStatus int, sleepFor time.Duration) (*httptest.Server, *Authorizer, authz.Store) {
+	return getServerAndClientForMode(t, authzOpts.ARCAuthzMode, loginResp, checkaccessResp, checkaccessStatus, sleepFor)
+}
+
+func getServerAndClientForMode(t *testing.T, mode, loginResp, checkaccessResp string, checkaccessStatus int, sleepFor time.Duration) (*httptest.Server, *Authorizer, authz.Store) {
 	srv := serverSetup(loginResp, checkaccessResp, http.StatusOK, checkaccessStatus, sleepFor)
 
-	client, err := clientSetup(srv.URL, "arc")
+	client, err := clientSetup(srv.URL, mode)
 	if err != nil {
 		t.Fatalf("Error when creatidng azure client. reason : %v", err)
 	}
@@ -201,4 +207,160 @@ func TestCheck(t *testing.T) {
 			assert.Equal(t, v.Code(), http.StatusInternalServerError)
 		}
 	})
+}
+
+func TestCheck_FleetHubClusterReservedResources(t *testing.T) {
+	allowedBody := `[{"accessDecision":"Allowed","actionId":"Microsoft.ContainerService/fleets/pods/write","isDataAction":true}]`
+
+	tests := []struct {
+		name               string
+		mode               string
+		resourceAttributes *authzv1.ResourceAttributes
+		expectedAllowed    bool
+		expectedDenied     bool
+		expectedReason     string
+	}{
+		{
+			name: "write access to a resource in a fleet reserved namespace",
+			mode: authzOpts.FleetAuthzMode,
+			resourceAttributes: &authzv1.ResourceAttributes{
+				Namespace: "fleet-system", Group: "apps", Resource: "deployments", Version: "v1", Verb: "create",
+			},
+			expectedAllowed: false,
+			expectedDenied:  true,
+			expectedReason:  rbac.FleetReservedNSAccessNotAllowedVerdict,
+		},
+		{
+			name: "read access to secrets in a fleet reserved namespace",
+			mode: authzOpts.FleetAuthzMode,
+			resourceAttributes: &authzv1.ResourceAttributes{
+				Namespace: "kube-system", Group: "", Resource: "secrets", Version: "v1", Verb: "get",
+			},
+			expectedAllowed: false,
+			expectedDenied:  true,
+			expectedReason:  rbac.FleetReservedNSAccessNotAllowedVerdict,
+		},
+		{
+			name: "read access to secrets across all namespaces",
+			mode: authzOpts.FleetAuthzMode,
+			resourceAttributes: &authzv1.ResourceAttributes{
+				Namespace: "", Group: "", Resource: "secrets", Version: "v1", Verb: "list",
+			},
+			expectedAllowed: false,
+			expectedDenied:  true,
+			expectedReason:  rbac.FleetReservedNSAccessNotAllowedVerdict,
+		},
+		{
+			name: "read access to a node proxy subresource",
+			mode: authzOpts.FleetAuthzMode,
+			resourceAttributes: &authzv1.ResourceAttributes{
+				Group: "", Resource: "nodes", Subresource: "proxy", Version: "v1", Name: "node-1", Verb: "get",
+			},
+			expectedAllowed: false,
+			expectedDenied:  true,
+			expectedReason:  rbac.FleetNodeProxyAccessDeniedVerdict,
+		},
+		{
+			name: "write access to a Fleet built-in validating admission policy",
+			mode: authzOpts.FleetAuthzMode,
+			resourceAttributes: &authzv1.ResourceAttributes{
+				Group: "admissionregistration.k8s.io", Resource: "validatingadmissionpolicies", Version: "v1", Name: "fleet-builtin-policy-1", Verb: "update",
+			},
+			expectedAllowed: false,
+			expectedDenied:  true,
+			expectedReason:  rbac.FleetBuiltInValidatingAdmissionControlAccessDeniedVerdict,
+		},
+		{
+			name: "write access to a resource in a non-reserved namespace",
+			mode: authzOpts.FleetAuthzMode,
+			resourceAttributes: &authzv1.ResourceAttributes{
+				Namespace: "dev", Group: "apps", Resource: "deployments", Version: "v1", Verb: "create",
+			},
+			expectedAllowed: true,
+			expectedDenied:  false,
+		},
+		{
+			name: "read access to a node status subresource",
+			mode: authzOpts.FleetAuthzMode,
+			resourceAttributes: &authzv1.ResourceAttributes{
+				Group: "", Resource: "nodes", Subresource: "status", Version: "v1", Name: "node-1", Verb: "get",
+			},
+			expectedAllowed: true,
+			expectedDenied:  false,
+		},
+		{
+			name: "reserved resources check is skipped for non-fleet cluster types",
+			mode: authzOpts.ARCAuthzMode,
+			resourceAttributes: &authzv1.ResourceAttributes{
+				Namespace: "fleet-system", Group: "apps", Resource: "deployments", Version: "v1", Verb: "create",
+			},
+			expectedAllowed: true,
+			expectedDenied:  false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv, client, store := getServerAndClientForMode(t, tc.mode, loginResp, allowedBody, http.StatusOK, 0)
+			defer srv.Close()
+			defer func() {
+				_ = store.Close()
+			}()
+
+			request := &authzv1.SubjectAccessReviewSpec{
+				User:               "beta@bing.com",
+				ResourceAttributes: tc.resourceAttributes,
+				Extra:              map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
+			}
+
+			resp, err := client.Check(context.Background(), request, store)
+			if err != nil || resp == nil {
+				t.Fatalf("Check() = %v, %v; want non-nil status and no error", resp, err)
+			}
+			assert.Equal(t, tc.expectedAllowed, resp.Allowed, "Allowed mismatch")
+			assert.Equal(t, tc.expectedDenied, resp.Denied, "Denied mismatch")
+			if tc.expectedReason != "" {
+				assert.Equal(t, tc.expectedReason, resp.Reason, "Reason mismatch")
+			}
+		})
+	}
+}
+
+// Denied fleet guardrail results must not be written to the cache, so that a later
+// request that the guardrail does not cover is still evaluated against Azure.
+func TestCheck_FleetHubClusterReservedResourcesNotCached(t *testing.T) {
+	allowedBody := `[{"accessDecision":"Allowed","actionId":"Microsoft.ContainerService/fleets/pods/write","isDataAction":true}]`
+
+	srv, client, store := getServerAndClientForMode(t, authzOpts.FleetAuthzMode, loginResp, allowedBody, http.StatusOK, 0)
+	defer srv.Close()
+	defer func() {
+		_ = store.Close()
+	}()
+
+	newRequest := func(namespace string) *authzv1.SubjectAccessReviewSpec {
+		return &authzv1.SubjectAccessReviewSpec{
+			User: "beta@bing.com",
+			ResourceAttributes: &authzv1.ResourceAttributes{
+				Namespace: namespace, Group: "apps", Resource: "deployments", Version: "v1", Verb: "create",
+			},
+			Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
+		}
+	}
+
+	ctx := context.Background()
+
+	denied, err := client.Check(ctx, newRequest("fleet-system"), store)
+	if err != nil || denied == nil {
+		t.Fatalf("Check() = %v, %v; want non-nil status and no error", denied, err)
+	}
+	assert.False(t, denied.Allowed)
+	assert.True(t, denied.Denied)
+	assert.Equal(t, rbac.FleetReservedNSAccessNotAllowedVerdict, denied.Reason)
+
+	allowed, err := client.Check(ctx, newRequest("dev"), store)
+	if err != nil || allowed == nil {
+		t.Fatalf("Check() = %v, %v; want non-nil status and no error", allowed, err)
+	}
+	assert.True(t, allowed.Allowed)
+	assert.False(t, allowed.Denied)
 }

@@ -674,3 +674,7 @@ func (a *AccessInfo) sendCheckAccessRequest(ctx context.Context, checkAccessUser
 	ch <- status
 	return nil
 }
+
+func (a *AccessInfo) IsFleetHubCluster() bool {
+	return a.clusterType == fleets
+}

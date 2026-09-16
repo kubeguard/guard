@@ -169,6 +169,15 @@ func (s Authorizer) Check(ctx context.Context, request *authzv1.SubjectAccessRev
 		}
 	}
 
+	// Perform Fleet hub cluster specific authorization check. No local cache is used as the results do not depend on Azure queries.
+	if s.rbacClient.IsFleetHubCluster() {
+		log.V(5).Info("Performing Fleet hub cluster specific authorization check")
+		if status := s.rbacClient.CheckFleetProtectedResourcesAccess(ctx, request); status != nil {
+			log.Info("Hub cluster access denied", "resourceAttributes", request.ResourceAttributes, "reason", status.Reason)
+			return status, nil
+		}
+	}
+
 	exist, cachedResult := s.rbacClient.GetResultFromCache(ctx, request, store)
 
 	if exist {
