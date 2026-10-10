@@ -6,7 +6,8 @@
 [![Twitter](https://img.shields.io/twitter/follow/kubeguard.svg?style=social&logo=twitter&label=Follow)](https://twitter.com/intent/follow?screen_name=KubeGuard)
 
 # Guard
-Guard by AppsCode is a [Kubernetes Webhook Authentication](https://kubernetes.io/docs/admin/authentication/#webhook-token-authentication) server. Using guard, you can log into your Kubernetes cluster using various auth providers. Guard also configures groups of authenticated user appropriately. This allows cluster administrator to setup RBAC rules based on membership in groups. Guard supports following auth providers:
+
+Guard by AppsCode is a [Kubernetes Webhook Authentication](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#webhook-token-authentication) server. Using guard, you can log into your Kubernetes cluster using various auth providers. Guard also configures groups of authenticated user appropriately. This allows cluster administrator to setup RBAC rules based on membership in groups. Guard supports following auth providers:
 
 - [Static Token File](https://appscode.com/products/guard/latest/guides/authenticator/static_token_file/)
 - [Github](https://appscode.com/products/guard/latest/guides/authenticator/github/)
@@ -17,16 +18,20 @@ Guard by AppsCode is a [Kubernetes Webhook Authentication](https://kubernetes.io
 - [Azure Active Directory via LDAP](https://appscode.com/products/guard/latest/guides/authenticator/ldap_azure/)
 
 ## Supported Versions
+
 Kubernetes 1.9+
 
 ## Installation
-To install Guard, please follow the guide [here](https://appscode.com/products/guard/latest/setup/install/).
+
+To install Guard, please follow the [Installation Guide](/docs/setup/install.md).
 
 ## Using Guard
-Want to learn how to use Guard? Please start [here](https://appscode.com/products/guard/latest/).
+
+Want to learn how to use Guard? Please see the [Guard Documentation](docs/README.md).
 
 ## Contribution guidelines
-Want to help improve Guard? Please start [here](https://appscode.com/products/guard/latest/welcome/contributing/).
+
+Want to help improve Guard? Please see the [Contributing Guide](/docs/CONTRIBUTING.md).
 
 ## Acknowledgement
 
@@ -34,6 +39,7 @@ Want to help improve Guard? Please start [here](https://appscode.com/products/gu
 - [Nike-Inc/harbormaster](https://github.com/Nike-Inc/harbormaster)
 
 ## Support
+
 We use Slack for public discussions. To chit chat with us or the rest of the community, join us in the [AppsCode Slack team](https://appscode.slack.com/messages/C8M8HANQ0/details/) channel `#guard`. To sign up, use our [Slack inviter](https://slack.appscode.com/).
 
 If you have found a bug with Guard or want to request for new features, please [file an issue](https://github.com/kubeguard/guard/issues/new).

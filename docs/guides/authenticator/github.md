@@ -14,7 +14,7 @@ section_menu_id: guides
 
 # Github Authenticator
 
-Guard installation guide can be found [here](/docs/setup/install.md). To use Github, you need a client cert with `CommonName` set to Github organization name and `Organization` set to `Github`. To ease this process, use the Guard cli to issue a client cert/key pair.
+The [Guard installation guide](/docs/setup/install.md) contains setup instructions. To use Github, you need a client cert with `CommonName` set to Github organization name and `Organization` set to `Github`. To ease this process, use the Guard cli to issue a client cert/key pair.
 
 ```console
 $ guard init client {common-name} -o Github
@@ -41,6 +41,7 @@ Additional flags for github:
 ```
 
 ### Issue Token
+
 To use Github authentication, you can use your personal access token with permission to `read:org`. You can use the following command to issue a token:
 
 ```console
@@ -72,6 +73,7 @@ Guard uses the token found in `TokenReview` request object to read user's profil
 ```
 
 ### Configure Kubectl
+
 ```console
 kubectl config set-credentials <user_name> --token=<token>
 ```
@@ -94,5 +96,4 @@ kube-system   kube-addon-manager-minikube        1/1       Running   0          
 kube-system   kube-apiserver-minikube            1/1       Running   1          7h
 kube-system   kube-controller-manager-minikube   1/1       Running   0          7h
 kube-system   kube-dns-6f4fd4bdf-f7csh           3/3       Running   0          7h
-
 ```

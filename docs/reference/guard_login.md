@@ -15,15 +15,15 @@ Kubectl credential plugin
 
 ### Synopsis
 
-Kubectl credential plugin. Visit here for more info: https://kubernetes.io/docs/reference/access-authn-authz/authentication/#client-go-credential-plugins
+Kubectl credential plugin. Visit here for more info: <https://kubernetes.io/docs/reference/access-authn-authz/authentication/#client-go-credential-plugins>
 
-```
+```console
 guard login [flags]
 ```
 
 ### Options
 
-```
+```text
   -k, --cluster string    Name of cluster
   -h, --help              help for login
   -p, --provider string   Name of cloud provider
@@ -31,5 +31,4 @@ guard login [flags]
 
 ### SEE ALSO
 
-* [guard](/docs/reference/guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
-
+- [guard](/docs/reference/guard.md) - Guard by AppsCode - Kubernetes Authentication WebHook Server

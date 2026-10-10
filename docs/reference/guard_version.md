@@ -13,13 +13,13 @@ section_menu_id: reference
 
 Prints binary version number.
 
-```
+```console
 guard version [flags]
 ```
 
 ### Options
 
-```
+```text
       --check string   Check version constraint
   -h, --help           help for version
       --short          Print just the version number.
@@ -27,5 +27,4 @@ guard version [flags]
 
 ### SEE ALSO
 
-* [guard](/docs/reference/guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
-
+- [guard](/docs/reference/guard.md) - Guard by AppsCode - Kubernetes Authentication WebHook Server

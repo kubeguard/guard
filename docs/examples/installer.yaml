@@ -75,4 +75,3 @@ spec:
   type: ClusterIP
 status:
   loadBalancer: {}
-

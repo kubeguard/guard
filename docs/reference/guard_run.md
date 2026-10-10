@@ -13,13 +13,13 @@ section_menu_id: reference
 
 Run server
 
-```
+```console
 guard run [flags]
 ```
 
 ### Options
 
-```
+```text
       --auth-providers strings                       name of providers for which guard will provide authentication service (required), supported providers : Azure/Github/Gitlab/Google/Ldap/Token-Auth
       --authz-providers strings                      name of providers for which guard will provide authorization service, supported providers : Azure
       --azure.aks-authz-token-url string             url to call for AKS Authz flow
@@ -83,5 +83,4 @@ guard run [flags]
 
 ### SEE ALSO
 
-* [guard](/docs/reference/guard.md)	 - Guard by AppsCode - Kubernetes Authentication WebHook Server
-
+- [guard](/docs/reference/guard.md) - Guard by AppsCode - Kubernetes Authentication WebHook Server

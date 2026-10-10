@@ -20,15 +20,14 @@ Guard by AppsCode - Kubernetes Authentication WebHook Server
 
 ### Options
 
-```
+```text
   -h, --help   help for guard
 ```
 
 ### SEE ALSO
 
-* [guard get](/docs/reference/guard_get.md)	 - Get PKI
-* [guard init](/docs/reference/guard_init.md)	 - Init PKI
-* [guard login](/docs/reference/guard_login.md)	 - Kubectl credential plugin
-* [guard run](/docs/reference/guard_run.md)	 - Run server
-* [guard version](/docs/reference/guard_version.md)	 - Prints binary version number.
-
+- [guard get](/docs/reference/guard_get.md) - Get PKI
+- [guard init](/docs/reference/guard_init.md) - Init PKI
+- [guard login](/docs/reference/guard_login.md) - Kubectl credential plugin
+- [guard run](/docs/reference/guard_run.md) - Run server
+- [guard version](/docs/reference/guard_version.md) - Prints binary version number.

@@ -14,7 +14,7 @@ section_menu_id: guides
 
 # Amazon EKS
 
-Guard installation guide can be found [here](/docs/setup/install.md). Install the Guard on your system by following `Install Guard as CLI`.
+The [Guard installation guide](/docs/setup/install.md) contains setup instructions. Install the Guard on your system by following `Install Guard as CLI`.
 
 ### Configure Kubectl
 
@@ -57,18 +57,22 @@ users:
         -  "eks"
 ```
 
-Here,
-1. Replace the `<endpoint-url>` with endpoint URL, which can be retrieved by following command
-```console
-$ aws eks describe-cluster --name <cluster-name>  --query cluster.endpoint
-```
+Here:
 
-2. Replace the `<base64-encoded-ca-cert>` with the certificate authority data, which can be retrieved by following command
-```console
-$ aws eks describe-cluster --name <cluster-name>  --query cluster.certificateAuthority.data
-```
+1. Replace the `<endpoint-url>` with endpoint URL, which can be retrieved by following command:
 
-To test the configuration run
-```console
-$ kubectl get pods --all-namespaces
-```
+  ```console
+  $ aws eks describe-cluster --name <cluster-name>  --query cluster.endpoint
+  ```
+
+1. Replace the `<base64-encoded-ca-cert>` with the certificate authority data, which can be retrieved by following command:
+
+  ```console
+  $ aws eks describe-cluster --name <cluster-name>  --query cluster.certificateAuthority.data
+  ```
+
+To test the configuration run:
+
+  ```console
+  $ kubectl get pods --all-namespaces
+  ```

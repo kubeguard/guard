@@ -13,13 +13,13 @@ section_menu_id: reference
 
 Prints authentication token webhook config file
 
-```
+```console
 guard get webhook-config [flags]
 ```
 
 ### Options
 
-```
+```text
       --addr string           Address (host:port) of guard server. (default "10.96.10.96:443")
   -h, --help                  help for webhook-config
       --mode string           Mode to generate config, Supported mode: authn, authz (default "authn")
@@ -29,5 +29,4 @@ guard get webhook-config [flags]
 
 ### SEE ALSO
 
-* [guard get](/docs/reference/guard_get.md)	 - Get PKI
-
+- [guard get](/docs/reference/guard_get.md) - Get PKI
