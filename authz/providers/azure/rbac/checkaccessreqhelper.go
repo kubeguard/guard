@@ -748,7 +748,8 @@ func ConvertCheckAccessResponse(ctx context.Context, username string, body []byt
 		verdict = fmt.Sprintf(AccessAllowedVerboseVerdict, response[0].AzureRoleAssignment.Id, response[0].AzureRoleAssignment.RoleDefinitionId, username)
 
 		// Log role definition ID to help identify if exec/other actions are authorized via built-in or custom roles
-		log.V(5).Info("Access allowed via role assignment",
+		log.V(5).Info(
+			"Access allowed via role assignment",
 			"roleAssignmentId", response[0].AzureRoleAssignment.Id,
 			"roleDefinitionId", response[0].AzureRoleAssignment.RoleDefinitionId,
 			"user", username,

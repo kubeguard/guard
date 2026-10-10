@@ -277,7 +277,8 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 	d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
 
 	// use auth secret in container[0] args
-	container.Env = append(container.Env,
+	container.Env = append(
+		container.Env,
 		core.EnvVar{
 			Name: "LDAP_BIND_DN",
 			ValueFrom: &core.EnvVarSource{

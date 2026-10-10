@@ -73,21 +73,24 @@ var (
 			Name:    "guard_apiresources_request_duration_seconds",
 			Help:    "A histogram of latencies for apiserver requests.",
 			Buckets: []float64{.25, .5, 1, 2.5, 5, 10, 15, 20},
-		})
+		},
+	)
 
 	discoverResourcesAzureCallDuration = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
 			Name:    "guard_azure_get_operations_request_duration_seconds",
 			Help:    "A histogram of latencies for azure get operations requests.",
 			Buckets: []float64{.25, .5, 1, 2.5, 5, 10, 15, 20},
-		})
+		},
+	)
 
 	DiscoverResourcesTotalDuration = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
 			Name:    "guard_discover_resources_request_duration_seconds",
 			Help:    "A histogram of latencies for azure get operations requests.",
 			Buckets: []float64{.25, .5, 1, 2.5, 5, 10, 15, 20},
-		})
+		},
+	)
 
 	counterDiscoverResources = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
