@@ -230,7 +230,8 @@ func (u *UserInfo) getMemberGroupsUsingARCOboService(ctx context.Context, access
 		return nil, errutils.WithCode(
 			fmt.Errorf("Overage claim (users with more than 200 group membership) for SPN is currently not supported. "+
 				"For troubleshooting, please refer to aka.ms/overageclaimtroubleshoot"),
-			http.StatusOK)
+			http.StatusOK,
+		)
 	}
 
 	buf := new(bytes.Buffer)

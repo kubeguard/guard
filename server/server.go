@@ -171,9 +171,12 @@ func (s Server) ListenAndServe() {
 	// ref:
 	// - https://godoc.org/github.com/prometheus/client_golang/prometheus/promhttp#example-InstrumentHandlerDuration
 	// - https://github.com/brancz/prometheus-example-app/blob/master/main.go#L44:28
-	handler := promhttp.InstrumentHandlerInFlight(inFlightGauge,
-		promhttp.InstrumentHandlerDuration(duration.MustCurryWith(prometheus.Labels{"handler": "tokenreviews"}),
-			promhttp.InstrumentHandlerCounter(counter,
+	handler := promhttp.InstrumentHandlerInFlight(
+		inFlightGauge,
+		promhttp.InstrumentHandlerDuration(
+			duration.MustCurryWith(prometheus.Labels{"handler": "tokenreviews"}),
+			promhttp.InstrumentHandlerCounter(
+				counter,
 				promhttp.InstrumentHandlerResponseSize(responseSize.MustCurryWith(prometheus.Labels{"handler": "tokenreviews"}), &s),
 			),
 		),
@@ -217,9 +220,12 @@ func (s Server) ListenAndServe() {
 
 	klog.Infoln("setting up authz providers")
 	if len(s.AuthzRecommendedOptions.AuthzProvider.Providers) > 0 {
-		authzPromHandler := promhttp.InstrumentHandlerInFlight(inFlightGaugeAuthz,
-			promhttp.InstrumentHandlerDuration(duration.MustCurryWith(prometheus.Labels{"handler": "subjectaccessreviews"}),
-				promhttp.InstrumentHandlerCounter(counterAuthz,
+		authzPromHandler := promhttp.InstrumentHandlerInFlight(
+			inFlightGaugeAuthz,
+			promhttp.InstrumentHandlerDuration(
+				duration.MustCurryWith(prometheus.Labels{"handler": "subjectaccessreviews"}),
+				promhttp.InstrumentHandlerCounter(
+					counterAuthz,
 					promhttp.InstrumentHandlerResponseSize(responseSize.MustCurryWith(prometheus.Labels{"handler": "subjectaccessreview"}), &authzhandler),
 				),
 			),

@@ -275,8 +275,10 @@ func (s Authenticator) Check(ctx context.Context, token string) (*authv1.UserInf
 			return nil, errutils.WithCode(
 				fmt.Errorf(
 					"service principal with group membership exceeding 200 is not supported. "+
-						"See https://learn.microsoft.com/en-us/azure/aks/kubelogin-authentication#kubelogin-authentication-in-aks-limitations"),
-				http.StatusOK)
+						"See https://learn.microsoft.com/en-us/azure/aks/kubelogin-authentication#kubelogin-authentication-in-aks-limitations",
+				),
+				http.StatusOK,
+			)
 		}
 	}
 	if !s.Options.SkipGroupMembershipResolution {

@@ -187,7 +187,8 @@ func convertV2ResponseToStatus(ctx context.Context, decisions []checkaccess.Auth
 		roleDefinitionId := firstDecision.RoleAssignment.RoleDefinitionId
 
 		verdict := fmt.Sprintf(AccessAllowedVerboseVerdict, roleAssignmentId, roleDefinitionId, "user")
-		log.V(5).Info("Access allowed via v2 API",
+		log.V(5).Info(
+			"Access allowed via v2 API",
 			"roleAssignmentId", roleAssignmentId,
 			"roleDefinitionId", roleDefinitionId,
 		)
