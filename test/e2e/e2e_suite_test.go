@@ -26,8 +26,6 @@ import (
 	"github.com/onsi/ginkgo/v2/types"
 	. "github.com/onsi/gomega"
 	"gomodules.xyz/logs"
-	"k8s.io/client-go/kubernetes"
-	"kmodules.xyz/client-go/tools/clientcmd"
 )
 
 const (
@@ -49,14 +47,8 @@ func TestE2e(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	clientConfig, err := clientcmd.BuildConfigFromContext(options.KubeConfig, options.KubeContext)
-	Expect(err).NotTo(HaveOccurred())
-
-	client, err := kubernetes.NewForConfig(clientConfig)
-	Expect(err).NotTo(HaveOccurred())
-
-	root = framework.New(client)
-	err = root.CreateNamespace()
+	root = framework.New(options.KubeConfig, options.KubeContext)
+	err := root.CreateNamespace()
 	Expect(err).NotTo(HaveOccurred())
 	By("Using test namespace " + root.Namespace())
 

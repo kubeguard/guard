@@ -18,6 +18,7 @@ package azure
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -56,6 +57,7 @@ type Options struct {
 	ResourceId                               string
 	AzureRegion                              string
 	HttpClientRetryCount                     int
+	EntraSDKURL                              string
 }
 
 func NewOptions() Options {
@@ -83,6 +85,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.ResourceId, "azure.auth-resource-id", "", "azure cluster resource id (//subscription/<subName>/resourcegroups/<RGname>/providers/Microsoft.Kubernetes/connectedClusters/<clustername> for connectedk8s) used for making getMemberGroups to ARC OBO service")
 	fs.StringVar(&o.AzureRegion, "azure.region", "", "region where cluster is deployed")
 	fs.IntVar(&o.HttpClientRetryCount, "azure.http-client-retry-count", 2, "number of retries for retryablehttp client")
+	fs.StringVar(&o.EntraSDKURL, "azure.entra-sdk-url", "", "base URL of the Entra SDK sidecar used for validating access tokens")
 }
 
 func (o *Options) Validate() []error {
@@ -142,7 +145,41 @@ func (o *Options) Validate() []error {
 	if o.EnablePOP && o.POPTokenHostname == "" {
 		errs = append(errs, errors.New("azure.pop-hostname must be non-empty when pop token is enabled"))
 	}
+	if o.EntraSDKURL != "" {
+		// Validate the URL
+		parsed, err := url.ParseRequestURI(o.EntraSDKURL)
+		if err != nil {
+			errs = append(errs, errors.Wrap(err, "azure.entra-sdk-url is not a valid URL"))
+		} else if parsed.Path != "" && parsed.Path != "/" {
+			errs = append(errs, errors.New("azure.entra-sdk-url must be a base URL"))
+		}
+
+		if _, err := o.EntraSDKEnvVars(); err != nil {
+			errs = append(errs, err)
+		}
+	}
 	return errs
+}
+
+func (o Options) EntraSDKEnvVars() ([]core.EnvVar, error) {
+	if o.ClientID == "" {
+		return nil, errors.New("azure.client-id must be non-empty when Entra SDK is enabled")
+	}
+	if o.TenantID == "" {
+		return nil, errors.New("azure.tenant-id must be non-empty when Entra SDK is enabled")
+	}
+
+	env, err := resolveAzureEnvironment(o.Environment)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to resolve Entra SDK Azure AD instance")
+	}
+
+	return []core.EnvVar{
+		{Name: "AzureAd__Instance", Value: env.ActiveDirectoryEndpoint},
+		{Name: "AzureAd__TenantId", Value: o.TenantID},
+		{Name: "AzureAd__ClientId", Value: o.ClientID},
+		{Name: "AzureAd__Audience", Value: o.ClientID},
+	}, nil
 }
 
 func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err error) {
@@ -203,14 +240,10 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 		args = append(args, fmt.Sprintf("--azure.tenant-id=%s", o.TenantID))
 	}
 
-	switch o.AuthMode {
-	case AKSAuthMode:
-		fallthrough
-	case OBOAuthMode:
-		fallthrough
-	case ClientCredentialAuthMode:
-		args = append(args, fmt.Sprintf("--azure.auth-mode=%s", o.AuthMode))
-	default:
+	authMode := strings.ToLower(strings.TrimSpace(o.AuthMode))
+	if authMode != "" {
+		args = append(args, fmt.Sprintf("--azure.auth-mode=%s", authMode))
+	} else {
 		args = append(args, fmt.Sprintf("--azure.auth-mode=%s", ClientCredentialAuthMode))
 	}
 
@@ -222,9 +255,25 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 
 	args = append(args, fmt.Sprintf("--azure.graph-call-on-overage-claim=%t", o.ResolveGroupMembershipOnlyOnOverageClaim))
 
+	args = append(args, fmt.Sprintf("--azure.skip-group-membership-resolution=%t", o.SkipGroupMembershipResolution))
+
+	if o.EnablePOP {
+		args = append(args, fmt.Sprintf("--azure.enable-pop=%t", o.EnablePOP))
+	}
+	if o.POPTokenHostname != "" {
+		args = append(args, fmt.Sprintf("--azure.pop-hostname=%s", o.POPTokenHostname))
+	}
+	if o.PoPTokenValidityDuration > 0 {
+		args = append(args, fmt.Sprintf("--azure.pop-token-validity-duration=%s", o.PoPTokenValidityDuration))
+	}
+
 	args = append(args, fmt.Sprintf("--azure.verify-clientID=%t", o.VerifyClientID))
 
 	args = append(args, fmt.Sprintf("--azure.http-client-retry-count=%d", o.HttpClientRetryCount))
+
+	if o.EntraSDKURL != "" {
+		args = append(args, fmt.Sprintf("--azure.entra-sdk-url=%s", o.EntraSDKURL))
+	}
 
 	container.Args = args
 	d.Spec.Template.Spec.Containers[0] = container

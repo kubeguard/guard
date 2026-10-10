@@ -35,17 +35,20 @@ import (
 )
 
 type AuthOptions struct {
-	VerbosityLevel  string
-	PkiDir          string
-	Namespace       string
-	Addr            string
-	RunOnMaster     bool
-	PrivateRegistry string
-	imagePullSecret string
-	HttpsProxy      string
-	HttpProxy       string
-	NoProxy         string
-	ProxyCert       string
+	VerbosityLevel     string
+	PkiDir             string
+	Namespace          string
+	Addr               string
+	RunOnMaster        bool
+	GuardImage         string
+	PrivateRegistry    string
+	UseAzureEntraSDK   bool
+	AzureEntraSDKImage string
+	imagePullSecret    string
+	HttpsProxy         string
+	HttpProxy          string
+	NoProxy            string
+	ProxyCert          string
 
 	AuthProvider providers.AuthProviders
 	Token        token.Options
@@ -63,18 +66,19 @@ type AuthzOptions struct {
 
 func NewAuthOptions() AuthOptions {
 	return AuthOptions{
-		VerbosityLevel:  "3",
-		PkiDir:          auth.DefaultDataDir,
-		Namespace:       metav1.NamespaceSystem,
-		Addr:            "10.96.10.96:443",
-		PrivateRegistry: "ghcr.io/kubeguard",
-		RunOnMaster:     true,
-		Token:           token.NewOptions(),
-		Google:          google.NewOptions(),
-		Azure:           azure.NewOptions(),
-		LDAP:            ldap.NewOptions(),
-		Github:          github.NewOptions(),
-		Gitlab:          gitlab.NewOptions(),
+		VerbosityLevel:     "3",
+		PkiDir:             auth.DefaultDataDir,
+		Namespace:          metav1.NamespaceSystem,
+		Addr:               "10.96.10.96:443",
+		PrivateRegistry:    "ghcr.io/kubeguard",
+		AzureEntraSDKImage: DefaultAzureEntraSDKImage,
+		RunOnMaster:        true,
+		Token:              token.NewOptions(),
+		Google:             google.NewOptions(),
+		Azure:              azure.NewOptions(),
+		LDAP:               ldap.NewOptions(),
+		Github:             github.NewOptions(),
+		Gitlab:             gitlab.NewOptions(),
 	}
 }
 
@@ -90,7 +94,10 @@ func (o *AuthOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&o.Namespace, "namespace", "n", o.Namespace, "Name of Kubernetes namespace used to run guard server.")
 	fs.StringVar(&o.Addr, "addr", o.Addr, "Address (host:port) of guard server.")
 	fs.BoolVar(&o.RunOnMaster, "run-on-master", o.RunOnMaster, "If true, runs Guard server on master instances")
+	fs.StringVar(&o.GuardImage, "guard-image", o.GuardImage, "Container image for the Guard server. When set, this overrides --private-registry and the derived version tag")
 	fs.StringVar(&o.PrivateRegistry, "private-registry", o.PrivateRegistry, "Private Docker registry")
+	fs.BoolVar(&o.UseAzureEntraSDK, "azure.use-entra-sdk", o.UseAzureEntraSDK, "If true, configures Guard installer to run the Entra SDK sidecar for Azure auth")
+	fs.StringVar(&o.AzureEntraSDKImage, "azure.entra-sdk-image", o.AzureEntraSDKImage, "Container image for the Entra SDK sidecar used with Azure auth")
 	fs.StringVar(&o.imagePullSecret, "image-pull-secret", o.imagePullSecret, "Name of image pull secret")
 	fs.StringVar(&o.HttpsProxy, "proxy-https", o.HttpsProxy, "Https proxy URL to be used")
 	fs.StringVar(&o.HttpProxy, "proxy-http", o.HttpProxy, "Http proxy URL to be used")
@@ -121,7 +128,22 @@ func (o *AuthOptions) Validate() []error {
 		errs = append(errs, o.Google.Validate()...)
 	}
 	if o.AuthProvider.Has(azure.OrgType) {
-		errs = append(errs, o.Azure.Validate()...)
+		azureOpts := o.Azure
+		if o.UseAzureEntraSDK {
+			// The SDK URL will be generated
+			azureOpts.EntraSDKURL = ""
+		}
+		errs = append(errs, azureOpts.Validate()...)
+		if o.UseAzureEntraSDK {
+			if _, err := o.Azure.EntraSDKEnvVars(); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	} else if o.UseAzureEntraSDK {
+		errs = append(errs, errors.New("azure.use-entra-sdk requires azure auth provider"))
+	}
+	if o.UseAzureEntraSDK && o.AzureEntraSDKImage == "" {
+		errs = append(errs, errors.New("azure.entra-sdk-image must be non-empty when azure.use-entra-sdk is enabled"))
 	}
 	if o.AuthProvider.Has(ldap.OrgType) {
 		errs = append(errs, o.LDAP.Validate()...)
