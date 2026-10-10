@@ -35,11 +35,14 @@ import (
 type Options struct {
 	ServiceAccountJsonFile string
 	AdminEmail             string
+	ClientID               string
 	jwtConfig              *jwt.Config
 }
 
 func NewOptions() Options {
-	return Options{}
+	return Options{
+		ClientID: GoogleOauth2ClientID,
+	}
 }
 
 func (o *Options) Configure() error {
@@ -66,6 +69,7 @@ func (o *Options) Configure() error {
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.ServiceAccountJsonFile, "google.sa-json-file", o.ServiceAccountJsonFile, "Path to Google service account json file")
 	fs.StringVar(&o.AdminEmail, "google.admin-email", o.AdminEmail, "Email of G Suite administrator")
+	fs.StringVar(&o.ClientID, "google.client-id", o.ClientID, "OAuth2 client ID whose ID tokens are accepted (audience check). Defaults to Guard's own client ID used by `guard get token -o google`")
 }
 
 func (o *Options) Validate() []error {
@@ -124,6 +128,9 @@ func (o Options) Apply(d *apps.Deployment) (extraObjs []runtime.Object, err erro
 	}
 	if o.AdminEmail != "" {
 		args = append(args, fmt.Sprintf("--google.admin-email=%s", o.AdminEmail))
+	}
+	if o.ClientID != "" && o.ClientID != GoogleOauth2ClientID {
+		args = append(args, fmt.Sprintf("--google.client-id=%s", o.ClientID))
 	}
 
 	container.Args = args
