@@ -32,27 +32,42 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/exp/slices"
 	authzv1 "k8s.io/api/authorization/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 )
 
 const (
-	ActionBatchCount            = 200
-	AccessAllowedVerdict        = "Access allowed by Azure RBAC"
-	AccessAllowedVerboseVerdict = "Access allowed by Azure RBAC Role Assignment %s of Role %s to user %s"
-	Allowed                     = "allowed"
-	AccessNotAllowedVerdict     = "User does not have access to the resource in Azure. Update role assignment to allow access."
-	NamespaceResourceFormat     = "/providers/Microsoft.KubernetesConfiguration/namespaces"
-	namespaces                  = "namespaces"
-	managedNamespaces           = "managedNamespaces"
-	NoOpinionVerdict            = "Azure does not have opinion for this user."
-	NonAADUserNoOpVerdict       = "Azure does not have opinion for this non AAD user. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig"
-	NonAADUserNotAllowedVerdict = "Access denied by Azure RBAC for non AAD users. Configure --azure.skip-authz-for-non-aad-users to enable access. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig."
-	CheckAccessErrorVerdict     = "Access denied due to Azure RBAC check failure. Please retry later."
-	PodsResource                = "pods"
-	CustomResources             = "customresources"
-	ReadVerb                    = "read"
-	WriteVerb                   = "write"
-	DeleteVerb                  = "delete"
+	ActionBatchCount                          = 200
+	AccessAllowedVerdict                      = "Access allowed by Azure RBAC"
+	AccessAllowedVerboseVerdict               = "Access allowed by Azure RBAC Role Assignment %s of Role %s to user %s"
+	Allowed                                   = "allowed"
+	AccessNotAllowedVerdict                   = "User does not have access to the resource in Azure. Update role assignment to allow access."
+	NamespaceResourceFormat                   = "/providers/Microsoft.KubernetesConfiguration/namespaces"
+	namespaces                                = "namespaces"
+	managedNamespaces                         = "managedNamespaces"
+	NoOpinionVerdict                          = "Azure does not have opinion for this user."
+	NonAADUserNoOpVerdict                     = "Azure does not have opinion for this non AAD user. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig"
+	NonAADUserNotAllowedVerdict               = "Access denied by Azure RBAC for non AAD users. Configure --azure.skip-authz-for-non-aad-users to enable access. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig."
+	CheckAccessErrorVerdict                   = "Access denied due to Azure RBAC check failure. Please retry later."
+	CoreAPIGroup                              = ""
+	RBACAPIGroup                              = "rbac.authorization.k8s.io"
+	AdmissionRegistrationAPIGroup             = "admissionregistration.k8s.io"
+	PodsResource                              = "pods"
+	NodesResource                             = "nodes"
+	SecretsResource                           = "secrets"
+	ServiceAccountsResource                   = "serviceaccounts"
+	RolesResource                             = "roles"
+	RoleBindingsResource                      = "rolebindings"
+	ValidatingAdmissionPoliciesResource       = "validatingadmissionpolicies"
+	ValidatingAdmissionPolicyBindingsResource = "validatingadmissionpolicybindings"
+	ValidatingWebhookConfigurationsResource   = "validatingwebhookconfigurations"
+	CustomResources                           = "customresources"
+	ProxySubresource                          = "proxy"
+	ReadVerb                                  = "read"
+	WriteVerb                                 = "write"
+	DeleteVerb                                = "delete"
+	DeleteCollectionVerb                      = "deletecollection"
+	ImpersonateVerb                           = "impersonate"
 )
 
 var getStoredOperationsMap = azureutils.DeepCopyOperationsMap
@@ -840,4 +855,109 @@ func buildCheckAccessURL(
 	}
 
 	return rv.String(), nil
+}
+
+var (
+	fleetAllowedReadAccessVerbs           = sets.Set[string]{"get": {}, "list": {}, "watch": {}}
+	fleetReservedNSReadProtectedResources = map[string]sets.Set[string]{
+		CoreAPIGroup: {
+			SecretsResource:         {},
+			ServiceAccountsResource: {},
+			PodsResource:            {},
+		},
+		RBACAPIGroup: {
+			RolesResource:        {},
+			RoleBindingsResource: {},
+		},
+	}
+	fleetWriteProtectedAdmissionControlResources = sets.Set[string]{
+		ValidatingAdmissionPoliciesResource:       {},
+		ValidatingAdmissionPolicyBindingsResource: {},
+		ValidatingWebhookConfigurationsResource:   {},
+	}
+	fleetBuiltInAdmissionControlResourceNamePrefix = "fleet-builtin-"
+)
+
+const (
+	fleetReservedNSNamePrefix = "fleet-"
+	kubeReservedNSNamePrefix  = "kube-"
+
+	FleetReservedNSAccessNotAllowedVerdict                    = "Write and certain read access to resources in Fleet reserved namespaces (fleet- and kube- namespaces) are not allowed; scope your request to a non-reserved namespace and try again."
+	FleetNodeProxyAccessDeniedVerdict                         = "Access to nodes/proxy subresources is blocked for security reasons."
+	FleetBuiltInValidatingAdmissionControlAccessDeniedVerdict = "Write access to Fleet built-in validating admission policies, validating admission policy bindings, and validating webhook configurations is blocked for security reasons."
+	FleetImpersonationAccessDeniedVerdict                     = "Impersonation is blocked for security reasons. To access the Fleet hub cluster as a different identity, set up identities, roles, and role assignments in Azure and connect via the respective credentials."
+)
+
+func (a *AccessInfo) CheckFleetProtectedResourcesAccess(ctx context.Context, request *authzv1.SubjectAccessReviewSpec) *authzv1.SubjectAccessReviewStatus {
+	var denied bool
+	defer func() {
+		if denied {
+			// Audit here as denial in this method would short-circuit the normal authorization check.
+			a.auditSARIfNeeded(ctx, request)
+		}
+	}()
+
+	if request == nil || request.ResourceAttributes == nil {
+		return nil
+	}
+
+	deniedWithReason := func(reason string) *authzv1.SubjectAccessReviewStatus {
+		denied = true
+		return &authzv1.SubjectAccessReviewStatus{
+			Allowed: false,
+			Denied:  true,
+			Reason:  reason,
+		}
+	}
+
+	// Deny impersonation of any identity.
+	if request.ResourceAttributes.Verb == ImpersonateVerb {
+		return deniedWithReason(FleetImpersonationAccessDeniedVerdict)
+	}
+
+	if strings.HasPrefix(request.ResourceAttributes.Namespace, fleetReservedNSNamePrefix) ||
+		strings.HasPrefix(request.ResourceAttributes.Namespace, kubeReservedNSNamePrefix) {
+		// Deny all write access to resources in Fleet reserved namespaces, regardless of their kinds.
+		if !fleetAllowedReadAccessVerbs.Has(request.ResourceAttributes.Verb) {
+			return deniedWithReason(FleetReservedNSAccessNotAllowedVerdict)
+		}
+
+		// Deny read access to certain resources in Fleet reserved namespaces.
+		protectedResources := fleetReservedNSReadProtectedResources[request.ResourceAttributes.Group]
+		if protectedResources.Has(request.ResourceAttributes.Resource) {
+			return deniedWithReason(FleetReservedNSAccessNotAllowedVerdict)
+		}
+	}
+
+	// Deny listing/watching certain resources across all namespaces.
+	if request.ResourceAttributes.Namespace == "" {
+		protectedResources := fleetReservedNSReadProtectedResources[request.ResourceAttributes.Group]
+		if protectedResources.Has(request.ResourceAttributes.Resource) {
+			return deniedWithReason(FleetReservedNSAccessNotAllowedVerdict)
+		}
+	}
+
+	// Deny access to nodes/proxy subresources.
+	if request.ResourceAttributes.Group == CoreAPIGroup &&
+		request.ResourceAttributes.Resource == NodesResource &&
+		request.ResourceAttributes.Subresource == ProxySubresource {
+		return deniedWithReason(FleetNodeProxyAccessDeniedVerdict)
+	}
+
+	// Deny write access to Fleet built-in VAPs and validating webhook configurations.
+	if request.ResourceAttributes.Group == AdmissionRegistrationAPIGroup &&
+		fleetWriteProtectedAdmissionControlResources.Has(request.ResourceAttributes.Resource) &&
+		!fleetAllowedReadAccessVerbs.Has(request.ResourceAttributes.Verb) {
+		// deletecollection carries no resource name, so it spans the Fleet built-ins as well.
+		if request.ResourceAttributes.Verb == DeleteCollectionVerb ||
+			strings.HasPrefix(request.ResourceAttributes.Name, fleetBuiltInAdmissionControlResourceNamePrefix) {
+			return deniedWithReason(FleetBuiltInValidatingAdmissionControlAccessDeniedVerdict)
+		}
+	}
+
+	// Note that some protection is implemented at the Fleet-level via VAPs; for example, Fleet VAPs
+	// will block write access to cluster-scoped RBAC resources (cluster roles, cluster role bindings),
+	// and write access to mutating admission control resources (MAPs, etc.).
+
+	return nil
 }
