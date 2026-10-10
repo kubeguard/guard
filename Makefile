@@ -26,7 +26,11 @@ REGISTRY ?= ghcr.io/kubeguard
 git_branch       := $(shell git rev-parse --abbrev-ref HEAD)
 git_tag          := $(shell git describe --exact-match --abbrev=0 2>/dev/null || echo "")
 commit_hash      := $(shell git rev-parse --verify HEAD)
+ifeq ($(shell uname -s),Darwin)
+commit_timestamp := $(shell date -u -r $$(git show -s --format=%ct) +%FT%T)
+else
 commit_timestamp := $(shell date --date="@$$(git show -s --format=%ct)" --utc +%FT%T)
+endif
 
 VERSION          := $(shell git describe --tags --always --dirty)
 version_strategy := commit_hash
@@ -50,7 +54,7 @@ SRC_PKGS := auth authz commands docs installer server util
 SRC_DIRS := $(SRC_PKGS) *.go test hack/gendocs # directories which hold app source (not vendored)
 
 DOCKER_PLATFORMS := linux/amd64 linux/arm linux/arm64
-BIN_PLATFORMS    := $(DOCKER_PLATFORMS) windows/amd64 darwin/amd64
+BIN_PLATFORMS    := $(DOCKER_PLATFORMS) windows/amd64 windows/arm64 darwin/amd64 darwin/arm64
 
 # Used internally.  Users should pass GOOS and/or GOARCH.
 OS   := $(if $(GOOS),$(GOOS),$(shell go env GOOS))
