@@ -1003,3 +1003,168 @@ type capturedCheckAccess struct {
 	resourceID string
 	actions    []azureutils.AuthorizationActionInfo
 }
+
+// getAPIServerAndAccessInfoForAIManager wires a fake ARM endpoint that returns
+// distinct responses for the primary cluster path vs the /aiManagers/ fallback path,
+// and captures the checkaccess request sent to the AI Manager scope.
+func getAPIServerAndAccessInfoForAIManager(
+	clusterType, resourceId, aiManagerResourceId string,
+	clusterStatus int, clusterBody string,
+	aiManagerStatus int, aiManagerBody string,
+	captured **capturedCheckAccess,
+) (*httptest.Server, *AccessInfo) {
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/aiManagers/") {
+			b, _ := io.ReadAll(r.Body)
+			var caReq CheckAccessRequest
+			_ = json.Unmarshal(b, &caReq)
+			*captured = &capturedCheckAccess{
+				url:        r.URL.Path,
+				resourceID: caReq.Resource.Id,
+				actions:    caReq.Actions,
+			}
+			w.WriteHeader(aiManagerStatus)
+			_, _ = w.Write([]byte(aiManagerBody))
+			return
+		}
+		w.WriteHeader(clusterStatus)
+		_, _ = w.Write([]byte(clusterBody))
+	}))
+	apiURL, _ := url.Parse(ts.URL)
+	u := &AccessInfo{
+		client:              httpclient.DefaultHTTPClient,
+		apiURL:              apiURL,
+		headers:             http.Header{},
+		expiresAt:           time.Now().Add(time.Hour),
+		clusterType:         clusterType,
+		azureResourceId:     resourceId,
+		aiManagerResourceId: aiManagerResourceId,
+		armCallLimit:        0,
+		lock:                sync.RWMutex{},
+		auditSAR:            true,
+	}
+	return ts, u
+}
+
+func TestCheckAccess_AIManagerFallback(t *testing.T) {
+	const (
+		clusterResourceId   = "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/managedClusters/my-cluster"
+		aiManagerResourceId = "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/aiManagers/my-aim"
+	)
+
+	type testCase struct {
+		name                   string
+		clusterStatus          int
+		clusterBody            string
+		aiManagerStatus        int
+		aiManagerBody          string
+		aiManagerResourceId    string
+		expectedAllowed        bool
+		expectedDenied         bool
+		expectedAIMCheckAccess bool
+		expectedAIMResourceID  string
+		expectedAIMActions     []string
+	}
+
+	tests := []testCase{
+		{
+			name:                   "cluster denied, AI Manager allowed",
+			clusterStatus:          http.StatusOK,
+			clusterBody:            `[{"accessDecision":"Denied","actionId":"Microsoft.ContainerService/managedClusters/pods/delete","isDataAction":true}]`,
+			aiManagerStatus:        http.StatusOK,
+			aiManagerBody:          `[{"accessDecision":"Allowed","actionId":"Microsoft.ContainerService/aiManagers/pods/delete","isDataAction":true}]`,
+			aiManagerResourceId:    aiManagerResourceId,
+			expectedAllowed:        true,
+			expectedDenied:         false,
+			expectedAIMCheckAccess: true,
+			expectedAIMResourceID:  aiManagerResourceId + "/namespaces/dev",
+			expectedAIMActions:     []string{"Microsoft.ContainerService/aiManagers/pods/delete"},
+		},
+		{
+			name:                   "cluster 404, AI Manager allowed",
+			clusterStatus:          http.StatusNotFound,
+			clusterBody:            `""`,
+			aiManagerStatus:        http.StatusOK,
+			aiManagerBody:          `[{"accessDecision":"Allowed","actionId":"Microsoft.ContainerService/aiManagers/pods/delete","isDataAction":true}]`,
+			aiManagerResourceId:    aiManagerResourceId,
+			expectedAllowed:        true,
+			expectedDenied:         false,
+			expectedAIMCheckAccess: true,
+			expectedAIMResourceID:  aiManagerResourceId + "/namespaces/dev",
+			expectedAIMActions:     []string{"Microsoft.ContainerService/aiManagers/pods/delete"},
+		},
+		{
+			name:                   "cluster denied, AI Manager denied",
+			clusterStatus:          http.StatusOK,
+			clusterBody:            `[{"accessDecision":"Denied","actionId":"Microsoft.ContainerService/managedClusters/pods/delete","isDataAction":true}]`,
+			aiManagerStatus:        http.StatusOK,
+			aiManagerBody:          `[{"accessDecision":"Denied","actionId":"Microsoft.ContainerService/aiManagers/pods/delete","isDataAction":true}]`,
+			aiManagerResourceId:    aiManagerResourceId,
+			expectedAllowed:        false,
+			expectedDenied:         true,
+			expectedAIMCheckAccess: true,
+			expectedAIMResourceID:  aiManagerResourceId + "/namespaces/dev",
+			expectedAIMActions:     []string{"Microsoft.ContainerService/aiManagers/pods/delete"},
+		},
+		{
+			name:                   "cluster allowed, no fallback attempted",
+			clusterStatus:          http.StatusOK,
+			clusterBody:            `[{"accessDecision":"Allowed","actionId":"Microsoft.ContainerService/managedClusters/pods/delete","isDataAction":true}]`,
+			aiManagerStatus:        http.StatusOK,
+			aiManagerBody:          `[{"accessDecision":"Denied","actionId":"Microsoft.ContainerService/aiManagers/pods/delete","isDataAction":true}]`,
+			aiManagerResourceId:    aiManagerResourceId,
+			expectedAllowed:        true,
+			expectedDenied:         false,
+			expectedAIMCheckAccess: false,
+		},
+		{
+			name:                   "no AI Manager resource id, no fallback",
+			clusterStatus:          http.StatusOK,
+			clusterBody:            `[{"accessDecision":"Denied","actionId":"Microsoft.ContainerService/managedClusters/pods/delete","isDataAction":true}]`,
+			aiManagerStatus:        http.StatusOK,
+			aiManagerBody:          `[{"accessDecision":"Allowed","actionId":"Microsoft.ContainerService/aiManagers/pods/delete","isDataAction":true}]`,
+			aiManagerResourceId:    "",
+			expectedAllowed:        false,
+			expectedDenied:         true,
+			expectedAIMCheckAccess: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var captured *capturedCheckAccess
+			ts, u := getAPIServerAndAccessInfoForAIManager(
+				managedClusters, clusterResourceId, tc.aiManagerResourceId,
+				tc.clusterStatus, tc.clusterBody,
+				tc.aiManagerStatus, tc.aiManagerBody,
+				&captured,
+			)
+			defer ts.Close()
+
+			request := &authzv1.SubjectAccessReviewSpec{
+				User: "test@bing.com",
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "dev", Group: "", Resource: "pods",
+					Subresource: "status", Version: "v1", Name: "test", Verb: "delete",
+				},
+				Extra: map[string]authzv1.ExtraValue{"oid": {"00000000-0000-0000-0000-000000000000"}},
+			}
+
+			response, err := u.CheckAccess(context.Background(), request)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, tc.expectedAllowed, response.Allowed)
+			assert.Equal(t, tc.expectedDenied, response.Denied)
+
+			assert.Equal(t, tc.expectedAIMCheckAccess, captured != nil, "AI Manager checkaccess expectation mismatch")
+			if tc.expectedAIMCheckAccess {
+				assert.Equal(t, tc.expectedAIMResourceID, captured.resourceID, "Unexpected AI Manager checkaccess resource ID")
+				actualActionIDs := make([]string, len(captured.actions))
+				for i, action := range captured.actions {
+					actualActionIDs[i] = action.AuthorizationEntity.Id
+				}
+				assert.Equal(t, tc.expectedAIMActions, actualActionIDs, "Unexpected AI Manager checkaccess actions")
+			}
+		})
+	}
+}

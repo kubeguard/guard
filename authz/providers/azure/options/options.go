@@ -61,6 +61,10 @@ type Options struct {
 	KubeConfigFile                         string
 	AuditSAR                               bool
 	FleetManagerResourceId                 string
+	// AIManagerResourceId is the AI Manager resource id that a regular
+	// (BYO) cluster has joined. When set, authorization falls back to the
+	// AI Manager scope after the primary cluster-scope check.
+	AIManagerResourceId string
 	// CheckAccess V2 API configuration
 	UseCheckAccessV2 bool
 	PDPEndpoint      string
@@ -90,6 +94,7 @@ func NewOptions() Options {
 		ReconcileDiscoverResourcesFrequency:    5 * time.Minute,
 		UseManagedNamespaceResourceScopeFormat: false,
 		FleetManagerResourceId:                 "",
+		AIManagerResourceId:                    "",
 		UseCheckAccessV2:                       false,
 		PDPEndpoint:                            "",
 		PDPScope:                               "",
@@ -116,6 +121,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&o.ReconcileDiscoverResourcesFrequency, "azure.discover-resources-frequency", o.ReconcileDiscoverResourcesFrequency, "Frequency at which discover resources should be reconciled. Default: 5m")
 	fs.BoolVar(&o.AuditSAR, "azure.audit-sar", o.AuditSAR, "enable audit of SAR requests in azure authz mode. Default: false")
 	fs.StringVar(&o.FleetManagerResourceId, "azure.fleet-resource-id", "", "azure kubernetes fleet manager resource id that the cluster has joined to (//subscriptions/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/fleets/<fleetname>)")
+	fs.StringVar(&o.AIManagerResourceId, "azure.aimanager-resource-id", "", "azure AI Manager resource id that the cluster has joined to for BYO fallback authorization (//subscriptions/<subName>/resourcegroups/<RGname>/providers/Microsoft.ContainerService/aiManagers/<name>)")
 	fs.BoolVar(&o.UseCheckAccessV2, "azure.use-checkaccess-v2", o.UseCheckAccessV2, "use Azure CheckAccess v2 API for RBAC authorization. Default: false")
 	fs.StringVar(&o.PDPEndpoint, "azure.pdp-endpoint", o.PDPEndpoint, "Azure RBAC PDP endpoint for CheckAccess v2 API (required when azure.use-checkaccess-v2 is enabled)")
 	fs.StringVar(&o.PDPScope, "azure.pdp-scope", o.PDPScope, "OAuth scope for CheckAccess v2 API authentication (e.g., https://authorization.azure.net/.default for public cloud)")
@@ -168,6 +174,12 @@ func (o *Options) Validate(azure azure.Options) []error {
 
 	if o.FleetManagerResourceId != "" {
 		if err := ValidateFleetID(o.FleetManagerResourceId); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if o.AIManagerResourceId != "" {
+		if err := ValidateAIManagerID(o.AIManagerResourceId); err != nil {
 			errs = append(errs, err)
 		}
 	}

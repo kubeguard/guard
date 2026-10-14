@@ -1,0 +1,138 @@
+package plans
+
+import (
+	"context"
+	"crypto/rand"
+	"fmt"
+	"strings"
+
+	flow "github.com/Azure/go-workflow"
+	"github.com/samber/lo"
+
+	"go.goms.io/aks/rp/swagger/awesome"
+	awesomeaimanager "go.goms.io/aks/rp/swagger/awesome/pkg/aimanager"
+	"go.goms.io/aks/rp/test/e2ev3/handlers/azure/azcontainerservice/aimanager"
+	"go.goms.io/aks/rp/test/e2ev3/runtime/test"
+	"go.goms.io/aks/rp/test/e2ev3/runtime/test/plans"
+)
+
+// Scenario_AIManager_BYO validates AI Manager Bring-Your-Own-Cluster (BYO)
+// authorization fallback in Guard.
+//
+// Flow:
+//  1. Create a managed AKS cluster with AAD + Azure RBAC enabled.
+//  2. Create an AI Manager whose properties.clusterResourceId points at that
+//     cluster. This triggers the AI Manager worker's BYO reconcile, which stamps
+//     AIManagerProfile{Managed:true, IsByoCluster:true, AiManagerResourceId:...}
+//     onto the cluster.
+//  3. The RP's kube-authwebhook chart then renders Guard with BOTH
+//     --azure.resource-id=<cluster> AND --azure.aimanager-resource-id=<aiManager>.
+//  4. Verify (on the svc underlay, in the cluster's CCP namespace) that the Guard
+//     deployment args contain --azure.aimanager-resource-id.
+//
+// The end-to-end authorization check (assign an AI Manager-scoped role, confirm a
+// SubjectAccessReview is allowed only via the AI Manager fallback) is layered on
+// top in verifyBYOFallback once a role assignment at the AI Manager scope is in
+// place — see comments there.
+var Scenario_AIManager_BYO = test.NewScenario("Scenario_AIManager_BYO", new(AIManagerBYO))
+
+type AIManagerBYO struct {
+	plans.Base
+
+	aiManager        aimanager.AIManager
+	systemPool       *string
+	aiManagerResID   string
+	clusterResID     string
+}
+
+func (n *AIManagerBYO) Metadata() test.Metadata {
+	return test.Metadata{
+		Description: "Create an Azure-RBAC AKS cluster, BYO-join it to an AI Manager, and verify Guard renders --azure.aimanager-resource-id for the BYO fallback",
+		Tags:        map[string]string{},
+	}
+}
+
+// ManagedClusterToCreate makes the backing cluster an AAD v2 + Azure RBAC cluster,
+// which is the precondition for Guard running with Azure authz.
+func (n *AIManagerBYO) ManagedClusterToCreate(ctx context.Context, mc *awesome.ManagedCluster) error {
+	if n.systemPool == nil {
+		panic("systemPool is not set")
+	}
+	mc.Properties.AgentPoolProfiles[0].VMSize = n.systemPool
+	mc.Properties.EnableRBAC = lo.ToPtr(true)
+	mc.Properties.AADProfile = &awesome.ManagedClusterAADProfile{
+		Managed:         lo.ToPtr(true),
+		EnableAzureRBAC: lo.ToPtr(true),
+	}
+	return nil
+}
+
+func (n *AIManagerBYO) Plan() *flow.Workflow {
+	provision := n.Provision(n)
+	n.systemPool = n.UseVMSize(sku.DefaultClaim)
+
+	var (
+		createAIManager aimanager.PutAIManager
+		verifyGuardArgs = new(verifyGuardBYOArgsStep)
+	)
+
+	// Compute the cluster ARM resource ID after the cluster is created, then
+	// create the AI Manager referencing it (BYO).
+	createByoAIManager := flow.Step(&createAIManager).
+		DependsOn(&n.CreateManagedCluster).
+		Input(func(ctx context.Context, c *aimanager.PutAIManager) error {
+			mc := n.CreateManagedCluster.GetResponse()
+			n.clusterResID = fmt.Sprintf(
+				"/subscriptions/%s/resourceGroups/%s/providers/Microsoft.ContainerService/managedClusters/%s",
+				n.CreateResourceGroup.ResourceGroup.Subscription.SubscriptionID,
+				lo.FromPtr(n.CreateResourceGroup.Response.Name),
+				lo.FromPtr(mc.Name),
+			)
+			c.Request.Location = n.CreateResourceGroup.Response.Location
+			c.AIManager.AIManagerName = "aim-" + strings.ToLower(rand.Text())
+			c.AIManager.ResourceGroup.ResourceGroupName = n.CreateResourceGroup.ResourceGroup.ResourceGroupName
+			c.AIManager.ResourceGroup.Subscription.SubscriptionID = n.CreateResourceGroup.ResourceGroup.Subscription.SubscriptionID
+			c.Request.Properties = &awesomeaimanager.Properties{
+				ClusterResourceID: lo.ToPtr(n.clusterResID),
+			}
+			return nil
+		}).
+		Output(func(ctx context.Context, c *aimanager.PutAIManager) error {
+			n.aiManager = c.AIManager
+			n.aiManagerResID = fmt.Sprintf(
+				"/subscriptions/%s/resourceGroups/%s/providers/Microsoft.ContainerService/aiManagers/%s",
+				c.AIManager.ResourceGroup.Subscription.SubscriptionID,
+				c.AIManager.ResourceGroup.ResourceGroupName,
+				c.AIManager.AIManagerName,
+			)
+			return nil
+		})
+
+	// Verify the Guard deployment (CCP namespace on the svc underlay) has the
+	// BYO fallback flag.
+	verifyStep := flow.Step(verifyGuardArgs).
+		DependsOn(&createAIManager).
+		Input(func(ctx context.Context, v *verifyGuardBYOArgsStep) error {
+			v.ExpectedAIManagerResourceID = n.aiManagerResID
+			v.ClusterResourceID = n.clusterResID
+			return nil
+		})
+
+	teardown := n.byoTeardown(&createAIManager)
+
+	n.Add(flow.Pipe(provision, createByoAIManager, verifyStep, teardown))
+	return n.Add(createByoAIManager, verifyStep)
+}
+
+func (n *AIManagerBYO) byoTeardown(putAIManager *aimanager.PutAIManager) *flow.Workflow {
+	f := flow.Workflow{}
+	var deleteAIManager aimanager.DeleteAIManager
+	f.Add(
+		flow.Pipe(&deleteAIManager, n.Teardown()),
+		flow.Step(&deleteAIManager).Input(func(ctx context.Context, d *aimanager.DeleteAIManager) error {
+			d.AIManager = n.aiManager
+			return nil
+		}),
+	)
+	return &f
+}

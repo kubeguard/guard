@@ -34,6 +34,7 @@ package rbac
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	checkaccess "github.com/Azure/checkaccess-v2-go-sdk/client"
@@ -614,4 +615,111 @@ func TestCheckAccessV2_FleetActionsUseCorrectClusterType(t *testing.T) {
 	// Third call (fleet) should use fleetMembers actions
 	assert.Contains(t, capturedActions[2][0], "Microsoft.ContainerService/fleets/members/",
 		"Fleet check should use fleetMembers actions, got: %s", capturedActions[2][0])
+}
+
+// TestCheckAccessV2_AIManagerFallback verifies the v2 CheckAccess path falls back to
+// the AI Manager scope when the primary cluster-scope check does not allow.
+func TestCheckAccessV2_AIManagerFallback(t *testing.T) {
+	const (
+		clusterResourceId   = "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/managedClusters/my-cluster"
+		aiManagerResourceId = "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.ContainerService/aiManagers/my-aim"
+	)
+
+	tests := []struct {
+		name                 string
+		clusterAllowed       bool
+		aiManagerAllowed     bool
+		aiManagerResourceId  string
+		expectedAllowed      bool
+		expectAIMChecked     bool
+		expectedAIMScopeText string
+	}{
+		{
+			name:                 "cluster denied, AI Manager allowed",
+			clusterAllowed:       false,
+			aiManagerAllowed:     true,
+			aiManagerResourceId:  aiManagerResourceId,
+			expectedAllowed:      true,
+			expectAIMChecked:     true,
+			expectedAIMScopeText: "/aiManagers/my-aim",
+		},
+		{
+			name:                "cluster denied, AI Manager denied",
+			clusterAllowed:      false,
+			aiManagerAllowed:    false,
+			aiManagerResourceId: aiManagerResourceId,
+			expectedAllowed:     false,
+			expectAIMChecked:    true,
+		},
+		{
+			name:                "cluster allowed, no fallback",
+			clusterAllowed:      true,
+			aiManagerAllowed:    false,
+			aiManagerResourceId: aiManagerResourceId,
+			expectedAllowed:     true,
+			expectAIMChecked:    false,
+		},
+		{
+			name:                "no AI Manager resource id, no fallback",
+			clusterAllowed:      false,
+			aiManagerAllowed:    true,
+			aiManagerResourceId: "",
+			expectedAllowed:     false,
+			expectAIMChecked:    false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var aiManagerChecked bool
+			mockClient := &mockPDPClient{
+				checkAccessFunc: func(ctx context.Context, authzReq checkaccess.AuthorizationRequest) (*checkaccess.AuthorizationDecisionResponse, error) {
+					isAIManager := strings.Contains(authzReq.Resource.Id, "/aiManagers/")
+					if isAIManager {
+						aiManagerChecked = true
+					}
+
+					decision := checkaccess.NotAllowed
+					if isAIManager && tc.aiManagerAllowed {
+						decision = checkaccess.Allowed
+					}
+					if !isAIManager && tc.clusterAllowed {
+						decision = checkaccess.Allowed
+					}
+
+					decisions := make([]checkaccess.AuthorizationDecision, len(authzReq.Actions))
+					for i, a := range authzReq.Actions {
+						decisions[i] = checkaccess.AuthorizationDecision{
+							ActionId:       a.Id,
+							AccessDecision: decision,
+						}
+					}
+					return &checkaccess.AuthorizationDecisionResponse{Value: decisions}, nil
+				},
+			}
+
+			accessInfo := &AccessInfo{
+				useCheckAccessV2:    true,
+				pdpClient:           mockClient,
+				clusterType:         managedClusters,
+				azureResourceId:     clusterResourceId,
+				aiManagerResourceId: tc.aiManagerResourceId,
+			}
+
+			request := &authzv1.SubjectAccessReviewSpec{
+				User: "test@bing.com",
+				ResourceAttributes: &authzv1.ResourceAttributes{
+					Namespace: "dev", Group: "", Resource: "pods",
+					Subresource: "status", Version: "v1", Name: "test", Verb: "delete",
+				},
+				Extra: map[string]authzv1.ExtraValue{"oid": {testUserOid}},
+			}
+
+			status, err := accessInfo.checkAccessV2(context.Background(), request)
+			assert.NoError(t, err)
+			assert.NotNil(t, status)
+			assert.Equal(t, tc.expectedAllowed, status.Allowed)
+			assert.Equal(t, tc.expectAIMChecked, aiManagerChecked, "AI Manager scope check expectation mismatch")
+		})
+	}
 }

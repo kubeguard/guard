@@ -112,6 +112,7 @@ type AccessInfo struct {
 
 	auditSAR               bool
 	fleetManagerResourceId string
+	aiManagerResourceId    string
 }
 
 var (
@@ -202,6 +203,7 @@ func newAccessInfo(tokenProvider graph.TokenProvider, rbacURL *url.URL, opts aut
 		httpClientRetryCount:                   authopts.HttpClientRetryCount,
 		auditSAR:                               opts.AuditSAR,
 		fleetManagerResourceId:                 opts.FleetManagerResourceId,
+		aiManagerResourceId:                    opts.AIManagerResourceId,
 		useCheckAccessV2:                       opts.UseCheckAccessV2,
 		checkAccessV2Version:                   opts.CheckAccessV2APIVersion,
 	}
@@ -578,6 +580,46 @@ func (a *AccessInfo) CheckAccess(ctx context.Context, request *authzv1.SubjectAc
 			if status != nil && status.Allowed {
 				log.V(5).Info("Fleet manager managed namespace check access allowed")
 			}
+		}
+	}
+
+	// Fallback to AI Manager scope check when a regular (BYO) cluster has joined an AI Manager.
+	// AI Manager namespaces are first-class ARM resources of type
+	// Microsoft.ContainerService/aiManagers/namespaces, so the plain namespaces/<ns>
+	// segment is used and there is no managedNamespaces sub-fallback.
+	if status != nil && status.Allowed {
+		return status, nil
+	}
+	if a.aiManagerResourceId != "" {
+		log.V(7).Info("Falling back to AI Manager scope check", "aiManagerResourceId", a.aiManagerResourceId)
+
+		aiManagerURL, err := buildCheckAccessURL(*a.apiURL, a.aiManagerResourceId, namespaceExists, nameSpaceString)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to build AI Manager check access URL: %w", err)
+		}
+
+		bodiesForAIManagerRBAC, err := prepareCheckAccessRequestBody(ctx, request, aiManagers, a.aiManagerResourceId, false, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to prepare check access request for AI Manager: %w", err)
+		}
+
+		if namespaceExists {
+			for _, b := range bodiesForAIManagerRBAC {
+				b.Resource.Id = path.Join(a.aiManagerResourceId, nameSpaceString)
+			}
+		}
+
+		status, err = a.performCheckAccess(ctx, aiManagerURL, bodiesForAIManagerRBAC, checkAccessUsername)
+		if err != nil {
+			code := http.StatusInternalServerError
+			if v, ok := err.(errutils.HttpStatusCode); ok {
+				code = v.Code()
+			}
+			return nil, errutils.WithCode(fmt.Errorf("AI Manager check access failed: %w", err), code)
+		}
+		if status != nil && status.Allowed {
+			log.V(5).Info("AI Manager check access allowed")
+			return status, nil
 		}
 	}
 	return status, nil

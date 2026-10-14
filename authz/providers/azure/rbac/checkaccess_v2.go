@@ -342,6 +342,39 @@ func (a *AccessInfo) checkAccessV2(ctx context.Context, request *authzv1.Subject
 		}
 	}
 
+	// Fallback to AI Manager scope check when a regular (BYO) cluster has joined an AI Manager.
+	// AI Manager namespaces are first-class ARM resources of type
+	// Microsoft.ContainerService/aiManagers/namespaces, so the plain namespaces/<ns>
+	// segment is used and there is no managedNamespaces sub-fallback.
+	if a.aiManagerResourceId != "" {
+		log.V(7).Info("Falling back to AI Manager scope check (v2)", "aiManagerResourceId", a.aiManagerResourceId)
+
+		// Generate AI Manager-specific actions using the aiManagers cluster type
+		// so action IDs use the "Microsoft.ContainerService/aiManagers/..." prefix.
+		aiManagerActions, err := getDataActionsV2(ctx, request, aiManagers, a.allowCustomResourceTypeCheck, a.allowSubresourceTypeCheck)
+		if err != nil {
+			return nil, fmt.Errorf("error preparing AI Manager actions list: %w", err)
+		}
+
+		aiManagerResourceId, err := buildResourceIDForV2(a.aiManagerResourceId, namespaceExists, namespaceString)
+		if err != nil {
+			return nil, fmt.Errorf("error building AI Manager resource ID: %w", err)
+		}
+
+		status, err = a.performCheckAccessV2(ctx, aiManagerResourceId, aiManagerActions, userOid, groups)
+		if err != nil {
+			code := http.StatusInternalServerError
+			if v, ok := err.(errutils.HttpStatusCode); ok {
+				code = v.Code()
+			}
+			return nil, errutils.WithCode(fmt.Errorf("AI Manager CheckAccess v2 failed: %w", err), code)
+		}
+		if status != nil && status.Allowed {
+			log.V(5).Info("AI Manager CheckAccess v2 allowed")
+			return status, nil
+		}
+	}
+
 	return status, nil
 }
 
