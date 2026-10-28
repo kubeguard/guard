@@ -51,7 +51,7 @@ type Mux struct {
 // interface.
 func NewMux() *Mux {
 	mux := &Mux{tree: &node{}, pool: &sync.Pool{}}
-	mux.pool.New = func() interface{} {
+	mux.pool.New = func() any {
 		return NewRouteContext()
 	}
 	return mux
@@ -107,7 +107,8 @@ func (mx *Mux) Use(middlewares ...func(http.Handler) http.Handler) {
 // Handle adds the route `pattern` that matches any http method to
 // execute the `handler` http.Handler.
 func (mx *Mux) Handle(pattern string, handler http.Handler) {
-	if method, rest, found := strings.Cut(pattern, " "); found {
+	if i := strings.IndexAny(pattern, " \t"); i >= 0 {
+		method, rest := pattern[:i], strings.TrimLeft(pattern[i+1:], " \t")
 		mx.Method(method, rest, handler)
 		return
 	}
@@ -118,12 +119,7 @@ func (mx *Mux) Handle(pattern string, handler http.Handler) {
 // HandleFunc adds the route `pattern` that matches any http method to
 // execute the `handlerFn` http.HandlerFunc.
 func (mx *Mux) HandleFunc(pattern string, handlerFn http.HandlerFunc) {
-	if method, rest, found := strings.Cut(pattern, " "); found {
-		mx.Method(method, rest, handlerFn)
-		return
-	}
-
-	mx.handle(mALL, pattern, handlerFn)
+	mx.Handle(pattern, handlerFn)
 }
 
 // Method adds the route `pattern` that matches `method` http method to
@@ -188,6 +184,12 @@ func (mx *Mux) Post(pattern string, handlerFn http.HandlerFunc) {
 // execute the `handlerFn` http.HandlerFunc.
 func (mx *Mux) Put(pattern string, handlerFn http.HandlerFunc) {
 	mx.handle(mPUT, pattern, handlerFn)
+}
+
+// Query adds the route `pattern` that matches a QUERY http method to
+// execute the `handlerFn` http.HandlerFunc.
+func (mx *Mux) Query(pattern string, handlerFn http.HandlerFunc) {
+	mx.handle(mQUERY, pattern, handlerFn)
 }
 
 // Trace adds the route `pattern` that matches a TRACE http method to
@@ -303,6 +305,14 @@ func (mx *Mux) Mount(pattern string, handler http.Handler) {
 
 	// Assign sub-Router's with the parent not found & method not allowed handler if not specified.
 	subr, ok := handler.(*Mux)
+
+	// Provide runtime safety for ensuring a router isn't mounted onto itself,
+	// which includes an inline mux derived from it via With()/Group() since
+	// that shares the same underlying tree. See issue #843.
+	if ok && subr.tree == mx.tree {
+		panic(fmt.Sprintf("chi: attempting to Mount() a router onto itself on '%s'", pattern))
+	}
+
 	if ok && subr.notFoundHandler == nil && mx.notFoundHandler != nil {
 		subr.NotFound(mx.notFoundHandler)
 	}
@@ -471,9 +481,12 @@ func (mx *Mux) routeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Find the route
 	if _, _, h := mx.tree.FindRoute(rctx, method, routePath); h != nil {
-		if supportsPathValue {
-			setPathValue(rctx, r)
+		// Set http.Request path values from our request context
+		for i, key := range rctx.URLParams.Keys {
+			value := rctx.URLParams.Values[i]
+			r.SetPathValue(key, value)
 		}
+		r.Pattern = rctx.RoutePattern()
 
 		h.ServeHTTP(w, r)
 		return
